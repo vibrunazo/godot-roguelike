@@ -34,7 +34,8 @@ fall_state = NodePath("../PlayerFall")
 player = NodePath("../..")
 metadata/_custom_type_script = "uid://b5csf0k51tkb5"
 
-[node name="PlayerFall" type="Node" parent="StateMachine" unique_id=770344299 node_paths=PackedStringArray("player")]
+[node name="PlayerFall" type="Node" parent="StateMachine" unique_id=770344299 node_paths=PackedStringArray("run_state", "player")]
 script = ExtResource("4_gwnis")
+run_state = NodePath("../PlayerRun")
 player = NodePath("../..")
 metadata/_custom_type_script = "uid://c2fahn2m2se57"
