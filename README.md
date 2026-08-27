@@ -1,8 +1,9 @@
 # Godot Roguelite
 
-This is my version of Bramwell Willams' Udemy course on Godot Roguelite game.
+This project was created following the Udemy course: [Create a Complete 2D Roguelike Game in Godot 4](https://www.udemy.com/course/godot-roguelike/) by Bramwell Williams (GameDev.tv).
 
-https://gitlab.com/GameDevTV/godot-roguelite-hack-n-slash/v1/godot-roguelite
+- **Udemy Course:** https://www.udemy.com/course/godot-roguelike/
+- **Reference Repository:** https://gitlab.com/GameDevTV/godot-roguelite-hack-n-slash/v1/godot-roguelite
 
-Author: vibrunazo
-CC0
+Author: vibrunazo  
+License: CC0
