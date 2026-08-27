@@ -1,10 +1,14 @@
 [gd_scene format=3 uid="uid://dveet4y3bg7gi"]
 
+[ext_resource type="Script" uid="uid://c8xqs3urnbcmx" path="res://Player/player.gd" id="1_l8h54"]
+[ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/StateMachine.gd" id="2_4ntmi"]
+
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_hvfyp"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_l8h54"]
 
 [node name="Player" type="CharacterBody3D" unique_id=602303743]
+script = ExtResource("1_l8h54")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1950298725]
 mesh = SubResource("CapsuleMesh_hvfyp")
@@ -18,3 +22,6 @@ transform = Transform3D(-0.70710677, -0.5416752, 0.45451948, 0, 0.64278764, 0.76
 [node name="Camera3D" type="Camera3D" parent="CameraRoot" unique_id=80870162]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
 fov = 65.0
+
+[node name="StateMachine" type="Node" parent="." unique_id=463787972]
+script = ExtResource("2_4ntmi")

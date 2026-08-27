@@ -1,3 +1,5 @@
+## The StateMachine is a Node in the Player scene. Each State the StateMachine can transition
+## into is another Node child of the StateMachine.
 class_name StateMachine 
 extends Node
 
