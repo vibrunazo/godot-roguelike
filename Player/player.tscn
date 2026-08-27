@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://c8xqs3urnbcmx" path="res://Player/player.gd" id="1_l8h54"]
 [ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/StateMachine.gd" id="2_4ntmi"]
 [ext_resource type="Script" uid="uid://b5csf0k51tkb5" path="res://StateMachine/PlayerStates/PlayerRun.gd" id="3_btcbx"]
+[ext_resource type="Script" uid="uid://c2fahn2m2se57" path="res://StateMachine/PlayerStates/PlayerFall.gd" id="4_gwnis"]
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_hvfyp"]
 
@@ -27,7 +28,13 @@ fov = 65.0
 [node name="StateMachine" type="Node" parent="." unique_id=463787972]
 script = ExtResource("2_4ntmi")
 
-[node name="PlayerRun" type="Node" parent="StateMachine" unique_id=964045061 node_paths=PackedStringArray("player")]
+[node name="PlayerRun" type="Node" parent="StateMachine" unique_id=964045061 node_paths=PackedStringArray("fall_state", "player")]
 script = ExtResource("3_btcbx")
+fall_state = NodePath("../PlayerFall")
 player = NodePath("../..")
 metadata/_custom_type_script = "uid://b5csf0k51tkb5"
+
+[node name="PlayerFall" type="Node" parent="StateMachine" unique_id=770344299 node_paths=PackedStringArray("player")]
+script = ExtResource("4_gwnis")
+player = NodePath("../..")
+metadata/_custom_type_script = "uid://c2fahn2m2se57"
