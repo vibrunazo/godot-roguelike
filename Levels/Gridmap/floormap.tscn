@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://362kgq714p25"]
+
+[ext_resource type="PackedScene" uid="uid://bdpe2mvg1jvq4" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Primitive_Floor_A.gltf" id="4_wwl5a"]
+[ext_resource type="PackedScene" uid="uid://chb5dq14rnbep" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Primitive_Floor_B.gltf" id="5_efp7q"]
+
+[node name="Floormap" type="Node3D" unique_id=1277045687]
+
+[node name="Primitive_Floor_A2" parent="." unique_id=1387726486 instance=ExtResource("4_wwl5a")]
+
+[node name="Primitive_Floor_B2" parent="." unique_id=1099538835 instance=ExtResource("5_efp7q")]

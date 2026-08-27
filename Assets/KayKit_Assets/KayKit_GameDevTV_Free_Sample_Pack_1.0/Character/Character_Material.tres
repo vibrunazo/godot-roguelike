@@ -1,0 +1,8 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://cxaquyus3gac2"]
+
+[ext_resource type="Texture2D" uid="uid://42rdgl1t6qwg" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Character/GamedevTV_Mannequin_Medium_character_texture.png" id="1_044do"]
+
+[resource]
+resource_name = "Character_Material"
+albedo_texture = ExtResource("1_044do")
+roughness = 0.3

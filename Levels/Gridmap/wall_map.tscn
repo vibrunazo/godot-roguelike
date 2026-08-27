@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://duh1jxbx5fr5c"]
+
+[ext_resource type="PackedScene" uid="uid://7lsjrb6aw7mm" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Primitive_Wall.gltf" id="1_qfdxm"]
+[ext_resource type="PackedScene" uid="uid://7q7wffd77plj" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Primitive_Window.gltf" id="2_qlqps"]
+
+[node name="WallMap" type="Node3D" unique_id=917781371]
+
+[node name="Primitive_Wall2" parent="." unique_id=1317038851 instance=ExtResource("1_qfdxm")]
+
+[node name="Primitive_Window2" parent="." unique_id=1002665622 instance=ExtResource("2_qlqps")]

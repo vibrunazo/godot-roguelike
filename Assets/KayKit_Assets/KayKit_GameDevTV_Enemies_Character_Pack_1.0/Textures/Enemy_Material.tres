@@ -1,0 +1,8 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://chphywhrw1h2a"]
+
+[ext_resource type="Texture2D" uid="uid://css3j5fy4ysme" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/Enemy_Medium_enemy_texture.png" id="1_8bfpy"]
+
+[resource]
+resource_name = "Enemy_Material"
+albedo_texture = ExtResource("1_8bfpy")
+roughness = 0.3
