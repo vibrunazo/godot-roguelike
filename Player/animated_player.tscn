@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://bog6uxyrn6wyq" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Character/GamedevTV_Mannequin_Medium.glb" id="1_08whr"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Running_B.res" id="2_d6w55"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Idle_A.res" id="3_w55qd"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Spawn_Ground.res" id="4_5qd6w"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Hit_A.res" id="5_qd6w5"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Dodge_Forward.res" id="6_d6w5q"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_1H_Attack_Slice_Horizontal.res" id="7_6w5qd"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_1H_Attack_Stab.res" id="8_w5qd6"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_2H_Attack_Spin.res" id="9_5qd6w"]
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_8whr0"]
+_data = {
+&"Dodge_Forward": ExtResource("6_d6w5q"),
+&"Hit_A": ExtResource("5_qd6w5"),
+&"Idle_A": ExtResource("3_w55qd"),
+&"Melee_1H_Attack_Slice_Horizontal": ExtResource("7_6w5qd"),
+&"Melee_1H_Attack_Stab": ExtResource("8_w5qd6"),
+&"Melee_2H_Attack_Spin": ExtResource("9_5qd6w"),
+&"Running_B": ExtResource("2_d6w55"),
+&"Spawn_Ground": ExtResource("4_5qd6w")
+}
+
+[node name="GamedevTV_Mannequin_Medium" instance=ExtResource("1_08whr")]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." index="1"]
+libraries = {
+&"player animations": SubResource("AnimationLibrary_8whr0")
+}
