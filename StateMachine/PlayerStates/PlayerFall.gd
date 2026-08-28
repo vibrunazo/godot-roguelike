@@ -4,7 +4,7 @@ extends PlayerState
 @export var run_state: PlayerState
 
 func physics_update(_delta: float) -> void:
-	core_movement(_delta, 8.0)
+	core_movement(_delta, player.movement_speed)
 	if player.is_on_floor() == true:
 		finished.emit(run_state.name)
 	player.velocity += player.get_gravity()
