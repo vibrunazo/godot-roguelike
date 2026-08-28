@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/StateMachine.gd" id="2_4ntmi"]
 [ext_resource type="Script" uid="uid://b5csf0k51tkb5" path="res://StateMachine/PlayerStates/PlayerRun.gd" id="3_btcbx"]
 [ext_resource type="Script" uid="uid://c2fahn2m2se57" path="res://StateMachine/PlayerStates/PlayerFall.gd" id="4_gwnis"]
+[ext_resource type="Script" uid="uid://21pflv2d1drw" path="res://StateMachine/PlayerStates/PlayerDash.gd" id="5_a28ek"]
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_hvfyp"]
 
@@ -28,10 +29,11 @@ fov = 65.0
 [node name="StateMachine" type="Node" parent="." unique_id=463787972]
 script = ExtResource("2_4ntmi")
 
-[node name="PlayerRun" type="Node" parent="StateMachine" unique_id=964045061 node_paths=PackedStringArray("fall_state", "player")]
+[node name="PlayerRun" type="Node" parent="StateMachine" unique_id=964045061 node_paths=PackedStringArray("fall_state", "player", "dash_state")]
 script = ExtResource("3_btcbx")
 fall_state = NodePath("../PlayerFall")
 player = NodePath("../..")
+dash_state = NodePath("../PlayerDash")
 metadata/_custom_type_script = "uid://b5csf0k51tkb5"
 
 [node name="PlayerFall" type="Node" parent="StateMachine" unique_id=770344299 node_paths=PackedStringArray("run_state", "player")]
@@ -39,3 +41,12 @@ script = ExtResource("4_gwnis")
 run_state = NodePath("../PlayerRun")
 player = NodePath("../..")
 metadata/_custom_type_script = "uid://c2fahn2m2se57"
+
+[node name="PlayerDash" type="Node" parent="StateMachine" unique_id=1966261831 node_paths=PackedStringArray("player")]
+script = ExtResource("5_a28ek")
+player = NodePath("../..")
+metadata/_custom_type_script = "uid://21pflv2d1drw"
+
+[node name="DashDuration" type="Timer" parent="StateMachine/PlayerDash" unique_id=793371820]
+wait_time = 0.1
+one_shot = true

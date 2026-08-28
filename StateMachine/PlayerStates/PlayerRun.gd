@@ -8,3 +8,6 @@ func physics_update(_delta: float) -> void:
 	if player.is_on_floor() == false:
 		finished.emit(fall_state.name)
 	player.move_and_slide()
+
+func handle_input(_event: InputEvent) -> void:
+	check_dash(_event)
