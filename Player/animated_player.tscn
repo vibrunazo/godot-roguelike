@@ -26,5 +26,5 @@ _data = {
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." index="1"]
 libraries = {
-&"player animations": SubResource("AnimationLibrary_8whr0")
+&"PlayerAnimations": SubResource("AnimationLibrary_8whr0")
 }

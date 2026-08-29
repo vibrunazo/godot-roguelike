@@ -1,12 +1,66 @@
 [gd_scene format=3 uid="uid://dveet4y3bg7gi"]
 
 [ext_resource type="Script" uid="uid://c8xqs3urnbcmx" path="res://Player/player.gd" id="1_l8h54"]
+[ext_resource type="PackedScene" path="res://Player/animated_player.tscn" id="2_fhl08"]
 [ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/StateMachine.gd" id="2_4ntmi"]
 [ext_resource type="Script" uid="uid://b5csf0k51tkb5" path="res://StateMachine/PlayerStates/PlayerRun.gd" id="3_btcbx"]
 [ext_resource type="Script" uid="uid://c2fahn2m2se57" path="res://StateMachine/PlayerStates/PlayerFall.gd" id="4_gwnis"]
 [ext_resource type="Script" uid="uid://21pflv2d1drw" path="res://StateMachine/PlayerStates/PlayerDash.gd" id="5_a28ek"]
 
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_hvfyp"]
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_vtle1"]
+animation = &"PlayerAnimations/Dodge_Forward"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_od3ui"]
+animation = &"PlayerAnimations/Hit_A"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_00tjw"]
+animation = &"PlayerAnimations/Spawn_Ground"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_x3vf3"]
+animation = &"PlayerAnimations/Idle_A"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_apopc"]
+animation = &"PlayerAnimations/Running_B"
+
+[sub_resource type="AnimationNodeBlendSpace1D" id="AnimationNodeBlendSpace1D_5htga"]
+blend_point_0/node = SubResource("AnimationNodeAnimation_x3vf3")
+blend_point_0/pos = -1.0
+blend_point_1/node = SubResource("AnimationNodeAnimation_apopc")
+blend_point_1/pos = 1.0
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_p5o4e"]
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_gu6f8"]
+xfade_time = 0.1
+switch_mode = 2
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_dkpta"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_lfmf2"]
+xfade_time = 0.05
+switch_mode = 2
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_pisgm"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_b1ygp"]
+xfade_time = 0.2
+switch_mode = 2
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_o28un"]
+states/PlayerAnimations_Dodge_Forward/node = SubResource("AnimationNodeAnimation_vtle1")
+states/PlayerAnimations_Dodge_Forward/position = Vector2(594.6667, -108.666664)
+states/PlayerAnimations_Hit_A/node = SubResource("AnimationNodeAnimation_od3ui")
+states/PlayerAnimations_Hit_A/position = Vector2(996.3334, -17.333332)
+states/PlayerAnimations_Spawn_Ground/node = SubResource("AnimationNodeAnimation_00tjw")
+states/PlayerAnimations_Spawn_Ground/position = Vector2(481, 61.000004)
+states/WalkSpace/node = SubResource("AnimationNodeBlendSpace1D_5htga")
+states/WalkSpace/position = Vector2(744, 13.666667)
+transitions = ["Start", "PlayerAnimations_Spawn_Ground", SubResource("AnimationNodeStateMachineTransition_p5o4e"), "PlayerAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_gu6f8"), "WalkSpace", "PlayerAnimations_Dodge_Forward", SubResource("AnimationNodeStateMachineTransition_dkpta"), "PlayerAnimations_Dodge_Forward", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_lfmf2"), "WalkSpace", "PlayerAnimations_Hit_A", SubResource("AnimationNodeStateMachineTransition_pisgm"), "PlayerAnimations_Hit_A", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_b1ygp")]
+graph_offset = Vector2(456, -148)
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_l8h54"]
 
@@ -17,8 +71,13 @@ script = ExtResource("1_l8h54")
 wait_time = 0.3
 one_shot = true
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1950298725]
-mesh = SubResource("CapsuleMesh_hvfyp")
+[node name="GamedevTV_Mannequin_Medium" parent="." instance=ExtResource("2_fhl08")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
+
+[node name="AnimationTree" type="AnimationTree" parent="GamedevTV_Mannequin_Medium"]
+tree_root = SubResource("AnimationNodeStateMachine_o28un")
+anim_player = NodePath("../AnimationPlayer")
+parameters/WalkSpace/blend_position = 0.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=742478028]
 shape = SubResource("CapsuleShape3D_l8h54")
@@ -55,3 +114,5 @@ metadata/_custom_type_script = "uid://21pflv2d1drw"
 [node name="DashDuration" type="Timer" parent="StateMachine/PlayerDash" unique_id=793371820]
 wait_time = 0.1
 one_shot = true
+
+[editable path="GamedevTV_Mannequin_Medium"]
