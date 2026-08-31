@@ -7,8 +7,9 @@ extends CharacterBody3D
 @export var dash_speed := 50.0
 
 @onready var dash_cooldown: Timer = $DashCooldown
+@onready var mannequin_animation_tree: AnimationTree = $GamedevTV_Mannequin_Medium/MannequinAnimationTree
 
-## Returns the current input direction towards camera. Normalized.
+## Returns the current input direction towards camera. Normalized. Returns Vector3.ZERO if no input.
 func get_movement_direction() -> Vector3:
 	var input := Vector3.ZERO
 	var input_vector := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
