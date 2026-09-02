@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="PackedScene" uid="uid://bog6uxyrn6wyq" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Character/GamedevTV_Mannequin_Medium.glb" id="1_08whr"]
+[ext_resource type="Script" path="res://Player/foot_bone.gd" id="2_872l5"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Running_B.res" id="2_d6w55"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Idle_A.res" id="3_w55qd"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Spawn_Ground.res" id="4_5qd6w"]
@@ -31,10 +32,12 @@ bone_idx = 12
 [node name="RightFootBone" type="BoneAttachment3D" parent="Rig_Medium/Skeleton3D" index="7"]
 bone_name = "foot.r"
 bone_idx = 21
+script = ExtResource("2_872l5")
 
 [node name="LeftFootBone" type="BoneAttachment3D" parent="Rig_Medium/Skeleton3D" index="8"]
 bone_name = "foot.l"
 bone_idx = 17
+script = ExtResource("2_872l5")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." index="1"]
 libraries = {
