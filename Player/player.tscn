@@ -115,9 +115,9 @@ switch_mode = 2
 advance_mode = 2
 
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_o28un"]
+states/DodgeForward/node = SubResource("AnimationNodeAnimation_vtle1")
+states/DodgeForward/position = Vector2(274.6667, -145.33333)
 states/End/position = Vector2(1132, 184.44444)
-states/PlayerAnimations_Dodge_Forward/node = SubResource("AnimationNodeAnimation_vtle1")
-states/PlayerAnimations_Dodge_Forward/position = Vector2(274.6667, -145.33333)
 states/PlayerAnimations_Hit_A/node = SubResource("AnimationNodeAnimation_od3ui")
 states/PlayerAnimations_Hit_A/position = Vector2(873.37036, 118.22223)
 states/PlayerAnimations_Spawn_Ground/node = SubResource("AnimationNodeAnimation_00tjw")
@@ -131,7 +131,7 @@ states/StabAttack/position = Vector2(867.3334, -170.33333)
 states/Start/position = Vector2(211.99998, 183.33333)
 states/WalkSpace/node = SubResource("AnimationNodeBlendSpace1D_5htga")
 states/WalkSpace/position = Vector2(606, 37.666668)
-transitions = ["Start", "PlayerAnimations_Spawn_Ground", SubResource("AnimationNodeStateMachineTransition_p5o4e"), "PlayerAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_gu6f8"), "WalkSpace", "PlayerAnimations_Dodge_Forward", SubResource("AnimationNodeStateMachineTransition_dkpta"), "PlayerAnimations_Dodge_Forward", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_lfmf2"), "WalkSpace", "PlayerAnimations_Hit_A", SubResource("AnimationNodeStateMachineTransition_pisgm"), "PlayerAnimations_Hit_A", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_b1ygp"), "WalkSpace", "SlashAttack", SubResource("AnimationNodeStateMachineTransition_7emwf"), "SlashAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_hshwv"), "WalkSpace", "StabAttack", SubResource("AnimationNodeStateMachineTransition_gpjlu"), "StabAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8mwp6"), "WalkSpace", "SpinAttack", SubResource("AnimationNodeStateMachineTransition_qemgg"), "SpinAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8viyr")]
+transitions = ["Start", "PlayerAnimations_Spawn_Ground", SubResource("AnimationNodeStateMachineTransition_p5o4e"), "PlayerAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_gu6f8"), "WalkSpace", "DodgeForward", SubResource("AnimationNodeStateMachineTransition_dkpta"), "DodgeForward", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_lfmf2"), "WalkSpace", "PlayerAnimations_Hit_A", SubResource("AnimationNodeStateMachineTransition_pisgm"), "PlayerAnimations_Hit_A", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_b1ygp"), "WalkSpace", "SlashAttack", SubResource("AnimationNodeStateMachineTransition_7emwf"), "SlashAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_hshwv"), "WalkSpace", "StabAttack", SubResource("AnimationNodeStateMachineTransition_gpjlu"), "StabAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8mwp6"), "WalkSpace", "SpinAttack", SubResource("AnimationNodeStateMachineTransition_qemgg"), "SpinAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8viyr")]
 graph_offset = Vector2(41, -108)
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_l8h54"]

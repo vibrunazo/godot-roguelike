@@ -8,6 +8,7 @@ extends State
 func core_movement(delta: float, speed: float) -> void:
 	var direction := player.get_movement_direction()
 	player.velocity = direction * speed
+	player.look_toward_direction(direction, delta)
 
 ## changes to Dash State with current input direction if dash action was pressed
 func check_dash(event: InputEvent) -> void:
