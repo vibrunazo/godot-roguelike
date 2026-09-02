@@ -24,7 +24,20 @@ _data = {
 
 [node name="GamedevTV_Mannequin_Medium" instance=ExtResource("1_08whr")]
 
+[node name="WeaponSlot" type="BoneAttachment3D" parent="Rig_Medium/Skeleton3D" index="6"]
+bone_name = "hand.r"
+bone_idx = 12
+
+[node name="RightFootBone" type="BoneAttachment3D" parent="Rig_Medium/Skeleton3D" index="7"]
+bone_name = "foot.r"
+bone_idx = 21
+
+[node name="LeftFootBone" type="BoneAttachment3D" parent="Rig_Medium/Skeleton3D" index="8"]
+bone_name = "foot.l"
+bone_idx = 17
+
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." index="1"]
 libraries = {
 &"PlayerAnimations": SubResource("AnimationLibrary_8whr0")
 }
+
