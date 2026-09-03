@@ -2100,7 +2100,7 @@ _subresources={
 "Melee_1H_Attack_Stab": {
 "save_to_file/enabled": true,
 "save_to_file/fallback_path": "res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_1H_Attack_Stab.res",
-"save_to_file/keep_custom_tracks": "",
+"save_to_file/keep_custom_tracks": true,
 "save_to_file/path": "uid://dje7v68tsluhp",
 "settings/loop_mode": 0,
 "slice_1/end_frame": 0,
@@ -4156,7 +4156,7 @@ _subresources={
 "Melee_2H_Attack_Spin": {
 "save_to_file/enabled": true,
 "save_to_file/fallback_path": "res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_2H_Attack_Spin.res",
-"save_to_file/keep_custom_tracks": "",
+"save_to_file/keep_custom_tracks": true,
 "save_to_file/path": "uid://xwmjcgugn32i",
 "settings/loop_mode": 0,
 "slice_1/end_frame": 0,
