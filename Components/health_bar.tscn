@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://bwo2c4dl16ces"]
+
+[ext_resource type="Script" path="res://Components/health_bar.gd" id="1_wixop"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ltumm"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wixop"]
+bg_color = Color(0.8901961, 0.2901961, 0.25882354, 1)
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_ltumm"]
+viewport_path = NodePath("SubViewport")
+
+[node name="HealthBar" type="Node3D" unique_id=1961835903]
+script = ExtResource("1_wixop")
+
+[node name="SubViewport" type="SubViewport" parent="." unique_id=1950931444]
+size = Vector2i(128, 16)
+
+[node name="FrontProgressBar" type="ProgressBar" parent="SubViewport" unique_id=1386042220]
+custom_minimum_size = Vector2(128, 16)
+offset_right = 4.0
+offset_bottom = 27.0
+theme_override_styles/background = SubResource("StyleBoxEmpty_ltumm")
+theme_override_styles/fill = SubResource("StyleBoxFlat_wixop")
+value = 50.0
+show_percentage = false
+
+[node name="Sprite3D" type="Sprite3D" parent="." unique_id=1031764781]
+billboard = 1
+texture = SubResource("ViewportTexture_ltumm")
