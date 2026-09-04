@@ -38,6 +38,7 @@ func _ready() -> void:
 	print("\n>>> PART 1: Testing 2D & 3D Aim Direction Calculations")
 	player.global_position = Vector3(0, player.global_position.y, 0)
 	await get_tree().physics_frame
+	await get_tree().process_frame
 	
 	var player_2d: Vector2 = player.get_player_position_2d()
 	print("Player 2D screen position: ", player_2d)
@@ -54,8 +55,7 @@ func _ready() -> void:
 	mm_right.position = right_screen_target
 	mm_right.global_position = right_screen_target
 	Input.parse_input_event(mm_right)
-	player.get_viewport().warp_mouse(right_screen_target)
-	await get_tree().physics_frame
+	await get_tree().process_frame
 	
 	var aim_right: Vector3 = player.get_aim_direction()
 	print("Aim direction (aiming right on screen): ", aim_right)
@@ -72,8 +72,7 @@ func _ready() -> void:
 	mm_left.position = left_screen_target
 	mm_left.global_position = left_screen_target
 	Input.parse_input_event(mm_left)
-	player.get_viewport().warp_mouse(left_screen_target)
-	await get_tree().physics_frame
+	await get_tree().process_frame
 	
 	var aim_left: Vector3 = player.get_aim_direction()
 	print("Aim direction (aiming left on screen): ", aim_left)

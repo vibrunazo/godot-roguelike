@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://dveet4y3bg7gi" path="res://Player/player.tscn" id="2_ersrp"]
 [ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/HealthComponent.gd" id="4_ersrp"]
 [ext_resource type="Script" uid="uid://chwdk8gtnnide" path="res://Levels/world_boundary.gd" id="5_kv2lc"]
+[ext_resource type="VoxelGIData" path="res://Levels/GlobalIlluminationData/level_template_voxel_gi_data.tres" id="6_voxel_gi"]
 [ext_resource type="MeshLibrary" uid="uid://cbw5qq7imfwn5" path="res://Levels/Gridmap/floormap.tres" id="7_vjhoh"]
 [ext_resource type="MeshLibrary" uid="uid://10ib4mm1ty30" path="res://Levels/Gridmap/wall_map.tres" id="8_g8k58"]
 
@@ -87,6 +88,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7018547, 4.021538)
 collision_layer = 3
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D" unique_id=201701857]
+gi_mode = 0
 mesh = SubResource("CapsuleMesh_kv2lc")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=25713138]
@@ -106,3 +108,8 @@ script = ExtResource("5_kv2lc")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WorldBoundary" unique_id=1627146348]
 shape = SubResource("WorldBoundaryShape3D_6ghb1")
+
+[node name="VoxelGI" type="VoxelGI" parent="." unique_id=1824942255]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -16)
+size = Vector3(26, 20, 56)
+data = ExtResource("6_voxel_gi")

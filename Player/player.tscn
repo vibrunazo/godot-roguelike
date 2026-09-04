@@ -247,10 +247,12 @@ shapecast = NodePath("ShapeCast3D")
 [node name="LazerSword" type="MeshInstance3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0" unique_id=514338177]
 transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, -1.25, 0, 0)
 material_override = SubResource("StandardMaterial3D_x3vf3")
+gi_mode = 0
 mesh = SubResource("CylinderMesh_apopc")
 
 [node name="Handle" type="MeshInstance3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1" unique_id=316663994]
 transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+gi_mode = 0
 mesh = SubResource("CylinderMesh_5htga")
 
 [node name="ShapeCast3D" type="ShapeCast3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="2" unique_id=471258725]
