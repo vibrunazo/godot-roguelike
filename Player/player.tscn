@@ -14,6 +14,7 @@
 [ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/HealthComponent.gd" id="12_5htga"]
 [ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/AttackComponent.gd" id="3_p5o4e"]
 [ext_resource type="Script" uid="uid://bktfnyc34e41g" path="res://StateMachine/PlayerStates/PlayerAttack.gd" id="13_gu6f8"]
+[ext_resource type="Script" path="res://Player/shake_camera_3d.gd" id="9_dkpta"]
 
 [sub_resource type="Gradient" id="Gradient_vtle1"]
 offsets = PackedFloat32Array(0, 0.25247526, 0.7574257)
@@ -180,6 +181,10 @@ graph_offset = Vector2(41, -108)
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_l8h54"]
 
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_dkpta"]
+noise_type = 2
+fractal_type = 0
+
 [node name="Player" type="CharacterBody3D" unique_id=602303743]
 script = ExtResource("1_l8h54")
 
@@ -298,9 +303,12 @@ shape = SubResource("CapsuleShape3D_l8h54")
 [node name="CameraRoot" type="Node3D" parent="." unique_id=2526914]
 transform = Transform3D(-0.70710677, -0.5416752, 0.45451948, 0, 0.64278764, 0.76604444, -0.70710677, 0.5416752, -0.45451948, 0, 0, 0)
 
-[node name="Camera3D" type="Camera3D" parent="CameraRoot" unique_id=80870162]
+[node name="ShakeCamera3D" type="Camera3D" parent="CameraRoot" unique_id=80870162]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
 fov = 65.0
+script = ExtResource("9_dkpta")
+noise = SubResource("FastNoiseLite_dkpta")
+offset_scale = 3.0
 
 [node name="StateMachine" type="Node" parent="." unique_id=463787972]
 script = ExtResource("2_4ntmi")
