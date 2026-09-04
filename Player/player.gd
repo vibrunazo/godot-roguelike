@@ -7,6 +7,8 @@ extends CharacterBody3D
 @export var movement_speed := 8.0
 ## Speed during dash in meters per second. Read by Dash State.
 @export var dash_speed := 50.0
+## Audio player for dashing sound effect.
+@export var dash_audio: AudioStreamPlayer3D
 
 @onready var dash_cooldown: Timer = $DashCooldown
 @onready var mannequin_animation_tree: AnimationTree = $GamedevTV_Mannequin_Medium/MannequinAnimationTree
@@ -69,6 +71,6 @@ func health_component_changed(health_in: float) -> void:
 	var tween: Tween = create_tween()
 	tween.tween_property(damage_tint, "color", Color(Color.RED, 0.0), 0.2).from(Color(Color.RED, 0.5))
 
-func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_accept"):
-		health_component.take_damage(5.0)
+#func _input(event: InputEvent) -> void:
+#	if event.is_action_pressed("ui_accept"):
+#		health_component.take_damage(5.0)

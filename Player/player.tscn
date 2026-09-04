@@ -16,6 +16,9 @@
 [ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/HealthComponent.gd" id="12_5htga"]
 [ext_resource type="Script" uid="uid://bktfnyc34e41g" path="res://StateMachine/PlayerStates/PlayerAttack.gd" id="13_gu6f8"]
 [ext_resource type="PackedScene" uid="uid://bwo2c4dl16ces" path="res://Components/health_bar.tscn" id="14_healthbar"]
+[ext_resource type="AudioStream" uid="uid://cx123snak3vdw" path="res://Assets/Audio/fire-slash.ogg" id="15_fireslash"]
+[ext_resource type="AudioStream" uid="uid://b1ihkudmpnw30" path="res://Assets/Audio/metal-hit.ogg" id="16_metalhit"]
+[ext_resource type="AudioStream" uid="uid://bt4mtq3k6bfu1" path="res://Assets/Audio/dash.ogg" id="17_dash"]
 
 [sub_resource type="Gradient" id="Gradient_vtle1"]
 offsets = PackedFloat32Array(0, 0.25247526, 0.7574257)
@@ -186,8 +189,9 @@ graph_offset = Vector2(41, -108)
 noise_type = 2
 fractal_type = 0
 
-[node name="Player" type="CharacterBody3D" unique_id=602303743]
+[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("dash_audio")]
 script = ExtResource("1_l8h54")
+dash_audio = NodePath("DashAudio")
 
 [node name="DashCooldown" type="Timer" parent="." unique_id=27957904]
 wait_time = 0.3
@@ -197,57 +201,57 @@ one_shot = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
 
 [node name="Skeleton3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium" parent_id_path=PackedInt32Array(1008985588, 340093026) index="0" unique_id=1147856583]
-bones/1/position = Vector3(-2.1408663e-18, 0.368715, -5.104222e-25)
-bones/1/rotation = Quaternion(0.051266566, 0.021556128, -0.0010934749, 0.9984518)
-bones/2/rotation = Quaternion(0.030564653, 0.0045570326, 0.025284024, 0.9992026)
-bones/3/rotation = Quaternion(0.040951714, 7.284444e-06, 0.0001876192, 0.9991612)
+bones/1/position = Vector3(0, 0.40987158, 0)
+bones/1/rotation = Quaternion(0.049645174, 0.021559112, -0.0010330088, 0.9985337)
+bones/2/rotation = Quaternion(0.0051061567, -0.061044056, 0.0036498606, 0.9981153)
+bones/3/rotation = Quaternion(0.0010165133, 2.0987852e-10, 8.7985136e-05, 0.99999946)
 bones/3/scale = Vector3(1, 0.9999999, 1)
-bones/4/position = Vector3(0.21200737, 0.13430074, 0.00086693384)
-bones/4/rotation = Quaternion(-0.63980716, -0.060704753, -0.67834854, 0.35609698)
+bones/4/position = Vector3(0.21200737, 0.1386044, 0.023007244)
+bones/4/rotation = Quaternion(-0.66169244, -0.18681104, -0.64752233, 0.32860246)
 bones/4/scale = Vector3(0.9999993, 0.99999917, 0.99999976)
-bones/5/rotation = Quaternion(-6.318768e-09, -6.029378e-08, -0.45132464, 0.89235985)
+bones/5/rotation = Quaternion(1.5273278e-08, -4.9808705e-08, -0.492396, 0.87037134)
 bones/5/scale = Vector3(1.0000002, 0.9999999, 1)
 bones/6/rotation = Quaternion(7.598428e-09, -3.8330903e-09, 0.0266581, 0.99964464)
 bones/6/scale = Vector3(1, 1, 1)
-bones/7/rotation = Quaternion(-0.19232893, -0.30786452, -0.0640354, 0.9295851)
+bones/7/rotation = Quaternion(-0.11393108, -0.3773898, 0.034606587, 0.9183676)
 bones/7/scale = Vector3(0.9999999, 1, 1.0000001)
 bones/8/position = Vector3(5.138707e-10, 0.096125096, -0.057500064)
-bones/8/rotation = Quaternion(-0.021587886, -0.005213418, -0.7025959, 0.71124244)
+bones/8/rotation = Quaternion(-0.026773825, 0.025616502, -0.630839, 0.77502847)
 bones/8/scale = Vector3(1, 1, 1)
-bones/9/position = Vector3(-0.21200737, 0.13396376, -0.00086678163)
-bones/9/rotation = Quaternion(-0.6414059, -0.039192174, 0.6234977, 0.4453237)
+bones/9/position = Vector3(-0.21200737, 0.12966019, -0.023007078)
+bones/9/rotation = Quaternion(-0.58985144, -0.019198798, 0.6386751, 0.49376205)
 bones/9/scale = Vector3(0.9999993, 0.99999905, 0.99999976)
-bones/10/rotation = Quaternion(5.8298966e-08, 5.8461243e-08, 0.56744385, 0.82341206)
+bones/10/rotation = Quaternion(1.1696492e-08, 5.1337732e-08, 0.40416217, 0.91468745)
 bones/10/scale = Vector3(1.0000002, 0.9999998, 1)
 bones/11/rotation = Quaternion(1.3807978e-10, 3.5662107e-09, -0.026658095, 0.99964464)
 bones/11/scale = Vector3(0.99999994, 0.99999994, 1)
-bones/12/rotation = Quaternion(-0.16123176, 0.2938625, 0.04510969, 0.94107085)
+bones/12/rotation = Quaternion(-0.24903189, 0.19761463, 0.07717545, 0.94497395)
 bones/12/scale = Vector3(0.99999976, 0.99999994, 1.0000002)
 bones/13/position = Vector3(-7.964459e-09, 0.096125126, -0.057500064)
-bones/13/rotation = Quaternion(-0.00336482, 0.017802935, 0.57666534, 0.8167795)
+bones/13/rotation = Quaternion(-0.0023751198, 0.03614061, 0.64173746, 0.76606864)
 bones/13/scale = Vector3(1, 1, 1)
-bones/14/rotation = Quaternion(-0.08760365, -0.005159313, -0.001348904, 0.99614114)
-bones/15/position = Vector3(0.1709451, 0.11358723, 0.030167274)
-bones/15/rotation = Quaternion(0.9574185, 0.019948427, 0.04116985, 0.2850561)
+bones/14/rotation = Quaternion(-0.037688345, 0.045986466, -0.0074837347, 0.99820286)
+bones/15/position = Vector3(0.17094508, 0.112418294, -0.049768977)
+bones/15/rotation = Quaternion(0.9982337, 0.03217799, 0.032590263, -0.037842613)
 bones/15/scale = Vector3(0.99999994, 0.99999976, 1.000001)
-bones/16/rotation = Quaternion(0.6212456, 5.343502e-08, -4.316062e-07, 0.78361595)
+bones/16/rotation = Quaternion(0.3454406, 6.308386e-08, -2.3704493e-07, 0.9384406)
 bones/16/scale = Vector3(1.0000002, 1.0000002, 1.0000001)
-bones/17/rotation = Quaternion(-0.5983923, -0.059481513, 0.01385873, 0.7988721)
+bones/17/rotation = Quaternion(-0.39469326, -0.054118566, 0.028439343, 0.9167768)
 bones/17/scale = Vector3(1.0000002, 1.0000007, 0.99999905)
-bones/18/rotation = Quaternion(5.8888563e-06, 0.9202418, -0.39135054, -1.2693932e-06)
+bones/18/rotation = Quaternion(2.6510181e-06, 0.92034096, -0.39111713, -5.315005e-07)
 bones/18/scale = Vector3(1, 0.999997, 1.0000032)
-bones/19/position = Vector3(-0.17094508, 0.10519551, -0.028409787)
-bones/19/rotation = Quaternion(0.9992872, -0.014645113, 0.01587629, 0.0309606)
+bones/19/position = Vector3(-0.17094508, 0.11358728, 0.04966733)
+bones/19/rotation = Quaternion(0.9505115, -0.01863699, 0.011084507, 0.30993214)
 bones/19/scale = Vector3(0.99999994, 0.99999976, 1.000001)
-bones/20/rotation = Quaternion(0.30325776, -6.582379e-08, 2.1182657e-07, 0.9529086)
+bones/20/rotation = Quaternion(0.33656746, -6.382858e-08, 2.3251025e-07, 0.9416594)
 bones/20/scale = Vector3(1, 1.0000001, 1)
-bones/21/rotation = Quaternion(-0.65414035, 0.057336297, 0.005812543, 0.75417453)
+bones/21/rotation = Quaternion(-0.6102575, 0.057631306, 0.0015383875, 0.79010254)
 bones/21/scale = Vector3(0.9999999, 1.0000007, 0.999999)
-bones/22/rotation = Quaternion(-4.4670673e-05, 0.9203284, -0.39114666, 1.0175944e-05)
+bones/22/rotation = Quaternion(-4.467542e-05, 0.9202497, -0.39133197, 1.0188146e-05)
 bones/22/scale = Vector3(1.0000001, 0.99999726, 1.0000031)
 
 [node name="WeaponSlot" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="6" node_paths=PackedStringArray("shapecast")]
-transform = Transform3D(0.1448704, -0.02119176, -0.9892236, -0.31229198, -0.94964576, -0.025390387, -0.93887424, 0.31260505, -0.1441935, -0.4671677, 0.63830185, 0.046039097)
+transform = Transform3D(0.10014042, -0.08260581, -0.9915381, -0.062441364, -0.9951041, 0.07659745, -0.99301124, 0.05424255, -0.10480805, -0.5298545, 0.7223625, -0.14043471)
 shapecast = NodePath("ShapeCast3D")
 
 [node name="LazerSword" type="MeshInstance3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0" unique_id=514338177]
@@ -272,8 +276,14 @@ debug_shape_custom_color = Color(1, 0, 0, 1)
 script = ExtResource("3_p5o4e")
 shake_on_damage = true
 
+[node name="AttackAudio" type="AudioStreamPlayer3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="3" unique_id=953121982]
+stream = ExtResource("15_fireslash")
+volume_db = 10.0
+max_db = 5.0
+bus = &"SFX"
+
 [node name="RightFootBone" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="7"]
-transform = Transform3D(0.9941805, -0.0968308, 0.047208086, -0.03618381, -0.71292794, -0.7003029, 0.101467, 0.6945214, -0.71228236, -0.18376534, 0.13115701, -0.11025728)
+transform = Transform3D(0.99581504, -0.07304105, 0.054929025, 0.021349944, -0.3984813, -0.91692734, 0.08886165, 0.9142643, -0.39525467, -0.17777298, 0.174735, 0.16016555)
 
 [node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone" index="0" unique_id=888538347]
 stream = SubResource("AudioStreamRandomizer_gu6f8")
@@ -282,7 +292,7 @@ max_db = -3.0
 bus = &"SFX"
 
 [node name="LeftFootBone" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="8"]
-transform = Transform3D(0.9943524, 0.086379096, -0.06166637, 0.05341382, -0.909379, -0.41252667, -0.09171192, 0.4069028, -0.90885633, 0.18915562, 0.18027781, 0.024521299)
+transform = Transform3D(0.9943256, 0.04737576, -0.09525263, 0.053492084, -0.9965974, 0.06271732, -0.091957435, -0.067456484, -0.99347556, 0.19128937, 0.208724, -0.20055336)
 
 [node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/LeftFootBone" index="0" unique_id=208332668]
 stream = SubResource("AudioStreamRandomizer_gu6f8")
@@ -370,8 +380,9 @@ attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleto
 player = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
 
-[node name="HealthComponent" type="Node" parent="." unique_id=142968894]
+[node name="HealthComponent" type="Node" parent="." unique_id=142968894 node_paths=PackedStringArray("hit_audio")]
 script = ExtResource("12_5htga")
+hit_audio = NodePath("../DamageAudio")
 max_health = 60.0
 
 [node name="DamageTint" type="ColorRect" parent="." unique_id=241735057]
@@ -387,6 +398,15 @@ color = Color(1, 0, 0, 0)
 transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 0, 2.25, 0)
 health_component = NodePath("../HealthComponent")
 
+[node name="DamageAudio" type="AudioStreamPlayer3D" parent="." unique_id=959939338]
+stream = ExtResource("16_metalhit")
+bus = &"SFX"
+
+[node name="DashAudio" type="AudioStreamPlayer3D" parent="." unique_id=1206433322]
+stream = ExtResource("17_dash")
+bus = &"SFX"
+
+[connection signal="slash" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone/AudioStreamPlayer3D" method="play"]
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/LeftFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/LeftFootBone/AudioStreamPlayer3D" method="play"]
 

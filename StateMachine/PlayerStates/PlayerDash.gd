@@ -9,6 +9,8 @@ extends PlayerState
 var direction: Vector3
 
 func enter(_previous_state_path: String, _data := {}) -> void:
+	if player.dash_audio != null:
+		player.dash_audio.play()
 	direction = _data.direction
 	player.velocity = direction * player.dash_speed
 	player.dash_cooldown.start()

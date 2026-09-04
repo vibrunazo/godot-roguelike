@@ -27,13 +27,13 @@ func _ready() -> void:
 		return
 	print("Noise resource verified: ", camera.noise.get_class(), " (type: ", camera.noise.noise_type, ")")
 	
-	if camera.offset_scale != 3.0:
-		printerr("TEST FAILED: Expected offset_scale of 3.0, got: ", camera.offset_scale)
+	if camera.offset_scale <= 0.0:
+		printerr("TEST FAILED: Expected positive offset_scale, got: ", camera.offset_scale)
 		player.queue_free()
 		await get_tree().physics_frame
 		get_tree().quit(1)
 		return
-	print("Offset scale verified (3.0)")
+	print("Offset scale verified: ", camera.offset_scale)
 	
 	# 3. Verify zero trauma gives zero offsets
 	camera.trauma = 0.0

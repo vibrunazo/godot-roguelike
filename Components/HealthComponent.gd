@@ -4,7 +4,9 @@ extends Node
 signal health_changed(value: float)
 signal defeat()
 
+## Audio player played when damage is taken.
 @export var hit_audio: AudioStreamPlayer3D
+## Maximum health value of this component.
 @export var max_health: float = 100.0
 
 var current_health: float
