@@ -269,6 +269,7 @@ debug_shape_custom_color = Color(1, 0, 0, 1)
 
 [node name="AttackComponent" type="Node" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D" unique_id=2072364290]
 script = ExtResource("3_p5o4e")
+shake_on_damage = true
 
 [node name="RightFootBone" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="7"]
 transform = Transform3D(0.99533105, -0.07981964, 0.0542665, 0.0012465492, -0.55155724, -0.8341359, 0.0965116, 0.83031, -0.5488827, -0.17731752, 0.20092282, 0.1517702)
@@ -371,6 +372,15 @@ dash_state = NodePath("../PlayerDash")
 [node name="HealthComponent" type="Node" parent="." unique_id=142968894]
 script = ExtResource("12_5htga")
 max_health = 60.0
+
+[node name="DamageTint" type="ColorRect" parent="." unique_id=241735057]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 0, 0, 0)
 
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone/AudioStreamPlayer3D" method="play"]
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/LeftFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/LeftFootBone/AudioStreamPlayer3D" method="play"]
