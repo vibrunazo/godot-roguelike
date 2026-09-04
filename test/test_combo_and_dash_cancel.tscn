@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://test/test_combo_and_dash_cancel.gd" id="1_test"]
+
+[node name="TestComboAndDashCancel" type="Node"]
+script = ExtResource("1_test")

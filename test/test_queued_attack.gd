@@ -49,14 +49,14 @@ func _ready() -> void:
 	# 2. Wait a few frames for slash attack to hit dummy
 	for i: int in range(30):
 		await get_tree().physics_frame
-		if health_comp.current_health <= 95.0:
+		if health_comp.current_health <= 92.0:
 			break
 			
-	if health_comp.current_health != 95.0:
-		printerr("TEST FAILED: First attack did not damage dummy to 95.0. Health: ", health_comp.current_health)
+	if health_comp.current_health != 92.0:
+		printerr("TEST FAILED: First attack did not damage dummy to 92.0. Health: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("First attack hit confirmed! Dummy health: 95.0")
+	print("First attack hit confirmed! Dummy health: 92.0")
 	
 	# 3. Queue the second attack by clicking during the queued_attack_time window
 	print("\n--- 2. Sending click during queued_attack_time window ---")
@@ -80,18 +80,18 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 		
-	# 5. Wait for second attack (StabAttack) to deal damage (95.0 -> 90.0)
+	# 5. Wait for second attack (StabAttack) to deal damage (92.0 -> 78.0)
 	print("Waiting for second attack (StabAttack) to hit dummy...")
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= 90.0:
+		if health_comp.current_health <= 78.0:
 			break
 			
-	if health_comp.current_health != 90.0:
-		printerr("TEST FAILED: Second attack did not damage dummy to 90.0. Health: ", health_comp.current_health)
+	if health_comp.current_health != 78.0:
+		printerr("TEST FAILED: Second attack did not damage dummy to 78.0. Health: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("Second attack (StabAttack) hit confirmed! Dummy health: 90.0")
+	print("Second attack (StabAttack) hit confirmed! Dummy health: 78.0")
 	
 	# 6. Wait for PlayerAttack2 to finish and return to PlayerRun
 	print("Waiting for PlayerAttack2 animation to finish and return to PlayerRun...")
@@ -110,7 +110,10 @@ func _ready() -> void:
 		
 	print("\n====================================================================")
 	print("  QUEUED ATTACK TEST PASSED: Attack chain transitioned & recovered! ")
-	print("  Initial Health: 100.0 -> Slash: 95.0 -> Stab: 90.0                ")
+	print("  Initial Health: 100.0 -> Slash: 92.0 -> Stab: 78.0                ")
 	print("  Successfully returned to PlayerRun state!                         ")
 	print("====================================================================")
+	level.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
 	get_tree().quit(0)
