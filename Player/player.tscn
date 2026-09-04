@@ -12,6 +12,7 @@
 [ext_resource type="Script" uid="uid://21pflv2d1drw" path="res://StateMachine/PlayerStates/PlayerDash.gd" id="5_a28ek"]
 [ext_resource type="AudioStream" uid="uid://cw7xybxcl0jds" path="res://Assets/Audio/footstep-04.ogg" id="6_p5o4e"]
 [ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/HealthComponent.gd" id="12_5htga"]
+[ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/AttackComponent.gd" id="3_p5o4e"]
 
 [sub_resource type="Gradient" id="Gradient_vtle1"]
 offsets = PackedFloat32Array(0, 0.25247526, 0.7574257)
@@ -257,6 +258,9 @@ target_position = Vector3(-2, 0, 0)
 max_results = 8
 collision_mask = 2
 debug_shape_custom_color = Color(1, 0, 0, 1)
+
+[node name="AttackComponent" type="Node" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D" unique_id=2072364290]
+script = ExtResource("3_p5o4e")
 
 [node name="RightFootBone" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="7"]
 transform = Transform3D(0.99533105, -0.07981964, 0.0542665, 0.0012465492, -0.55155724, -0.8341359, 0.0965116, 0.83031, -0.5488827, -0.17731752, 0.20092282, 0.1517702)
