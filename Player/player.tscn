@@ -303,11 +303,12 @@ fov = 65.0
 [node name="StateMachine" type="Node" parent="." unique_id=463787972]
 script = ExtResource("2_4ntmi")
 
-[node name="PlayerRun" type="Node" parent="StateMachine" unique_id=964045061 node_paths=PackedStringArray("fall_state", "player", "dash_state")]
+[node name="PlayerRun" type="Node" parent="StateMachine" unique_id=964045061 node_paths=PackedStringArray("fall_state", "player", "dash_state", "attack_state")]
 script = ExtResource("3_btcbx")
 fall_state = NodePath("../PlayerFall")
 player = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
+attack_state = NodePath("../PlayerAttack")
 metadata/_custom_type_script = "uid://b5csf0k51tkb5"
 
 [node name="PlayerFall" type="Node" parent="StateMachine" unique_id=770344299 node_paths=PackedStringArray("run_state", "player")]
@@ -326,8 +327,9 @@ metadata/_custom_type_script = "uid://21pflv2d1drw"
 wait_time = 0.1
 one_shot = true
 
-[node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("attack_component", "player", "dash_state")]
+[node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("run_state", "attack_component", "player", "dash_state")]
 script = ExtResource("13_gu6f8")
+run_state = NodePath("../PlayerRun")
 attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent")
 player = NodePath("../..")
 dash_state = NodePath("../PlayerDash")

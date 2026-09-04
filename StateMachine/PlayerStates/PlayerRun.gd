@@ -15,5 +15,4 @@ func physics_update(_delta: float) -> void:
 
 func handle_input(_event: InputEvent) -> void:
 	check_dash(_event)
-	if _event.is_action_pressed("click"):
-		finished.emit("PlayerAttack")
+	check_attack(_event)
