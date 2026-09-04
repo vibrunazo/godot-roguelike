@@ -1,8 +1,13 @@
 [gd_scene format=3 uid="uid://dyj3auoai18wd"]
 
 [ext_resource type="PackedScene" uid="uid://dveet4y3bg7gi" path="res://Player/player.tscn" id="2_ersrp"]
+[ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/HealthComponent.gd" id="4_ersrp"]
 [ext_resource type="MeshLibrary" uid="uid://cbw5qq7imfwn5" path="res://Levels/Gridmap/floormap.tres" id="7_vjhoh"]
 [ext_resource type="MeshLibrary" uid="uid://10ib4mm1ty30" path="res://Levels/Gridmap/wall_map.tres" id="8_g8k58"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_kv2lc"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_6ghb1"]
 
 [sub_resource type="Gradient" id="Gradient_g8k58"]
 colors = PackedColorArray(0.19607843, 0.46666667, 0.65882355, 1, 0.61960787, 0.8039216, 0.9490196, 1)
@@ -64,3 +69,16 @@ data = {
 
 [node name="Player" parent="." unique_id=602303743 instance=ExtResource("2_ersrp")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=1196797273]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7018547, 4.021538)
+collision_layer = 3
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D" unique_id=201701857]
+mesh = SubResource("CapsuleMesh_kv2lc")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=25713138]
+shape = SubResource("CapsuleShape3D_6ghb1")
+
+[node name="HealthComponent" type="Node" parent="StaticBody3D" unique_id=56540691]
+script = ExtResource("4_ersrp")

@@ -13,6 +13,7 @@
 [ext_resource type="AudioStream" uid="uid://cw7xybxcl0jds" path="res://Assets/Audio/footstep-04.ogg" id="6_p5o4e"]
 [ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/HealthComponent.gd" id="12_5htga"]
 [ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/AttackComponent.gd" id="3_p5o4e"]
+[ext_resource type="Script" uid="uid://bktfnyc34e41g" path="res://StateMachine/PlayerStates/PlayerAttack.gd" id="13_gu6f8"]
 
 [sub_resource type="Gradient" id="Gradient_vtle1"]
 offsets = PackedFloat32Array(0, 0.25247526, 0.7574257)
@@ -324,6 +325,12 @@ metadata/_custom_type_script = "uid://21pflv2d1drw"
 [node name="DashDuration" type="Timer" parent="StateMachine/PlayerDash" unique_id=793371820]
 wait_time = 0.1
 one_shot = true
+
+[node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("attack_component", "player", "dash_state")]
+script = ExtResource("13_gu6f8")
+attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent")
+player = NodePath("../..")
+dash_state = NodePath("../PlayerDash")
 
 [node name="HealthComponent" type="Node" parent="." unique_id=142968894]
 script = ExtResource("12_5htga")
