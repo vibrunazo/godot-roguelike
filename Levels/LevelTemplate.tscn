@@ -5,10 +5,6 @@
 [ext_resource type="MeshLibrary" uid="uid://cbw5qq7imfwn5" path="res://Levels/Gridmap/floormap.tres" id="7_vjhoh"]
 [ext_resource type="MeshLibrary" uid="uid://10ib4mm1ty30" path="res://Levels/Gridmap/wall_map.tres" id="8_g8k58"]
 
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_kv2lc"]
-
-[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_6ghb1"]
-
 [sub_resource type="Gradient" id="Gradient_g8k58"]
 colors = PackedColorArray(0.19607843, 0.46666667, 0.65882355, 1, 0.61960787, 0.8039216, 0.9490196, 1)
 
@@ -34,6 +30,18 @@ polygons = [PackedInt32Array(3, 2, 0), PackedInt32Array(0, 2, 1)]
 sample_partition_type = 2
 geometry_parsed_geometry_type = 1
 
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_kv2lc"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_6ghb1"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ersrp"]
+shading_mode = 0
+albedo_color = Color(0, 0, 0, 1)
+proximity_fade_enabled = true
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_r82ii"]
+size = Vector2(8, 8)
+
 [node name="Level" type="Node3D" unique_id=1079320019]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1391866235]
@@ -53,7 +61,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.25, 0)
 mesh_library = ExtResource("7_vjhoh")
 cell_size = Vector3(4, 0.5, 4)
 data = {
-"cells": PackedInt32Array(0, 65535, 0, 65535, 65535, 0, 0, 0, 0, 65535, 0, 0, 65534, 0, 0, 1, 0, 1, 1, 65535, 0, 65534, 65535, 1, 65534, 65534, 1, 65535, 65534, 1, 1, 65534, 1, 0, 65534, 1, 1, 1, 1, 0, 1, 1, 65535, 1, 1, 65534, 1, 1)
+"cells": PackedInt32Array(0, 65535, 0, 65535, 65535, 0, 0, 0, 0, 65535, 0, 0, 65534, 0, 0, 1, 0, 1, 1, 65535, 0, 65534, 65535, 1, 65534, 65534, 1, 65535, 65534, 1, 1, 65534, 1, 0, 65534, 1, 1, 1, 1, 0, 1, 1, 65535, 1, 1, 65534, 1, 1, 1, 65533, 0, 0, 65533, 0, 65535, 65533, 0, 65534, 65533, 0, 65534, 65532, 0, 65534, 65531, 0, 65534, 65530, 0, 65535, 65530, 0, 0, 65530, 0, 1, 65530, 0, 1, 65531, 0, 1, 65532, 0, 1, 65529, 1, 0, 65529, 1, 65535, 65529, 1, 65535, 65528, 1, 65534, 65528, 1, 65534, 65529, 1, 65534, 65527, 1, 65534, 65526, 1, 65535, 65526, 1, 65535, 65527, 1, 0, 65527, 1, 0, 65528, 1, 1, 65528, 1, 1, 65527, 1, 1, 65526, 1, 0, 65526, 1)
 }
 metadata/_editor_floor_ = Vector3(0, 0, 0)
 
@@ -64,8 +72,9 @@ cell_size = Vector3(2, 4, 2)
 cell_center_x = false
 cell_center_z = false
 data = {
-"cells": PackedInt32Array(65535, 4, 1, 65533, 4, 0, 65532, 1, 1441793, 65532, 3, 1441792, 65532, 65535, 1441792, 1, 4, 0)
+"cells": PackedInt32Array(65535, 4, 1, 65533, 4, 0, 65532, 1, 1441793, 65532, 3, 1441792, 65532, 65535, 1441792, 1, 4, 0, -2, 65529, 1441792, -2, 65527, 1441792, -65534, 65527, 1441792, -65534, 65529, 1441792, -65532, 3, 1441792, -65532, 1, 1441792, -65532, 65535, 1441792, -65532, 65533, 1441792, -65532, 65531, 1441792, -65532, 65529, 1441792, -65532, 65527, 1441792, -65532, 65525, 1441792, -65532, 65523, 1441792, -65532, 65521, 1441792, -65532, 65519, 1441792, -65532, 65517, 1441792, -4, 3, 1441792, -4, 1, 1441792, -4, 65535, 1441792, -4, 65533, 1441792, -4, 65531, 1441792, -4, 65529, 1441792, -4, 65527, 1441792, -4, 65525, 1441792, -4, 65523, 1441792, -4, 65521, 1441792, -4, 65519, 1441792, -4, 65517, 1441792, -65533, 65516, 655360, -65535, 65516, 655360, -1, 65516, 655360, -3, 65516, 655360, -3, 4, 655360, -1, 4, 655360, -65535, 4, 655360, -65533, 4, 655360, -1, 65530, 655360, -65535, 65530, 655360, -1, 65526, 655360, -65535, 65526, 655360)
 }
+metadata/_editor_floor_ = Vector3(0, -1, 0)
 
 [node name="Player" parent="." unique_id=602303743 instance=ExtResource("2_ersrp")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
@@ -82,3 +91,8 @@ shape = SubResource("CapsuleShape3D_6ghb1")
 
 [node name="HealthComponent" type="Node" parent="StaticBody3D" unique_id=56540691]
 script = ExtResource("4_ersrp")
+
+[node name="Pit" type="MeshInstance3D" parent="." unique_id=915475260]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, -16)
+material_override = SubResource("StandardMaterial3D_ersrp")
+mesh = SubResource("PlaneMesh_r82ii")
