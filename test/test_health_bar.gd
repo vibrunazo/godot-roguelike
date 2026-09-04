@@ -178,6 +178,62 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Second damage tween (75% -> 50%) completed successfully!")
+	player.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	
+	# ---------------------------------------------------------
+	# PART 4: Enemy HealthBar in LevelTemplate & Defeat Handling
+	# ---------------------------------------------------------
+	print("\n>>> PART 4: Testing Enemy HealthBar in LevelTemplate & Defeat Fade-Out")
+	var level_scene: PackedScene = load("res://Levels/LevelTemplate.tscn")
+	var level: Node3D = level_scene.instantiate() as Node3D
+	add_child(level)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	
+	var dummy: StaticBody3D = level.get_node("StaticBody3D") as StaticBody3D
+	var dummy_health: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
+	var dummy_health_bar: HealthBar = dummy.get_node_or_null("HealthBar") as HealthBar
+	
+	if dummy_health_bar == null:
+		printerr("TEST FAILED: HealthBar node not found on enemy StaticBody3D in LevelTemplate.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("Enemy HealthBar found in LevelTemplate.")
+	
+	if dummy_health_bar.health_component != dummy_health:
+		printerr("TEST FAILED: Enemy HealthBar health_component not wired to dummy HealthComponent.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("Enemy HealthBar health_component assignment verified.")
+	
+	# Trigger defeat on dummy
+	dummy_health.take_damage(dummy_health.max_health)
+	await get_tree().process_frame
+	
+	# Mid-fade check: transparency should be animating towards 1.0
+	print("Sprite3D transparency immediately after defeat: ", dummy_health_bar.sprite_3d.transparency)
+	if dummy_health_bar.sprite_3d.transparency < 0.0:
+		printerr("TEST FAILED: Sprite3D transparency invalid on defeat.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	
+	# Wait for 0.25s for 0.2s fade-out tween and queue_free callback
+	await get_tree().create_timer(0.25).timeout
+	await get_tree().process_frame
+	await get_tree().process_frame
+	
+	# Verify health bar is queued for deletion or freed
+	if is_instance_valid(dummy_health_bar) and not dummy_health_bar.is_queued_for_deletion():
+		printerr("TEST FAILED: HealthBar was not queue_free'd after defeat fade-out completed.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("Enemy HealthBar successfully faded out and auto-deleted via queue_free!")
 	
 	print("\n====================================================================")
 	print("  ALL HEALTH BAR TESTS PASSED!                                      ")
@@ -185,9 +241,11 @@ func _ready() -> void:
 	print("  2. SubViewport, Sprite3D billboard, and dual-layer bars verified  ")
 	print("  3. FrontProgressBar initialized to 100% and custom color applied  ")
 	print("  4. Damage animates via Tween: front bar snaps, back bar smoothly lags")
+	print("  5. Enemy HealthBar configured on StaticBody3D in LevelTemplate    ")
+	print("  6. Defeat signal fades transparency to 1.0 and calls queue_free   ")
 	print("====================================================================")
 	
-	player.queue_free()
+	level.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
 	get_tree().quit(0)
