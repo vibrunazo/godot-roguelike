@@ -11,6 +11,10 @@ extends CharacterBody3D
 @onready var dash_cooldown: Timer = $DashCooldown
 @onready var mannequin_animation_tree: AnimationTree = $GamedevTV_Mannequin_Medium/MannequinAnimationTree
 @onready var player_root: Node3D = $GamedevTV_Mannequin_Medium
+@onready var health_component: HealthComponent = $HealthComponent
+
+func _ready() -> void:
+	health_component.defeat.connect(get_tree().reload_current_scene, CONNECT_DEFERRED)
 
 ## Returns the current input direction towards camera. Normalized. Returns Vector3.ZERO if no input.
 func get_movement_direction() -> Vector3:
