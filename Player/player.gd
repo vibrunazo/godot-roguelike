@@ -40,3 +40,18 @@ func look_toward_direction(direction: Vector3, delta: float) -> void:
 		target,
 		1.0 - exp(-decay * delta)
 	)
+
+## Returns the 2D viewport coordinates of the player's 3D global position
+func get_player_position_2d() -> Vector2:
+	return get_viewport().get_camera_3d().unproject_position(global_position)
+
+## Returns the 2D screen vector pointing from the player to the mouse cursor
+func get_mouse_direction() -> Vector2:
+	return get_viewport().get_mouse_position() - get_player_position_2d()
+
+## Returns the 3D ground direction vector pointing towards the mouse cursor, aligned with camera rotation
+func get_aim_direction() -> Vector3:
+	var direction := get_mouse_direction()
+	var direction_3d := Vector3(direction.x, 0.0, direction.y)
+	var camera_rotation := get_viewport().get_camera_3d().global_rotation.y
+	return direction_3d.rotated(Vector3.UP, camera_rotation)

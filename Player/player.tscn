@@ -329,7 +329,7 @@ one_shot = true
 
 [node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("run_state", "next_attack", "attack_component", "player", "dash_state")]
 script = ExtResource("13_gu6f8")
-movement_speed = 3.0
+movement_speed = 1.0
 dash_cancel = true
 damage = 8.0
 run_state = NodePath("../PlayerRun")
@@ -340,7 +340,6 @@ dash_state = NodePath("../PlayerDash")
 
 [node name="PlayerAttack2" type="Node" parent="StateMachine" unique_id=210489082 node_paths=PackedStringArray("run_state", "next_attack", "attack_component", "player", "dash_state")]
 script = ExtResource("13_gu6f8")
-movement_speed = 1.0
 dash_cancel = true
 damage = 14.0
 run_state = NodePath("../PlayerRun")
@@ -352,7 +351,7 @@ dash_state = NodePath("../PlayerDash")
 
 [node name="PlayerAttack3" type="Node" parent="StateMachine" unique_id=484078479 node_paths=PackedStringArray("run_state", "attack_component", "player", "dash_state")]
 script = ExtResource("13_gu6f8")
-movement_speed = 3.0
+movement_speed = 2.0
 run_state = NodePath("../PlayerRun")
 attack_animation_name = "SpinAttack"
 attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent")

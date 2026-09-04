@@ -20,10 +20,12 @@ extends PlayerState
 
 var queued_attack: bool = false
 var attack_timer: SceneTreeTimer
+var aim_direction: Vector3 = Vector3.ZERO
 
 func physics_update(_delta: float) -> void:
-	core_movement(_delta, movement_speed)
+	player.velocity = player.get_movement_direction() * movement_speed
 	attack_component.deal_damage(damage, Vector3.ZERO)
+	player.look_toward_direction(aim_direction, 1.0)
 	player.move_and_slide()
 	
 func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
@@ -33,6 +35,7 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	player.mannequin_animation_tree.animation_finished.connect(finish_attack, CONNECT_ONE_SHOT)
 	attack_timer = get_tree().create_timer(queued_attack_time)
 	attack_timer.timeout.connect(attempt_queue_attack)
+	aim_direction = player.get_aim_direction()
 
 func handle_input(_event: InputEvent) -> void:
 	if _event.is_action_pressed("click"):

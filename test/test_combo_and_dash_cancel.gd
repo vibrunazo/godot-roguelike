@@ -264,6 +264,6 @@ func _ready() -> void:
 	print("  4. State recovery: Clean return to PlayerRun in all scenarios     ")
 	print("====================================================================")
 	level.queue_free()
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 	get_tree().quit(0)
