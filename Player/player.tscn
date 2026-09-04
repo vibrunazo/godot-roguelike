@@ -327,9 +327,18 @@ metadata/_custom_type_script = "uid://21pflv2d1drw"
 wait_time = 0.1
 one_shot = true
 
-[node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("run_state", "attack_component", "player", "dash_state")]
+[node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("run_state", "next_attack", "attack_component", "player", "dash_state")]
 script = ExtResource("13_gu6f8")
 run_state = NodePath("../PlayerRun")
+next_attack = NodePath("../PlayerAttack2")
+attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent")
+player = NodePath("../..")
+dash_state = NodePath("../PlayerDash")
+
+[node name="PlayerAttack2" type="Node" parent="StateMachine" unique_id=210489082 node_paths=PackedStringArray("run_state", "attack_component", "player", "dash_state")]
+script = ExtResource("13_gu6f8")
+run_state = NodePath("../PlayerRun")
+attack_animation_name = "StabAttack"
 attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent")
 player = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
