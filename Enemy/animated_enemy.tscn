@@ -1,0 +1,122 @@
+[gd_scene format=3 uid="uid://b7usbbh1tfnjv"]
+
+[ext_resource type="PackedScene" uid="uid://bjyddhs4xquvp" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/Enemy_Medium.glb" id="1_g45cs"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Hit_A.res" id="2_b6t3m"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Idle_A.res" id="3_ipeb3"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Running_B.res" id="4_lxq1s"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Spawn_Ground.res" id="5_qbo8f"]
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_pje6n"]
+_data = {
+&"Hit_A": ExtResource("2_b6t3m"),
+&"Idle_A": ExtResource("3_ipeb3"),
+&"Running_B": ExtResource("4_lxq1s"),
+&"Spawn_Ground": ExtResource("5_qbo8f")
+}
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_nqs35"]
+animation = &"EnemyAnimations/Hit_A"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_8wj31"]
+animation = &"EnemyAnimations/Spawn_Ground"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_af5ud"]
+animation = &"EnemyAnimations/Idle_A"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_er1a1"]
+animation = &"EnemyAnimations/Running_B"
+
+[sub_resource type="AnimationNodeBlendSpace1D" id="AnimationNodeBlendSpace1D_phjxc"]
+blend_point_0/node = SubResource("AnimationNodeAnimation_af5ud")
+blend_point_0/pos = -1.0
+blend_point_1/node = SubResource("AnimationNodeAnimation_er1a1")
+blend_point_1/pos = 1.0
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_7e68y"]
+xfade_time = 0.2
+switch_mode = 2
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_nxi5q"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_tlxba"]
+xfade_time = 0.2
+switch_mode = 2
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_m75i3"]
+states/EnemyAnimations_Hit_A/node = SubResource("AnimationNodeAnimation_nqs35")
+states/EnemyAnimations_Hit_A/position = Vector2(800, 183.77779)
+states/EnemyAnimations_Spawn_Ground/node = SubResource("AnimationNodeAnimation_8wj31")
+states/EnemyAnimations_Spawn_Ground/position = Vector2(388, 185.33334)
+states/MoveSpace/node = SubResource("AnimationNodeBlendSpace1D_phjxc")
+states/MoveSpace/position = Vector2(595.3333, 100.666664)
+transitions = ["EnemyAnimations_Spawn_Ground", "MoveSpace", SubResource("AnimationNodeStateMachineTransition_7e68y"), "MoveSpace", "EnemyAnimations_Hit_A", SubResource("AnimationNodeStateMachineTransition_nxi5q"), "EnemyAnimations_Hit_A", "MoveSpace", SubResource("AnimationNodeStateMachineTransition_tlxba")]
+graph_offset = Vector2(245, 24)
+
+[node name="AnimatedEnemy" type="Node3D" unique_id=1495277970]
+
+[node name="Enemy_Medium" parent="." unique_id=1921158861 instance=ExtResource("1_g45cs")]
+
+[node name="Skeleton3D" parent="Enemy_Medium/Rig_Medium" parent_id_path=PackedInt32Array(1921158861, 1378391440) index="0" unique_id=1733204277]
+bones/1/position = Vector3(0, 0.41019076, 0)
+bones/1/rotation = Quaternion(0.050962433, 0.0216836, -0.0010613641, 0.9984646)
+bones/1/scale = Vector3(0.99999994, 1, 0.99999994)
+bones/2/rotation = Quaternion(0.012228525, 0.053277764, 0.00062082964, 0.9985047)
+bones/2/scale = Vector3(1.0000001, 1, 1.0000001)
+bones/3/rotation = Quaternion(0.00082063745, 2.260149e-09, 7.1032635e-05, 0.99999964)
+bones/3/scale = Vector3(1, 0.9999999, 1)
+bones/4/position = Vector3(0.21200737, 0.13035892, -0.0194117)
+bones/4/rotation = Quaternion(-0.57548654, -0.023665454, -0.69254714, 0.43431994)
+bones/4/scale = Vector3(0.9999993, 0.99999917, 0.9999998)
+bones/5/rotation = Quaternion(1.8468151e-08, -6.738327e-08, -0.36822385, 0.9297372)
+bones/5/scale = Vector3(1.0000004, 0.9999998, 1)
+bones/6/rotation = Quaternion(7.6423925e-09, -3.8536268e-09, 0.0266581, 0.99964464)
+bones/6/scale = Vector3(1, 1, 1)
+bones/7/rotation = Quaternion(-0.22833197, -0.2069994, -0.06312791, 0.9492264)
+bones/7/scale = Vector3(0.9999999, 1, 1.0000001)
+bones/8/position = Vector3(5.138706e-10, 0.096125096, -0.057500064)
+bones/8/rotation = Quaternion(-0.015567666, -0.032910313, -0.7605551, 0.64825183)
+bones/8/scale = Vector3(1, 1, 1)
+bones/9/rotation = Quaternion(-0.042639486, -0.06838999, 0.0036719253, 0.99674034)
+bones/9/scale = Vector3(0.99999994, 1, 1)
+bones/10/position = Vector3(-0.21200736, 0.1379055, 0.019411867)
+bones/10/rotation = Quaternion(-0.6819503, 0.11031757, 0.62510586, 0.36334085)
+bones/10/scale = Vector3(0.9999992, 0.99999905, 0.9999998)
+bones/11/rotation = Quaternion(4.171438e-09, 3.462354e-08, 0.5182251, 0.85524434)
+bones/11/scale = Vector3(1.0000004, 0.9999998, 1)
+bones/12/rotation = Quaternion(1.3858599e-10, 3.5851924e-09, -0.026658095, 0.99964464)
+bones/12/scale = Vector3(0.99999994, 0.99999994, 1)
+bones/13/rotation = Quaternion(-0.121661045, 0.3727513, 0.00027412176, 0.9199212)
+bones/13/scale = Vector3(0.99999976, 0.99999994, 1.0000002)
+bones/14/position = Vector3(-8.00786e-09, 0.096125126, -0.057500064)
+bones/14/rotation = Quaternion(-0.024661839, -0.015081576, 0.56970155, 0.8213431)
+bones/14/scale = Vector3(1, 1.0000001, 1)
+bones/15/position = Vector3(-0.17094508, 0.110106796, -0.048485033)
+bones/15/rotation = Quaternion(0.9981405, -0.013429757, 0.017204827, -0.0569147)
+bones/15/scale = Vector3(0.99999994, 0.99999976, 1.000001)
+bones/16/rotation = Quaternion(0.30138013, -6.413739e-08, 2.0809992e-07, 0.9535041)
+bones/16/scale = Vector3(0.99999994, 1.0000001, 1)
+bones/17/rotation = Quaternion(-0.40627834, 0.05665193, -0.012388789, 0.91190743)
+bones/17/scale = Vector3(0.9999999, 1.0000007, 0.999999)
+bones/18/rotation = Quaternion(-4.4928405e-05, 0.92036986, -0.39104915, 1.022829e-05)
+bones/18/scale = Vector3(1.0000001, 0.99999726, 1.000003)
+bones/19/position = Vector3(0.17094508, 0.113587245, 0.048720136)
+bones/19/rotation = Quaternion(0.9273125, 0.016252436, 0.043113135, 0.37144116)
+bones/19/scale = Vector3(0.99999994, 0.99999976, 1.000001)
+bones/20/rotation = Quaternion(0.4591217, 6.102754e-08, -3.1550596e-07, 0.8883734)
+bones/20/scale = Vector3(1.0000002, 1.0000002, 1.0000001)
+bones/21/rotation = Quaternion(-0.6162433, -0.059904628, 0.013928459, 0.78515065)
+bones/21/scale = Vector3(1.0000002, 1.0000007, 0.99999905)
+bones/22/rotation = Quaternion(2.2879904e-06, 0.9201631, -0.3915354, -4.3066044e-07)
+bones/22/scale = Vector3(1.0000001, 0.9999971, 1.0000032)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Enemy_Medium" unique_id=1301382202]
+libraries/EnemyAnimations = SubResource("AnimationLibrary_pje6n")
+
+[node name="AnimationTree" type="AnimationTree" parent="Enemy_Medium" unique_id=1365896023]
+tree_root = SubResource("AnimationNodeStateMachine_m75i3")
+anim_player = NodePath("../AnimationPlayer")
+parameters/MoveSpace/blend_position = -0.0058252215
+
+[editable path="Enemy_Medium"]
