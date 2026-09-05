@@ -26,6 +26,7 @@ gdscript/warnings/untyped_declaration=1
 folder_colors={
 "res://Assets/": "red",
 "res://Components/": "blue",
+"res://Enemy/": "purple",
 "res://Levels/": "orange",
 "res://Player/": "yellow",
 "res://Singletons/": "green",

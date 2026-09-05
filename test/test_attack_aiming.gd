@@ -7,7 +7,7 @@ func _ready() -> void:
 	add_child(level)
 	
 	var player: Player = level.get_node("Player") as Player
-	var dummy: StaticBody3D = level.get_node("StaticBody3D") as StaticBody3D
+	var dummy: CollisionObject3D = (level.get_node_or_null("Enemy") if level.has_node("Enemy") else level.get_node_or_null("StaticBody3D")) as CollisionObject3D
 	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
 	
@@ -103,7 +103,8 @@ func _ready() -> void:
 	
 	# Position dummy 2.3 meters to the right (+X)
 	dummy.global_position = Vector3(2.3, player.global_position.y, 0)
-	print("Dummy initial health: ", health_comp.current_health)
+	var initial_health: float = health_comp.current_health
+	print("Dummy initial health: ", initial_health)
 	
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -146,16 +147,16 @@ func _ready() -> void:
 		return
 	print("Player successfully reoriented towards mouse aim!")
 	
-	# Wait for attack to connect and damage dummy (100 -> 92)
+	# Wait for attack to connect and damage dummy
 	var hit_confirmed := false
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= 92.0:
+		if health_comp.current_health <= initial_health - 8.0:
 			hit_confirmed = true
 			print("HIT CONFIRMED via mouse aim on frame ", i, "! Dummy health: ", health_comp.current_health)
 			break
 			
-	if not hit_confirmed or health_comp.current_health != 92.0:
+	if not hit_confirmed or health_comp.current_health != initial_health - 8.0:
 		printerr("TEST FAILED: Aimed attack did not hit dummy. Health: ", health_comp.current_health)
 		level.queue_free()
 		await get_tree().physics_frame

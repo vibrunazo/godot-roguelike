@@ -11,7 +11,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	
 	var player: Player = level.get_node("Player") as Player
-	var dummy: StaticBody3D = level.get_node("StaticBody3D") as StaticBody3D
+	var dummy: CollisionObject3D = (level.get_node_or_null("Enemy") if level.has_node("Enemy") else level.get_node_or_null("StaticBody3D")) as CollisionObject3D
 	var dummy_health: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var camera: ShakeCamera3D = player.get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
 	var attack_comp: AttackComponent = player.get_node_or_null("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent") as AttackComponent
@@ -126,7 +126,7 @@ func _ready() -> void:
 	print("Empty swing verified: no camera shake when no health component is hit.")
 	
 	# Second test: Position player so weapon shapecast overlaps dummy -> should shake ONCE
-	player.global_position = Vector3(0, player.global_position.y, 2.7)
+	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.3)
 	var dir: Vector3 = Vector3(0, 0, 1)
 	var target: Transform3D = player.player_root.global_transform.looking_at(player.player_root.global_position + dir, Vector3.UP, true)
 	player.player_root.global_transform = target

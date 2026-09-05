@@ -192,12 +192,12 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
-	var dummy: StaticBody3D = level.get_node("StaticBody3D") as StaticBody3D
+	var dummy: CollisionObject3D = (level.get_node_or_null("Enemy") if level.has_node("Enemy") else level.get_node_or_null("StaticBody3D")) as CollisionObject3D
 	var dummy_health: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var dummy_health_bar: HealthBar = dummy.get_node_or_null("HealthBar") as HealthBar
 	
 	if dummy_health_bar == null:
-		printerr("TEST FAILED: HealthBar node not found on enemy StaticBody3D in LevelTemplate.")
+		printerr("TEST FAILED: HealthBar node not found on enemy in LevelTemplate.")
 		level.queue_free()
 		get_tree().quit(1)
 		return

@@ -1,0 +1,34 @@
+[gd_scene format=3 uid="uid://bk4gxfbdgjgln"]
+
+[ext_resource type="Script" uid="uid://c0rnrehscwlx" path="res://Enemy/enemy.gd" id="1_eqilm"]
+[ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/HealthComponent.gd" id="1_px1sc"]
+[ext_resource type="PackedScene" uid="uid://bwo2c4dl16ces" path="res://Components/health_bar.tscn" id="2_am0pq"]
+[ext_resource type="AudioStream" uid="uid://bhd6x8sglgt14" path="res://Assets/Audio/hit.ogg" id="3_am0pq"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_eqilm"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
+
+[node name="Enemy" type="CharacterBody3D" unique_id=2117139762]
+collision_layer = 3
+script = ExtResource("1_eqilm")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1819337987]
+mesh = SubResource("CapsuleMesh_eqilm")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1931491374]
+shape = SubResource("CapsuleShape3D_ncf7h")
+
+[node name="HealthComponent" type="Node" parent="." unique_id=1014190827 node_paths=PackedStringArray("hit_audio")]
+script = ExtResource("1_px1sc")
+hit_audio = NodePath("../HitAudio")
+max_health = 40.0
+
+[node name="HealthBar" parent="." unique_id=1961835903 node_paths=PackedStringArray("health_component") instance=ExtResource("2_am0pq")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+health_component = NodePath("../HealthComponent")
+health_color = Color(0.8901961, 0.2901961, 0.25882354, 1)
+
+[node name="HitAudio" type="AudioStreamPlayer3D" parent="." unique_id=1636824264]
+stream = ExtResource("3_am0pq")
+bus = &"SFX"

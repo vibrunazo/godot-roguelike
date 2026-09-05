@@ -7,11 +7,12 @@ func _ready() -> void:
 	add_child(level)
 	
 	var player: Player = level.get_node("Player") as Player
-	var dummy: StaticBody3D = level.get_node("StaticBody3D") as StaticBody3D
+	var dummy: CollisionObject3D = (level.get_node_or_null("Enemy") if level.has_node("Enemy") else level.get_node_or_null("StaticBody3D")) as CollisionObject3D
 	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
 	
-	print("Dummy initial health: ", health_comp.current_health)
+	var initial_health: float = health_comp.current_health
+	print("Dummy initial health: ", initial_health)
 	
 	# Wait for player to settle in PlayerRun on the floor
 	for i: int in range(120):
@@ -25,7 +26,7 @@ func _ready() -> void:
 		return
 		
 	# Position player facing dummy
-	player.global_position = Vector3(0, player.global_position.y, 2.7)
+	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.3)
 	var dir: Vector3 = Vector3(0, 0, 1)
 	var target: Transform3D = player.player_root.global_transform.looking_at(player.player_root.global_position + dir, Vector3.UP, true)
 	player.player_root.global_transform = target
@@ -49,14 +50,14 @@ func _ready() -> void:
 	# 2. Wait a few frames for slash attack to hit dummy
 	for i: int in range(30):
 		await get_tree().physics_frame
-		if health_comp.current_health <= 92.0:
+		if health_comp.current_health <= initial_health - 8.0:
 			break
 			
-	if health_comp.current_health != 92.0:
-		printerr("TEST FAILED: First attack did not damage dummy to 92.0. Health: ", health_comp.current_health)
+	if health_comp.current_health != initial_health - 8.0:
+		printerr("TEST FAILED: First attack did not damage dummy to expected value. Health: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("First attack hit confirmed! Dummy health: 92.0")
+	print("First attack hit confirmed! Dummy health: ", health_comp.current_health)
 	
 	# 3. Queue the second attack by clicking during the queued_attack_time window
 	print("\n--- 2. Sending click during queued_attack_time window ---")
@@ -80,18 +81,18 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 		
-	# 5. Wait for second attack (StabAttack) to deal damage (92.0 -> 78.0)
+	# 5. Wait for second attack (StabAttack) to deal damage
 	print("Waiting for second attack (StabAttack) to hit dummy...")
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= 78.0:
+		if health_comp.current_health <= initial_health - 22.0:
 			break
 			
-	if health_comp.current_health != 78.0:
-		printerr("TEST FAILED: Second attack did not damage dummy to 78.0. Health: ", health_comp.current_health)
+	if health_comp.current_health != initial_health - 22.0:
+		printerr("TEST FAILED: Second attack did not damage dummy to expected value. Health: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("Second attack (StabAttack) hit confirmed! Dummy health: 78.0")
+	print("Second attack (StabAttack) hit confirmed! Dummy health: ", health_comp.current_health)
 	
 	# 6. Wait for PlayerAttack2 to finish and return to PlayerRun
 	print("Waiting for PlayerAttack2 animation to finish and return to PlayerRun...")

@@ -7,11 +7,12 @@ func _ready() -> void:
 	add_child(level)
 	
 	var player: Player = level.get_node("Player") as Player
-	var dummy: StaticBody3D = level.get_node("StaticBody3D") as StaticBody3D
+	var dummy: CollisionObject3D = (level.get_node_or_null("Enemy") if level.has_node("Enemy") else level.get_node_or_null("StaticBody3D")) as CollisionObject3D
 	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
 	
-	print("Dummy initial health: ", health_comp.current_health)
+	var initial_health: float = health_comp.current_health
+	print("Dummy initial health: ", initial_health)
 	
 	# Wait for player to settle on floor in PlayerRun
 	for i: int in range(120):
@@ -25,7 +26,7 @@ func _ready() -> void:
 		return
 		
 	# Position player facing dummy
-	player.global_position = Vector3(0, player.global_position.y, 2.7)
+	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.3)
 	var dir: Vector3 = Vector3(0, 0, 1)
 	var target: Transform3D = player.player_root.global_transform.looking_at(player.player_root.global_position + dir, Vector3.UP, true)
 	player.player_root.global_transform = target
@@ -34,7 +35,7 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	
 	# =========================================================================
-	# PART 1: FULL 3-HIT COMBO & DAMAGE SCALING (100 -> 92 -> 78 -> 68)
+	# PART 1: FULL 3-HIT COMBO & DAMAGE SCALING (Slash -> Stab -> Spin)
 	# =========================================================================
 	print("\n>>> PART 1: Testing Full 3-Hit Combo (Slash -> Stab -> Spin)")
 	
@@ -50,16 +51,16 @@ func _ready() -> void:
 		return
 	print("Entered state: PlayerAttack (Attack 1: Slash)")
 	
-	# Wait for Attack 1 to hit (100 -> 92)
+	# Wait for Attack 1 to hit
 	for i: int in range(30):
 		await get_tree().physics_frame
-		if health_comp.current_health <= 92.0:
+		if health_comp.current_health <= initial_health - 8.0:
 			break
-	if health_comp.current_health != 92.0:
-		printerr("TEST FAILED: Attack 1 damage mismatch. Expected 92.0, got: ", health_comp.current_health)
+	if health_comp.current_health != initial_health - 8.0:
+		printerr("TEST FAILED: Attack 1 damage mismatch. Expected: ", initial_health - 8.0, ", got: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("Attack 1 hit confirmed! Dummy health: 92.0 (-8.0 damage)")
+	print("Attack 1 hit confirmed! Dummy health: ", health_comp.current_health, " (-8.0 damage)")
 	
 	# Queue Attack 2
 	sm._unhandled_input(click)
@@ -77,16 +78,16 @@ func _ready() -> void:
 		return
 	print("Entered state: PlayerAttack2 (Attack 2: Stab)")
 	
-	# Wait for Attack 2 to hit (92 -> 78)
+	# Wait for Attack 2 to hit
 	for i: int in range(30):
 		await get_tree().physics_frame
-		if health_comp.current_health <= 78.0:
+		if health_comp.current_health <= initial_health - 22.0:
 			break
-	if health_comp.current_health != 78.0:
-		printerr("TEST FAILED: Attack 2 damage mismatch. Expected 78.0, got: ", health_comp.current_health)
+	if health_comp.current_health != initial_health - 22.0:
+		printerr("TEST FAILED: Attack 2 damage mismatch. Expected: ", initial_health - 22.0, ", got: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("Attack 2 hit confirmed! Dummy health: 78.0 (-14.0 damage)")
+	print("Attack 2 hit confirmed! Dummy health: ", health_comp.current_health, " (-14.0 damage)")
 	
 	# Queue Attack 3 (Spin)
 	sm._unhandled_input(click)
@@ -104,16 +105,16 @@ func _ready() -> void:
 		return
 	print("Entered state: PlayerAttack3 (Attack 3: Spin)")
 	
-	# Wait for Attack 3 to hit (78 -> 68)
+	# Wait for Attack 3 to hit
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= 68.0:
+		if health_comp.current_health <= initial_health - 32.0:
 			break
-	if health_comp.current_health != 68.0:
-		printerr("TEST FAILED: Attack 3 damage mismatch. Expected 68.0, got: ", health_comp.current_health)
+	if health_comp.current_health != initial_health - 32.0:
+		printerr("TEST FAILED: Attack 3 damage mismatch. Expected: ", initial_health - 32.0, ", got: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("Attack 3 hit confirmed! Dummy health: 68.0 (-10.0 damage)")
+	print("Attack 3 hit confirmed! Dummy health: ", health_comp.current_health, " (-10.0 damage)")
 	
 	# Wait for Attack 3 to finish and return to PlayerRun
 	var back_to_run := false
