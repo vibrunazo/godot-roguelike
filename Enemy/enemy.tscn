@@ -12,11 +12,12 @@
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
 
-[node name="Enemy" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("stun_state", "defeat_state")]
+[node name="Enemy" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("stun_state", "defeat_state", "mesh_mount")]
 collision_layer = 3
 script = ExtResource("1_eqilm")
 stun_state = NodePath("StateMachine/EnemyStun")
 defeat_state = NodePath("StateMachine/EnemyDefeat")
+mesh_mount = NodePath("AnimationAnchor")
 
 [node name="AnimationAnchor" type="Node3D" parent="." unique_id=930518751]
 

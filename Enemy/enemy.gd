@@ -8,10 +8,13 @@ extends CharacterBody3D
 @export var defeat_state: EnemyState
 ## Base movement speed of this enemy in meters per second.
 @export var base_speed := 3.5
+## The node mount rotated to aim the enemy.
+@export var mesh_mount: Node3D
 
 @onready var animation_tree: AnimationTree = $AnimationAnchor/AnimatedEnemy/Enemy_Medium/AnimationTree
 @onready var state_machine: StateMachine = $StateMachine
 @onready var collision_shape_3d: CollisionShape3D = $CollisionShape3D
+@onready var player: Player = get_tree().get_first_node_in_group("player") as Player
 
 
 func _on_health_component_health_changed(_value: float) -> void:

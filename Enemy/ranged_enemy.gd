@@ -9,7 +9,7 @@ const ENEMY_PROJECTILE = preload("res://Enemy/enemy_projectile.tscn")
 
 
 func _on_weapon_slot_ranged_attack() -> void:
-	var projectile: Node3D = ENEMY_PROJECTILE.instantiate() as Node3D
+	var projectile: EnemyProjectile = ENEMY_PROJECTILE.instantiate() as EnemyProjectile
 	add_child(projectile)
 	projectile.global_position = attack_bone.global_position
-	projectile.global_rotation.y = global_rotation.y
+	projectile.global_rotation.y = mesh_mount.global_rotation.y

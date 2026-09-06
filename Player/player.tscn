@@ -189,7 +189,7 @@ graph_offset = Vector2(41, -108)
 noise_type = 2
 fractal_type = 0
 
-[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("dash_audio")]
+[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("dash_audio") groups=["player"]]
 script = ExtResource("1_l8h54")
 dash_audio = NodePath("DashAudio")
 

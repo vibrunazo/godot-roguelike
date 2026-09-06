@@ -54,6 +54,12 @@ func _ready() -> void:
 		return
 	print("AnimationAnchor node verified.")
 	
+	if enemy.mesh_mount != anim_anchor:
+		printerr("TEST FAILED: Enemy.mesh_mount is not wired to AnimationAnchor.")
+		get_tree().quit(1)
+		return
+	print("Enemy.mesh_mount export verified.")
+	
 	var animated_enemy: Node3D = anim_anchor.get_node_or_null("AnimatedEnemy") as Node3D
 	if animated_enemy == null:
 		printerr("TEST FAILED: AnimatedEnemy scene not found under AnimationAnchor.")
@@ -551,9 +557,10 @@ func _ready() -> void:
 	await get_tree().process_frame
 	
 	# ---------------------------------------------------------
-	# PART 8: Enemy Projectile & Ranged Attack Shooting
 	# ---------------------------------------------------------
-	print("\n>>> PART 8: Enemy Projectile & Shooting Verification")
+	# PART 8: Enemy Projectile Scene & Properties
+	# ---------------------------------------------------------
+	print("\n>>> PART 8: Enemy Projectile Scene & Properties Verification")
 	var proj_scene: PackedScene = load("res://Enemy/enemy_projectile.tscn")
 	if proj_scene == null:
 		printerr("TEST FAILED: Could not load res://Enemy/enemy_projectile.tscn")
@@ -574,34 +581,138 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("EnemyProjectile scene & audio verified.")
-	
-	# Test projectile movement in physics process
+
+	if not is_equal_approx(proj.speed, 8.0):
+		printerr("TEST FAILED: EnemyProjectile.speed expected 8.0, got: ", proj.speed)
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(proj.damage, 5.0):
+		printerr("TEST FAILED: EnemyProjectile.damage expected 5.0, got: ", proj.damage)
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile speed (8.0) and damage (5.0) exports verified.")
+
+	var timer: Timer = proj.get_node_or_null("Timer") as Timer
+	if timer == null:
+		printerr("TEST FAILED: Timer node not found in EnemyProjectile.")
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(timer.wait_time, 10.0) or not timer.autostart:
+		printerr("TEST FAILED: EnemyProjectile Timer configuration invalid (wait_time: ", timer.wait_time, ", autostart: ", timer.autostart, ")")
+		get_tree().quit(1)
+		return
+	if not timer.timeout.is_connected(proj._on_timer_timeout):
+		printerr("TEST FAILED: EnemyProjectile Timer timeout signal is not connected to _on_timer_timeout.")
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile Timer (10s autostart -> _on_timer_timeout) verified.")
+
 	add_child(proj)
-	proj.global_position = Vector3.ZERO
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	if proj.global_position.z <= 0.0:
-		printerr("TEST FAILED: EnemyProjectile did not move along positive Z. Position: ", proj.global_position)
+	var attack_comp_proj: AttackComponent = proj.get_node_or_null("AttackComponent") as AttackComponent
+	if attack_comp_proj == null:
+		printerr("TEST FAILED: AttackComponent not found in EnemyProjectile.")
 		proj.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyProjectile physics movement verified. Moved forward to: ", proj.global_position)
+	if proj.attack_component != attack_comp_proj:
+		printerr("TEST FAILED: EnemyProjectile.attack_component onready var not wired.")
+		proj.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile AttackComponent verified.")
+
+	# Test timeout queue_free
+	proj._on_timer_timeout()
+	if not proj.is_queued_for_deletion():
+		printerr("TEST FAILED: _on_timer_timeout did not queue projectile for deletion.")
+		proj.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile _on_timer_timeout calls queue_free() verified.")
 	proj.queue_free()
-	
-	# Test RangedEnemy shooting via signal
-	var shooter: RangedEnemy = ranged_scene.instantiate() as RangedEnemy
-	add_child(shooter)
 	await get_tree().physics_frame
 	await get_tree().process_frame
-	
+
+	# Test projectile movement in physics process
+	var proj_move: EnemyProjectile = proj_scene.instantiate() as EnemyProjectile
+	add_child(proj_move)
+	proj_move.global_position = Vector3.ZERO
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if proj_move.global_position.z <= 0.0:
+		printerr("TEST FAILED: EnemyProjectile did not move along positive Z. Position: ", proj_move.global_position)
+		proj_move.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile physics movement verified. Moved forward to: ", proj_move.global_position)
+	proj_move.queue_free()
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	# ---------------------------------------------------------
+	# PART 9: Aiming, Projectile Impact & Damage Verification
+	# ---------------------------------------------------------
+	print("\n>>> PART 9: Aiming, Projectile Impact & Damage Verification")
+
+	# Verify Player group
+	var player_scene: PackedScene = load("res://Player/player.tscn")
+	if player_scene == null:
+		printerr("TEST FAILED: Could not load res://Player/player.tscn")
+		get_tree().quit(1)
+		return
+	var test_player: Player = player_scene.instantiate() as Player
+	if not test_player.is_in_group("player"):
+		printerr("TEST FAILED: Player is not in group 'player'.")
+		test_player.queue_free()
+		get_tree().quit(1)
+		return
+	print("Player group 'player' verified.")
+
+	# Add player to tree at an offset position (e.g. at (5, 0, 0))
+	add_child(test_player)
+	test_player.global_position = Vector3(5.0, 0.0, 0.0)
+
+	var shooter: RangedEnemy = ranged_scene.instantiate() as RangedEnemy
+	add_child(shooter)
+	shooter.global_position = Vector3.ZERO
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	if shooter.player != test_player:
+		printerr("TEST FAILED: shooter.player did not resolve test_player from group 'player'.")
+		shooter.queue_free()
+		test_player.queue_free()
+		get_tree().quit(1)
+		return
+	print("shooter.player successfully found Player via group.")
+
 	if shooter.attack_bone == null:
 		printerr("TEST FAILED: RangedEnemy attack_bone is null.")
 		shooter.queue_free()
+		test_player.queue_free()
 		get_tree().quit(1)
 		return
 	print("RangedEnemy attack_bone assigned: ", shooter.attack_bone.name)
-	
-	# Call _on_weapon_slot_ranged_attack and check projectile spawned
+
+	# Test look_at_player on EnemyWait
+	var shooter_wait: EnemyWait = shooter.get_node_or_null("StateMachine/EnemyWait") as EnemyWait
+	shooter_wait.look_at_player()
+	# The enemy mesh_mount should now face towards the player
+	# With use_model_front = true, mesh_mount +Z basis points towards the target
+	var facing_dir: Vector3 = shooter.mesh_mount.global_transform.basis.z.normalized()
+	var expected_dir: Vector3 = (test_player.global_position - shooter.mesh_mount.global_position)
+	expected_dir.y = 0.0
+	expected_dir = expected_dir.normalized()
+	if facing_dir.dot(expected_dir) < 0.999:
+		printerr("TEST FAILED: mesh_mount does not face player. Facing: ", facing_dir, " Expected: ", expected_dir)
+		shooter.queue_free()
+		test_player.queue_free()
+		get_tree().quit(1)
+		return
+	print("look_at_player oriented mesh_mount towards player (dot: ", facing_dir.dot(expected_dir), ") verified.")
+
+
+	# Test projectile spawned matches mesh_mount global_rotation.y
 	shooter._on_weapon_slot_ranged_attack()
 	var spawned_proj: EnemyProjectile = null
 	for c: Node in shooter.get_children():
@@ -609,21 +720,58 @@ func _ready() -> void:
 			spawned_proj = c as EnemyProjectile
 			break
 	if spawned_proj == null:
-		printerr("TEST FAILED: _on_weapon_slot_ranged_attack did not spawn EnemyProjectile.")
+		printerr("TEST FAILED: shooter did not spawn EnemyProjectile.")
 		shooter.queue_free()
+		test_player.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyProjectile spawned successfully on RangedEnemy.")
-	
+	if not is_equal_approx(spawned_proj.global_rotation.y, shooter.mesh_mount.global_rotation.y):
+		printerr("TEST FAILED: Spawned projectile rotation.y does not match mesh_mount.global_rotation.y.")
+		shooter.queue_free()
+		test_player.queue_free()
+		get_tree().quit(1)
+		return
+	print("Spawned projectile rotation.y matches mesh_mount.global_rotation.y verified.")
+
 	# Verify position matched attack_bone
 	if not spawned_proj.global_position.is_equal_approx(shooter.attack_bone.global_position):
 		printerr("TEST FAILED: Spawned projectile position does not match attack_bone.")
 		shooter.queue_free()
+		test_player.queue_free()
 		get_tree().quit(1)
 		return
 	print("Spawned projectile position matches attack_bone.")
-	
+
+	# Test projectile collision & damage dealing
+	var target_health: HealthComponent = test_player.get_node_or_null("HealthComponent") as HealthComponent
+	var initial_health: float = target_health.current_health
+	# Place projectile directly at test_player to trigger shapecast collision
+	var hit_proj: EnemyProjectile = proj_scene.instantiate() as EnemyProjectile
+	add_child(hit_proj)
+	hit_proj.global_position = test_player.global_position
+	await get_tree().physics_frame
+	# Run physics process on projectile
+	hit_proj._physics_process(0.016)
+	if not is_equal_approx(target_health.current_health, initial_health - hit_proj.damage):
+		printerr("TEST FAILED: Target health was not reduced by projectile damage. Expected ", initial_health - hit_proj.damage, ", got ", target_health.current_health)
+		shooter.queue_free()
+		test_player.queue_free()
+		hit_proj.queue_free()
+		get_tree().quit(1)
+		return
+	print("Projectile dealt damage via AttackComponent verified! Health: ", target_health.current_health)
+
+	if not hit_proj.is_queued_for_deletion():
+		printerr("TEST FAILED: Projectile was not queued for deletion on collision.")
+		shooter.queue_free()
+		test_player.queue_free()
+		hit_proj.queue_free()
+		get_tree().quit(1)
+		return
+	print("Projectile deleted on collision (is_colliding() -> queue_free()) verified.")
+
 	shooter.queue_free()
+	test_player.queue_free()
 	await get_tree().physics_frame
 	await get_tree().process_frame
 
@@ -642,6 +790,10 @@ func _ready() -> void:
 	print("  11. LevelTemplate enemy replacement confirmed                     ")
 	print("  12. RangedEnemy scene, EnemyAttack state & RangedAttack verified  ")
 	print("  13. EnemyProjectile scene, movement, and RangedEnemy fire verified")
+	print("  14. Mesh mount export & Player group lookup verified              ")
+	print("  15. look_at_player model-front aiming verified                    ")
+	print("  16. Projectile lifetime Timer, collision cleanup & damage verified")
 	print("====================================================================")
 	
 	get_tree().quit(0)
+

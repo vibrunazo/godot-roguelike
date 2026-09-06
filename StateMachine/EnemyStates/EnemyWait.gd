@@ -25,5 +25,7 @@ func exit() -> void:
 
 
 func end_wait() -> void:
+	look_at_player()
 	if next_state:
 		finished.emit(next_state.name)
+

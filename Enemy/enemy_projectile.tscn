@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://Enemy/enemy_projectile.gd" id="1_6uikd"]
 [ext_resource type="AudioStream" uid="uid://d0fcu71wibih8" path="res://Assets/Audio/fire.ogg" id="1_qhog7"]
+[ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/AttackComponent.gd" id="3_td6rc"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_6uikd"]
 radius = 0.25
@@ -22,3 +23,13 @@ mesh = SubResource("SphereMesh_6uikd")
 stream = ExtResource("1_qhog7")
 autoplay = true
 bus = &"SFX"
+
+[node name="Timer" type="Timer" parent="." unique_id=904970777]
+wait_time = 10.0
+autostart = true
+
+[node name="AttackComponent" type="Node" parent="." unique_id=321443246]
+script = ExtResource("3_td6rc")
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
+
