@@ -23,12 +23,19 @@ This document tracks architectural improvements, optimizations, and technical de
 
 ---
 
-## 2. Character & State Machine Architecture
+## 2. Character & State Machine Architecture (Decoupling AI from Body Action States)
 - **Problem**:
-  - `Player` and `Enemy` have separate state machines and duplicated movement code (e.g. `core_movement()` in both `PlayerState` and `EnemyState`).
+  - `Player` and `Enemy` have separate, parallel state machines with duplicated movement logic (`core_movement()` in both `PlayerState` and `EnemyState`).
+  - Enemy states tightly couple high-level AI decisions (wait timers, aiming, target selection, transition decisions) directly with physical body actions (animations, movement physics, projectile spawning).
+  - This prevents reusing abilities/actions between player and enemies, creates a combinatorial explosion of states for different AI behaviors, and makes advanced tactics (kiting, fleeing, utility scoring) difficult to implement.
 - **Refactoring Options**:
-  - Create a unified character base class (or controller/component architecture) shared by both player and enemies.
-  - Make state machine movement logic generic or controller-driven so AI controllers and player input controllers plug into the same movement state logic.
+  - **Controller Layer (The Mind)**:
+    - Separate decision-making into an `AIController` (or Behavior Tree / Utility AI) and a `PlayerController`.
+    - Both controllers output standardized high-level intents: `move_intent(direction)`, `aim_intent(target)`, `try_activate_ability(ability_name)`.
+  - **Character & Ability Layer (The Body)**:
+    - The character's state machine manages only physical body commitments and abilities: `Idle`, `Move`, `Attack`, `Dodge`, `Stunned`, `Defeated`.
+    - States handle animation playback, root motion, and hitbox/projectile activation windows. They report completion back to the character/controller (e.g. `action_finished` signal) rather than deciding what state to transition to next.
+    - Create a unified character base class / component structure shared by player and enemies.
 
 ---
 
