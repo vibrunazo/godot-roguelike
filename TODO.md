@@ -100,3 +100,28 @@ This document tracks architectural improvements, optimizations, and technical de
     if enemy.navigation_agent_3d.is_target_reached() or enemy.distance_squared_to_player() <= attack_range_squared:
     ```
   - This eliminates the square root calculation completely with zero impact on proximity detection accuracy.
+
+---
+
+## 8. Dynamic Scene References vs. Hardcoded Preloads (Wave Spawner)
+- **Problem**:
+  - `WaveObjective` (and similar spawner systems) hardcodes scene preloads in script constants (`const RANGED_ENEMY: PackedScene = preload(...)` / UID strings).
+  - Hardcoding scene paths or UIDs directly in scripts tightly couples the spawner to a specific enemy type, preventing reuse across different levels or encounter designs.
+  - Level designers cannot swap enemy types, adjust wave compositions, or add new enemy variants in the inspector without modifying or duplicating scripts.
+- **Refactoring Options**:
+  - **Exported `PackedScene` Properties**:
+    - Replace hardcoded `preload` constants with an exported property:
+      ```gdscript
+      @export var enemy_scene: PackedScene
+      ```
+      or an array for multi-enemy encounters:
+      ```gdscript
+      @export var enemy_scenes: Array[PackedScene]
+      ```
+  - **Data-Driven Wave Resources (`WaveData`)**:
+    - Encapsulate wave parameters into custom `Resource` definitions (`WaveData`), configuring enemy scenes, spawn counts, delays, and weights directly in the inspector:
+      ```gdscript
+      @export var waves: Array[WaveData]
+      ```
+    - *Benefits*: Decouples spawner logic from concrete scene assets, allows rapid level design iteration entirely in the inspector, and facilitates varied encounter design.
+

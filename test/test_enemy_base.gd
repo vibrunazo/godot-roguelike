@@ -452,13 +452,36 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
-	var level_enemy: Enemy = TestUtils.find_enemy(level)
-	if level_enemy == null:
-		printerr("TEST FAILED: No Enemy subclass instance found in LevelTemplate scene.")
+	# Verify WaveObjective
+	var wave_obj: WaveObjective = level.get_node_or_null("WaveObjective") as WaveObjective
+	if wave_obj == null:
+		printerr("TEST FAILED: WaveObjective node not found in LevelTemplate.")
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("Enemy instance found in LevelTemplate: ", level_enemy.name)
+	print("WaveObjective node verified in LevelTemplate.")
+	
+	if not wave_obj.has_signal("finished"):
+		printerr("TEST FAILED: WaveObjective does not have finished signal.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("WaveObjective finished signal verified.")
+	
+	if wave_obj.all_enemies.size() != 3:
+		printerr("TEST FAILED: WaveObjective all_enemies size is ", wave_obj.all_enemies.size(), ", expected 3.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("WaveObjective all_enemies size (3) verified.")
+	
+	var level_enemy: Enemy = TestUtils.find_enemy(level)
+	if level_enemy == null:
+		printerr("TEST FAILED: No Enemy subclass instance found via TestUtils in LevelTemplate scene.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("Enemy instance found in LevelTemplate via WaveObjective: ", level_enemy.name)
 	
 	var level_enemy_health: HealthComponent = level_enemy.get_node_or_null("HealthComponent") as HealthComponent
 	if level_enemy_health == null or level_enemy_health.max_health != 40.0:

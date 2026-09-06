@@ -3,7 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://dveet4y3bg7gi" path="res://Player/player.tscn" id="2_ersrp"]
 [ext_resource type="Script" uid="uid://chwdk8gtnnide" path="res://Levels/world_boundary.gd" id="5_kv2lc"]
 [ext_resource type="VoxelGIData" path="res://Levels/GlobalIlluminationData/level_template_voxel_gi_data.tres" id="6_voxel_gi"]
-[ext_resource type="PackedScene" uid="uid://d0l671aaonnqf" path="res://Enemy/ranged_enemy.tscn" id="6_vjhoh"]
+[ext_resource type="Script" path="res://Levels/wave_objective.gd" id="1_vjhoh"]
 [ext_resource type="MeshLibrary" uid="uid://cbw5qq7imfwn5" path="res://Levels/Gridmap/floormap.tres" id="7_vjhoh"]
 [ext_resource type="MeshLibrary" uid="uid://10ib4mm1ty30" path="res://Levels/Gridmap/wall_map.tres" id="8_g8k58"]
 
@@ -52,6 +52,9 @@ directional_shadow_max_distance = 48.0
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=841465409]
 environment = SubResource("Environment_my7v4")
 
+[node name="WaveObjective" type="Node3D" parent="." unique_id=361626003]
+script = ExtResource("1_vjhoh")
+
 [node name="NavigationRegion3D" type="NavigationRegion3D" parent="." unique_id=35119806]
 navigation_mesh = SubResource("NavigationMesh_6ghb1")
 
@@ -94,7 +97,4 @@ shape = SubResource("WorldBoundaryShape3D_6ghb1")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -16)
 size = Vector3(26, 20, 56)
 data = ExtResource("6_voxel_gi")
-
-[node name="RangedEnemy" parent="." unique_id=2117139762 instance=ExtResource("6_vjhoh")]
-transform = Transform3D(0.09160584, 0, -0.99579537, 0, 1, 0, 0.99579537, 0, 0.09160584, 0, 0.9499998, 4.488966)
 

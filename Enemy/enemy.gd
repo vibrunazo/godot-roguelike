@@ -19,7 +19,6 @@ extends CharacterBody3D
 
 
 func _ready() -> void:
-	await get_tree().create_timer(1.0).timeout
 	if not is_inside_tree():
 		return
 	global_position = NavigationServer3D.map_get_random_point(
