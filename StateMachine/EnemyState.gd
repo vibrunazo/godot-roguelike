@@ -23,4 +23,6 @@ func look_at_target(target: Vector3) -> void:
 	if not is_instance_valid(enemy) or not is_instance_valid(enemy.mesh_mount):
 		return
 	target.y = enemy.mesh_mount.global_position.y
+	if enemy.mesh_mount.global_position.is_equal_approx(target):
+		return
 	enemy.mesh_mount.look_at(target, Vector3.UP, true)

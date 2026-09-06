@@ -559,14 +559,58 @@ func _ready() -> void:
 		return
 	print("EnemyAttack.next_state -> EnemyWait verified.")
 	
-	# Verify StateMachine transitions from EnemyWait to EnemyAttack via end_wait
-	var ranged_sm: StateMachine = ranged_enemy.get_node_or_null("StateMachine") as StateMachine
-	if ranged_sm.state != ranged_wait:
-		printerr("TEST FAILED: RangedEnemy initial state is not EnemyWait. Got: ", ranged_sm.state.name)
+	# Verify EnemyMeander node and initial state
+	var ranged_meander: EnemyMeander = ranged_enemy.get_node_or_null("StateMachine/EnemyMeander") as EnemyMeander
+	if ranged_meander == null:
+		printerr("TEST FAILED: EnemyMeander node missing under RangedEnemy StateMachine.")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("RangedEnemy initially in EnemyWait state.")
+	print("EnemyMeander node verified under RangedEnemy StateMachine.")
+	
+	if ranged_meander.enemy != ranged_enemy:
+		printerr("TEST FAILED: EnemyMeander.enemy does not point to RangedEnemy.")
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyMeander.enemy reference verified.")
+	
+	if not ranged_enemy.navigation_agent_3d.debug_enabled:
+		printerr("TEST FAILED: RangedEnemy NavigationAgent3D.debug_enabled is false.")
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("RangedEnemy NavigationAgent3D.debug_enabled verified as true.")
+	
+	var ranged_sm: StateMachine = ranged_enemy.get_node_or_null("StateMachine") as StateMachine
+	if ranged_sm.state != ranged_meander:
+		printerr("TEST FAILED: RangedEnemy initial state is not EnemyMeander. Got: ", ranged_sm.state.name)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("RangedEnemy initially in EnemyMeander state.")
+	
+	# Verify EnemyMeander enter() sets WalkSpace and blend_target = 1.0
+	if not is_equal_approx(ranged_enemy.animation_tree.blend_target, 1.0):
+		printerr("TEST FAILED: EnemyMeander did not set animation_tree.blend_target to 1.0. Got: ", ranged_enemy.animation_tree.blend_target)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyMeander enter() set blend_target = 1.0 verified.")
+	
+	# Verify EnemyMeander physics_update runs without errors
+	ranged_meander.physics_update(0.016)
+	print("EnemyMeander physics_update verified.")
+	
+	# Transition to EnemyWait to verify wait-attack cycle
+	ranged_sm.state.finished.emit("EnemyWait")
+	await get_tree().process_frame
+	if ranged_sm.state != ranged_wait:
+		printerr("TEST FAILED: Transition from EnemyMeander to EnemyWait failed. Got: ", ranged_sm.state.name)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("Transition to EnemyWait verified.")
 	
 	ranged_wait.end_wait()
 	await get_tree().process_frame

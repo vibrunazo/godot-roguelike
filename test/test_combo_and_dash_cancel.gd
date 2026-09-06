@@ -84,7 +84,7 @@ func _ready() -> void:
 	print("Entered state: PlayerAttack2 (Attack 2: Stab)")
 	
 	# Wait for Attack 2 to hit
-	for i: int in range(30):
+	for i: int in range(50):
 		await get_tree().physics_frame
 		if health_comp.current_health <= initial_health - 22.0:
 			break
