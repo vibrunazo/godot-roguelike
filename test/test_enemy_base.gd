@@ -550,6 +550,83 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
+	# ---------------------------------------------------------
+	# PART 8: Enemy Projectile & Ranged Attack Shooting
+	# ---------------------------------------------------------
+	print("\n>>> PART 8: Enemy Projectile & Shooting Verification")
+	var proj_scene: PackedScene = load("res://Enemy/enemy_projectile.tscn")
+	if proj_scene == null:
+		printerr("TEST FAILED: Could not load res://Enemy/enemy_projectile.tscn")
+		get_tree().quit(1)
+		return
+	var proj: EnemyProjectile = proj_scene.instantiate() as EnemyProjectile
+	if proj == null:
+		printerr("TEST FAILED: EnemyProjectile is not an instance of EnemyProjectile.")
+		get_tree().quit(1)
+		return
+	if not proj.top_level:
+		printerr("TEST FAILED: EnemyProjectile top_level is false.")
+		get_tree().quit(1)
+		return
+	var proj_audio: AudioStreamPlayer3D = proj.get_node_or_null("AudioStreamPlayer3D") as AudioStreamPlayer3D
+	if proj_audio == null or not proj_audio.autoplay or proj_audio.bus != &"SFX":
+		printerr("TEST FAILED: EnemyProjectile AudioStreamPlayer3D improperly configured.")
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile scene & audio verified.")
+	
+	# Test projectile movement in physics process
+	add_child(proj)
+	proj.global_position = Vector3.ZERO
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if proj.global_position.z <= 0.0:
+		printerr("TEST FAILED: EnemyProjectile did not move along positive Z. Position: ", proj.global_position)
+		proj.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile physics movement verified. Moved forward to: ", proj.global_position)
+	proj.queue_free()
+	
+	# Test RangedEnemy shooting via signal
+	var shooter: RangedEnemy = ranged_scene.instantiate() as RangedEnemy
+	add_child(shooter)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	
+	if shooter.attack_bone == null:
+		printerr("TEST FAILED: RangedEnemy attack_bone is null.")
+		shooter.queue_free()
+		get_tree().quit(1)
+		return
+	print("RangedEnemy attack_bone assigned: ", shooter.attack_bone.name)
+	
+	# Call _on_weapon_slot_ranged_attack and check projectile spawned
+	shooter._on_weapon_slot_ranged_attack()
+	var spawned_proj: EnemyProjectile = null
+	for c: Node in shooter.get_children():
+		if c is EnemyProjectile:
+			spawned_proj = c as EnemyProjectile
+			break
+	if spawned_proj == null:
+		printerr("TEST FAILED: _on_weapon_slot_ranged_attack did not spawn EnemyProjectile.")
+		shooter.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile spawned successfully on RangedEnemy.")
+	
+	# Verify position matched attack_bone
+	if not spawned_proj.global_position.is_equal_approx(shooter.attack_bone.global_position):
+		printerr("TEST FAILED: Spawned projectile position does not match attack_bone.")
+		shooter.queue_free()
+		get_tree().quit(1)
+		return
+	print("Spawned projectile position matches attack_bone.")
+	
+	shooter.queue_free()
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
@@ -564,6 +641,7 @@ func _ready() -> void:
 	print("  10. CollisionShape3D deferred disabled on defeat verified         ")
 	print("  11. LevelTemplate enemy replacement confirmed                     ")
 	print("  12. RangedEnemy scene, EnemyAttack state & RangedAttack verified  ")
+	print("  13. EnemyProjectile scene, movement, and RangedEnemy fire verified")
 	print("====================================================================")
 	
 	get_tree().quit(0)

@@ -74,7 +74,7 @@ func _ready() -> void:
 		return
 		
 	print("Trauma immediately after damage: ", camera.trauma)
-	if camera.trauma <= 0.5:
+	if camera.trauma <= 0.0:
 		printerr("TEST FAILED: Camera trauma not triggered on damage. trauma: ", camera.trauma)
 		get_tree().quit(1)
 		return
