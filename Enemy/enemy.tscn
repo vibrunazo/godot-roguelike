@@ -58,6 +58,8 @@ enemy = NodePath("../..")
 script = ExtResource("9_efk13")
 enemy = NodePath("../..")
 
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=2019475689]
+
 [connection signal="defeat" from="HealthComponent" to="." method="_on_health_component_defeat"]
 [connection signal="health_changed" from="HealthComponent" to="." method="_on_health_component_health_changed"]
 

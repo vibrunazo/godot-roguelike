@@ -43,6 +43,17 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
+	var nav_agent: NavigationAgent3D = enemy.get_node_or_null("NavigationAgent3D") as NavigationAgent3D
+	if nav_agent == null:
+		printerr("TEST FAILED: NavigationAgent3D node not found on Enemy.")
+		get_tree().quit(1)
+		return
+	if enemy.navigation_agent_3d != nav_agent:
+		printerr("TEST FAILED: Enemy.navigation_agent_3d does not point to NavigationAgent3D.")
+		get_tree().quit(1)
+		return
+	print("Enemy NavigationAgent3D node and onready variable verified.")
+	
 	# ---------------------------------------------------------
 	# PART 2: Animated Visuals, AnimationPlayer & AnimationTree
 	# ---------------------------------------------------------
@@ -456,6 +467,30 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("LevelTemplate Enemy HealthComponent confirmed with 40 max health.")
+
+	var nav_region: NavigationRegion3D = level.get_node_or_null("NavigationRegion3D") as NavigationRegion3D
+	if nav_region == null:
+		printerr("TEST FAILED: NavigationRegion3D node not found in LevelTemplate.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if nav_region.navigation_mesh == null:
+		printerr("TEST FAILED: NavigationRegion3D navigation_mesh is null.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if nav_region.navigation_mesh.geometry_parsed_geometry_type != NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS:
+		printerr("TEST FAILED: NavigationMesh parsed_geometry_type is not Static Colliders.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if nav_region.navigation_mesh.get_polygon_count() == 0 or nav_region.navigation_mesh.get_vertices().is_empty():
+		printerr("TEST FAILED: NavigationMesh has no baked polygons or vertices.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("LevelTemplate NavigationRegion3D & NavigationMesh (Static Colliders, ", nav_region.navigation_mesh.get_polygon_count(), " polygons) verified.")
+
 	level.queue_free()
 	await get_tree().physics_frame
 	await get_tree().process_frame
@@ -775,6 +810,28 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 
+	# ---------------------------------------------------------
+	# PART 10: Navigation Map Random Point & Enemy Positioning
+	# ---------------------------------------------------------
+	print("\n>>> PART 10: Navigation Map Random Point & Enemy Positioning")
+	var nav_level: Node3D = level_scene.instantiate() as Node3D
+	add_child(nav_level)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	var map_rid: RID = nav_level.get_world_3d().navigation_map
+	var random_point: Vector3 = NavigationServer3D.map_get_random_point(map_rid, 1, true)
+	if not random_point.is_finite():
+		printerr("TEST FAILED: NavigationServer3D map_get_random_point returned non-finite point: ", random_point)
+		nav_level.queue_free()
+		get_tree().quit(1)
+		return
+	print("NavigationServer3D map_get_random_point returned valid point: ", random_point)
+
+	nav_level.queue_free()
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
@@ -793,6 +850,8 @@ func _ready() -> void:
 	print("  14. Mesh mount export & Player group lookup verified              ")
 	print("  15. look_at_player model-front aiming verified                    ")
 	print("  16. Projectile lifetime Timer, collision cleanup & damage verified")
+	print("  17. NavigationAgent3D & LevelTemplate NavigationMesh (Baked) ok   ")
+	print("  18. NavigationServer3D map_get_random_point verified              ")
 	print("====================================================================")
 	
 	get_tree().quit(0)

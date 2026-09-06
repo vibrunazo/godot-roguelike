@@ -16,7 +16,8 @@ func _ready() -> void:
 	var initial_health: float = health_comp.current_health
 	print("Dummy initial health: ", initial_health)
 	
-	# Wait for player to settle on floor in PlayerRun
+	# Wait for initial spawn/navigation repositioning timer (1.0s) to settle, then for player to land on floor
+	await get_tree().create_timer(1.1).timeout
 	for i: int in range(120):
 		await get_tree().physics_frame
 		if player.is_on_floor() and sm.state.name == "PlayerRun":
@@ -33,8 +34,10 @@ func _ready() -> void:
 	var target: Transform3D = player.player_root.global_transform.looking_at(player.player_root.global_position + dir, Vector3.UP, true)
 	player.player_root.global_transform = target
 	
-	await get_tree().physics_frame
-	await get_tree().physics_frame
+	for i: int in range(60):
+		await get_tree().physics_frame
+		if player.is_on_floor() and sm.state.name == "PlayerRun":
+			break
 	
 	# =========================================================================
 	# PART 1: FULL 3-HIT COMBO & DAMAGE SCALING (Slash -> Stab -> Spin)

@@ -16,7 +16,8 @@ func _ready() -> void:
 	var initial_health: float = health_comp.current_health
 	print("Dummy initial health: ", initial_health)
 	
-	# Wait for player to settle in PlayerRun on floor
+	# Wait for initial spawn/navigation repositioning timer (1.0s) to settle, then for player to land on floor
+	await get_tree().create_timer(1.1).timeout
 	for i: int in range(120):
 		await get_tree().physics_frame
 		if player.is_on_floor() and sm.state.name == "PlayerRun":
@@ -77,6 +78,14 @@ func _ready() -> void:
 		
 	# === ATTACK 2 ===
 	print("\n--- Triggering Attack 2 (Testing repeat attack & exception reset) ---")
+	# Re-align player facing dummy in case dummy was repositioned (e.g. by navigation spawn)
+	player.global_position = Vector3(dummy.global_position.x, dummy.global_position.y, dummy.global_position.z - 1.3)
+	player.player_root.global_transform = player.player_root.global_transform.looking_at(player.player_root.global_position + dir, Vector3.UP, true)
+	for i: int in range(60):
+		await get_tree().physics_frame
+		if player.is_on_floor() and sm.state.name == "PlayerRun":
+			break
+
 	var ev2 := InputEventAction.new()
 	ev2.action = "click"
 	ev2.pressed = true
