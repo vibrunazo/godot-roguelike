@@ -552,13 +552,6 @@ func _ready() -> void:
 		return
 	print("EnemyWait.next_state -> EnemyAttack verified.")
 	
-	if ranged_attack.next_state != ranged_wait:
-		printerr("TEST FAILED: EnemyAttack.next_state does not point to EnemyWait. Got: ", ranged_attack.next_state)
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("EnemyAttack.next_state -> EnemyWait verified.")
-	
 	# Verify EnemyMeander node and initial state
 	var ranged_meander: EnemyMeander = ranged_enemy.get_node_or_null("StateMachine/EnemyMeander") as EnemyMeander
 	if ranged_meander == null:
@@ -574,6 +567,27 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("EnemyMeander.enemy reference verified.")
+	
+	if ranged_meander.attack_state != ranged_attack:
+		printerr("TEST FAILED: EnemyMeander.attack_state does not point to EnemyAttack. Got: ", ranged_meander.attack_state)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyMeander.attack_state -> EnemyAttack verified.")
+	
+	if not is_equal_approx(ranged_meander.attack_range, 4.0):
+		printerr("TEST FAILED: EnemyMeander.attack_range expected 4.0, got: ", ranged_meander.attack_range)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyMeander.attack_range (4.0) verified.")
+	
+	if ranged_attack.next_state.size() != 2 or not ranged_attack.next_state.has(ranged_wait) or not ranged_attack.next_state.has(ranged_meander):
+		printerr("TEST FAILED: EnemyAttack.next_state array is improper: ", ranged_attack.next_state)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyAttack.next_state array [EnemyWait, EnemyMeander] verified.")
 	
 	if not ranged_enemy.navigation_agent_3d.debug_enabled:
 		printerr("TEST FAILED: RangedEnemy NavigationAgent3D.debug_enabled is false.")
@@ -598,20 +612,45 @@ func _ready() -> void:
 		return
 	print("EnemyMeander enter() set blend_target = 1.0 verified.")
 	
-	# Verify EnemyMeander physics_update runs without errors
-	ranged_meander.physics_update(0.016)
-	print("EnemyMeander physics_update verified.")
-	
-	# Transition to EnemyWait to verify wait-attack cycle
-	ranged_sm.state.finished.emit("EnemyWait")
-	await get_tree().process_frame
-	if ranged_sm.state != ranged_wait:
-		printerr("TEST FAILED: Transition from EnemyMeander to EnemyWait failed. Got: ", ranged_sm.state.name)
+	# Verify distance_to_player() calculation and attack transition
+	var test_player_inst: Player = load("res://Player/player.tscn").instantiate() as Player
+	test_player_inst.add_to_group("player")
+	add_child(test_player_inst)
+	ranged_enemy.player = test_player_inst
+	ranged_enemy.global_position = Vector3(0, 0, 0)
+	test_player_inst.global_position = Vector3(3, 0, 0)
+	if not is_equal_approx(ranged_enemy.distance_to_player(), 3.0):
+		printerr("TEST FAILED: distance_to_player() expected 3.0, got: ", ranged_enemy.distance_to_player())
+		test_player_inst.queue_free()
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("Transition to EnemyWait verified.")
+	print("distance_to_player() verified.")
 	
+	# Proximity check triggers transition to EnemyAttack
+	ranged_meander.physics_update(0.016)
+	await get_tree().process_frame
+	if ranged_sm.state != ranged_attack:
+		printerr("TEST FAILED: EnemyMeander did not transition to EnemyAttack when distance <= attack_range. Got: ", ranged_sm.state.name)
+		test_player_inst.queue_free()
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyMeander proximity attack trigger verified.")
+	test_player_inst.queue_free()
+	
+	# Verify EnemyAttack transitions back randomly to EnemyWait or EnemyMeander via end_attack
+	ranged_attack.end_attack("RangedAttack")
+	await get_tree().process_frame
+	if ranged_sm.state != ranged_wait and ranged_sm.state != ranged_meander:
+		printerr("TEST FAILED: end_attack() did not transition RangedEnemy to EnemyWait or EnemyMeander. Got: ", ranged_sm.state.name)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("RangedEnemy transitioned to random next state (", ranged_sm.state.name, ") successfully via end_attack()!")
+	
+	# Verify EnemyWait transitions to EnemyAttack via end_wait
+	ranged_sm.state = ranged_wait
 	ranged_wait.end_wait()
 	await get_tree().process_frame
 	if ranged_sm.state != ranged_attack:
@@ -620,16 +659,6 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("RangedEnemy transitioned to EnemyAttack successfully via end_wait()!")
-	
-	# Verify EnemyAttack transitions back to EnemyWait via end_attack
-	ranged_attack.end_attack("RangedAttack")
-	await get_tree().process_frame
-	if ranged_sm.state != ranged_wait:
-		printerr("TEST FAILED: end_attack() did not transition RangedEnemy to EnemyWait. Got: ", ranged_sm.state.name)
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("RangedEnemy transitioned back to EnemyWait successfully via end_attack()!")
 	
 	ranged_enemy.queue_free()
 	await get_tree().physics_frame

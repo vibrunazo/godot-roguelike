@@ -1,6 +1,11 @@
 class_name EnemyMeander
 extends EnemyState
 
+## State to transition to when target reached or player in range.
+@export var attack_state: EnemyState
+## Distance to player in meters at which the enemy will transition to attacking.
+@export var attack_range: float = 4.0
+
 
 func enter(_previous_state_path: String, _data := {}) -> void:
 	enemy.animation_tree.change_immediate("WalkSpace")
@@ -14,9 +19,14 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 
 
 func physics_update(_delta: float) -> void:
+	if enemy.navigation_agent_3d.is_target_reached() or enemy.distance_to_player() <= attack_range:
+		look_at_player()
+		if attack_state:
+			finished.emit(attack_state.name)
+		return
 	var destination: Vector3 = enemy.navigation_agent_3d.get_next_path_position()
 	var local_direction: Vector3 = destination - enemy.global_position
 	var direction: Vector3 = local_direction.normalized()
-	core_movement(4.0, direction)
+	core_movement(enemy.base_speed, direction)
 	look_at_target(destination)
 	enemy.move_and_slide()

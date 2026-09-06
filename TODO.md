@@ -73,3 +73,30 @@ This document tracks architectural improvements, optimizations, and technical de
   - This leads to potential disconnection warnings or unnecessary boilerplate guards across states.
 - **Refactoring Options**:
   - Establish a uniform, clean signal lifecycle pattern across all state machines (either rely consistently on `CONNECT_ONE_SHOT` with safe cleanup helpers, or manage connection lifetime cleanly in `enter()` / `exit()`).
+
+---
+
+## 7. Distance-to-Player Calculation (Distance Squared Optimization)
+- **Problem**:
+  - In `Enemy.distance_to_player()` and `EnemyMeander.physics_update()`, proximity checks use `global_position.distance_to(player.global_position) <= attack_range`.
+  - `distance_to()` performs a square root operation ($\sqrt{\Delta x^2 + \Delta y^2 + \Delta z^2}$) on every physics tick for each active enemy.
+  - As enemy density increases, running repeated square root calculations in GDScript every tick incurs unnecessary CPU overhead.
+- **Refactoring Options**:
+  - Switch to `distance_squared_to()`:
+    ```gdscript
+    func distance_squared_to_player() -> float:
+        if not is_instance_valid(player):
+            return INF
+        return global_position.distance_squared_to(player.global_position)
+    ```
+  - In `EnemyMeander`, compare against a cached squared threshold:
+    ```gdscript
+    @export var attack_range: float = 4.0
+    var attack_range_squared: float:
+        get:
+            return attack_range * attack_range
+
+    # In physics_update():
+    if enemy.navigation_agent_3d.is_target_reached() or enemy.distance_squared_to_player() <= attack_range_squared:
+    ```
+  - This eliminates the square root calculation completely with zero impact on proximity detection accuracy.

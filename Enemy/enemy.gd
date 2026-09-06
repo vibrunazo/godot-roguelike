@@ -34,3 +34,10 @@ func _on_health_component_health_changed(_value: float) -> void:
 func _on_health_component_defeat() -> void:
 	state_machine.state.finished.emit(defeat_state.name)
 	collision_shape_3d.set_deferred("disabled", true)
+
+
+## Returns the distance to the player in meters, or INF if no player exists.
+func distance_to_player() -> float:
+	if not is_instance_valid(player):
+		return INF
+	return global_position.distance_to(player.global_position)

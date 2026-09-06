@@ -4,8 +4,8 @@ extends EnemyState
 
 ## Name of the attack animation in the AnimationTree.
 @export var attack_name: String
-## State to transition to after the attack animation finishes.
-@export var next_state: EnemyState
+## Potential states to transition to randomly after the attack animation finishes.
+@export var next_state: Array[EnemyState]
 
 
 func physics_update(_delta: float) -> void:
@@ -25,5 +25,7 @@ func exit() -> void:
 
 
 func end_attack(_animation_name: String) -> void:
-	if next_state:
-		finished.emit(next_state.name)
+	if not next_state.is_empty():
+		var random_state: EnemyState = next_state.pick_random()
+		if random_state:
+			finished.emit(random_state.name)

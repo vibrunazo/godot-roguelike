@@ -18,11 +18,12 @@ next_state = NodePath("../EnemyAttack")
 [node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="3" unique_id=539557262 node_paths=PackedStringArray("next_state", "enemy")]
 script = ExtResource("2_cnthi")
 attack_name = "RangedAttack"
-next_state = NodePath("../EnemyWait")
+next_state = [NodePath("../EnemyWait"), NodePath("../EnemyMeander")]
 enemy = NodePath("../..")
 
-[node name="EnemyMeander" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=856220418 node_paths=PackedStringArray("enemy")]
+[node name="EnemyMeander" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=856220418 node_paths=PackedStringArray("attack_state", "enemy")]
 script = ExtResource("4_vj72k")
+attack_state = NodePath("../EnemyAttack")
 enemy = NodePath("../..")
 
 [node name="NavigationAgent3D" parent="." parent_id_path=PackedInt32Array(2117139762) index="6" unique_id=2019475689]
