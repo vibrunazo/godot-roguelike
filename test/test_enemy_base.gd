@@ -1,5 +1,7 @@
 extends Node
 
+const TestUtils = preload("res://test/test_utils.gd")
+
 func _ready() -> void:
 	print("--- RUNNING BASE ENEMY SCENE & LOGIC TEST ---")
 	
@@ -433,9 +435,9 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
-	var level_enemy: Enemy = level.get_node_or_null("Enemy") as Enemy
+	var level_enemy: Enemy = TestUtils.find_enemy(level)
 	if level_enemy == null:
-		printerr("TEST FAILED: Enemy instance not found in LevelTemplate scene.")
+		printerr("TEST FAILED: No Enemy subclass instance found in LevelTemplate scene.")
 		level.queue_free()
 		get_tree().quit(1)
 		return
@@ -493,6 +495,56 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("EnemyAttack.enemy reference verified.")
+	
+	var ranged_wait: EnemyWait = ranged_enemy.get_node_or_null("StateMachine/EnemyWait") as EnemyWait
+	if ranged_wait == null:
+		printerr("TEST FAILED: EnemyWait node missing under RangedEnemy StateMachine.")
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyWait node verified under RangedEnemy StateMachine.")
+	
+	if ranged_wait.next_state != ranged_attack:
+		printerr("TEST FAILED: EnemyWait.next_state does not point to EnemyAttack. Got: ", ranged_wait.next_state)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyWait.next_state -> EnemyAttack verified.")
+	
+	if ranged_attack.next_state != ranged_wait:
+		printerr("TEST FAILED: EnemyAttack.next_state does not point to EnemyWait. Got: ", ranged_attack.next_state)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyAttack.next_state -> EnemyWait verified.")
+	
+	# Verify StateMachine transitions from EnemyWait to EnemyAttack via end_wait
+	var ranged_sm: StateMachine = ranged_enemy.get_node_or_null("StateMachine") as StateMachine
+	if ranged_sm.state != ranged_wait:
+		printerr("TEST FAILED: RangedEnemy initial state is not EnemyWait. Got: ", ranged_sm.state.name)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("RangedEnemy initially in EnemyWait state.")
+	
+	ranged_wait.end_wait()
+	await get_tree().process_frame
+	if ranged_sm.state != ranged_attack:
+		printerr("TEST FAILED: end_wait() did not transition RangedEnemy to EnemyAttack. Got: ", ranged_sm.state.name)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("RangedEnemy transitioned to EnemyAttack successfully via end_wait()!")
+	
+	# Verify EnemyAttack transitions back to EnemyWait via end_attack
+	ranged_attack.end_attack("RangedAttack")
+	await get_tree().process_frame
+	if ranged_sm.state != ranged_wait:
+		printerr("TEST FAILED: end_attack() did not transition RangedEnemy to EnemyWait. Got: ", ranged_sm.state.name)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("RangedEnemy transitioned back to EnemyWait successfully via end_attack()!")
 	
 	ranged_enemy.queue_free()
 	await get_tree().physics_frame

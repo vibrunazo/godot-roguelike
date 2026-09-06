@@ -5,9 +5,13 @@
 
 [node name="RangedEnemy" unique_id=2117139762 instance=ExtResource("1_6jo5i")]
 
-[node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="3" unique_id=539557262 node_paths=PackedStringArray("enemy")]
+[node name="EnemyWait" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="0" unique_id=314606292 node_paths=PackedStringArray("next_state")]
+next_state = NodePath("../EnemyAttack")
+
+[node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="3" unique_id=539557262 node_paths=PackedStringArray("next_state", "enemy")]
 script = ExtResource("2_cnthi")
 attack_name = "RangedAttack"
+next_state = NodePath("../EnemyWait")
 enemy = NodePath("../..")
 
 [editable path="AnimationAnchor/AnimatedEnemy"]

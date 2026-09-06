@@ -1,5 +1,7 @@
 extends Node
 
+const TestUtils = preload("res://test/test_utils.gd")
+
 func _ready() -> void:
 	print("--- RUNNING HEALTH BAR TEST ---")
 	
@@ -192,7 +194,7 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
-	var dummy: CollisionObject3D = (level.get_node_or_null("Enemy") if level.has_node("Enemy") else level.get_node_or_null("StaticBody3D")) as CollisionObject3D
+	var dummy: CollisionObject3D = TestUtils.find_dummy(level)
 	var dummy_health: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var dummy_health_bar: HealthBar = dummy.get_node_or_null("HealthBar") as HealthBar
 	

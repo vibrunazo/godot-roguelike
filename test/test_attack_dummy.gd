@@ -1,5 +1,7 @@
 extends Node
 
+const TestUtils = preload("res://test/test_utils.gd")
+
 func _ready() -> void:
 	print("--- RUNNING ATTACK DUMMY TEST ---")
 	var level_scene: PackedScene = load("res://Levels/LevelTemplate.tscn")
@@ -7,7 +9,7 @@ func _ready() -> void:
 	add_child(level)
 	
 	var player: Player = level.get_node("Player") as Player
-	var dummy: CollisionObject3D = (level.get_node_or_null("Enemy") if level.has_node("Enemy") else level.get_node_or_null("StaticBody3D")) as CollisionObject3D
+	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
 	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
 	
