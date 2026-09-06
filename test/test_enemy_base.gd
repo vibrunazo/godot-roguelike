@@ -96,20 +96,39 @@ func _ready() -> void:
 		printerr("TEST FAILED: State 'EnemyAnimations_Spawn_Ground' not found in AnimationTree.")
 		get_tree().quit(1)
 		return
-	if not sm.has_node(&"MoveSpace"):
-		printerr("TEST FAILED: State 'MoveSpace' not found in AnimationTree.")
+	if not sm.has_node(&"WalkSpace"):
+		printerr("TEST FAILED: State 'WalkSpace' not found in AnimationTree.")
 		get_tree().quit(1)
 		return
 	if not sm.has_node(&"EnemyAnimations_Hit_A"):
 		printerr("TEST FAILED: State 'EnemyAnimations_Hit_A' not found in AnimationTree.")
 		get_tree().quit(1)
 		return
-	var move_space: AnimationNodeBlendSpace1D = sm.get_node(&"MoveSpace") as AnimationNodeBlendSpace1D
-	if move_space == null:
-		printerr("TEST FAILED: MoveSpace is not an AnimationNodeBlendSpace1D.")
+	var walk_space: AnimationNodeBlendSpace1D = sm.get_node(&"WalkSpace") as AnimationNodeBlendSpace1D
+	if walk_space == null:
+		printerr("TEST FAILED: WalkSpace is not an AnimationNodeBlendSpace1D.")
 		get_tree().quit(1)
 		return
-	print("AnimationTree state machine and MoveSpace blend space verified.")
+	print("AnimationTree state machine and WalkSpace blend space verified.")
+	
+	var anim_script: Script = anim_tree.get_script() as Script
+	if anim_script == null or anim_script.resource_path != "res://Player/mannequin_animation_tree.gd":
+		printerr("TEST FAILED: AnimationTree does not have mannequin_animation_tree.gd attached.")
+		get_tree().quit(1)
+		return
+	print("AnimationTree mannequin_animation_tree.gd script verified.")
+	
+	if enemy.animation_tree != anim_tree:
+		printerr("TEST FAILED: Enemy.animation_tree does not point to Enemy_Medium/AnimationTree.")
+		get_tree().quit(1)
+		return
+	print("Enemy.animation_tree onready variable verified.")
+	
+	if not is_equal_approx(enemy.base_speed, 3.5):
+		printerr("TEST FAILED: Expected Enemy.base_speed == 3.5, got: ", enemy.base_speed)
+		get_tree().quit(1)
+		return
+	print("Enemy.base_speed (3.5) verified.")
 	
 	var col_shape: CollisionShape3D = enemy.get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if col_shape == null:
@@ -203,9 +222,72 @@ func _ready() -> void:
 	print("HealthComponent defeat signal emitted successfully.")
 	
 	# ---------------------------------------------------------
-	# PART 5: LevelTemplate Instantiation Verification
+	# PART 5: StateMachine, EnemyWait & Movement Verification
 	# ---------------------------------------------------------
-	print("\n>>> PART 5: LevelTemplate Enemy Placement Verification")
+	print("\n>>> PART 5: StateMachine & EnemyWait State Verification")
+	var state_machine: StateMachine = enemy.get_node_or_null("StateMachine") as StateMachine
+	if state_machine == null:
+		printerr("TEST FAILED: StateMachine node not found on Enemy.")
+		get_tree().quit(1)
+		return
+	print("StateMachine node found.")
+
+	var enemy_wait: EnemyWait = state_machine.get_node_or_null("EnemyWait") as EnemyWait
+	if enemy_wait == null:
+		printerr("TEST FAILED: EnemyWait node not found under StateMachine.")
+		get_tree().quit(1)
+		return
+	print("EnemyWait node found.")
+
+	if state_machine.initial_state != enemy_wait:
+		printerr("TEST FAILED: StateMachine initial_state is not EnemyWait.")
+		get_tree().quit(1)
+		return
+	print("StateMachine initial_state is EnemyWait.")
+
+	if state_machine.state != enemy_wait:
+		printerr("TEST FAILED: Current state is not EnemyWait.")
+		get_tree().quit(1)
+		return
+	print("StateMachine current state is EnemyWait.")
+
+	if enemy_wait.enemy != enemy:
+		printerr("TEST FAILED: EnemyWait.enemy is not wired to Enemy.")
+		get_tree().quit(1)
+		return
+	print("EnemyWait.enemy reference verified.")
+
+	# Verify EnemyWait.enter sets WalkSpace and blend_target = -1.0
+	enemy_wait.enter("")
+	var anim_tree_script_inst: Object = anim_tree
+	var blend_target_val: Variant = anim_tree_script_inst.get("blend_target")
+	if blend_target_val == null or not is_equal_approx(float(blend_target_val), -1.0):
+		printerr("TEST FAILED: blend_target was not set to -1.0 on enter. Got: ", blend_target_val)
+		get_tree().quit(1)
+		return
+	print("EnemyWait.enter() verified (blend_target = -1.0).")
+
+	# Test core_movement with direction
+	var move_dir := Vector3(1.0, 0.0, 0.0)
+	enemy_wait.core_movement(enemy.base_speed, move_dir)
+	if not is_equal_approx(enemy.velocity.x, enemy.base_speed) or not is_equal_approx(enemy.velocity.z, 0.0):
+		printerr("TEST FAILED: core_movement did not set velocity correctly with direction.")
+		get_tree().quit(1)
+		return
+	print("core_movement with direction verified.")
+
+	# Test core_movement deceleration with ZERO direction
+	enemy_wait.core_movement(enemy.base_speed, Vector3.ZERO)
+	if not is_equal_approx(enemy.velocity.x, 0.0):
+		printerr("TEST FAILED: core_movement did not decelerate velocity to 0.")
+		get_tree().quit(1)
+		return
+	print("core_movement deceleration with Vector3.ZERO verified.")
+	
+	# ---------------------------------------------------------
+	# PART 6: LevelTemplate Instantiation Verification
+	# ---------------------------------------------------------
+	print("\n>>> PART 6: LevelTemplate Enemy Placement Verification")
 	enemy.queue_free()
 	await get_tree().physics_frame
 	await get_tree().process_frame
@@ -239,7 +321,8 @@ func _ready() -> void:
 	print("  3. Collision layers 1 & 2 active (collision_layer = 3)            ")
 	print("  4. HealthComponent (40 max health) & HealthBar wired              ")
 	print("  5. HitAudio stream & SFX bus verified, plays on damage            ")
-	print("  6. LevelTemplate enemy replacement confirmed                      ")
+	print("  6. StateMachine & EnemyWait wired & core_movement verified        ")
+	print("  7. LevelTemplate enemy replacement confirmed                      ")
 	print("====================================================================")
 	
 	level.queue_free()

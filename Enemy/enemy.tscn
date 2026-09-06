@@ -5,6 +5,8 @@
 [ext_resource type="PackedScene" uid="uid://bwo2c4dl16ces" path="res://Components/health_bar.tscn" id="2_am0pq"]
 [ext_resource type="PackedScene" uid="uid://b7usbbh1tfnjv" path="res://Enemy/animated_enemy.tscn" id="2_ncf7h"]
 [ext_resource type="AudioStream" uid="uid://bhd6x8sglgt14" path="res://Assets/Audio/hit.ogg" id="3_am0pq"]
+[ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/StateMachine.gd" id="6_m6jha"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyWait.gd" id="7_glvfu"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
 
@@ -33,3 +35,14 @@ health_color = Color(0.8901961, 0.2901961, 0.25882354, 1)
 [node name="HitAudio" type="AudioStreamPlayer3D" parent="." unique_id=1636824264]
 stream = ExtResource("3_am0pq")
 bus = &"SFX"
+
+[node name="StateMachine" type="Node" parent="." unique_id=1352967922 node_paths=PackedStringArray("initial_state")]
+script = ExtResource("6_m6jha")
+initial_state = NodePath("EnemyWait")
+
+[node name="EnemyWait" type="Node" parent="StateMachine" unique_id=314606292 node_paths=PackedStringArray("enemy")]
+script = ExtResource("7_glvfu")
+enemy = NodePath("../..")
+
+[editable path="AnimationAnchor/AnimatedEnemy"]
+[editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]
