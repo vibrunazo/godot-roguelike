@@ -5,15 +5,22 @@
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Idle_A.res" id="3_ipeb3"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Running_B.res" id="4_lxq1s"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Spawn_Ground.res" id="5_qbo8f"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Death_A.res" id="4_qbo8f"]
+[ext_resource type="Script" path="res://Player/weapon_slot.gd" id="2_lxq1s"]
+[ext_resource type="Script" path="res://Player/foot_bone.gd" id="3_qbo8f"]
 [ext_resource type="Script" path="res://Player/mannequin_animation_tree.gd" id="6_b6t3m"]
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_pje6n"]
 _data = {
+&"Death_A": ExtResource("4_qbo8f"),
 &"Hit_A": ExtResource("2_b6t3m"),
 &"Idle_A": ExtResource("3_ipeb3"),
 &"Running_B": ExtResource("4_lxq1s"),
 &"Spawn_Ground": ExtResource("5_qbo8f")
 }
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_pje6n"]
+animation = &"EnemyAnimations/Death_A"
 
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_nqs35"]
 animation = &"EnemyAnimations/Hit_A"
@@ -45,19 +52,40 @@ xfade_time = 0.2
 switch_mode = 2
 advance_mode = 2
 
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_nqs35"]
+
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_m75i3"]
-states/EnemyAnimations_Hit_A/node = SubResource("AnimationNodeAnimation_nqs35")
-states/EnemyAnimations_Hit_A/position = Vector2(800, 183.77779)
+states/Defeat/node = SubResource("AnimationNodeAnimation_pje6n")
+states/Defeat/position = Vector2(800.44446, 32.666664)
 states/EnemyAnimations_Spawn_Ground/node = SubResource("AnimationNodeAnimation_8wj31")
 states/EnemyAnimations_Spawn_Ground/position = Vector2(388, 185.33334)
+states/Stun/node = SubResource("AnimationNodeAnimation_nqs35")
+states/Stun/position = Vector2(800, 183.77779)
 states/WalkSpace/node = SubResource("AnimationNodeBlendSpace1D_phjxc")
 states/WalkSpace/position = Vector2(595.3333, 100.666664)
-transitions = ["EnemyAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_7e68y"), "WalkSpace", "EnemyAnimations_Hit_A", SubResource("AnimationNodeStateMachineTransition_nxi5q"), "EnemyAnimations_Hit_A", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_tlxba")]
-graph_offset = Vector2(262, 48)
+transitions = ["EnemyAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_7e68y"), "WalkSpace", "Stun", SubResource("AnimationNodeStateMachineTransition_nxi5q"), "Stun", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_tlxba"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_nqs35")]
+graph_offset = Vector2(402, -20)
 
 [node name="AnimatedEnemy" type="Node3D" unique_id=1495277970]
 
 [node name="Enemy_Medium" parent="." unique_id=1921158861 instance=ExtResource("1_g45cs")]
+
+[node name="WeaponSlot" type="BoneAttachment3D" parent="Enemy_Medium/Rig_Medium/Skeleton3D" index="6" unique_id=211580224]
+bone_name = "hand.r"
+bone_idx = 12
+script = ExtResource("2_lxq1s")
+attack_mode = 1
+vfx_threshold = 1.0
+
+[node name="RightFootBone" type="BoneAttachment3D" parent="Enemy_Medium/Rig_Medium/Skeleton3D" index="7" unique_id=1694837124]
+bone_name = "foot.r"
+bone_idx = 21
+script = ExtResource("3_qbo8f")
+
+[node name="LeftFootBone" type="BoneAttachment3D" parent="Enemy_Medium/Rig_Medium/Skeleton3D" index="8" unique_id=1147941419]
+bone_name = "foot.l"
+bone_idx = 17
+script = ExtResource("3_qbo8f")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="Enemy_Medium" unique_id=1301382202]
 libraries/EnemyAnimations = SubResource("AnimationLibrary_pje6n")

@@ -7,12 +7,16 @@
 [ext_resource type="AudioStream" uid="uid://bhd6x8sglgt14" path="res://Assets/Audio/hit.ogg" id="3_am0pq"]
 [ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/StateMachine.gd" id="6_m6jha"]
 [ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyWait.gd" id="7_glvfu"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyStun.gd" id="8_0rspp"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyDefeat.gd" id="9_efk13"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
 
-[node name="Enemy" type="CharacterBody3D" unique_id=2117139762]
+[node name="Enemy" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("stun_state", "defeat_state")]
 collision_layer = 3
 script = ExtResource("1_eqilm")
+stun_state = NodePath("StateMachine/EnemyStun")
+defeat_state = NodePath("StateMachine/EnemyDefeat")
 
 [node name="AnimationAnchor" type="Node3D" parent="." unique_id=930518751]
 
@@ -43,6 +47,18 @@ initial_state = NodePath("EnemyWait")
 [node name="EnemyWait" type="Node" parent="StateMachine" unique_id=314606292 node_paths=PackedStringArray("enemy")]
 script = ExtResource("7_glvfu")
 enemy = NodePath("../..")
+
+[node name="EnemyStun" type="Node" parent="StateMachine" unique_id=1916096534 node_paths=PackedStringArray("next_state", "enemy")]
+script = ExtResource("8_0rspp")
+next_state = NodePath("../EnemyWait")
+enemy = NodePath("../..")
+
+[node name="EnemyDefeat" type="Node" parent="StateMachine" unique_id=1282022813 node_paths=PackedStringArray("enemy")]
+script = ExtResource("9_efk13")
+enemy = NodePath("../..")
+
+[connection signal="defeat" from="HealthComponent" to="." method="_on_health_component_defeat"]
+[connection signal="health_changed" from="HealthComponent" to="." method="_on_health_component_health_changed"]
 
 [editable path="AnimationAnchor/AnimatedEnemy"]
 [editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]
