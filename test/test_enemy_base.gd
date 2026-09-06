@@ -96,12 +96,12 @@ func _ready() -> void:
 		printerr("TEST FAILED: AnimationLibrary 'EnemyAnimations' missing on AnimationPlayer.")
 		get_tree().quit(1)
 		return
-	for anim_name: String in ["Death_A", "Hit_A", "Idle_A", "Running_B", "Spawn_Ground"]:
+	for anim_name: String in ["Death_A", "Hit_A", "Idle_A", "Melee_1H_Attack_Slice_Diagonal", "Running_B", "Spawn_Ground"]:
 		if not anim_player.has_animation("EnemyAnimations/" + anim_name):
 			printerr("TEST FAILED: Animation '", anim_name, "' missing in EnemyAnimations library.")
 			get_tree().quit(1)
 			return
-	print("AnimationPlayer & EnemyAnimations library verified (Death_A, Hit_A, Idle_A, Running_B, Spawn_Ground).")
+	print("AnimationPlayer & EnemyAnimations library verified (Death_A, Hit_A, Idle_A, Melee_1H_Attack_Slice_Diagonal, Running_B, Spawn_Ground).")
 	
 	var anim_tree: AnimationTree = animated_enemy.get_node_or_null("Enemy_Medium/AnimationTree") as AnimationTree
 	if anim_tree == null:
@@ -129,12 +129,16 @@ func _ready() -> void:
 		printerr("TEST FAILED: State 'Defeat' not found in AnimationTree.")
 		get_tree().quit(1)
 		return
+	if not sm.has_node(&"RangedAttack"):
+		printerr("TEST FAILED: State 'RangedAttack' not found in AnimationTree.")
+		get_tree().quit(1)
+		return
 	var walk_space: AnimationNodeBlendSpace1D = sm.get_node(&"WalkSpace") as AnimationNodeBlendSpace1D
 	if walk_space == null:
 		printerr("TEST FAILED: WalkSpace is not an AnimationNodeBlendSpace1D.")
 		get_tree().quit(1)
 		return
-	print("AnimationTree state machine, WalkSpace blend space, Stun, and Defeat states verified.")
+	print("AnimationTree state machine, WalkSpace blend space, Stun, Defeat, and RangedAttack states verified.")
 	
 	var anim_script: Script = anim_tree.get_script() as Script
 	if anim_script == null or anim_script.resource_path != "res://Player/mannequin_animation_tree.gd":
@@ -407,6 +411,14 @@ func _ready() -> void:
 		return
 	print("Enemy properly remains in EnemyDefeat state after animation finished.")
 	
+	# Verify collision_shape_3d is disabled after defeat
+	await get_tree().physics_frame
+	if not enemy.collision_shape_3d.disabled:
+		printerr("TEST FAILED: Enemy collision_shape_3d was not disabled on defeat.")
+		get_tree().quit(1)
+		return
+	print("Enemy collision_shape_3d disabled on defeat verified!")
+	
 	# ---------------------------------------------------------
 	# PART 6: LevelTemplate Instantiation Verification
 	# ---------------------------------------------------------
@@ -436,9 +448,58 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("LevelTemplate Enemy HealthComponent confirmed with 40 max health.")
+	level.queue_free()
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	
+	# ---------------------------------------------------------
+	# PART 7: RangedEnemy Scene Verification
+	# ---------------------------------------------------------
+	print("\n>>> PART 7: RangedEnemy Scene & State Verification")
+	var ranged_scene: PackedScene = load("res://Enemy/ranged_enemy.tscn")
+	if ranged_scene == null:
+		printerr("TEST FAILED: Could not load res://Enemy/ranged_enemy.tscn")
+		get_tree().quit(1)
+		return
+	var ranged_enemy: Enemy = ranged_scene.instantiate() as Enemy
+	if ranged_enemy == null:
+		printerr("TEST FAILED: RangedEnemy is not an instance of Enemy.")
+		get_tree().quit(1)
+		return
+	print("RangedEnemy instance verified as Enemy subclass.")
+	
+	add_child(ranged_enemy)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	
+	var ranged_attack: EnemyAttack = ranged_enemy.get_node_or_null("StateMachine/EnemyAttack") as EnemyAttack
+	if ranged_attack == null:
+		printerr("TEST FAILED: EnemyAttack node missing under RangedEnemy StateMachine.")
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyAttack node verified under RangedEnemy StateMachine.")
+	
+	if ranged_attack.attack_name != "RangedAttack":
+		printerr("TEST FAILED: EnemyAttack.attack_name is '", ranged_attack.attack_name, "', expected 'RangedAttack'.")
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyAttack.attack_name verified as 'RangedAttack'.")
+	
+	if ranged_attack.enemy != ranged_enemy:
+		printerr("TEST FAILED: EnemyAttack.enemy does not point to RangedEnemy.")
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyAttack.enemy reference verified.")
+	
+	ranged_enemy.queue_free()
+	await get_tree().physics_frame
+	await get_tree().process_frame
 	
 	print("\n====================================================================")
-	print("  ALL BASE ENEMY TESTS PASSED!                                      ")
+	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
 	print("  2. CapsuleMesh & CapsuleShape3D configured                        ")
 	print("  3. Collision layers 1 & 2 active (collision_layer = 3)            ")
@@ -448,10 +509,9 @@ func _ready() -> void:
 	print("  7. Damage triggers HitAudio & transitions to EnemyStun            ")
 	print("  8. Stun animation_finished returns to EnemyWait                   ")
 	print("  9. Defeat transitions to EnemyDefeat & persists on anim finished   ")
-	print("  10. LevelTemplate enemy replacement confirmed                     ")
+	print("  10. CollisionShape3D deferred disabled on defeat verified         ")
+	print("  11. LevelTemplate enemy replacement confirmed                     ")
+	print("  12. RangedEnemy scene, EnemyAttack state & RangedAttack verified  ")
 	print("====================================================================")
 	
-	level.queue_free()
-	await get_tree().process_frame
-	await get_tree().process_frame
 	get_tree().quit(0)
