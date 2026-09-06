@@ -29,3 +29,40 @@ This document tracks architectural improvements, optimizations, and technical de
 - **Refactoring Options**:
   - Create a unified character base class (or controller/component architecture) shared by both player and enemies.
   - Make state machine movement logic generic or controller-driven so AI controllers and player input controllers plug into the same movement state logic.
+
+---
+
+## 3. `ShakeCamera3D` Idle CPU Optimization
+- **Problem**:
+  - `ShakeCamera3D._physics_process()` executes every single tick regardless of trauma level, continually generating FastNoiseLite noise values and modifying camera offsets even when `trauma == 0.0`.
+- **Refactoring Options**:
+  - Disable physics processing by default via `set_physics_process(false)`.
+  - Enable processing in `add_trauma()` when trauma is applied, and call `set_physics_process(false)` as soon as trauma decays back to `0.0` and offsets are reset.
+
+---
+
+## 4. Data-Driven Attack System (`AttackData` Resources)
+- **Problem**:
+  - Attacks and combos are currently hardcoded with string names (`"SlashAttack"`, `"StabAttack"`, `"SpinAttack"`, `"RangedAttack"`), with combo branches and animation timings embedded directly into individual state scripts and scene nodes.
+- **Refactoring Options**:
+  - Create a custom `AttackData` resource (storing animation state name, damage, knockback, combo window, and audio stream).
+  - Feed attack sequences into a single modular `AttackState` that executes whatever `AttackData` is queued, making it easy to create new weapon types and enemy attack patterns without writing new state scripts.
+
+---
+
+## 5. Rig & Bone Attachment Decoupling
+- **Problem**:
+  - Animated models (`animated_player.tscn` vs `animated_enemy.tscn`) have tightly coupled skeleton bone attachments (`WeaponSlot`, `RightFootBone`, `LeftFootBone`).
+  - Reusing animations across different skeletons caused errors whenever an animation method or transform track referenced an attachment bone that was not yet duplicated into the scene.
+- **Refactoring Options**:
+  - Standardize socket attachments via an automated setup script or a dedicated `EquipmentManager` / `CharacterVisuals` component that programmatically binds attachment bones upon initialization.
+  - Decouple gameplay logic (hitboxes, audio emission) from animation method tracks where possible, using animation events, timers, or explicit state cues.
+
+---
+
+## 6. Signal Lifecycle & Redundant Disconnections in States
+- **Problem**:
+  - Multiple state scripts connect to signals using `ConnectFlags.CONNECT_ONE_SHOT` (e.g., `animation_finished.connect(..., CONNECT_ONE_SHOT)`), but also defensively call `disconnect(...)` in `exit()`.
+  - This leads to potential disconnection warnings or unnecessary boilerplate guards across states.
+- **Refactoring Options**:
+  - Establish a uniform, clean signal lifecycle pattern across all state machines (either rely consistently on `CONNECT_ONE_SHOT` with safe cleanup helpers, or manage connection lifetime cleanly in `enter()` / `exit()`).
