@@ -18,3 +18,11 @@ func _ready() -> void:
 	for enemy: Enemy in all_enemies:
 		tween.tween_interval(1.0)
 		tween.tween_callback(add_child.bind(enemy))
+		enemy.defeat.connect(update_enemies.bind(enemy))
+
+
+func update_enemies(enemy: Enemy) -> void:
+	all_enemies.erase(enemy)
+	if all_enemies.is_empty():
+		finished.emit()
+

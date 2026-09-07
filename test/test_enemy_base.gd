@@ -405,12 +405,20 @@ func _ready() -> void:
 	print("StateMachine returned to EnemyWait after stun animation finished!")
 
 	# Test defeat emission and transition to EnemyDefeat
+	var enemy_defeat_emitted: Array[bool] = [false]
+	if enemy.has_signal("defeat"):
+		enemy.defeat.connect(func() -> void: enemy_defeat_emitted[0] = true)
 	var defeat_emitted: Array[bool] = [false]
 	health_comp.defeat.connect(func() -> void: defeat_emitted[0] = true)
 	health_comp.take_damage(30.0)
 	await get_tree().process_frame
+	if not enemy_defeat_emitted[0]:
+		printerr("TEST FAILED: Enemy defeat signal was not emitted when health reached 0.")
+		get_tree().quit(1)
+		return
+	print("Enemy defeat signal emitted successfully.")
 	if not defeat_emitted[0]:
-		printerr("TEST FAILED: defeat signal was not emitted when health reached 0.")
+		printerr("TEST FAILED: HealthComponent defeat signal was not emitted when health reached 0.")
 		get_tree().quit(1)
 		return
 	print("HealthComponent defeat signal emitted successfully.")
@@ -474,6 +482,43 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("WaveObjective all_enemies size (3) verified.")
+
+	# Verify ExitPoint
+	var exit_point: ExitPoint = level.get_node_or_null("ExitPoint") as ExitPoint
+	if exit_point == null:
+		printerr("TEST FAILED: ExitPoint node not found in LevelTemplate.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("ExitPoint node verified in LevelTemplate.")
+
+	if exit_point.visible:
+		printerr("TEST FAILED: ExitPoint should be invisible initially (_ready visible = false).")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("ExitPoint initially invisible verified.")
+
+	var is_connected_to_unlock := false
+	for conn: Dictionary in wave_obj.finished.get_connections():
+		if conn["callable"].get_object() == exit_point and conn["callable"].get_method() == "unlock":
+			is_connected_to_unlock = true
+			break
+	if not is_connected_to_unlock:
+		printerr("TEST FAILED: WaveObjective.finished is not connected to ExitPoint.unlock().")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("WaveObjective.finished -> ExitPoint.unlock() connection verified.")
+
+	exit_point.unlock()
+	if not exit_point.visible:
+		printerr("TEST FAILED: ExitPoint.unlock() did not set visible = true.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("ExitPoint.unlock() verified.")
+	exit_point.visible = false
 	
 	var level_enemy: Enemy = TestUtils.find_enemy(level)
 	if level_enemy == null:

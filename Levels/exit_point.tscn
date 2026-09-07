@@ -1,0 +1,34 @@
+[gd_scene format=3 uid="uid://dfx801p3nbkl3"]
+
+[ext_resource type="Script" path="res://Levels/exit_point.gd" id="1_vaxgh"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_sdxlw"]
+render_priority = 1
+transparency = 1
+shading_mode = 0
+grow = true
+grow_amount = 0.1
+stencil_mode = 3
+stencil_flags = 1
+stencil_compare = 5
+metadata/_stencil_owned = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_aud5m"]
+next_pass = SubResource("StandardMaterial3D_sdxlw")
+shading_mode = 0
+albedo_color = Color(0, 0, 0, 1)
+stencil_mode = 1
+stencil_flags = 2
+stencil_color = Color(1, 1, 1, 1)
+stencil_outline_thickness = 0.1
+
+[sub_resource type="SphereMesh" id="SphereMesh_dlxbb"]
+material = SubResource("StandardMaterial3D_aud5m")
+radius = 2.0
+height = 2.0
+
+[node name="ExitPoint" type="Node3D" unique_id=71757807]
+script = ExtResource("1_vaxgh")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1948926539]
+mesh = SubResource("SphereMesh_dlxbb")

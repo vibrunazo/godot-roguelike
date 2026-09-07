@@ -2,6 +2,9 @@
 class_name Enemy
 extends CharacterBody3D
 
+## Emitted when this enemy is defeated.
+signal defeat
+
 ## The state entered when the enemy takes damage.
 @export var stun_state: EnemyState
 ## The state entered when the enemy is defeated.
@@ -31,6 +34,7 @@ func _on_health_component_health_changed(_value: float) -> void:
 
 
 func _on_health_component_defeat() -> void:
+	defeat.emit()
 	state_machine.state.finished.emit(defeat_state.name)
 	collision_shape_3d.set_deferred("disabled", true)
 
