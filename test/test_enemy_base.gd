@@ -1249,17 +1249,32 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	print("\n>>> PART 11: UpgradeShop Scene & UI Verification")
+	# Verify GlobalVars upgrade constants and array
+	if GlobalVars.UPGRADE_DAMAGE == null or GlobalVars.UPGRADE_HEALTH == null or GlobalVars.UPGRADE_SPEED == null:
+		printerr("TEST FAILED: GlobalVars upgrade constants missing or null.")
+		get_tree().quit(1)
+		return
+	if GlobalVars.upgrades.size() != 3:
+		printerr("TEST FAILED: GlobalVars.upgrades does not contain 3 upgrades. Size: ", GlobalVars.upgrades.size())
+		get_tree().quit(1)
+		return
+	if not GlobalVars.upgrades.has(GlobalVars.UPGRADE_DAMAGE) or not GlobalVars.upgrades.has(GlobalVars.UPGRADE_HEALTH) or not GlobalVars.upgrades.has(GlobalVars.UPGRADE_SPEED):
+		printerr("TEST FAILED: GlobalVars.upgrades array missing required upgrade packed scenes.")
+		get_tree().quit(1)
+		return
+	print("GlobalVars upgrade constants and upgrades array verified.")
+
 	var shop_scene: PackedScene = load("res://UserInterface/UpgradeShop.tscn") as PackedScene
 	if shop_scene == null:
 		printerr("TEST FAILED: Failed to load res://UserInterface/UpgradeShop.tscn")
 		get_tree().quit(1)
 		return
+
 	var shop: Control = shop_scene.instantiate() as Control
 	if shop == null:
 		printerr("TEST FAILED: UpgradeShop root is not a Control node.")
 		get_tree().quit(1)
 		return
-	add_child(shop)
 
 	var shop_script: Script = shop.get_script() as Script
 	if shop_script == null or shop_script.resource_path != "res://UserInterface/upgrade_shop.gd":
@@ -1268,15 +1283,15 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	var bg_rect: ColorRect = shop.get_node_or_null("ColorRect") as ColorRect
-	if bg_rect == null or not (bg_rect.material is ShaderMaterial):
+	var color_rect: ColorRect = shop.get_node_or_null("ColorRect") as ColorRect
+	if color_rect == null or color_rect.material == null or not (color_rect.material is ShaderMaterial):
 		printerr("TEST FAILED: UpgradeShop ColorRect or ShaderMaterial missing.")
 		shop.queue_free()
 		get_tree().quit(1)
 		return
 
-	var shop_material: ShaderMaterial = bg_rect.material as ShaderMaterial
-	if shop_material.shader == null or shop_material.get_shader_parameter("NoiseTexture") == null or shop_material.get_shader_parameter("GradientTexture") == null:
+	var shader_mat: ShaderMaterial = color_rect.material as ShaderMaterial
+	if shader_mat.shader == null or shader_mat.get_shader_parameter("NoiseTexture") == null or shader_mat.get_shader_parameter("GradientTexture") == null:
 		printerr("TEST FAILED: UpgradeShop ShaderMaterial shader or parameters missing.")
 		shop.queue_free()
 		get_tree().quit(1)
@@ -1288,7 +1303,9 @@ func _ready() -> void:
 		shop.queue_free()
 		get_tree().quit(1)
 		return
-	if margin_container.get_theme_constant("margin_left") != 128 or margin_container.get_theme_constant("margin_top") != 128 or margin_container.get_theme_constant("margin_right") != 128 or margin_container.get_theme_constant("margin_bottom") != 128:
+
+	if margin_container.get_theme_constant("margin_left") != 128 or margin_container.get_theme_constant("margin_top") != 128 \
+		or margin_container.get_theme_constant("margin_right") != 128 or margin_container.get_theme_constant("margin_bottom") != 128:
 		printerr("TEST FAILED: UpgradeShop MarginContainer margins are not 128.")
 		shop.queue_free()
 		get_tree().quit(1)
@@ -1299,8 +1316,6 @@ func _ready() -> void:
 		printerr("TEST FAILED: UpgradeShop VBoxContainer missing.")
 		shop.queue_free()
 		get_tree().quit(1)
-		return
-
 	var title_label: RichTextLabel = vbox.get_node_or_null("RichTextLabel") as RichTextLabel
 	if title_label == null or not title_label.bbcode_enabled or not title_label.fit_content or title_label.text != "[center][wave]Upgrade Shop[/wave][/center]":
 		printerr("TEST FAILED: UpgradeShop RichTextLabel title missing or configured improperly.")
@@ -1316,32 +1331,9 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	var shop_upgrade_speed: UpgradeIcon = hbox.get_node_or_null("UpgradeSpeed") as UpgradeIcon
-	if shop_upgrade_speed == null or shop_upgrade_speed.size_flags_horizontal != 6:
-		printerr("TEST FAILED: UpgradeShop UpgradeSpeed instance missing or size_flags_horizontal != 6.")
-		shop.queue_free()
-		get_tree().quit(1)
-		return
-
-	var shop_upgrade_damage: UpgradeIcon = hbox.get_node_or_null("UpgradeDamage") as UpgradeIcon
-	if shop_upgrade_damage == null or shop_upgrade_damage.size_flags_horizontal != 6:
-		printerr("TEST FAILED: UpgradeShop UpgradeDamage instance missing or size_flags_horizontal != 6.")
-		shop.queue_free()
-		get_tree().quit(1)
-		return
-
-	var shop_upgrade_health: UpgradeIcon = hbox.get_node_or_null("UpgradeHealth") as UpgradeIcon
-	if shop_upgrade_health == null or shop_upgrade_health.size_flags_horizontal != 6:
-		printerr("TEST FAILED: UpgradeShop UpgradeHealth instance missing or size_flags_horizontal != 6.")
-		shop.queue_free()
-		get_tree().quit(1)
-		return
-	if (shop_upgrade_health.get("health_bonus") as float) != 2000.0:
-		printerr("TEST FAILED: UpgradeShop UpgradeHealth health_bonus expected 2000.0, got: ", shop_upgrade_health.get("health_bonus"))
-		shop.queue_free()
-		get_tree().quit(1)
-		return
-	print("UpgradeShop HBoxContainer, UpgradeSpeed, UpgradeDamage, and UpgradeHealth children verified.")
+	# Add shop to tree so _ready() populates upgrades dynamically
+	add_child(shop)
+	await get_tree().process_frame
 
 	# Verify upgrade_container onready reference
 	if shop.upgrade_container != hbox:
@@ -1351,11 +1343,24 @@ func _ready() -> void:
 		return
 	print("UpgradeShop upgrade_container onready reference verified.")
 
-	# Verify each child's upgrade_taken signal is connected to shop.exit_shop
+	# Verify 2 dynamic upgrades were instantiated into upgrade_container
+	if shop.upgrade_container.get_child_count() != 2:
+		printerr("TEST FAILED: Expected 2 dynamic upgrades in upgrade_container, got: ", shop.upgrade_container.get_child_count())
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+	print("UpgradeShop dynamically generated 2 upgrade options successfully.")
+
+	# Verify each child is an UpgradeIcon with size_flags_horizontal == 6 and upgrade_taken connected to shop.exit_shop
 	for child: Node in shop.upgrade_container.get_children():
 		var icon: UpgradeIcon = child as UpgradeIcon
 		if icon == null:
 			printerr("TEST FAILED: Child of upgrade_container is not an UpgradeIcon.")
+			shop.queue_free()
+			get_tree().quit(1)
+			return
+		if icon.size_flags_horizontal != 6:
+			printerr("TEST FAILED: UpgradeIcon size_flags_horizontal is not 6 (shrink center & expand). Got: ", icon.size_flags_horizontal)
 			shop.queue_free()
 			get_tree().quit(1)
 			return
@@ -1364,7 +1369,7 @@ func _ready() -> void:
 			shop.queue_free()
 			get_tree().quit(1)
 			return
-	print("UpgradeShop all child upgrade_taken signals connected to exit_shop verified.")
+	print("UpgradeShop dynamic upgrade children verified (UpgradeIcon type, size_flags_horizontal 6, upgrade_taken connected).")
 
 	# Verify exiting_shop guard
 	if shop.exiting_shop:
@@ -1373,7 +1378,8 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	shop.exit_shop(shop_upgrade_speed)
+	var first_icon: UpgradeIcon = shop.upgrade_container.get_child(0) as UpgradeIcon
+	shop.exit_shop(first_icon)
 	if not shop.exiting_shop:
 		printerr("TEST FAILED: UpgradeShop exiting_shop was not set to true after exit_shop.")
 		shop.queue_free()
@@ -1382,6 +1388,7 @@ func _ready() -> void:
 	print("UpgradeShop exit_shop execution and exiting_shop flag verified.")
 
 	shop.queue_free()
+	await get_tree().process_frame
 
 	print("\n>>> PART 12: Window Stretch & Fullscreen Action Verification")
 	if not InputMap.has_action("ui_toggle_fullscreen"):
@@ -1762,7 +1769,7 @@ func _ready() -> void:
 	print("  22. Level 2 inherited scene, litter props, and navmesh verified   ")
 	print("  23. Level 3 inherited scene, litter props, and navmesh verified   ")
 	print("  24. Level shuffling & difficulty curve enemy scaling verified     ")
-	print("  25. UpgradeShop upgrade_container, upgrade_taken signal & exit_shop verified  ")
+	print("  25. UpgradeShop dynamic random selection (GlobalVars.upgrades) & exit ok")
 	print("  26. Window scaling & ui_toggle_fullscreen autoload verified       ")
 	print("  27. Base UpgradeIcon scene, styling, and UpgradeShop placement ok ")
 	print("====================================================================")

@@ -5,8 +5,12 @@ extends Control
 var exiting_shop: bool = false
 
 func _ready() -> void:
-	for child in upgrade_container.get_children():
-		child.upgrade_taken.connect(exit_shop)
+	var upgrade_options: Array[PackedScene] = GlobalVars.upgrades.duplicate()
+	upgrade_options.shuffle()
+	for child: PackedScene in upgrade_options.slice(0, 2):
+		var current_upgrade: UpgradeIcon = child.instantiate() as UpgradeIcon
+		upgrade_container.add_child(current_upgrade)
+		current_upgrade.upgrade_taken.connect(exit_shop)
 
 func exit_shop(upgrade_in: UpgradeIcon) -> void:
 	if exiting_shop:

@@ -18,6 +18,7 @@ border_color = Color(0.30980393, 0.65882355, 0.8039216, 1)
 custom_minimum_size = Vector2(256, 160)
 offset_right = 40.0
 offset_bottom = 40.0
+size_flags_horizontal = 6
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_ie3pj")
 script = ExtResource("1_sp8rp")

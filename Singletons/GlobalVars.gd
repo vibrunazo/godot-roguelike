@@ -3,6 +3,16 @@ extends Node
 
 const DIFFICULTY_CURVE: Curve = preload("res://Singletons/difficulty_curve.tres")
 
+const UPGRADE_DAMAGE: PackedScene = preload("res://UserInterface/upgrade_damage.tscn")
+const UPGRADE_HEALTH: PackedScene = preload("res://UserInterface/upgrade_health.tscn")
+const UPGRADE_SPEED: PackedScene = preload("res://UserInterface/upgrade_speed.tscn")
+
+var upgrades: Array[PackedScene] = [
+	UPGRADE_DAMAGE,
+	UPGRADE_HEALTH,
+	UPGRADE_SPEED
+]
+
 var level: int = 1
 
 
