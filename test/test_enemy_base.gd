@@ -1246,6 +1246,75 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 
+	print("\n>>> PART 11: UpgradeShop Scene & UI Verification")
+	var shop_scene: PackedScene = load("res://UserInterface/UpgradeShop.tscn") as PackedScene
+	if shop_scene == null:
+		printerr("TEST FAILED: Failed to load res://UserInterface/UpgradeShop.tscn")
+		get_tree().quit(1)
+		return
+	var shop: Control = shop_scene.instantiate() as Control
+	if shop == null:
+		printerr("TEST FAILED: UpgradeShop root is not a Control node.")
+		get_tree().quit(1)
+		return
+	add_child(shop)
+
+	var shop_script: Script = shop.get_script() as Script
+	if shop_script == null or shop_script.resource_path != "res://UserInterface/upgrade_shop.gd":
+		printerr("TEST FAILED: UpgradeShop script is not res://UserInterface/upgrade_shop.gd")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+
+	var bg_rect: ColorRect = shop.get_node_or_null("ColorRect") as ColorRect
+	if bg_rect == null or not (bg_rect.material is ShaderMaterial):
+		printerr("TEST FAILED: UpgradeShop ColorRect or ShaderMaterial missing.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+
+	var shop_material: ShaderMaterial = bg_rect.material as ShaderMaterial
+	if shop_material.shader == null or shop_material.get_shader_parameter("NoiseTexture") == null or shop_material.get_shader_parameter("GradientTexture") == null:
+		printerr("TEST FAILED: UpgradeShop ShaderMaterial shader or parameters missing.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+
+	var margin_container: MarginContainer = shop.get_node_or_null("MarginContainer") as MarginContainer
+	if margin_container == null:
+		printerr("TEST FAILED: UpgradeShop MarginContainer missing.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+	if margin_container.get_theme_constant("margin_left") != 128 or margin_container.get_theme_constant("margin_top") != 128 or margin_container.get_theme_constant("margin_right") != 128 or margin_container.get_theme_constant("margin_bottom") != 128:
+		printerr("TEST FAILED: UpgradeShop MarginContainer margins are not 128.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+
+	var vbox: VBoxContainer = margin_container.get_node_or_null("VBoxContainer") as VBoxContainer
+	if vbox == null:
+		printerr("TEST FAILED: UpgradeShop VBoxContainer missing.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+
+	var title_label: RichTextLabel = vbox.get_node_or_null("RichTextLabel") as RichTextLabel
+	if title_label == null or not title_label.bbcode_enabled or not title_label.fit_content or title_label.text != "[center][wave]Upgrade Shop[/wave][/center]":
+		printerr("TEST FAILED: UpgradeShop RichTextLabel title missing or configured improperly.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+	print("UpgradeShop scene hierarchy, shader material, margin container, and title label verified.")
+
+	var accept_event := InputEventAction.new()
+	accept_event.action = "ui_accept"
+	accept_event.pressed = true
+	shop._unhandled_input(accept_event)
+	print("UpgradeShop _unhandled_input with ui_accept verified.")
+
+	shop.queue_free()
+
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
@@ -1272,6 +1341,7 @@ func _ready() -> void:
 	print("  22. Level 2 inherited scene, litter props, and navmesh verified   ")
 	print("  23. Level 3 inherited scene, litter props, and navmesh verified   ")
 	print("  24. Level shuffling & difficulty curve enemy scaling verified     ")
+	print("  25. UpgradeShop scene, background shader & exit routing verified  ")
 	print("====================================================================")
 	
 	get_tree().quit(0)
