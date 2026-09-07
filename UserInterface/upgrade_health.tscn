@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://c3spb06i4gppf"]
+
+[ext_resource type="PackedScene" uid="uid://3lgqbvbvyeg8" path="res://UserInterface/upgrade_icon.tscn" id="1_stbfw"]
+[ext_resource type="Script" uid="uid://b25k2lvf60f7b" path="res://UserInterface/upgrade_health.gd" id="2_d01ty"]
+
+[node name="UpgradeHealth" unique_id=596441973 instance=ExtResource("1_stbfw")]
+script = ExtResource("2_d01ty")
+health_bonus = 20.0
+text_template = "%d -> [color='7fffd4']%d[/color] HP"
+
+[node name="Title" parent="VBoxContainer" parent_id_path=PackedInt32Array(1535228889) index="0" unique_id=1487260509]
+text = "[wave]Max Health[/wave]"

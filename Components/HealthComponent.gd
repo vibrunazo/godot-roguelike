@@ -6,17 +6,27 @@ signal defeat()
 
 ## Audio player played when damage is taken.
 @export var hit_audio: AudioStreamPlayer3D
-## Maximum health value of this component.
-@export var max_health: float = 100.0
+var is_ready: bool = false
 
-var current_health: float
+## Maximum health value of this component.
+@export var max_health: float = 100.0:
+	set(value):
+		max_health = value
+		if is_ready:
+			health_changed.emit(current_health)
+
+var current_health: float:
+	set(value):
+		current_health = value
+		if is_ready:
+			health_changed.emit(current_health)
 
 func _ready() -> void:
 	current_health = max_health
+	is_ready = true
 	
 func take_damage(damage_in: float) -> void:
 	current_health -= damage_in
 	print(current_health)
-	health_changed.emit(current_health)
 	if hit_audio: hit_audio.play()
 	if current_health <= 0.0: defeat.emit()

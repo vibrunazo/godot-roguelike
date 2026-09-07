@@ -19,12 +19,19 @@ func _ready() -> void:
 	if fill_style != null:
 		fill_style.bg_color = health_color
 
+var health_tween: Tween
+
 func update_health_value(value_in: float) -> void:
 	if health_component == null or health_component.max_health <= 0.0:
 		return
-	var tween: Tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	if health_tween and health_tween.is_valid():
+		health_tween.kill()
 	var target_health_percentage: float = (value_in / health_component.max_health) * 100.0
-	tween.tween_property(health_progress_bar, "value", target_health_percentage, 0.2).from(front_progress_bar.value)
+	if target_health_percentage < front_progress_bar.value:
+		health_tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+		health_tween.tween_property(health_progress_bar, "value", target_health_percentage, 0.2).from(front_progress_bar.value)
+	else:
+		health_progress_bar.value = target_health_percentage
 	front_progress_bar.value = target_health_percentage
 
 func defeat() -> void:

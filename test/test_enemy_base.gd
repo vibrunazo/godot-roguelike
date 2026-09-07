@@ -2,6 +2,7 @@ extends Node
 
 const TestUtils = preload("res://test/test_utils.gd")
 const UpgradeIcon = preload("res://UserInterface/upgrade_icon.gd")
+const UpgradeHealth = preload("res://UserInterface/upgrade_health.gd")
 
 func _ready() -> void:
 	print("--- RUNNING BASE ENEMY SCENE & LOGIC TEST ---")
@@ -1328,7 +1329,19 @@ func _ready() -> void:
 		shop.queue_free()
 		get_tree().quit(1)
 		return
-	print("UpgradeShop HBoxContainer, UpgradeSpeed, and UpgradeDamage children verified.")
+
+	var shop_upgrade_health: UpgradeIcon = hbox.get_node_or_null("UpgradeHealth") as UpgradeIcon
+	if shop_upgrade_health == null or shop_upgrade_health.size_flags_horizontal != 6:
+		printerr("TEST FAILED: UpgradeShop UpgradeHealth instance missing or size_flags_horizontal != 6.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+	if (shop_upgrade_health.get("health_bonus") as float) != 2000.0:
+		printerr("TEST FAILED: UpgradeShop UpgradeHealth health_bonus expected 2000.0, got: ", shop_upgrade_health.get("health_bonus"))
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+	print("UpgradeShop HBoxContainer, UpgradeSpeed, UpgradeDamage, and UpgradeHealth children verified.")
 
 	var accept_event := InputEventAction.new()
 	accept_event.action = "ui_accept"
@@ -1587,6 +1600,94 @@ func _ready() -> void:
 
 	damage_icon.queue_free()
 	dmg_player.queue_free()
+	await get_tree().process_frame
+
+	# Test UpgradeHealth scene
+	var health_scene: PackedScene = load("res://UserInterface/upgrade_health.tscn")
+	if health_scene == null:
+		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_health.tscn")
+		get_tree().quit(1)
+		return
+	var health_icon: UpgradeIcon = health_scene.instantiate() as UpgradeIcon
+	if health_icon == null:
+		printerr("TEST FAILED: UpgradeHealth is not an instance of UpgradeIcon")
+		get_tree().quit(1)
+		return
+	if (health_icon.get("health_bonus") as float) != 20.0:
+		printerr("TEST FAILED: UpgradeHealth default health_bonus expected 20.0, got: ", health_icon.get("health_bonus"))
+		get_tree().quit(1)
+		return
+	if health_icon.text_template != "%d -> [color='7fffd4']%d[/color] HP":
+		printerr("TEST FAILED: UpgradeHealth text_template incorrect: ", health_icon.text_template)
+		get_tree().quit(1)
+		return
+
+	# Test player health upgrade functionality
+	var player_scene_hp: PackedScene = load("res://Player/player.tscn")
+	var hp_player: Player = player_scene_hp.instantiate() as Player
+	add_child(hp_player)
+	hp_player.health_component.take_damage(20.0) # Reduce health from 60 to 40
+	add_child(health_icon)
+	await get_tree().process_frame
+
+	if health_icon.title.text != "[wave]Max Health[/wave]":
+		printerr("TEST FAILED: UpgradeHealth Title text is not [wave]Max Health[/wave], got: ", health_icon.title.text)
+		get_tree().quit(1)
+		return
+
+	var expected_hp_desc: String = "60 -> [color='7fffd4']80[/color] HP"
+	if health_icon.description.text != expected_hp_desc:
+		printerr("TEST FAILED: UpgradeHealth description.text did not match formatted template. Got: '", health_icon.description.text, "', expected: '", expected_hp_desc, "'")
+		get_tree().quit(1)
+		return
+	print("UpgradeHealth setup_label() text formatting verified: ", health_icon.description.text)
+
+	var initial_max_health: float = hp_player.health_component.max_health
+	var initial_current_health: float = hp_player.health_component.current_health
+	health_icon.take_upgrade()
+	if not is_equal_approx(hp_player.health_component.max_health, initial_max_health + 20.0):
+		printerr("TEST FAILED: take_upgrade did not increase max_health by 20. Got: ", hp_player.health_component.max_health)
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(hp_player.health_component.current_health, initial_current_health + 20.0):
+		printerr("TEST FAILED: take_upgrade did not increase current_health by 20. Got: ", hp_player.health_component.current_health)
+		get_tree().quit(1)
+		return
+	print("take_upgrade() successfully increased max_health to ", hp_player.health_component.max_health, " and current_health to ", hp_player.health_component.current_health)
+
+	# Verify player HealthBar updated immediately
+	var player_health_bar: HealthBar = hp_player.get_node_or_null("HealthBar") as HealthBar
+	if player_health_bar == null:
+		printerr("TEST FAILED: HealthBar node not found on hp_player")
+		get_tree().quit(1)
+		return
+	var expected_hp_pct: float = (hp_player.health_component.current_health / hp_player.health_component.max_health) * 100.0
+	if not is_equal_approx(player_health_bar.front_progress_bar.value, expected_hp_pct):
+		printerr("TEST FAILED: HealthBar front_progress_bar.value did not update immediately upon health upgrade! Expected ", expected_hp_pct, ", got: ", player_health_bar.front_progress_bar.value)
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(player_health_bar.health_progress_bar.value, expected_hp_pct):
+		printerr("TEST FAILED: HealthBar health_progress_bar.value did not update immediately upon health upgrade! Expected ", expected_hp_pct, ", got: ", player_health_bar.health_progress_bar.value)
+		get_tree().quit(1)
+		return
+	print("HealthBar front and background bars immediately updated to ", expected_hp_pct, "% successfully!")
+
+	if not health_icon.texture_button.disabled:
+		printerr("TEST FAILED: health_icon texture_button was not disabled after take_upgrade.")
+		get_tree().quit(1)
+		return
+
+	# Verify multi-click guard prevents repeated health increases
+	health_icon.take_upgrade()
+	health_icon.texture_button.pressed.emit()
+	if not is_equal_approx(hp_player.health_component.max_health, initial_max_health + 20.0):
+		printerr("TEST FAILED: health_icon applied bonus again while disabled! max_health: ", hp_player.health_component.max_health)
+		get_tree().quit(1)
+		return
+	print("UpgradeHealth multiple click prevention verified.")
+
+	health_icon.queue_free()
+	hp_player.queue_free()
 	await get_tree().process_frame
 
 	print("\n====================================================================")
