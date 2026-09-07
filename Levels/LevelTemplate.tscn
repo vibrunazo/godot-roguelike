@@ -1,5 +1,5 @@
 [gd_scene format=3 uid="uid://dyj3auoai18wd"]
-
+[ext_resource type="Script" path="res://Levels/level_template.gd" id="1_g8k58"]
 [ext_resource type="PackedScene" uid="uid://dveet4y3bg7gi" path="res://Player/player.tscn" id="2_ersrp"]
 [ext_resource type="Script" uid="uid://chwdk8gtnnide" path="res://Levels/world_boundary.gd" id="5_kv2lc"]
 [ext_resource type="VoxelGIData" path="res://Levels/GlobalIlluminationData/level_template_voxel_gi_data.tres" id="6_voxel_gi"]
@@ -43,6 +43,8 @@ size = Vector2(8, 8)
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_6ghb1"]
 
 [node name="Level" type="Node3D" unique_id=1079320019]
+script = ExtResource("1_g8k58")
+
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1391866235]
 transform = Transform3D(0.7826083, 0.5391134, -0.3112572, 0, 0.49999997, 0.86602545, 0.6225145, -0.6777587, 0.3913041, 0, 0, 0)
@@ -80,7 +82,7 @@ data = {
 metadata/_editor_floor_ = Vector3(0, -1, 0)
 
 [node name="Player" parent="." unique_id=602303743 instance=ExtResource("2_ersrp")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1, 0)
 
 [node name="Pit" type="MeshInstance3D" parent="." unique_id=915475260]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, -16)

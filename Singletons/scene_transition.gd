@@ -2,6 +2,8 @@ extends CanvasLayer
 
 @onready var color_rect: ColorRect = $ColorRect
 
+var player_cache: Player
+
 
 func _ready() -> void:
 	fade_out(create_tween())
@@ -16,10 +18,16 @@ func fade_in(tween: Tween) -> void:
 
 
 func load_scene_path(path_in: String, args: Dictionary = {}) -> void:
+	var player: Player = get_tree().get_first_node_in_group("player") as Player
+	if player:
+		player.process_mode = Node.PROCESS_MODE_DISABLED
 	var tween: Tween = create_tween()
 	fade_in(tween)
 	tween.tween_callback(
 		func() -> void:
+			if player:
+				player.reparent(self)
+				player_cache = player
 			get_tree().change_scene_to_file(path_in)
 	)
 	tween.tween_interval(0.5)

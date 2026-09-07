@@ -502,8 +502,9 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	if exit_point.next_scene_path != "res://Levels/LevelTemplate.tscn" or exit_point.next_level_path != "res://Levels/LevelTemplate.tscn":
-		printerr("TEST FAILED: ExitPoint next_scene_path / next_level_path should default to res://Levels/LevelTemplate.tscn.")
+	var valid_paths: Array[String] = ["res://Levels/LevelTemplate.tscn", "uid://dyj3auoai18wd"]
+	if not exit_point.next_scene_path in valid_paths or not exit_point.next_level_path in valid_paths:
+		printerr("TEST FAILED: ExitPoint next_scene_path: '", exit_point.next_scene_path, "', next_level_path: '", exit_point.next_level_path, "'")
 		level.queue_free()
 		get_tree().quit(1)
 		return
@@ -568,10 +569,58 @@ func _ready() -> void:
 		printerr("TEST FAILED: SceneTransition missing fade_in/fade_out/load_scene_path methods.")
 		level.queue_free()
 		get_tree().quit(1)
-		return
 	print("SceneTransition autoload & ColorRect verified.")
 
-	
+	# Verify SceneTransition.player_cache property
+	if not ("player_cache" in scene_trans):
+		printerr("TEST FAILED: SceneTransition missing player_cache property.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("SceneTransition player_cache property verified.")
+
+	# Verify LevelTemplate player replacement via player_cache
+	var cached_player_scene: PackedScene = preload("res://Player/player.tscn")
+	var cached_player: Player = cached_player_scene.instantiate() as Player
+	scene_trans.add_child(cached_player)
+	cached_player.process_mode = Node.PROCESS_MODE_DISABLED
+	cached_player.health_component.current_health = 42.0
+	scene_trans.player_cache = cached_player
+
+	var test_level: Node3D = level_scene.instantiate() as Node3D
+	add_child(test_level)
+	if test_level.get("player") != cached_player or cached_player.get_parent() != test_level:
+		printerr("TEST FAILED: LevelTemplate did not reparent and assign cached player.")
+		test_level.queue_free()
+		cached_player.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if cached_player.process_mode != Node.PROCESS_MODE_INHERIT:
+		printerr("TEST FAILED: LevelTemplate did not restore cached player process_mode to INHERIT.")
+		test_level.queue_free()
+		cached_player.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if cached_player.health_component.current_health != 42.0:
+		printerr("TEST FAILED: Cached player health was not preserved across level load.")
+		test_level.queue_free()
+		cached_player.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if cached_player.global_position != Vector3(4, 1, 0):
+		printerr("TEST FAILED: Cached player position (", cached_player.global_position, ") not matched to template spawn position (4, 1, 0).")
+		test_level.queue_free()
+		cached_player.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("LevelTemplate player state preservation (health, position, process_mode) verified.")
+	scene_trans.player_cache = null
+	test_level.queue_free()
+
 	var level_enemy: Enemy = TestUtils.find_enemy(level)
 	if level_enemy == null:
 		printerr("TEST FAILED: No Enemy subclass instance found via TestUtils in LevelTemplate scene.")
@@ -1047,6 +1096,7 @@ func _ready() -> void:
 	print("  17. NavigationAgent3D & LevelTemplate NavigationMesh (Baked) ok   ")
 	print("  18. NavigationServer3D map_get_random_point verified              ")
 	print("  19. SceneTransition singleton & fade methods verified             ")
+	print("  20. Player state & health preservation across levels verified     ")
 	print("====================================================================")
 	
 	get_tree().quit(0)
