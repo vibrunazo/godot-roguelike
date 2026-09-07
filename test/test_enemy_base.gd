@@ -1315,6 +1315,44 @@ func _ready() -> void:
 
 	shop.queue_free()
 
+	print("\n>>> PART 12: Window Stretch & Fullscreen Action Verification")
+	if not InputMap.has_action("ui_toggle_fullscreen"):
+		printerr("TEST FAILED: ui_toggle_fullscreen not found in InputMap")
+		get_tree().quit(1)
+		return
+	var fs_events: Array[InputEvent] = InputMap.action_get_events("ui_toggle_fullscreen")
+	if fs_events.is_empty():
+		printerr("TEST FAILED: ui_toggle_fullscreen has no events bound")
+		get_tree().quit(1)
+		return
+	var key_event: InputEventKey = fs_events[0] as InputEventKey
+	if key_event == null or (key_event.physical_keycode != KEY_F and key_event.keycode != KEY_F):
+		printerr("TEST FAILED: ui_toggle_fullscreen event is not KEY_F. physical_keycode: ", key_event.physical_keycode, " keycode: ", key_event.keycode)
+		get_tree().quit(1)
+		return
+	print("InputMap ui_toggle_fullscreen with KEY_F verified.")
+
+	if not GlobalVars.has_method("toggle_fullscreen") or not GlobalVars.has_method("is_fullscreen") or not GlobalVars.has_method("go_fullscreen"):
+		printerr("TEST FAILED: GlobalVars missing toggle_fullscreen / is_fullscreen / go_fullscreen methods")
+		get_tree().quit(1)
+		return
+	GlobalVars.toggle_fullscreen()
+	print("GlobalVars.toggle_fullscreen() executed successfully.")
+
+	var fs_action_event := InputEventAction.new()
+	fs_action_event.action = "ui_toggle_fullscreen"
+	fs_action_event.pressed = true
+	GlobalVars._unhandled_key_input(fs_action_event)
+	print("GlobalVars._unhandled_key_input with ui_toggle_fullscreen verified.")
+
+	var stretch_mode: Variant = ProjectSettings.get_setting("display/window/stretch/mode")
+	var stretch_aspect: Variant = ProjectSettings.get_setting("display/window/stretch/aspect")
+	if stretch_mode != "canvas_items" or stretch_aspect != "expand":
+		printerr("TEST FAILED: Window stretch settings incorrect: mode=", stretch_mode, " aspect=", stretch_aspect)
+		get_tree().quit(1)
+		return
+	print("Window stretch settings (mode=canvas_items, aspect=expand) verified.")
+
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
@@ -1342,6 +1380,7 @@ func _ready() -> void:
 	print("  23. Level 3 inherited scene, litter props, and navmesh verified   ")
 	print("  24. Level shuffling & difficulty curve enemy scaling verified     ")
 	print("  25. UpgradeShop scene, background shader & exit routing verified  ")
+	print("  26. Window scaling & ui_toggle_fullscreen autoload verified       ")
 	print("====================================================================")
 	
 	get_tree().quit(0)

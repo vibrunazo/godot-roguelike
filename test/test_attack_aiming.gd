@@ -42,6 +42,9 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
+	player.get_window().size = Vector2i(1152, 648)
+	await get_tree().process_frame
+	
 	var player_2d: Vector2 = player.get_player_position_2d()
 	print("Player 2D screen position: ", player_2d)
 	if player_2d == Vector2.ZERO:
@@ -57,6 +60,7 @@ func _ready() -> void:
 	mm_right.position = right_screen_target
 	mm_right.global_position = right_screen_target
 	Input.parse_input_event(mm_right)
+	player.get_viewport().warp_mouse(right_screen_target)
 	await get_tree().process_frame
 	
 	var aim_right: Vector3 = player.get_aim_direction()
@@ -74,6 +78,7 @@ func _ready() -> void:
 	mm_left.position = left_screen_target
 	mm_left.global_position = left_screen_target
 	Input.parse_input_event(mm_left)
+	player.get_viewport().warp_mouse(left_screen_target)
 	await get_tree().process_frame
 	
 	var aim_left: Vector3 = player.get_aim_direction()
