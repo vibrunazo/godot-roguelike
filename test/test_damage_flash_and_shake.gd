@@ -127,13 +127,17 @@ func _ready() -> void:
 		return
 	print("Empty swing verified: no camera shake when no health component is hit.")
 	
-	# Second test: Position player so weapon shapecast overlaps dummy -> should shake ONCE
-	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.3)
+	# Second test: Position player and dummy on floor so weapon shapecast overlaps dummy
+	dummy.global_position = Vector3(0, 1, 0)
+	dummy.velocity = Vector3.ZERO
+	player.global_position = Vector3(0, 1, -1.3)
+	player.velocity = Vector3.ZERO
 	var dir: Vector3 = Vector3(0, 0, 1)
 	var target: Transform3D = player.player_root.global_transform.looking_at(player.player_root.global_position + dir, Vector3.UP, true)
 	player.player_root.global_transform = target
 	await get_tree().physics_frame
 	await get_tree().physics_frame
+
 	
 	shapecast.enabled = true
 	attack_comp.deal_damage(8.0, Vector3.ZERO)

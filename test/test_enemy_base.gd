@@ -476,12 +476,12 @@ func _ready() -> void:
 		return
 	print("WaveObjective finished signal verified.")
 	
-	if wave_obj.all_enemies.size() != 3:
-		printerr("TEST FAILED: WaveObjective all_enemies size is ", wave_obj.all_enemies.size(), ", expected 3.")
+	if wave_obj.all_enemies.size() != GlobalVars.get_enemy_count():
+		printerr("TEST FAILED: WaveObjective all_enemies size is ", wave_obj.all_enemies.size(), ", expected ", GlobalVars.get_enemy_count())
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("WaveObjective all_enemies size (3) verified.")
+	print("WaveObjective all_enemies size (", wave_obj.all_enemies.size(), ") matches GlobalVars.get_enemy_count() verified.")
 
 	# Verify ExitPoint
 	var exit_point: ExitPoint = level.get_node_or_null("ExitPoint") as ExitPoint
@@ -497,7 +497,27 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("ExitPoint initially invisible verified.")
+	if not exit_point.locked:
+		printerr("TEST FAILED: ExitPoint should be locked initially.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("ExitPoint initially invisible and locked verified.")
+
+	# Verify ExitPoint Area3D & CollisionShape3D
+	var exit_area: Area3D = exit_point.get_node_or_null("Area3D") as Area3D
+	if exit_area == null:
+		printerr("TEST FAILED: ExitPoint missing Area3D child.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var exit_col: CollisionShape3D = exit_area.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if exit_col == null or not (exit_col.shape is SphereShape3D) or (exit_col.shape as SphereShape3D).radius != 2.0:
+		printerr("TEST FAILED: ExitPoint Area3D missing SphereShape3D with radius 2.0.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("ExitPoint Area3D and SphereShape3D (radius 2.0) verified.")
 
 	var is_connected_to_unlock := false
 	for conn: Dictionary in wave_obj.finished.get_connections():
@@ -517,8 +537,15 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("ExitPoint.unlock() verified.")
+	if exit_point.locked:
+		printerr("TEST FAILED: ExitPoint.unlock() did not set locked = false.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("ExitPoint.unlock() (visible = true, locked = false) verified.")
 	exit_point.visible = false
+	exit_point.locked = true
+
 	
 	var level_enemy: Enemy = TestUtils.find_enemy(level)
 	if level_enemy == null:
@@ -537,6 +564,7 @@ func _ready() -> void:
 	print("LevelTemplate Enemy HealthComponent confirmed with 40 max health.")
 
 	var nav_region: NavigationRegion3D = level.get_node_or_null("NavigationRegion3D") as NavigationRegion3D
+
 	if nav_region == null:
 		printerr("TEST FAILED: NavigationRegion3D node not found in LevelTemplate.")
 		level.queue_free()

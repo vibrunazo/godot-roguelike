@@ -24,9 +24,14 @@ signal defeat
 func _ready() -> void:
 	if not is_inside_tree():
 		return
-	global_position = NavigationServer3D.map_get_random_point(
+	var random_point: Vector3 = NavigationServer3D.map_get_random_point(
 		get_world_3d().navigation_map, 1, true
 	)
+	var half_height: float = 1.0
+	if collision_shape_3d and collision_shape_3d.shape is CapsuleShape3D:
+		half_height = (collision_shape_3d.shape as CapsuleShape3D).height * 0.5
+	global_position = random_point + Vector3(0.0, half_height, 0.0)
+
 
 
 func _on_health_component_health_changed(_value: float) -> void:

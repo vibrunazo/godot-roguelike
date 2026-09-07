@@ -9,7 +9,7 @@ var all_enemies: Array[Enemy] = []
 
 
 func _ready() -> void:
-	for _i: int in 3:
+	for _i: int in GlobalVars.get_enemy_count():
 		var new_enemy: Enemy = RANGED_ENEMY.instantiate() as Enemy
 		all_enemies.append(new_enemy)
 

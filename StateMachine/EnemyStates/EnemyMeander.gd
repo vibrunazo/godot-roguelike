@@ -26,7 +26,13 @@ func physics_update(_delta: float) -> void:
 		return
 	var destination: Vector3 = enemy.navigation_agent_3d.get_next_path_position()
 	var local_direction: Vector3 = destination - enemy.global_position
+	local_direction.y = 0.0
 	var direction: Vector3 = local_direction.normalized()
 	core_movement(enemy.base_speed, direction)
+	if not enemy.is_on_floor():
+		enemy.velocity += enemy.get_gravity() * _delta
+	else:
+		enemy.velocity.y = 0.0
 	look_at_target(destination)
 	enemy.move_and_slide()
+

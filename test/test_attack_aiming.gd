@@ -108,8 +108,11 @@ func _ready() -> void:
 	var initial_health: float = health_comp.current_health
 	print("Dummy initial health: ", initial_health)
 	
-	await get_tree().physics_frame
-	await get_tree().physics_frame
+	for i: int in range(60):
+		await get_tree().physics_frame
+		if player.is_on_floor() and sm.state.name == "PlayerRun":
+			break
+
 	
 	# Aim mouse at dummy's screen position
 	var dummy_screen_pos: Vector2 = camera.unproject_position(dummy.global_position)
@@ -127,7 +130,7 @@ func _ready() -> void:
 	sm._unhandled_input(click)
 	
 	if sm.state.name != "PlayerAttack":
-		printerr("TEST FAILED: Did not enter PlayerAttack.")
+		printerr("TEST FAILED: Did not enter PlayerAttack. Current state: ", sm.state.name, " is_on_floor: ", player.is_on_floor())
 		level.queue_free()
 		await get_tree().physics_frame
 		get_tree().quit(1)

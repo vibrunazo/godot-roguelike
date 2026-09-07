@@ -125,3 +125,17 @@ This document tracks architectural improvements, optimizations, and technical de
       ```
     - *Benefits*: Decouples spawner logic from concrete scene assets, allows rapid level design iteration entirely in the inspector, and facilitates varied encounter design.
 
+---
+
+## 9. Domain-Specific Singletons vs. God-Object `GlobalVars`
+- **Problem**:
+  - `GlobalVars` serves as a generic "god object" catch-all singleton, accumulating disparate responsibilities (level progression, enemy count formulas, run state, and potentially future player stats or audio).
+  - Mixing multiple unrelated domains into a monolithic global script violates the Single Responsibility Principle (SRP), obscures system dependencies, and complicates unit testing.
+- **Refactoring Options**:
+  - **Decompose into Dedicated, Purpose-Driven Services**:
+    - **`RunManager` / `ProgressionService`**: Manages the current level index, active run seed, run difficulty tier, and progression lifecycle (`level_finished`, `run_won`, `run_lost`).
+    - **`EncounterDirector` / `SpawnDirector`**: Handles encounter scaling logic, wave budgeting, and enemy distribution formulas based on level progression and difficulty.
+    - **`EventBus`**: A lightweight global signal hub (Observer pattern) allowing subsystems to publish and subscribe to gameplay events without referencing concrete system singletons directly.
+  - *Benefits*: Enforces clean architectural boundaries, keeps global state focused and auditable, and ensures systems can be tested or swapped independently.
+
+
