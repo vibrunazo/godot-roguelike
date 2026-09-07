@@ -1033,6 +1033,44 @@ func _ready() -> void:
 		return
 	print("EnemyProjectile scene & audio verified.")
 
+	# Visual effects verification (Lecture 71)
+	if proj.get_node_or_null("MeshInstance3D") != null:
+		printerr("TEST FAILED: Placeholder MeshInstance3D should be removed from EnemyProjectile.")
+		get_tree().quit(1)
+		return
+	var particles: GPUParticles3D = proj.get_node_or_null("GPUParticles3D") as GPUParticles3D
+	if particles == null:
+		printerr("TEST FAILED: GPUParticles3D not found on EnemyProjectile.")
+		get_tree().quit(1)
+		return
+	if particles.amount != 16 or not is_equal_approx(particles.lifetime, 0.25):
+		printerr("TEST FAILED: GPUParticles3D amount or lifetime invalid.")
+		get_tree().quit(1)
+		return
+	if not (particles.draw_pass_1 is SphereMesh):
+		printerr("TEST FAILED: GPUParticles3D draw_pass_1 is not SphereMesh.")
+		get_tree().quit(1)
+		return
+	var mat_override: StandardMaterial3D = particles.material_override as StandardMaterial3D
+	if mat_override == null or mat_override.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED or not mat_override.vertex_color_use_as_albedo:
+		printerr("TEST FAILED: GPUParticles3D material_override invalid.")
+		get_tree().quit(1)
+		return
+	var proc_mat: ParticleProcessMaterial = particles.process_material as ParticleProcessMaterial
+	if proc_mat == null or proc_mat.emission_shape != ParticleProcessMaterial.EMISSION_SHAPE_SPHERE or not is_equal_approx(proc_mat.emission_sphere_radius, 0.25):
+		printerr("TEST FAILED: GPUParticles3D process_material emission shape invalid.")
+		get_tree().quit(1)
+		return
+	if proc_mat.gravity != Vector3(0, 1, 0) or not is_equal_approx(proc_mat.scale_min, 0.25) or not is_equal_approx(proc_mat.scale_max, 0.5):
+		printerr("TEST FAILED: GPUParticles3D process_material gravity/scale invalid.")
+		get_tree().quit(1)
+		return
+	if not (proc_mat.scale_curve is CurveTexture) or not (proc_mat.color_ramp is GradientTexture1D):
+		printerr("TEST FAILED: GPUParticles3D scale_curve or color_ramp invalid.")
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile visual effects (GPUParticles3D) verified.")
+
 	if not is_equal_approx(proj.speed, 8.0):
 		printerr("TEST FAILED: EnemyProjectile.speed expected 8.0, got: ", proj.speed)
 		get_tree().quit(1)

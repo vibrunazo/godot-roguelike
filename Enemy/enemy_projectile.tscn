@@ -7,17 +7,39 @@
 [sub_resource type="SphereShape3D" id="SphereShape3D_6uikd"]
 radius = 0.25
 
-[sub_resource type="SphereMesh" id="SphereMesh_6uikd"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_td6rc"]
+shading_mode = 0
+vertex_color_use_as_albedo = true
+
+[sub_resource type="Gradient" id="Gradient_2grlp"]
+colors = PackedColorArray(1, 1, 0, 1, 1, 0, 0, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_gh88d"]
+gradient = SubResource("Gradient_2grlp")
+
+[sub_resource type="Curve" id="Curve_8u4ty"]
+_data = [Vector2(0, 1), 0.0, 1.367732, 0, 0, Vector2(1, 0.5), -1.520548, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_xnilw"]
+curve = SubResource("Curve_8u4ty")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_bjnmj"]
+emission_shape = 1
+emission_sphere_radius = 0.25
+gravity = Vector3(0, 1, 0)
+scale_min = 0.25
+scale_max = 0.5
+scale_curve = SubResource("CurveTexture_xnilw")
+color_ramp = SubResource("GradientTexture1D_gh88d")
+
+[sub_resource type="SphereMesh" id="SphereMesh_1gn8q"]
 
 [node name="EnemyProjectile" type="ShapeCast3D" unique_id=935244502]
 top_level = true
 shape = SubResource("SphereShape3D_6uikd")
 target_position = Vector3(0, 0, 0)
 script = ExtResource("1_6uikd")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=603921370]
-transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
-mesh = SubResource("SphereMesh_6uikd")
 
 [node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=588356880]
 stream = ExtResource("1_qhog7")
@@ -30,6 +52,13 @@ autostart = true
 
 [node name="AttackComponent" type="Node" parent="." unique_id=321443246]
 script = ExtResource("3_td6rc")
+
+[node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=341094992]
+material_override = SubResource("StandardMaterial3D_td6rc")
+amount = 16
+lifetime = 0.25
+process_material = SubResource("ParticleProcessMaterial_bjnmj")
+draw_pass_1 = SubResource("SphereMesh_1gn8q")
 
 [connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
 
