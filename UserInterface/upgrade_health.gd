@@ -10,8 +10,8 @@ func setup_label() -> void:
 func take_upgrade() -> void:
 	if texture_button != null and texture_button.disabled:
 		return
-	super.take_upgrade()
 	if player != null and player.health_component != null:
 		player.health_component.max_health += health_bonus
 		player.health_component.current_health += health_bonus
+	super.take_upgrade()
 

@@ -1343,11 +1343,43 @@ func _ready() -> void:
 		return
 	print("UpgradeShop HBoxContainer, UpgradeSpeed, UpgradeDamage, and UpgradeHealth children verified.")
 
-	var accept_event := InputEventAction.new()
-	accept_event.action = "ui_accept"
-	accept_event.pressed = true
-	shop._unhandled_input(accept_event)
-	print("UpgradeShop _unhandled_input with ui_accept verified.")
+	# Verify upgrade_container onready reference
+	if shop.upgrade_container != hbox:
+		printerr("TEST FAILED: UpgradeShop upgrade_container does not match HBoxContainer.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+	print("UpgradeShop upgrade_container onready reference verified.")
+
+	# Verify each child's upgrade_taken signal is connected to shop.exit_shop
+	for child: Node in shop.upgrade_container.get_children():
+		var icon: UpgradeIcon = child as UpgradeIcon
+		if icon == null:
+			printerr("TEST FAILED: Child of upgrade_container is not an UpgradeIcon.")
+			shop.queue_free()
+			get_tree().quit(1)
+			return
+		if not icon.upgrade_taken.is_connected(shop.exit_shop):
+			printerr("TEST FAILED: UpgradeIcon ", icon.name, " upgrade_taken signal is not connected to exit_shop.")
+			shop.queue_free()
+			get_tree().quit(1)
+			return
+	print("UpgradeShop all child upgrade_taken signals connected to exit_shop verified.")
+
+	# Verify exiting_shop guard
+	if shop.exiting_shop:
+		printerr("TEST FAILED: UpgradeShop exiting_shop should initially be false.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+
+	shop.exit_shop(shop_upgrade_speed)
+	if not shop.exiting_shop:
+		printerr("TEST FAILED: UpgradeShop exiting_shop was not set to true after exit_shop.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+	print("UpgradeShop exit_shop execution and exiting_shop flag verified.")
 
 	shop.queue_free()
 
@@ -1510,7 +1542,14 @@ func _ready() -> void:
 	print("UpgradeSpeed setup_label() text formatting verified: ", speed_icon.description.text)
 
 	var base_speed: float = upgrade_player.movement_speed
+	var speed_taken_emitted: Array[UpgradeIcon] = []
+	speed_icon.upgrade_taken.connect(func(taken_icon: UpgradeIcon) -> void: speed_taken_emitted.append(taken_icon))
 	speed_icon.take_upgrade()
+	if speed_taken_emitted.is_empty() or speed_taken_emitted[0] != speed_icon:
+		printerr("TEST FAILED: speed_icon did not emit upgrade_taken with self as argument")
+		get_tree().quit(1)
+		return
+	print("UpgradeIcon upgrade_taken signal emitted with self verified.")
 	if not is_equal_approx(upgrade_player.movement_speed, base_speed + 1.5):
 		printerr("TEST FAILED: take_upgrade did not increase player movement_speed by 1.5. Got: ", upgrade_player.movement_speed)
 		get_tree().quit(1)
@@ -1644,7 +1683,14 @@ func _ready() -> void:
 
 	var initial_max_health: float = hp_player.health_component.max_health
 	var initial_current_health: float = hp_player.health_component.current_health
+	var health_taken_emitted: Array[UpgradeIcon] = []
+	health_icon.upgrade_taken.connect(func(taken_icon: UpgradeIcon) -> void: health_taken_emitted.append(taken_icon))
 	health_icon.take_upgrade()
+	if health_taken_emitted.is_empty() or health_taken_emitted[0] != health_icon:
+		printerr("TEST FAILED: health_icon did not emit upgrade_taken with self via super.take_upgrade()")
+		get_tree().quit(1)
+		return
+	print("UpgradeHealth upgrade_taken signal emission verified.")
 	if not is_equal_approx(hp_player.health_component.max_health, initial_max_health + 20.0):
 		printerr("TEST FAILED: take_upgrade did not increase max_health by 20. Got: ", hp_player.health_component.max_health)
 		get_tree().quit(1)
@@ -1716,7 +1762,7 @@ func _ready() -> void:
 	print("  22. Level 2 inherited scene, litter props, and navmesh verified   ")
 	print("  23. Level 3 inherited scene, litter props, and navmesh verified   ")
 	print("  24. Level shuffling & difficulty curve enemy scaling verified     ")
-	print("  25. UpgradeShop scene, background shader & exit routing verified  ")
+	print("  25. UpgradeShop upgrade_container, upgrade_taken signal & exit_shop verified  ")
 	print("  26. Window scaling & ui_toggle_fullscreen autoload verified       ")
 	print("  27. Base UpgradeIcon scene, styling, and UpgradeShop placement ok ")
 	print("====================================================================")

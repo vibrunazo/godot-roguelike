@@ -1,6 +1,8 @@
 extends PanelContainer
 class_name UpgradeIcon
 
+signal upgrade_taken(this: UpgradeIcon)
+
 @export_multiline() var text_template: String = "%.1f -> [color='7fffd4']%.1f[/color] m/s"
 @export var stat_name: String
 @export var stat_bonus: float = 0.0
@@ -21,6 +23,7 @@ func take_upgrade() -> void:
 		texture_button.disabled = true
 	if stat_bonus:
 		player.set(stat_name, player.get(stat_name) + stat_bonus)
+	upgrade_taken.emit(self)
 
 func setup_label() -> void:
 	if stat_bonus and player != null:
