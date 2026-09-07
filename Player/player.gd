@@ -7,6 +7,8 @@ extends CharacterBody3D
 @export var movement_speed := 8.0
 ## Speed during dash in meters per second. Read by Dash State.
 @export var dash_speed := 50.0
+## Overall damage percentage stat (default 100.0 = 100%).
+@export var damage_stat: float = 100.0
 ## Audio player for dashing sound effect.
 @export var dash_audio: AudioStreamPlayer3D
 
@@ -71,6 +73,5 @@ func health_component_changed(health_in: float) -> void:
 	var tween: Tween = create_tween()
 	tween.tween_property(damage_tint, "color", Color(Color.RED, 0.0), 0.2).from(Color(Color.RED, 0.5))
 
-#func _input(event: InputEvent) -> void:
-#	if event.is_action_pressed("ui_accept"):
-#		health_component.take_damage(5.0)
+func get_damage_modifier() -> float:
+	return damage_stat / 100.0

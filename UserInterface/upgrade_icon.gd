@@ -1,7 +1,7 @@
 extends PanelContainer
 class_name UpgradeIcon
 
-@export_multiline var text_template: String = "A description."
+@export_multiline() var text_template: String = "%.1f -> [color='7fffd4']%.1f[/color] m/s"
 @export var stat_name: String
 @export var stat_bonus: float = 0.0
 

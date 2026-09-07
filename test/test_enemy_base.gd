@@ -1316,12 +1316,19 @@ func _ready() -> void:
 		return
 
 	var shop_upgrade_speed: UpgradeIcon = hbox.get_node_or_null("UpgradeSpeed") as UpgradeIcon
-	if shop_upgrade_speed == null:
-		printerr("TEST FAILED: UpgradeShop UpgradeSpeed instance missing in HBoxContainer.")
+	if shop_upgrade_speed == null or shop_upgrade_speed.size_flags_horizontal != 6:
+		printerr("TEST FAILED: UpgradeShop UpgradeSpeed instance missing or size_flags_horizontal != 6.")
 		shop.queue_free()
 		get_tree().quit(1)
 		return
-	print("UpgradeShop HBoxContainer and UpgradeSpeed child verified.")
+
+	var shop_upgrade_damage: UpgradeIcon = hbox.get_node_or_null("UpgradeDamage") as UpgradeIcon
+	if shop_upgrade_damage == null or shop_upgrade_damage.size_flags_horizontal != 6:
+		printerr("TEST FAILED: UpgradeShop UpgradeDamage instance missing or size_flags_horizontal != 6.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+	print("UpgradeShop HBoxContainer, UpgradeSpeed, and UpgradeDamage children verified.")
 
 	var accept_event := InputEventAction.new()
 	accept_event.action = "ui_accept"
@@ -1433,7 +1440,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: UpgradeIcon description is null or misconfigured")
 		get_tree().quit(1)
 		return
-	if icon_inst.text_template != "A description.":
+	if icon_inst.text_template != "%.1f -> [color='7fffd4']%.1f[/color] m/s":
 		printerr("TEST FAILED: UpgradeIcon text_template incorrect: ", icon_inst.text_template)
 		get_tree().quit(1)
 		return
@@ -1515,6 +1522,71 @@ func _ready() -> void:
 
 	speed_icon.queue_free()
 	upgrade_player.queue_free()
+	await get_tree().process_frame
+
+	# Test UpgradeDamage scene
+	var damage_scene: PackedScene = load("res://UserInterface/upgrade_damage.tscn")
+	if damage_scene == null:
+		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_damage.tscn")
+		get_tree().quit(1)
+		return
+	var damage_icon: UpgradeIcon = damage_scene.instantiate() as UpgradeIcon
+	if damage_icon == null:
+		printerr("TEST FAILED: UpgradeDamage is not an instance of UpgradeIcon")
+		get_tree().quit(1)
+		return
+	if damage_icon.stat_name != "damage_stat" or damage_icon.stat_bonus != 50.0:
+		printerr("TEST FAILED: UpgradeDamage stat_name or stat_bonus incorrect. Got: ", damage_icon.stat_name, ", ", damage_icon.stat_bonus)
+		get_tree().quit(1)
+		return
+	if damage_icon.text_template != "%d%% -> [color='7fffd4']%d%%[/color] damage":
+		printerr("TEST FAILED: UpgradeDamage text_template incorrect: ", damage_icon.text_template)
+		get_tree().quit(1)
+		return
+
+	# Test player damage upgrade functionality
+	var player_scene_dmg: PackedScene = load("res://Player/player.tscn")
+	var dmg_player: Player = player_scene_dmg.instantiate() as Player
+	add_child(dmg_player)
+	add_child(damage_icon)
+	await get_tree().process_frame
+
+	if damage_icon.title.text != "[wave]Damage[/wave]":
+		printerr("TEST FAILED: UpgradeDamage Title text is not [wave]Damage[/wave], got: ", damage_icon.title.text)
+		get_tree().quit(1)
+		return
+
+	if not damage_icon.description.bbcode_enabled:
+		printerr("TEST FAILED: UpgradeDamage description bbcode_enabled is false")
+		get_tree().quit(1)
+		return
+
+	var expected_dmg_desc: String = "100% -> [color='7fffd4']150%[/color] damage"
+	if damage_icon.description.text != expected_dmg_desc:
+		printerr("TEST FAILED: UpgradeDamage description.text did not match formatted template. Got: '", damage_icon.description.text, "', expected: '", expected_dmg_desc, "'")
+		get_tree().quit(1)
+		return
+	print("UpgradeDamage setup_label() text formatting verified: ", damage_icon.description.text)
+
+	if dmg_player.damage_stat != 100.0 or not is_equal_approx(dmg_player.get_damage_modifier(), 1.0):
+		printerr("TEST FAILED: Initial damage_stat or get_damage_modifier incorrect")
+		get_tree().quit(1)
+		return
+
+	damage_icon.take_upgrade()
+	if dmg_player.damage_stat != 150.0 or not is_equal_approx(dmg_player.get_damage_modifier(), 1.5):
+		printerr("TEST FAILED: take_upgrade did not increase damage_stat to 150.0 / modifier to 1.5")
+		get_tree().quit(1)
+		return
+	print("take_upgrade() successfully modified damage_stat to 150.0 and get_damage_modifier() to 1.5")
+
+	if not damage_icon.texture_button.disabled:
+		printerr("TEST FAILED: damage_icon texture_button was not disabled after take_upgrade.")
+		get_tree().quit(1)
+		return
+
+	damage_icon.queue_free()
+	dmg_player.queue_free()
 	await get_tree().process_frame
 
 	print("\n====================================================================")

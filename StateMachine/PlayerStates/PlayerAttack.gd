@@ -24,7 +24,7 @@ var aim_direction: Vector3 = Vector3.ZERO
 
 func physics_update(_delta: float) -> void:
 	player.velocity = player.get_movement_direction() * movement_speed
-	attack_component.deal_damage(damage, Vector3.ZERO)
+	attack_component.deal_damage(damage * player.get_damage_modifier(), Vector3.ZERO)
 	player.look_toward_direction(aim_direction, 1.0)
 	player.move_and_slide()
 	

@@ -3,6 +3,7 @@
 [ext_resource type="Shader" uid="uid://cela787gxx7fy" path="res://Assets/Shaders/background_material.tres" id="1_35ex1"]
 [ext_resource type="Script" uid="uid://bjfhahgt2muts" path="res://UserInterface/upgrade_shop.gd" id="1_fv7qc"]
 [ext_resource type="PackedScene" uid="uid://t8o7e1e7u62k" path="res://UserInterface/upgrade_speed.tscn" id="3_1qbod"]
+[ext_resource type="PackedScene" uid="uid://bljy2u2g8g7et" path="res://UserInterface/upgrade_damage.tscn" id="4_refcl"]
 
 [sub_resource type="Gradient" id="Gradient_fv7qc"]
 offsets = PackedFloat32Array(0.31683168, 0.6188119, 0.75247526, 0.85148513)
@@ -70,3 +71,8 @@ size_flags_vertical = 6
 
 [node name="UpgradeSpeed" parent="MarginContainer/VBoxContainer/HBoxContainer" unique_id=596441973 instance=ExtResource("3_1qbod")]
 layout_mode = 2
+size_flags_horizontal = 6
+
+[node name="UpgradeDamage" parent="MarginContainer/VBoxContainer/HBoxContainer" unique_id=996165272 instance=ExtResource("4_refcl")]
+layout_mode = 2
+size_flags_horizontal = 6
