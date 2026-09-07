@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cr64dhtb6fer3"]
 
-[ext_resource type="PackedScene" path="res://Levels/LevelTemplate.tscn" id="1_n0qsc"]
-[ext_resource type="VoxelGIData" path="res://Levels/GlobalIlluminationData/level_1_voxel_gi_data.res" id="2_dilhk"]
+[ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/LevelTemplate.tscn" id="1_n0qsc"]
+[ext_resource type="VoxelGIData" uid="uid://cawdua4hjiihs" path="res://Levels/GlobalIlluminationData/level_1_voxel_gi_data.res" id="2_dilhk"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_3mhv4"]
 vertices = PackedVector3Array(-12, 0.60000014, 7.5, -11.5, 0.60000014, 8, 7.5, 0.60000014, 8, 8, 0.60000014, -15.5, 7.5, 0.60000014, -16, -11.5, 0.60000014, -16, -12, 0.60000014, -15.5, 8, 0.60000014, 7.5)
@@ -25,6 +25,9 @@ data = {
 
 [node name="Player" parent="." index="4" unique_id=602303743]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1, -4)
+
+[node name="Pit" parent="." index="5" unique_id=915475260]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, -8)
 
 [node name="VoxelGI" parent="." index="7" unique_id=1824942255]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.25766, 0, -4.66687)

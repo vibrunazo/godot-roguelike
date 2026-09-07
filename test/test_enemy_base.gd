@@ -700,6 +700,52 @@ func _ready() -> void:
 	print("Level 1 scene (NavMesh 6 polygons, VoxelGI, Player at (4, 1, -4), ExitPoint at (-8, 0, -4)) verified.")
 	l1.queue_free()
 
+	# Verify Level 2 scene
+	var level_2_scene: PackedScene = load("res://Levels/level_2.tscn")
+	if level_2_scene == null:
+		printerr("TEST FAILED: Could not load res://Levels/level_2.tscn")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l2: Node3D = level_2_scene.instantiate() as Node3D
+	var l2_exit: Node3D = l2.get_node_or_null("ExitPoint") as Node3D
+	if l2_exit == null or l2_exit.transform.origin != Vector3(-12, 0, -28):
+		printerr("TEST FAILED: Level 2 ExitPoint position is not (-12, 0, -28): ", l2_exit.transform.origin if l2_exit else "null")
+		l2.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l2_pit2: Node3D = l2.get_node_or_null("Pit2") as Node3D
+	if l2_pit2 == null:
+		printerr("TEST FAILED: Level 2 Pit2 mesh missing.")
+		l2.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l2_nav: NavigationRegion3D = l2.get_node_or_null("NavigationRegion3D") as NavigationRegion3D
+	if l2_nav == null or l2_nav.navigation_mesh == null or l2_nav.navigation_mesh.get_polygon_count() == 0:
+		printerr("TEST FAILED: Level 2 NavigationMesh missing or empty.")
+		l2.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l2_litter: Node3D = l2_nav.get_node_or_null("Litter") as Node3D
+	if l2_litter == null or l2_litter.get_child_count() == 0:
+		printerr("TEST FAILED: Level 2 Litter node missing or empty under NavigationRegion3D.")
+		l2.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l2_vgi: VoxelGI = l2.get_node_or_null("VoxelGI") as VoxelGI
+	if l2_vgi == null or l2_vgi.data == null:
+		printerr("TEST FAILED: Level 2 VoxelGI missing or data is null.")
+		l2.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("Level 2 scene (Litter, Pit2, NavMesh, VoxelGI, ExitPoint at (-12, 0, -28)) verified.")
+	l2.queue_free()
+
 	level.queue_free()
 	await get_tree().physics_frame
 	await get_tree().process_frame
@@ -1137,6 +1183,7 @@ func _ready() -> void:
 	print("  19. SceneTransition singleton & fade methods verified             ")
 	print("  20. Player state & health preservation across levels verified     ")
 	print("  21. Level 1 inherited scene, geometry, and placement verified     ")
+	print("  22. Level 2 inherited scene, litter props, and navmesh verified   ")
 	print("====================================================================")
 	
 	get_tree().quit(0)
