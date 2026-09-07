@@ -1315,13 +1315,13 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	var shop_upgrade_icon: UpgradeIcon = hbox.get_node_or_null("UpgradeIcon") as UpgradeIcon
-	if shop_upgrade_icon == null:
-		printerr("TEST FAILED: UpgradeShop UpgradeIcon instance missing in HBoxContainer.")
+	var shop_upgrade_speed: UpgradeIcon = hbox.get_node_or_null("UpgradeSpeed") as UpgradeIcon
+	if shop_upgrade_speed == null:
+		printerr("TEST FAILED: UpgradeShop UpgradeSpeed instance missing in HBoxContainer.")
 		shop.queue_free()
 		get_tree().quit(1)
 		return
-	print("UpgradeShop HBoxContainer and UpgradeIcon child verified.")
+	print("UpgradeShop HBoxContainer and UpgradeSpeed child verified.")
 
 	var accept_event := InputEventAction.new()
 	accept_event.action = "ui_accept"
@@ -1409,6 +1409,18 @@ func _ready() -> void:
 	add_child(icon_inst)
 	await get_tree().process_frame
 
+	var vbox_node: VBoxContainer = icon_inst.get_node_or_null("VBoxContainer") as VBoxContainer
+	if vbox_node == null or vbox_node.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		printerr("TEST FAILED: UpgradeIcon VBoxContainer mouse_filter is not MOUSE_FILTER_IGNORE")
+		get_tree().quit(1)
+		return
+
+	var control_node: Control = vbox_node.get_node_or_null("Control") as Control
+	if control_node == null or control_node.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		printerr("TEST FAILED: UpgradeIcon Control mouse_filter is not MOUSE_FILTER_IGNORE")
+		get_tree().quit(1)
+		return
+
 	if icon_inst.texture_button == null:
 		printerr("TEST FAILED: UpgradeIcon texture_button is null")
 		get_tree().quit(1)
@@ -1425,9 +1437,69 @@ func _ready() -> void:
 		printerr("TEST FAILED: UpgradeIcon text_template incorrect: ", icon_inst.text_template)
 		get_tree().quit(1)
 		return
+	if icon_inst.stat_name != "" or icon_inst.stat_bonus != 0.0:
+		printerr("TEST FAILED: UpgradeIcon default stat_name or stat_bonus incorrect")
+		get_tree().quit(1)
+		return
 
 	icon_inst.queue_free()
 	print("Base UpgradeIcon scene, theme, nodes, and exports verified.")
+
+	# Test UpgradeSpeed scene
+	var speed_scene: PackedScene = load("res://UserInterface/upgrade_speed.tscn")
+	if speed_scene == null:
+		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_speed.tscn")
+		get_tree().quit(1)
+		return
+	var speed_icon: UpgradeIcon = speed_scene.instantiate() as UpgradeIcon
+	if speed_icon == null:
+		printerr("TEST FAILED: UpgradeSpeed is not an instance of UpgradeIcon")
+		get_tree().quit(1)
+		return
+	if speed_icon.stat_name != "movement_speed" or speed_icon.stat_bonus != 10.0:
+		printerr("TEST FAILED: UpgradeSpeed stat_name or stat_bonus incorrect. Got: ", speed_icon.stat_name, ", ", speed_icon.stat_bonus)
+		get_tree().quit(1)
+		return
+
+	# Test player speed upgrade functionality
+	var player_scene_upgrade: PackedScene = load("res://Player/player.tscn")
+	var upgrade_player: Player = player_scene_upgrade.instantiate() as Player
+	add_child(upgrade_player)
+	add_child(speed_icon)
+	await get_tree().process_frame
+
+	if speed_icon.title.text != "[wave]Speed[/wave]":
+		printerr("TEST FAILED: UpgradeSpeed Title text is not [wave]Speed[/wave], got: ", speed_icon.title.text)
+		get_tree().quit(1)
+		return
+
+	var base_speed: float = upgrade_player.movement_speed
+	speed_icon.take_upgrade()
+	if not is_equal_approx(upgrade_player.movement_speed, base_speed + 10.0):
+		printerr("TEST FAILED: take_upgrade did not increase player movement_speed by 10. Got: ", upgrade_player.movement_speed)
+		get_tree().quit(1)
+		return
+	print("take_upgrade() successfully modified player movement_speed from ", base_speed, " to ", upgrade_player.movement_speed)
+
+	# Verify texture_button is disabled after taking upgrade
+	if not speed_icon.texture_button.disabled:
+		printerr("TEST FAILED: speed_icon texture_button was not disabled after take_upgrade.")
+		get_tree().quit(1)
+		return
+	print("UpgradeIcon texture_button is disabled after take_upgrade verified.")
+
+	# Verify clicking or calling take_upgrade again does NOT increase speed
+	speed_icon.texture_button.pressed.emit()
+	speed_icon.take_upgrade()
+	if not is_equal_approx(upgrade_player.movement_speed, base_speed + 10.0):
+		printerr("TEST FAILED: take_upgrade applied bonus again while disabled! Speed: ", upgrade_player.movement_speed)
+		get_tree().quit(1)
+		return
+	print("UpgradeIcon multiple click prevention verified (speed remained ", upgrade_player.movement_speed, ").")
+
+	speed_icon.queue_free()
+	upgrade_player.queue_free()
+	await get_tree().process_frame
 
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
