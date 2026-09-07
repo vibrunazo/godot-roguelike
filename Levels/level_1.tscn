@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://cr64dhtb6fer3"]
+
+[ext_resource type="PackedScene" path="res://Levels/LevelTemplate.tscn" id="1_n0qsc"]
+[ext_resource type="VoxelGIData" path="res://Levels/GlobalIlluminationData/level_1_voxel_gi_data.res" id="2_dilhk"]
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_3mhv4"]
+vertices = PackedVector3Array(-12, 0.60000014, 7.5, -11.5, 0.60000014, 8, 7.5, 0.60000014, 8, 8, 0.60000014, -15.5, 7.5, 0.60000014, -16, -11.5, 0.60000014, -16, -12, 0.60000014, -15.5, 8, 0.60000014, 7.5)
+polygons = [PackedInt32Array(2, 1, 0), PackedInt32Array(5, 4, 3), PackedInt32Array(5, 3, 6), PackedInt32Array(6, 3, 7), PackedInt32Array(6, 7, 2), PackedInt32Array(6, 2, 0)]
+geometry_parsed_geometry_type = 1
+
+[node name="Level1" unique_id=1079320019 instance=ExtResource("1_n0qsc")]
+
+[node name="NavigationRegion3D" parent="." index="3" unique_id=35119806]
+navigation_mesh = SubResource("NavigationMesh_3mhv4")
+
+[node name="Floormap" parent="NavigationRegion3D" index="0" unique_id=1490712787]
+data = {
+"cells": PackedInt32Array(0, 65535, 0, 65535, 65535, 0, 0, 0, 0, 65535, 0, 0, 65534, 0, 0, 1, 0, 1, 1, 65535, 0, 65534, 65535, 1, 65534, 65534, 1, 1, 65534, 1, 1, 1, 1, 0, 1, 1, 65535, 1, 1, 65534, 1, 1, 65534, 65532, 655360, 65535, 65532, 1, 65534, 65533, 1, 0, 65532, 1, 1, 65532, 655360, 1, 65533, 1, 65533, 1, 655361, 65533, 0, 655361, 65533, 65535, 655361, 65533, 65534, 655361, 65533, 65532, 655360, 65533, 65533, 655360, 0, 65534, 655361, 0, 65533, 655361, 65535, 65533, 655361, 65535, 65534, 655360)
+}
+
+[node name="Wallmap" parent="NavigationRegion3D" index="1" unique_id=1974469329]
+data = {
+"cells": PackedInt32Array(-65532, 3, 1441792, -65532, 1, 1441792, -65532, 65535, 1441792, -65532, 65533, 1441792, -65532, 65531, 1441792, -65532, 65529, 1441792, -65533, 65528, 655360, -65535, 65528, 0, -1, 65528, 0, -3, 65528, 0, -5, 65528, 0, -6, 65529, 1441792, -6, 65531, 1441792, -6, 65533, 1441792, -6, 65535, 1441792, -6, 1, 1441792, -6, 3, 1441792, -65533, 4, 655360, -65535, 4, 655360, -1, 4, 655360, -3, 4, 655360, -5, 4, 655360)
+}
+
+[node name="Player" parent="." index="4" unique_id=602303743]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1, -4)
+
+[node name="VoxelGI" parent="." index="7" unique_id=1824942255]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.25766, 0, -4.66687)
+size = Vector3(27.919373, 20, 33.434814)
+data = ExtResource("2_dilhk")
+
+[node name="ExitPoint" parent="." index="8" unique_id=71757807]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, -4)

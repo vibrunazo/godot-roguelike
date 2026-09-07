@@ -661,6 +661,45 @@ func _ready() -> void:
 		return
 	print("LevelTemplate NavigationRegion3D & NavigationMesh (Static Colliders, ", nav_region.navigation_mesh.get_polygon_count(), " polygons) verified.")
 
+	# Verify Level 1 scene
+	var level_1_scene: PackedScene = load("res://Levels/level_1.tscn")
+	if level_1_scene == null:
+		printerr("TEST FAILED: Could not load res://Levels/level_1.tscn")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l1: Node3D = level_1_scene.instantiate() as Node3D
+	var l1_player: Node3D = l1.get_node_or_null("Player") as Node3D
+	if l1_player == null or l1_player.transform.origin != Vector3(4, 1, -4):
+		printerr("TEST FAILED: Level 1 Player spawn position is not (4, 1, -4): ", l1_player.transform.origin if l1_player else "null")
+		l1.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l1_exit: Node3D = l1.get_node_or_null("ExitPoint") as Node3D
+	if l1_exit == null or l1_exit.transform.origin != Vector3(-8, 0, -4):
+		printerr("TEST FAILED: Level 1 ExitPoint position is not (-8, 0, -4): ", l1_exit.transform.origin if l1_exit else "null")
+		l1.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l1_nav: NavigationRegion3D = l1.get_node_or_null("NavigationRegion3D") as NavigationRegion3D
+	if l1_nav == null or l1_nav.navigation_mesh == null or l1_nav.navigation_mesh.get_polygon_count() != 6:
+		printerr("TEST FAILED: Level 1 NavigationMesh missing or invalid polygon count.")
+		l1.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l1_vgi: VoxelGI = l1.get_node_or_null("VoxelGI") as VoxelGI
+	if l1_vgi == null or l1_vgi.data == null:
+		printerr("TEST FAILED: Level 1 VoxelGI missing or data is null.")
+		l1.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("Level 1 scene (NavMesh 6 polygons, VoxelGI, Player at (4, 1, -4), ExitPoint at (-8, 0, -4)) verified.")
+	l1.queue_free()
+
 	level.queue_free()
 	await get_tree().physics_frame
 	await get_tree().process_frame
@@ -1097,6 +1136,7 @@ func _ready() -> void:
 	print("  18. NavigationServer3D map_get_random_point verified              ")
 	print("  19. SceneTransition singleton & fade methods verified             ")
 	print("  20. Player state & health preservation across levels verified     ")
+	print("  21. Level 1 inherited scene, geometry, and placement verified     ")
 	print("====================================================================")
 	
 	get_tree().quit(0)
