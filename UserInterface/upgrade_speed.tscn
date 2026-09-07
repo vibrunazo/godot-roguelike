@@ -3,8 +3,13 @@
 [ext_resource type="PackedScene" uid="uid://3lgqbvbvyeg8" path="res://UserInterface/upgrade_icon.tscn" id="1_isjw3"]
 
 [node name="UpgradeSpeed" unique_id=596441973 instance=ExtResource("1_isjw3")]
+text_template = "%.1f -> [color=\"7fffd4\"]%.1f[/color] m/s"
 stat_name = "movement_speed"
-stat_bonus = 10.0
+stat_bonus = 1.5
 
 [node name="Title" parent="VBoxContainer" parent_id_path=PackedInt32Array(1535228889) index="0" unique_id=1487260509]
 text = "[wave]Speed[/wave]"
+
+[node name="Description" parent="VBoxContainer/Control" parent_id_path=PackedInt32Array(1502604297) index="0" unique_id=2060784592]
+bbcode_enabled = true
+

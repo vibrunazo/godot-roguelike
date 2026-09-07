@@ -1,7 +1,7 @@
 extends PanelContainer
 class_name UpgradeIcon
 
-@export var text_template: String = "A description."
+@export_multiline var text_template: String = "A description."
 @export var stat_name: String
 @export var stat_bonus: float = 0.0
 
@@ -12,6 +12,7 @@ class_name UpgradeIcon
 
 func _ready() -> void:
 	texture_button.pressed.connect(take_upgrade)
+	setup_label()
 
 func take_upgrade() -> void:
 	if texture_button != null and texture_button.disabled:
@@ -20,3 +21,7 @@ func take_upgrade() -> void:
 		texture_button.disabled = true
 	if stat_bonus:
 		player.set(stat_name, player.get(stat_name) + stat_bonus)
+
+func setup_label() -> void:
+	if stat_bonus and player != null:
+		description.text = text_template % [player.get(stat_name), player.get(stat_name) + stat_bonus]

@@ -1456,8 +1456,12 @@ func _ready() -> void:
 		printerr("TEST FAILED: UpgradeSpeed is not an instance of UpgradeIcon")
 		get_tree().quit(1)
 		return
-	if speed_icon.stat_name != "movement_speed" or speed_icon.stat_bonus != 10.0:
+	if speed_icon.stat_name != "movement_speed" or speed_icon.stat_bonus != 1.5:
 		printerr("TEST FAILED: UpgradeSpeed stat_name or stat_bonus incorrect. Got: ", speed_icon.stat_name, ", ", speed_icon.stat_bonus)
+		get_tree().quit(1)
+		return
+	if speed_icon.text_template != "%.1f -> [color=\"7fffd4\"]%.1f[/color] m/s":
+		printerr("TEST FAILED: UpgradeSpeed text_template incorrect: ", speed_icon.text_template)
 		get_tree().quit(1)
 		return
 
@@ -1473,10 +1477,22 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
+	if not speed_icon.description.bbcode_enabled:
+		printerr("TEST FAILED: UpgradeSpeed description bbcode_enabled is false")
+		get_tree().quit(1)
+		return
+
+	var expected_desc: String = "8.0 -> [color=\"7fffd4\"]9.5[/color] m/s"
+	if speed_icon.description.text != expected_desc:
+		printerr("TEST FAILED: UpgradeSpeed description.text did not match formatted template. Got: '", speed_icon.description.text, "', expected: '", expected_desc, "'")
+		get_tree().quit(1)
+		return
+	print("UpgradeSpeed setup_label() text formatting verified: ", speed_icon.description.text)
+
 	var base_speed: float = upgrade_player.movement_speed
 	speed_icon.take_upgrade()
-	if not is_equal_approx(upgrade_player.movement_speed, base_speed + 10.0):
-		printerr("TEST FAILED: take_upgrade did not increase player movement_speed by 10. Got: ", upgrade_player.movement_speed)
+	if not is_equal_approx(upgrade_player.movement_speed, base_speed + 1.5):
+		printerr("TEST FAILED: take_upgrade did not increase player movement_speed by 1.5. Got: ", upgrade_player.movement_speed)
 		get_tree().quit(1)
 		return
 	print("take_upgrade() successfully modified player movement_speed from ", base_speed, " to ", upgrade_player.movement_speed)
@@ -1491,7 +1507,7 @@ func _ready() -> void:
 	# Verify clicking or calling take_upgrade again does NOT increase speed
 	speed_icon.texture_button.pressed.emit()
 	speed_icon.take_upgrade()
-	if not is_equal_approx(upgrade_player.movement_speed, base_speed + 10.0):
+	if not is_equal_approx(upgrade_player.movement_speed, base_speed + 1.5):
 		printerr("TEST FAILED: take_upgrade applied bonus again while disabled! Speed: ", upgrade_player.movement_speed)
 		get_tree().quit(1)
 		return
