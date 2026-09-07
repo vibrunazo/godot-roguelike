@@ -32,7 +32,6 @@ radius = 2.0
 
 [node name="ExitPoint" type="Node3D" unique_id=71757807]
 script = ExtResource("1_vaxgh")
-next_scene_path = "uid://dyj3auoai18wd"
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1948926539]
 mesh = SubResource("SphereMesh_dlxbb")

@@ -27,4 +27,7 @@ func _on_area_3d_body_entered(body: Node3D) -> void:
 	if body is Player:
 		locked = true
 		GlobalVars.finish_level()
-		SceneTransition.load_scene_path(next_scene_path)
+		if not next_scene_path.is_empty():
+			SceneTransition.load_scene_path(next_scene_path)
+		else:
+			SceneTransition.load_next_level()

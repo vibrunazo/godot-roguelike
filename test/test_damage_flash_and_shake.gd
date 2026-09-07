@@ -55,6 +55,19 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Player AttackComponent shake_on_damage verified (true)")
+
+	# Verify AttackComponent reset_exceptions does not error when collision exceptions are freed
+	var dummy_col: StaticBody3D = StaticBody3D.new()
+	add_child(dummy_col)
+	attack_comp.attack_shapecast.add_exception(dummy_col)
+	attack_comp.temporary_exceptions.append(dummy_col)
+	dummy_col.free()
+	attack_comp.reset_exceptions()
+	if not attack_comp.temporary_exceptions.is_empty():
+		printerr("TEST FAILED: AttackComponent temporary_exceptions not empty after reset.")
+		get_tree().quit(1)
+		return
+	print("AttackComponent reset_exceptions with freed object safely handled.")
 	
 	# ---------------------------------------------------------
 	# PART 2: Player Taking Damage (Red Flash + 1.0 Magnitude Shake)

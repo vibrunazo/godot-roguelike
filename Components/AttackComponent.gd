@@ -14,7 +14,7 @@ func deal_damage(damage: float, knockback: Vector3) -> void:
 	var has_hit: bool = false
 	for index: int in attack_shapecast.get_collision_count():
 		var collider: CollisionObject3D = attack_shapecast.get_collider(index) as CollisionObject3D
-		if collider and collider.has_node("HealthComponent"):
+		if collider and is_instance_valid(collider) and collider.has_node("HealthComponent"):
 			var health_component: HealthComponent = collider.get_node("HealthComponent") as HealthComponent
 			health_component.take_damage(damage)
 			attack_shapecast.add_exception(collider)
@@ -26,6 +26,9 @@ func deal_damage(damage: float, knockback: Vector3) -> void:
 			camera.quick_shake(0.75)
 			
 func reset_exceptions() -> void:
-	for exception: CollisionObject3D in temporary_exceptions:
-		attack_shapecast.remove_exception(exception)
-	temporary_exceptions = []
+	if attack_shapecast != null:
+		for exception: CollisionObject3D in temporary_exceptions:
+			if is_instance_valid(exception):
+				attack_shapecast.remove_exception(exception)
+		attack_shapecast.clear_exceptions()
+	temporary_exceptions.clear()

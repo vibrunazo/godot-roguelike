@@ -7,6 +7,7 @@
 vertices = PackedVector3Array(-12, 0.60000014, 7.5, -11.5, 0.60000014, 8, 7.5, 0.60000014, 8, 8, 0.60000014, -15.5, 7.5, 0.60000014, -16, -11.5, 0.60000014, -16, -12, 0.60000014, -15.5, 8, 0.60000014, 7.5)
 polygons = [PackedInt32Array(2, 1, 0), PackedInt32Array(5, 4, 3), PackedInt32Array(5, 3, 6), PackedInt32Array(6, 3, 7), PackedInt32Array(6, 7, 2), PackedInt32Array(6, 2, 0)]
 geometry_parsed_geometry_type = 1
+region_min_size = 6.0
 
 [node name="Level1" unique_id=1079320019 instance=ExtResource("1_n0qsc")]
 

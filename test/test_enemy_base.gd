@@ -502,13 +502,27 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	var valid_paths: Array[String] = ["res://Levels/LevelTemplate.tscn", "uid://dyj3auoai18wd"]
+	var valid_paths: Array[String] = ["res://Levels/LevelTemplate.tscn", "uid://dyj3auoai18wd", ""]
 	if not exit_point.next_scene_path in valid_paths or not exit_point.next_level_path in valid_paths:
 		printerr("TEST FAILED: ExitPoint next_scene_path: '", exit_point.next_scene_path, "', next_level_path: '", exit_point.next_level_path, "'")
 		level.queue_free()
 		get_tree().quit(1)
 		return
 	print("ExitPoint initially invisible, locked, and next_scene_path export var verified.")
+
+	# Verify difficulty curve and GlobalVars enemy count
+	var curve_res: Curve = load("res://Singletons/difficulty_curve.tres") as Curve
+	if curve_res == null or curve_res.point_count < 2:
+		printerr("TEST FAILED: difficulty_curve.tres missing or invalid point count.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if GlobalVars.get_enemy_count() < 3:
+		printerr("TEST FAILED: GlobalVars.get_enemy_count() at level 1 is ", GlobalVars.get_enemy_count(), ", expected >= 3.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("Difficulty curve and GlobalVars.get_enemy_count() (level 1: ", GlobalVars.get_enemy_count(), ") verified.")
 
 	# Verify ExitPoint Area3D & CollisionShape3D
 	var exit_area: Area3D = exit_point.get_node_or_null("Area3D") as Area3D
@@ -565,11 +579,17 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	if not scene_trans.has_method("fade_in") or not scene_trans.has_method("fade_out") or not scene_trans.has_method("load_scene_path"):
-		printerr("TEST FAILED: SceneTransition missing fade_in/fade_out/load_scene_path methods.")
+	if not scene_trans.has_method("fade_in") or not scene_trans.has_method("fade_out") or not scene_trans.has_method("load_scene_path") or not scene_trans.has_method("load_next_level"):
+		printerr("TEST FAILED: SceneTransition missing fade_in/fade_out/load_scene_path/load_next_level methods.")
 		level.queue_free()
 		get_tree().quit(1)
-	print("SceneTransition autoload & ColorRect verified.")
+		return
+	if not ("levels" in scene_trans) or (scene_trans.get("levels") as Array).size() != 3:
+		printerr("TEST FAILED: SceneTransition levels array missing or size != 3.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("SceneTransition autoload, ColorRect, levels array (size 3) & load_next_level verified.")
 
 	# Verify SceneTransition.player_cache property
 	if not ("player_cache" in scene_trans):
@@ -1251,6 +1271,7 @@ func _ready() -> void:
 	print("  21. Level 1 inherited scene, geometry, and placement verified     ")
 	print("  22. Level 2 inherited scene, litter props, and navmesh verified   ")
 	print("  23. Level 3 inherited scene, litter props, and navmesh verified   ")
+	print("  24. Level shuffling & difficulty curve enemy scaling verified     ")
 	print("====================================================================")
 	
 	get_tree().quit(0)

@@ -3,9 +3,15 @@ extends CanvasLayer
 @onready var color_rect: ColorRect = $ColorRect
 
 var player_cache: Player
+var levels: Array[String] = [
+	"res://Levels/level_1.tscn",
+	"res://Levels/level_2.tscn",
+	"res://Levels/level_3.tscn"
+]
 
 
 func _ready() -> void:
+	levels.shuffle()
 	fade_out(create_tween())
 
 
@@ -32,3 +38,8 @@ func load_scene_path(path_in: String, args: Dictionary = {}) -> void:
 	)
 	tween.tween_interval(0.5)
 	fade_out(tween)
+
+
+func load_next_level(args: Dictionary = {}) -> void:
+	levels.push_back(levels.pop_front())
+	load_scene_path(levels.front(), args)
