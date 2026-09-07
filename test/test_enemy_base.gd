@@ -1,6 +1,7 @@
 extends Node
 
 const TestUtils = preload("res://test/test_utils.gd")
+const UpgradeIcon = preload("res://UserInterface/upgrade_icon.gd")
 
 func _ready() -> void:
 	print("--- RUNNING BASE ENEMY SCENE & LOGIC TEST ---")
@@ -1307,6 +1308,21 @@ func _ready() -> void:
 		return
 	print("UpgradeShop scene hierarchy, shader material, margin container, and title label verified.")
 
+	var hbox: HBoxContainer = vbox.get_node_or_null("HBoxContainer") as HBoxContainer
+	if hbox == null or hbox.size_flags_vertical != 6:
+		printerr("TEST FAILED: UpgradeShop HBoxContainer missing or size_flags_vertical != 6")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+
+	var shop_upgrade_icon: UpgradeIcon = hbox.get_node_or_null("UpgradeIcon") as UpgradeIcon
+	if shop_upgrade_icon == null:
+		printerr("TEST FAILED: UpgradeShop UpgradeIcon instance missing in HBoxContainer.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+	print("UpgradeShop HBoxContainer and UpgradeIcon child verified.")
+
 	var accept_event := InputEventAction.new()
 	accept_event.action = "ui_accept"
 	accept_event.pressed = true
@@ -1353,6 +1369,66 @@ func _ready() -> void:
 		return
 	print("Window stretch settings (mode=canvas_items, aspect=expand) verified.")
 
+	print("\n>>> PART 13: Base Upgrade Icon Verification")
+	var upgrade_icon_scene: PackedScene = load("res://UserInterface/upgrade_icon.tscn")
+	if upgrade_icon_scene == null:
+		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_icon.tscn")
+		get_tree().quit(1)
+		return
+
+	var icon_inst: UpgradeIcon = upgrade_icon_scene.instantiate() as UpgradeIcon
+	if icon_inst == null:
+		printerr("TEST FAILED: upgrade_icon is not an instance of class_name UpgradeIcon")
+		get_tree().quit(1)
+		return
+	if not (icon_inst is PanelContainer):
+		printerr("TEST FAILED: UpgradeIcon is not a PanelContainer")
+		get_tree().quit(1)
+		return
+
+	if icon_inst.custom_minimum_size != Vector2(256, 160):
+		printerr("TEST FAILED: UpgradeIcon custom_minimum_size is not Vector2(256, 160), got: ", icon_inst.custom_minimum_size)
+		get_tree().quit(1)
+		return
+
+	if icon_inst.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		printerr("TEST FAILED: UpgradeIcon mouse_filter is not MOUSE_FILTER_IGNORE")
+		get_tree().quit(1)
+		return
+
+	var panel_style: StyleBoxFlat = icon_inst.get_theme_stylebox("panel") as StyleBoxFlat
+	if panel_style == null:
+		printerr("TEST FAILED: UpgradeIcon does not have a StyleBoxFlat panel style")
+		get_tree().quit(1)
+		return
+	if panel_style.border_width_top != 4 or panel_style.border_width_left != 1 or panel_style.border_width_right != 1 or panel_style.border_width_bottom != 1:
+		printerr("TEST FAILED: UpgradeIcon StyleBoxFlat border widths incorrect")
+		get_tree().quit(1)
+		return
+
+	add_child(icon_inst)
+	await get_tree().process_frame
+
+	if icon_inst.texture_button == null:
+		printerr("TEST FAILED: UpgradeIcon texture_button is null")
+		get_tree().quit(1)
+		return
+	if icon_inst.title == null or icon_inst.title.text != "[wave]Upgrade[/wave]" or icon_inst.title.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		printerr("TEST FAILED: UpgradeIcon title is null or misconfigured")
+		get_tree().quit(1)
+		return
+	if icon_inst.description == null or icon_inst.description.text != "A description of the upgrade." or icon_inst.description.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		printerr("TEST FAILED: UpgradeIcon description is null or misconfigured")
+		get_tree().quit(1)
+		return
+	if icon_inst.text_template != "A description.":
+		printerr("TEST FAILED: UpgradeIcon text_template incorrect: ", icon_inst.text_template)
+		get_tree().quit(1)
+		return
+
+	icon_inst.queue_free()
+	print("Base UpgradeIcon scene, theme, nodes, and exports verified.")
+
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
@@ -1381,6 +1457,7 @@ func _ready() -> void:
 	print("  24. Level shuffling & difficulty curve enemy scaling verified     ")
 	print("  25. UpgradeShop scene, background shader & exit routing verified  ")
 	print("  26. Window scaling & ui_toggle_fullscreen autoload verified       ")
+	print("  27. Base UpgradeIcon scene, styling, and UpgradeShop placement ok ")
 	print("====================================================================")
 	
 	get_tree().quit(0)

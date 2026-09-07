@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://3lgqbvbvyeg8"]
+
+[ext_resource type="Script" uid="uid://cvqawcwdrl71f" path="res://UserInterface/upgrade_icon.gd" id="1_sp8rp"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ie3pj"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.101960786, 0.101960786, 0.101960786, 1)
+border_width_left = 1
+border_width_top = 4
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.30980393, 0.65882355, 0.8039216, 1)
+
+[node name="UpgradeIcon" type="PanelContainer" unique_id=596441973]
+custom_minimum_size = Vector2(256, 160)
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ie3pj")
+script = ExtResource("1_sp8rp")
+
+[node name="TextureButton" type="TextureButton" parent="." unique_id=2132394020]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=1535228889]
+layout_mode = 2
+
+[node name="Title" type="RichTextLabel" parent="VBoxContainer" unique_id=1487260509]
+modulate = Color(0.30980393, 0.65882355, 0.8039216, 1)
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/normal_font_size = 32
+bbcode_enabled = true
+text = "[wave]Upgrade[/wave]"
+fit_content = true
+horizontal_alignment = 1
+
+[node name="Control" type="Control" parent="VBoxContainer" unique_id=1502604297]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Description" type="RichTextLabel" parent="VBoxContainer/Control" unique_id=2060784592]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_font_sizes/normal_font_size = 23
+text = "A description of the upgrade."
+horizontal_alignment = 1
