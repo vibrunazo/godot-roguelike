@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://0qtans3shtxh"]
 
-[ext_resource type="Script" path="res://Enemy/enemy_projectile.gd" id="1_6uikd"]
+[ext_resource type="Script" uid="uid://csc1c0lx4t82n" path="res://Enemy/enemy_projectile.gd" id="1_6uikd"]
 [ext_resource type="AudioStream" uid="uid://d0fcu71wibih8" path="res://Assets/Audio/fire.ogg" id="1_qhog7"]
 [ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/AttackComponent.gd" id="3_td6rc"]
 
@@ -34,6 +34,8 @@ scale_curve = SubResource("CurveTexture_xnilw")
 color_ramp = SubResource("GradientTexture1D_gh88d")
 
 [sub_resource type="SphereMesh" id="SphereMesh_1gn8q"]
+radial_segments = 16
+rings = 8
 
 [node name="EnemyProjectile" type="ShapeCast3D" unique_id=935244502]
 top_level = true
@@ -61,4 +63,3 @@ process_material = SubResource("ParticleProcessMaterial_bjnmj")
 draw_pass_1 = SubResource("SphereMesh_1gn8q")
 
 [connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
-

@@ -138,4 +138,21 @@ This document tracks architectural improvements, optimizations, and technical de
     - **`EventBus`**: A lightweight global signal hub (Observer pattern) allowing subsystems to publish and subscribe to gameplay events without referencing concrete system singletons directly.
   - *Benefits*: Enforces clean architectural boundaries, keeps global state focused and auditable, and ensures systems can be tested or swapped independently.
 
+---
+
+## 10. Projectile & VFX Scene Tree Ownership (Decouple from Spawner Lifecycle)
+- **Problem**:
+  - `RangedEnemy` currently adds spawned projectiles directly as its own children (`add_child(projectile)` in `_on_weapon_slot_ranged_attack()`).
+  - While `EnemyProjectile` uses `top_level = true` so its position is transformed independently in world coordinates, its scene tree lifecycle is still tightly bound to the enemy node.
+  - In `enemy_projectile.gd`, `hit_effect()` compounds this by adding the `FireballHit` impact VFX node as a child of its parent (`get_parent().add_child(fireball)`), which also attaches the particles and sound directly beneath the enemy.
+  - This works for now only because defeated enemies currently remain in the scene tree indefinitely without being despawned. Once enemy despawning, death cleanup (`queue_free()`), or enemy object pooling is implemented, despawning an enemy will immediately and prematurely delete any active in-flight projectiles and cut off playing fireball impact visual/audio effects.
+- **Refactoring Options**:
+  - **Spawn into Dedicated Level / World Container**:
+    - Projectiles and impact VFX should be added to a dedicated world-space container node (e.g., an `Entities` or `Projectiles` node in the active level, or `get_tree().current_scene`).
+    - *Benefits*: In-flight projectiles and exploding particles survive the death or removal of the actor that spawned them, maintaining visual continuity and correct physics simulation.
+  - **Signal-Driven / Service-Driven Spawning (`ProjectileManager`)**:
+    - Instead of actors directly instantiating scenes and adding them to the hierarchy, actors emit a spawn request signal (e.g. `projectile_spawn_requested(scene, transform, velocity)`) or call a centralized manager service.
+    - *Benefits*: Decouples actors from scene management, facilitates centralized projectile pooling to eliminate allocation spikes, and standardizes collision layer assignment.
+
+
 

@@ -1071,6 +1071,40 @@ func _ready() -> void:
 		return
 	print("EnemyProjectile visual effects (GPUParticles3D) verified.")
 
+	# Verify FireballHit scene (Lecture 72)
+	var hit_scene: PackedScene = load("res://Enemy/fireball_hit.tscn")
+	if hit_scene == null:
+		printerr("TEST FAILED: Could not load res://Enemy/fireball_hit.tscn")
+		get_tree().quit(1)
+		return
+	var hit_instance: Node3D = hit_scene.instantiate() as Node3D
+	if hit_instance == null or not hit_instance.top_level:
+		printerr("TEST FAILED: FireballHit scene invalid or not top_level.")
+		get_tree().quit(1)
+		return
+	var hit_particles: GPUParticles3D = hit_instance.get_node_or_null("GPUParticles3D") as GPUParticles3D
+	if hit_particles == null or not hit_particles.one_shot or not is_equal_approx(hit_particles.explosiveness, 1.0) or not is_equal_approx(hit_particles.lifetime, 0.6):
+		printerr("TEST FAILED: FireballHit GPUParticles3D configuration invalid.")
+		get_tree().quit(1)
+		return
+	var fireball_audio: AudioStreamPlayer3D = hit_instance.get_node_or_null("AudioStreamPlayer3D") as AudioStreamPlayer3D
+	if fireball_audio == null or fireball_audio.stream == null or fireball_audio.bus != &"SFX":
+		printerr("TEST FAILED: FireballHit AudioStreamPlayer3D configuration invalid.")
+		get_tree().quit(1)
+		return
+	var hit_anim: AnimationPlayer = hit_instance.get_node_or_null("AnimationPlayer") as AnimationPlayer
+	if hit_anim == null or hit_anim.autoplay != &"hit" or not hit_anim.has_animation(&"hit"):
+		printerr("TEST FAILED: FireballHit AnimationPlayer configuration invalid.")
+		get_tree().quit(1)
+		return
+	var anim: Animation = hit_anim.get_animation(&"hit")
+	if anim == null or anim.get_track_count() != 3:
+		printerr("TEST FAILED: FireballHit 'hit' animation track count expected 3, got: ", anim.get_track_count() if anim else 0)
+		get_tree().quit(1)
+		return
+	hit_instance.queue_free()
+	print("FireballHit scene (GPUParticles3D, AudioStreamPlayer3D, AnimationPlayer) verified.")
+
 	if not is_equal_approx(proj.speed, 8.0):
 		printerr("TEST FAILED: EnemyProjectile.speed expected 8.0, got: ", proj.speed)
 		get_tree().quit(1)
@@ -1240,7 +1274,32 @@ func _ready() -> void:
 	hit_proj.global_position = test_player.global_position
 	await get_tree().physics_frame
 	# Run physics process on projectile
+	var child_count_before: int = get_child_count()
 	hit_proj._physics_process(0.016)
+	var spawned_hit: Node3D = null
+	for i: int in range(child_count_before, get_child_count()):
+		var c: Node = get_child(i)
+		if c.name.begins_with("FireballHit"):
+			spawned_hit = c as Node3D
+			break
+	if spawned_hit == null:
+		printerr("TEST FAILED: hit_effect() did not spawn FireballHit into parent.")
+		shooter.queue_free()
+		test_player.queue_free()
+		hit_proj.queue_free()
+		get_tree().quit(1)
+		return
+	if not spawned_hit.global_position.is_equal_approx(hit_proj.global_position):
+		printerr("TEST FAILED: Spawned FireballHit position does not match projectile position.")
+		shooter.queue_free()
+		test_player.queue_free()
+		hit_proj.queue_free()
+		spawned_hit.queue_free()
+		get_tree().quit(1)
+		return
+	spawned_hit.queue_free()
+	print("Projectile hit_effect() spawned FireballHit at projectile position verified.")
+
 	if not is_equal_approx(target_health.current_health, initial_health - hit_proj.damage):
 		printerr("TEST FAILED: Target health was not reduced by projectile damage. Expected ", initial_health - hit_proj.damage, ", got ", target_health.current_health)
 		shooter.queue_free()
