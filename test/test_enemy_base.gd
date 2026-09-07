@@ -746,6 +746,72 @@ func _ready() -> void:
 	print("Level 2 scene (Litter, Pit2, NavMesh, VoxelGI, ExitPoint at (-12, 0, -28)) verified.")
 	l2.queue_free()
 
+	# Verify Level 3 scene
+	var level_3_scene: PackedScene = load("res://Levels/level_3.tscn")
+	if level_3_scene == null:
+		printerr("TEST FAILED: Could not load res://Levels/level_3.tscn")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l3: Node3D = level_3_scene.instantiate() as Node3D
+	var l3_player: Node3D = l3.get_node_or_null("Player") as Node3D
+	if l3_player == null or not l3_player.transform.origin.is_equal_approx(Vector3(6.2296762, 1, -2.4801493)):
+		printerr("TEST FAILED: Level 3 Player spawn position invalid: ", l3_player.transform.origin if l3_player else "null")
+		l3.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l3_exit: Node3D = l3.get_node_or_null("ExitPoint") as Node3D
+	if l3_exit == null or not l3_exit.transform.origin.is_equal_approx(Vector3(3.8668923, 0, -16)):
+		printerr("TEST FAILED: Level 3 ExitPoint position is not (3.8668923, 0, -16): ", l3_exit.transform.origin if l3_exit else "null")
+		l3.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l3_pit2: Node3D = l3.get_node_or_null("Pit2") as Node3D
+	var l3_pit3: Node3D = l3.get_node_or_null("Pit3") as Node3D
+	var l3_pit4: Node3D = l3.get_node_or_null("Pit4") as Node3D
+	if l3_pit2 == null or l3_pit3 == null or l3_pit4 == null:
+		printerr("TEST FAILED: Level 3 pits (Pit2, Pit3, Pit4) missing.")
+		l3.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l3_nav: NavigationRegion3D = l3.get_node_or_null("NavigationRegion3D") as NavigationRegion3D
+	if l3_nav == null or l3_nav.navigation_mesh == null or l3_nav.navigation_mesh.get_polygon_count() == 0:
+		printerr("TEST FAILED: Level 3 NavigationMesh missing or empty.")
+		l3.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l3_litter: Node3D = l3_nav.get_node_or_null("Litter") as Node3D
+	if l3_litter == null or l3_litter.get_child_count() == 0:
+		printerr("TEST FAILED: Level 3 Litter node missing or empty under NavigationRegion3D.")
+		l3.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var has_flag: bool = false
+	for child: Node in l3_litter.get_children():
+		if "Flag" in child.name:
+			has_flag = true
+			break
+	if not has_flag:
+		printerr("TEST FAILED: Level 3 Litter does not contain Flag prop.")
+		l3.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l3_vgi: VoxelGI = l3.get_node_or_null("VoxelGI") as VoxelGI
+	if l3_vgi == null or l3_vgi.data == null:
+		printerr("TEST FAILED: Level 3 VoxelGI missing or data is null.")
+		l3.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("Level 3 scene (Litter with Flags, Pit2-4, NavMesh, VoxelGI, Player, ExitPoint) verified.")
+	l3.queue_free()
+
 	level.queue_free()
 	await get_tree().physics_frame
 	await get_tree().process_frame
@@ -1184,6 +1250,7 @@ func _ready() -> void:
 	print("  20. Player state & health preservation across levels verified     ")
 	print("  21. Level 1 inherited scene, geometry, and placement verified     ")
 	print("  22. Level 2 inherited scene, litter props, and navmesh verified   ")
+	print("  23. Level 3 inherited scene, litter props, and navmesh verified   ")
 	print("====================================================================")
 	
 	get_tree().quit(0)
