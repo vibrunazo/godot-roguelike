@@ -502,7 +502,12 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("ExitPoint initially invisible and locked verified.")
+	if exit_point.next_scene_path != "res://Levels/LevelTemplate.tscn" or exit_point.next_level_path != "res://Levels/LevelTemplate.tscn":
+		printerr("TEST FAILED: ExitPoint next_scene_path / next_level_path should default to res://Levels/LevelTemplate.tscn.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("ExitPoint initially invisible, locked, and next_scene_path export var verified.")
 
 	# Verify ExitPoint Area3D & CollisionShape3D
 	var exit_area: Area3D = exit_point.get_node_or_null("Area3D") as Area3D
@@ -545,6 +550,26 @@ func _ready() -> void:
 	print("ExitPoint.unlock() (visible = true, locked = false) verified.")
 	exit_point.visible = false
 	exit_point.locked = true
+
+	# Verify SceneTransition autoload
+	var scene_trans: Node = get_node_or_null("/root/SceneTransition")
+	if scene_trans == null or not (scene_trans is CanvasLayer):
+		printerr("TEST FAILED: SceneTransition autoload not found as CanvasLayer under /root.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var trans_rect: ColorRect = scene_trans.get_node_or_null("ColorRect") as ColorRect
+	if trans_rect == null or trans_rect.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		printerr("TEST FAILED: SceneTransition ColorRect missing or mouse_filter not IGNORE.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if not scene_trans.has_method("fade_in") or not scene_trans.has_method("fade_out") or not scene_trans.has_method("load_scene_path"):
+		printerr("TEST FAILED: SceneTransition missing fade_in/fade_out/load_scene_path methods.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("SceneTransition autoload & ColorRect verified.")
 
 	
 	var level_enemy: Enemy = TestUtils.find_enemy(level)
@@ -1021,6 +1046,7 @@ func _ready() -> void:
 	print("  16. Projectile lifetime Timer, collision cleanup & damage verified")
 	print("  17. NavigationAgent3D & LevelTemplate NavigationMesh (Baked) ok   ")
 	print("  18. NavigationServer3D map_get_random_point verified              ")
+	print("  19. SceneTransition singleton & fade methods verified             ")
 	print("====================================================================")
 	
 	get_tree().quit(0)
