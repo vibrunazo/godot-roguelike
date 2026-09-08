@@ -383,7 +383,62 @@ func _ready() -> void:
 		printerr("TEST FAILED: SlashVFX Speed expected 3.0, got: ", slash_speed)
 		get_tree().quit(1)
 		return
-	print("Sword Slash VFX (QuadMesh, ShaderMaterial, transform) verified successfully!")
+
+	# Verify slash_vfx script, weapon_slot reference, and attack_type
+	if slash_vfx.get_script() == null:
+		printerr("TEST FAILED: SlashVFX does not have a script attached.")
+		get_tree().quit(1)
+		return
+	if slash_vfx.get("weapon_slot") == null:
+		printerr("TEST FAILED: SlashVFX weapon_slot export is null.")
+		get_tree().quit(1)
+		return
+	if slash_vfx.get("attack_type") != WeaponSlot.mode.SLASH:
+		printerr("TEST FAILED: SlashVFX attack_type is not WeaponSlot.mode.SLASH (1). Got: ", slash_vfx.get("attack_type"))
+		get_tree().quit(1)
+		return
+
+	# Test dynamic visibility & threshold updates driven by WeaponSlot
+	var weapon_slot: WeaponSlot = slash_vfx.get("weapon_slot") as WeaponSlot
+	weapon_slot.attack_mode = WeaponSlot.mode.NONE
+	weapon_slot.vfx_threshold = 0.8
+	await get_tree().process_frame
+	if slash_vfx.visible:
+		printerr("TEST FAILED: SlashVFX visible should be false when attack_mode is NONE.")
+		get_tree().quit(1)
+		return
+
+	weapon_slot.attack_mode = WeaponSlot.mode.SLASH
+	weapon_slot.vfx_threshold = 0.3
+	await get_tree().process_frame
+	if not slash_vfx.visible:
+		printerr("TEST FAILED: SlashVFX visible should be true when attack_mode is slash.")
+		get_tree().quit(1)
+		return
+	var current_threshold: float = slash_mat.get_shader_parameter("Threshold") as float
+	if not is_equal_approx(current_threshold, 0.3):
+		printerr("TEST FAILED: SlashVFX Threshold not updated from weapon_slot. Expected 0.3, got: ", current_threshold)
+		get_tree().quit(1)
+		return
+	print("SlashVFX script reactivity (visibility and shader threshold) verified.")
+
+	# Verify animation easings on Melee_1H_Attack_Slice_Horizontal
+	var slice_anim: Animation = load("res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_1H_Attack_Slice_Horizontal.res")
+	for i: int in range(slice_anim.get_track_count()):
+		if str(slice_anim.track_get_path(i)) == "Rig_Medium/Skeleton3D/WeaponSlot:vfx_threshold":
+			var t0: float = slice_anim.track_get_key_transition(i, 0)
+			var t1: float = slice_anim.track_get_key_transition(i, 1)
+			if not is_equal_approx(t0, 0.5):
+				printerr("TEST FAILED: Slice horizontal key 0 transition expected 0.5 (ease out), got: ", t0)
+				get_tree().quit(1)
+				return
+			if not is_equal_approx(t1, 2.0):
+				printerr("TEST FAILED: Slice horizontal key 1 transition expected 2.0 (ease in), got: ", t1)
+				get_tree().quit(1)
+				return
+			print("Slice horizontal animation vfx_threshold easing (ease out: 0.5, ease in: 2.0) verified.")
+
+	print("Sword Slash VFX (QuadMesh, ShaderMaterial, transform, script & easings) verified successfully!")
 
 	print("\n====================================================================")
 	print("  ALL 3-HIT COMBO & DASH CANCEL TESTS PASSED!                      ")
@@ -392,6 +447,7 @@ func _ready() -> void:
 	print("  3. Dash Cancel on Attack 3: Correctly blocked / committed to spin")
 	print("  4. State recovery: Clean return to PlayerRun in all scenarios     ")
 	print("  5. Sword Slash VFX: QuadMesh(4, 2), ShaderMaterial & transform ok")
+	print("  6. SlashVFX tool script: weapon_slot reactivity & anim easings ok")
 	print("====================================================================")
 	level.queue_free()
 	await get_tree().physics_frame

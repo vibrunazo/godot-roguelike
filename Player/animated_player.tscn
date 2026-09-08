@@ -24,7 +24,7 @@ tracks/0/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 1,
-"values": [1]
+"values": [0]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
@@ -74,7 +74,6 @@ _data = {
 bone_name = "hand.r"
 bone_idx = 12
 script = ExtResource("2_qo2pp")
-attack_mode = 1
 vfx_threshold = 1.0
 
 [node name="RightFootBone" type="BoneAttachment3D" parent="Rig_Medium/Skeleton3D" index="7"]
