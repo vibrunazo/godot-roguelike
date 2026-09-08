@@ -441,6 +441,105 @@ func _ready() -> void:
 
 	print("Sword Slash VFX (QuadMesh, ShaderMaterial, transform, script & easings) verified successfully!")
 
+	# =========================================================================
+	# PART 5: DASH CANCEL OVERRIDES QUEUED ATTACK & NO-WASD DASH FALLBACK
+	# =========================================================================
+	print("\n>>> PART 5: Testing Stationary Dash & Dash Cancel Overriding Queued Attack")
+	# Ensure dash cooldown has reset
+	for i: int in range(60):
+		await get_tree().physics_frame
+		if player.can_dash() and sm.state.name == "PlayerRun":
+			break
+
+	# 1. Test stationary dash (no WASD pressed)
+	if not player.can_dash():
+		printerr("TEST FAILED: player.can_dash() returned false when stationary with cooldown stopped.")
+		get_tree().quit(1)
+		return
+	var stationary_dash := InputEventAction.new()
+	stationary_dash.action = "dash"
+	stationary_dash.pressed = true
+	sm._unhandled_input(stationary_dash)
+
+	if sm.state.name != "PlayerDash":
+		printerr("TEST FAILED: Stationary dash did not transition to PlayerDash. State: ", sm.state.name)
+		get_tree().quit(1)
+		return
+	print("Stationary dash (no-WASD) successfully entered PlayerDash!")
+
+	# Wait for stationary dash to finish and cooldown to reset
+	for i: int in range(60):
+		await get_tree().physics_frame
+		if sm.state.name == "PlayerRun" and player.can_dash():
+			break
+
+	# 2. Test queuing Attack 3 during Attack 2, then dash cancelling Attack 2
+	var click_event := InputEventAction.new()
+	click_event.action = "click"
+	click_event.pressed = true
+
+	# Enter Attack 1
+	sm._unhandled_input(click_event)
+	for i: int in range(20):
+		await get_tree().physics_frame
+		if sm.state.name == "PlayerAttack":
+			break
+
+	# Queue Attack 2
+	sm._unhandled_input(click_event)
+	for i: int in range(60):
+		await get_tree().physics_frame
+		if sm.state.name == "PlayerAttack2":
+			break
+
+	if sm.state.name != "PlayerAttack2":
+		printerr("TEST FAILED: Failed to enter PlayerAttack2 for queue-override test. State: ", sm.state.name)
+		get_tree().quit(1)
+		return
+	print("Entered PlayerAttack2 (Stab)...")
+
+	# Queue Attack 3 (spam click)
+	sm._unhandled_input(click_event)
+	var attack2_node: PlayerState = sm.state
+	if not attack2_node.get("queued_attack"):
+		printerr("TEST FAILED: Attack 3 was not queued in PlayerAttack2.")
+		get_tree().quit(1)
+		return
+	print("Attack 3 successfully queued in PlayerAttack2 (queued_attack = true).")
+
+	# Dash cancel out of Attack 2 before it reaches Attack 3
+	sm._unhandled_input(stationary_dash)
+
+	if sm.state.name != "PlayerDash":
+		printerr("TEST FAILED: Dash cancel failed to interrupt PlayerAttack2 with queued attack! State: ", sm.state.name)
+		get_tree().quit(1)
+		return
+	print("Dash cancel SUCCESS! PlayerAttack2 was interrupted directly into PlayerDash despite queued Attack 3.")
+
+	# Wait past the 0.5s queued attack window (60 frames = 1.0s) and verify player NEVER enters PlayerAttack3
+	var entered_attack3 := false
+	for i: int in range(60):
+		await get_tree().physics_frame
+		if sm.state.name == "PlayerAttack3":
+			entered_attack3 = true
+			break
+	if entered_attack3:
+		printerr("TEST FAILED: Queued Attack 3 triggered after dash cancel!")
+		get_tree().quit(1)
+		return
+	print("Verified that queued Attack 3 was cancelled and never triggered.")
+
+	# Wait for dash to return to PlayerRun
+	for i: int in range(60):
+		await get_tree().physics_frame
+		if sm.state.name == "PlayerRun":
+			break
+	if sm.state.name != "PlayerRun":
+		printerr("TEST FAILED: Did not return to PlayerRun after dash cancel. State: ", sm.state.name)
+		get_tree().quit(1)
+		return
+	print("Clean return to PlayerRun verified.")
+
 	print("\n====================================================================")
 	print("  ALL 3-HIT COMBO & DASH CANCEL TESTS PASSED!                      ")
 	print("  1. Combo Damage: 100 -> 92 (Slash: 8) -> 78 (Stab: 14) -> 68 (Spin: 10)")
@@ -449,6 +548,7 @@ func _ready() -> void:
 	print("  4. State recovery: Clean return to PlayerRun in all scenarios     ")
 	print("  5. Sword Slash VFX: QuadMesh(4, 2), ShaderMaterial & transform ok")
 	print("  6. SlashVFX tool script: weapon_slot reactivity & anim easings ok")
+	print("  7. Stationary Dash & Queued Attack Override: Verified successfully")
 	print("====================================================================")
 	level.queue_free()
 	await get_tree().physics_frame

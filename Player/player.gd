@@ -42,8 +42,6 @@ func get_movement_direction() -> Vector3:
 	return input.normalized()
 
 func can_dash() -> bool:
-	if get_movement_direction().is_zero_approx():
-		return false
 	return dash_cooldown.is_stopped()
 
 func look_toward_direction(direction: Vector3, delta: float) -> void:

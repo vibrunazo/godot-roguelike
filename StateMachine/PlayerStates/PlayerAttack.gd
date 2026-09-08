@@ -40,10 +40,15 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	aim_direction = player.get_aim_direction()
 
 func handle_input(_event: InputEvent) -> void:
+	if dash_cancel and _event.is_action_pressed("dash"):
+		if player.can_dash():
+			queued_attack = false
+			if attack_timer and attack_timer.timeout.is_connected(attempt_queue_attack):
+				attack_timer.timeout.disconnect(attempt_queue_attack)
+			check_dash(_event)
+			return
 	if _event.is_action_pressed("click"):
 		queued_attack = true
-	if dash_cancel == true:
-		check_dash(_event)
 
 func exit() -> void:
 	queued_attack = false
@@ -58,4 +63,8 @@ func finish_attack(_animation_name: String) -> void:
 func attempt_queue_attack() -> void:
 	if next_attack and queued_attack:
 		var direction: Vector3 = player.get_movement_direction()
+		if direction.is_zero_approx():
+			direction = player.player_root.global_basis.z.normalized()
+			if direction.is_zero_approx():
+				direction = Vector3.FORWARD
 		finished.emit(next_attack.name, {"direction": direction})

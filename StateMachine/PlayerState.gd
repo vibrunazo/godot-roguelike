@@ -16,10 +16,14 @@ func core_movement(delta: float, speed: float) -> void:
 
 ## changes to Dash State with current input direction if dash action was pressed
 func check_dash(event: InputEvent) -> void:
-	if player.can_dash() == false:
+	if not player.can_dash():
 		return
 	if event.is_action_pressed("dash"):
 		var direction := player.get_movement_direction()
+		if direction.is_zero_approx():
+			direction = player.player_root.global_basis.z.normalized()
+			if direction.is_zero_approx():
+				direction = Vector3.FORWARD
 		finished.emit(dash_state.name, {"direction": direction})
 		
 func check_attack(event: InputEvent) -> void:
