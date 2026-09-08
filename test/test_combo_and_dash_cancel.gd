@@ -203,6 +203,47 @@ func _ready() -> void:
 		return
 	print("DashRoot, QuadMesh, and ShaderMaterial verified.")
 
+	# Verify Dash AnimationPlayer & cross-section MeshInstance3D2 (Lecture 76)
+	if player.dash_animation_player == null:
+		printerr("TEST FAILED: player.dash_animation_player is null.")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	if not player.dash_animation_player.has_animation(&"dash") or not player.dash_animation_player.has_animation(&"RESET"):
+		printerr("TEST FAILED: dash_animation_player missing 'dash' or 'RESET' animation.")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	if player.dash_animation_player.autoplay != &"RESET":
+		printerr("TEST FAILED: dash_animation_player autoplay is not RESET.")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	var dash_anim: Animation = player.dash_animation_player.get_animation(&"dash")
+	if not is_equal_approx(dash_anim.length, 0.5):
+		printerr("TEST FAILED: dash animation length expected 0.5, got: ", dash_anim.length)
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	var dash_mesh2: MeshInstance3D = player.dash_root.get_node_or_null("MeshInstance3D2") as MeshInstance3D
+	if dash_mesh2 == null:
+		printerr("TEST FAILED: DashRoot missing MeshInstance3D2 child.")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	var quad2: QuadMesh = dash_mesh2.mesh as QuadMesh
+	if quad2 == null or quad2.size != Vector2(5, 1):
+		printerr("TEST FAILED: Dash MeshInstance3D2 mesh is not QuadMesh(5, 1).")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	if dash_mesh2.material_override != dash_mat:
+		printerr("TEST FAILED: MeshInstance3D2 does not share ShaderMaterial with MeshInstance3D.")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	print("Dash AnimationPlayer and cross-section MeshInstance3D2 verified.")
+
 	# Wait for dash to finish and return to PlayerRun
 	back_to_run = false
 	for i: int in range(60):

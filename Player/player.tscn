@@ -212,10 +212,50 @@ shader = ExtResource("20_n471f")
 shader_parameter/Speed = 2.0
 shader_parameter/NoiseTexture = SubResource("NoiseTexture2D_8mwp6")
 shader_parameter/GradientParameter = SubResource("GradientTexture1D_hshwv")
-shader_parameter/Threshold = 0.0
+shader_parameter/Threshold = 1.0
 
 [sub_resource type="QuadMesh" id="QuadMesh_8viyr"]
 size = Vector2(3, 2)
+
+[sub_resource type="QuadMesh" id="QuadMesh_n471f"]
+size = Vector2(5, 1)
+
+[sub_resource type="Animation" id="Animation_n471f"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("MeshInstance3D:material_override:shader_parameter/Threshold")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+
+[sub_resource type="Animation" id="Animation_7emwf"]
+resource_name = "dash"
+length = 0.5
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("MeshInstance3D:material_override:shader_parameter/Threshold")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.5),
+"transitions": PackedFloat32Array(2, 1),
+"update": 0,
+"values": [0.0, 1.0]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_hshwv"]
+_data = {
+&"RESET": SubResource("Animation_n471f"),
+&"dash": SubResource("Animation_7emwf")
+}
 
 [node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("dash_audio") groups=["player"]]
 script = ExtResource("1_l8h54")
@@ -442,6 +482,17 @@ material_override = SubResource("ShaderMaterial_qemgg")
 cast_shadow = 0
 gi_mode = 0
 mesh = SubResource("QuadMesh_8viyr")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="DashRoot" unique_id=1230342097]
+transform = Transform3D(-8.742278e-08, -1, -4.3711392e-08, 4.3711392e-08, 4.371139e-08, -1, 1, -8.742278e-08, 4.371139e-08, 0, 0, 2.5)
+material_override = SubResource("ShaderMaterial_qemgg")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_n471f")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="DashRoot" unique_id=1958268182]
+libraries/ = SubResource("AnimationLibrary_hshwv")
+autoplay = &"RESET"
 
 [connection signal="slash" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone/AudioStreamPlayer3D" method="play"]

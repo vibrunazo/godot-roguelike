@@ -21,6 +21,8 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 		player.dash_root.look_at(player.global_position + move_dir)
 	elif not direction.is_zero_approx():
 		player.dash_root.look_at(player.global_position + direction)
+	player.dash_animation_player.stop()
+	player.dash_animation_player.play("dash")
 	
 func physics_update(_delta: float) -> void:
 	if dash_duration.is_stopped():
