@@ -2111,6 +2111,111 @@ func _ready() -> void:
 	test_melee.queue_free()
 	await get_tree().process_frame
 
+	# ---------------------------------------------------------
+	# PART 30: Melee AttackComponent, ShapeCast3D & Damage (Lecture 83)
+	# ---------------------------------------------------------
+	print("\n>>> PART 30: Melee AttackComponent, ShapeCast3D & Damage")
+	var melee_inst: Enemy = melee_scene.instantiate() as Enemy
+	add_child(melee_inst)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	# 1. Verify weapon_shape_cast export & self-exception
+	if melee_inst.weapon_shape_cast == null:
+		printerr("TEST FAILED: MeleeEnemy weapon_shape_cast export is null.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	var sc: ShapeCast3D = melee_inst.weapon_shape_cast
+	print("weapon_shape_cast assigned: ", sc.name)
+
+	# 2. Verify ShapeCast3D configuration: shape BoxShape3D, target_position Vector3(0, 2, 0)
+	if sc.shape == null or not (sc.shape is BoxShape3D):
+		printerr("TEST FAILED: weapon_shape_cast shape is not BoxShape3D.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	if not sc.target_position.is_equal_approx(Vector3(0.0, 2.0, 0.0)):
+		printerr("TEST FAILED: weapon_shape_cast target_position expected (0, 2, 0), got: ", sc.target_position)
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+
+	# 3. Verify weapon visual mesh & material
+	var mesh_inst: MeshInstance3D = sc.get_node_or_null("MeshInstance3D") as MeshInstance3D
+	if mesh_inst == null or not (mesh_inst.mesh is CylinderMesh):
+		printerr("TEST FAILED: MeshInstance3D missing under ShapeCast3D or not CylinderMesh.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	var cyl: CylinderMesh = mesh_inst.mesh as CylinderMesh
+	if not is_equal_approx(cyl.top_radius, 0.1) or not is_equal_approx(cyl.bottom_radius, 0.1):
+		printerr("TEST FAILED: CylinderMesh radii expected 0.1, got top=", cyl.top_radius, " bottom=", cyl.bottom_radius)
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(mesh_inst.position.y, 1.0):
+		printerr("TEST FAILED: MeshInstance3D position.y expected 1.0, got: ", mesh_inst.position.y)
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	var mat: StandardMaterial3D = mesh_inst.material_override as StandardMaterial3D
+	if mat == null or mat.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
+		printerr("TEST FAILED: MeshInstance3D material_override invalid or not unshaded.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	print("weapon_shape_cast BoxShape3D, target_position, and cylinder mesh verified.")
+
+	# 4. Verify AttackComponent child
+	var att_comp: AttackComponent = sc.get_node_or_null("AttackComponent") as AttackComponent
+	if att_comp == null or att_comp.shake_on_damage:
+		printerr("TEST FAILED: AttackComponent missing under ShapeCast3D or shake_on_damage is true.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	print("Melee AttackComponent verified under ShapeCast3D (shake_on_damage = false).")
+
+	# 5. Verify WeaponSlot bone_name is "handslot.r"
+	var ws: BoneAttachment3D = sc.get_parent() as BoneAttachment3D
+	if ws == null or ws.bone_name != "handslot.r":
+		printerr("TEST FAILED: WeaponSlot bone_name expected handslot.r, got: ", ws.bone_name if ws else "null")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	print("WeaponSlot bone_name 'handslot.r' verified.")
+
+	# 6. Verify EnemyAttack exports
+	var melee_attack_state: EnemyAttack = melee_inst.get_node_or_null("StateMachine/EnemyAttack") as EnemyAttack
+	if melee_attack_state == null or melee_attack_state.attack_component != att_comp or not is_equal_approx(melee_attack_state.weapon_damage, 8.0):
+		printerr("TEST FAILED: EnemyAttack state configuration invalid.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyAttack attack_component and weapon_damage (8.0) verified.")
+
+	# 7. Verify RESET animation in animated_enemy
+	var anim_enemy_chk: Node3D = load("res://Enemy/animated_enemy.tscn").instantiate() as Node3D
+	var ap_chk: AnimationPlayer = anim_enemy_chk.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if not ap_chk.has_animation(&"RESET"):
+		printerr("TEST FAILED: AnimatedEnemy AnimationPlayer missing RESET animation.")
+		anim_enemy_chk.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	var reset_anim: Animation = ap_chk.get_animation(&"RESET")
+	if reset_anim.get_track_count() == 0 or reset_anim.track_get_key_value(0, 0) != false:
+		printerr("TEST FAILED: RESET animation track invalid.")
+		anim_enemy_chk.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	anim_enemy_chk.queue_free()
+	print("AnimatedEnemy RESET animation keyframes verified.")
+
+	melee_inst.queue_free()
+	await get_tree().process_frame
+
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
@@ -2142,6 +2247,7 @@ func _ready() -> void:
 	print("  27. Base UpgradeIcon scene, styling, and UpgradeShop placement ok ")
 	print("  28. MeleeEnemy scene, StateMachine & EnemyPursue state verified   ")
 	print("  29. Melee Attack, AnimationTree & Pursue Transition verified      ")
+	print("  30. Melee AttackComponent, ShapeCast3D & Damage verified          ")
 	print("====================================================================")
 	
 	get_tree().quit(0)

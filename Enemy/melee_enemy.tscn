@@ -2,9 +2,38 @@
 
 [ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy.tscn" id="1_cu01m"]
 [ext_resource type="Script" uid="uid://bxjobpwx7ose3" path="res://StateMachine/EnemyStates/EnemyPursue.gd" id="2_7gxvi"]
+[ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/AttackComponent.gd" id="2_7p80c"]
 [ext_resource type="Script" uid="uid://ebg6wepe60cc" path="res://StateMachine/EnemyStates/EnemyAttack.gd" id="3_7r01i"]
 
-[node name="MeleeEnemy" unique_id=2117139762 instance=ExtResource("1_cu01m")]
+[sub_resource type="BoxShape3D" id="BoxShape3D_7r01i"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7p80c"]
+shading_mode = 0
+albedo_color = Color(1, 0.5058824, 0, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_skqvj"]
+top_radius = 0.1
+bottom_radius = 0.1
+
+[node name="MeleeEnemy" unique_id=2117139762 node_paths=PackedStringArray("weapon_shape_cast") instance=ExtResource("1_cu01m")]
+weapon_shape_cast = NodePath("AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D")
+
+[node name="WeaponSlot" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1733204277) index="6" unique_id=211580224]
+transform = Transform3D(-0.999999, 4.6839318e-07, 4.5751068e-07, 3.9800034e-07, -5.8875344e-07, 0.99999946, 3.9761645e-07, 0.99999946, 5.358822e-07, -0.8831323, 1.0492611, -7.2884757e-07)
+bone_name = "handslot.r"
+bone_idx = 14
+
+[node name="ShapeCast3D" type="ShapeCast3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0" unique_id=1605059902]
+shape = SubResource("BoxShape3D_7r01i")
+target_position = Vector3(0, 2, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D" index="0" unique_id=1069743798]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+material_override = SubResource("StandardMaterial3D_7p80c")
+mesh = SubResource("CylinderMesh_skqvj")
+
+[node name="AttackComponent" type="Node" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D" index="1" unique_id=1866258911]
+script = ExtResource("2_7p80c")
 
 [node name="StateMachine" parent="." index="5" unique_id=1352967922 node_paths=PackedStringArray("initial_state")]
 initial_state = NodePath("EnemyPursue")
@@ -17,8 +46,9 @@ script = ExtResource("2_7gxvi")
 attack_state = NodePath("../EnemyAttack")
 enemy = NodePath("../..")
 
-[node name="EnemyAttack" type="Node" parent="StateMachine" index="4" unique_id=1290511765 node_paths=PackedStringArray("next_state", "enemy")]
+[node name="EnemyAttack" type="Node" parent="StateMachine" index="4" unique_id=1290511765 node_paths=PackedStringArray("attack_component", "next_state", "enemy")]
 script = ExtResource("3_7r01i")
+attack_component = NodePath("../../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent")
 attack_name = "MeleeAttack"
 next_state = [NodePath("../EnemyPursue")]
 enemy = NodePath("../..")

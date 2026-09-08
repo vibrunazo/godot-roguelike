@@ -12,6 +12,26 @@
 [ext_resource type="Script" path="res://Player/foot_bone.gd" id="3_qbo8f"]
 [ext_resource type="Script" path="res://Player/mannequin_animation_tree.gd" id="6_b6t3m"]
 
+[sub_resource type="Animation" id="Animation_nqs35"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Rig_Medium/Skeleton3D/WeaponSlot:enabled")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [false]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_8wj31"]
+_data = {
+&"RESET": SubResource("Animation_nqs35")
+}
+
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_pje6n"]
 _data = {
 &"Death_A": ExtResource("4_qbo8f"),
@@ -116,6 +136,7 @@ bone_idx = 17
 script = ExtResource("3_qbo8f")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="Enemy_Medium" unique_id=1301382202]
+libraries/ = SubResource("AnimationLibrary_8wj31")
 libraries/EnemyAnimations = SubResource("AnimationLibrary_pje6n")
 
 [node name="AnimationTree" type="AnimationTree" parent="Enemy_Medium" unique_id=1365896023]

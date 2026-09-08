@@ -13,6 +13,8 @@ signal defeat
 @export var base_speed := 3.5
 ## The node mount rotated to aim the enemy.
 @export var mesh_mount: Node3D
+## The weapon ShapeCast3D for melee attacks.
+@export var weapon_shape_cast: ShapeCast3D
 
 @onready var animation_tree: AnimationTree = $AnimationAnchor/AnimatedEnemy/Enemy_Medium/AnimationTree
 @onready var state_machine: StateMachine = $StateMachine
@@ -22,6 +24,8 @@ signal defeat
 
 
 func _ready() -> void:
+	if weapon_shape_cast:
+		weapon_shape_cast.add_exception(self)
 	if not is_inside_tree():
 		return
 	var random_point: Vector3 = NavigationServer3D.map_get_random_point(

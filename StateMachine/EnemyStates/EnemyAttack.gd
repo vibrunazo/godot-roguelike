@@ -2,6 +2,10 @@
 class_name EnemyAttack
 extends EnemyState
 
+## Amount of damage dealt by this attack.
+@export var weapon_damage := 8.0
+## AttackComponent handling hitbox queries and dealing damage.
+@export var attack_component: AttackComponent
 ## Name of the attack animation in the AnimationTree.
 @export var attack_name: String
 ## Potential states to transition to randomly after the attack animation finishes.
@@ -9,6 +13,8 @@ extends EnemyState
 
 
 func physics_update(_delta: float) -> void:
+	if attack_component:
+		attack_component.deal_damage(weapon_damage, Vector3.ZERO)
 	enemy.velocity = Vector3.ZERO
 	enemy.move_and_slide()
 
