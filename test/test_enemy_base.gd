@@ -1012,12 +1012,12 @@ func _ready() -> void:
 		return
 	print("EnemyAttack.next_state array [EnemyWait, EnemyMeander] verified.")
 	
-	if not ranged_enemy.navigation_agent_3d.debug_enabled:
-		printerr("TEST FAILED: RangedEnemy NavigationAgent3D.debug_enabled is false.")
+	if ranged_enemy.navigation_agent_3d.debug_enabled:
+		printerr("TEST FAILED: RangedEnemy NavigationAgent3D.debug_enabled is still true (should be false).")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("RangedEnemy NavigationAgent3D.debug_enabled verified as true.")
+	print("RangedEnemy NavigationAgent3D.debug_enabled verified as false.")
 	
 	var ranged_sm: StateMachine = ranged_enemy.get_node_or_null("StateMachine") as StateMachine
 	if ranged_sm.state != ranged_meander:

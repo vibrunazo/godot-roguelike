@@ -26,8 +26,6 @@ script = ExtResource("4_vj72k")
 attack_state = NodePath("../EnemyAttack")
 enemy = NodePath("../..")
 
-[node name="NavigationAgent3D" parent="." parent_id_path=PackedInt32Array(2117139762) index="6" unique_id=2019475689]
-debug_enabled = true
 
 [connection signal="ranged_attack" from="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="." method="_on_weapon_slot_ranged_attack"]
 

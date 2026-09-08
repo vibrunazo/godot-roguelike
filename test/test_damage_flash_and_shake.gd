@@ -208,8 +208,20 @@ func _ready() -> void:
 		printerr("TEST FAILED: DamageNumber LabelSettings incorrect.")
 		get_tree().quit(1)
 		return
+	if not dn_anim.has_animation("spawn"):
+		printerr("TEST FAILED: DamageNumber AnimationPlayer missing 'spawn' animation.")
+		get_tree().quit(1)
+		return
+	if dn_anim.autoplay != "spawn":
+		printerr("TEST FAILED: DamageNumber AnimationPlayer autoplay is not 'spawn'. Got: ", dn_anim.autoplay)
+		get_tree().quit(1)
+		return
+	if not test_dn.scale.is_equal_approx(Vector2(1.5, 1.5)):
+		printerr("TEST FAILED: DamageNumber initial scale expected Vector2(1.5, 1.5), got: ", test_dn.scale)
+		get_tree().quit(1)
+		return
 	test_dn.free()
-	print("DamageNumber scene structure & LabelSettings verified.")
+	print("DamageNumber scene structure, scale & animations verified.")
 
 	for child: Node in VfxManager.get_children():
 		child.queue_free()
@@ -235,12 +247,29 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
+	if spawned_dn.label.text != "12":
+		printerr("TEST FAILED: DamageNumber label text expected '12', got: '", spawned_dn.label.text, "'")
+		get_tree().quit(1)
+		return
+	print("DamageNumber label text formatting verified: ", spawned_dn.label.text)
+
 	var expected_screen_pos: Vector2 = camera.unproject_position(dummy.global_position)
 	if not spawned_dn.position.is_equal_approx(expected_screen_pos):
 		printerr("TEST FAILED: DamageNumber position (", spawned_dn.position, ") does not match unprojected position (", expected_screen_pos, ")")
 		get_tree().quit(1)
 		return
 	print("DamageNumber unproject_position tracking verified: ", spawned_dn.position)
+
+	# Verify RangedEnemy NavigationAgent3D has debug_enabled = false
+	var ranged_scene: PackedScene = load("res://Enemy/ranged_enemy.tscn")
+	var test_ranged: Enemy = ranged_scene.instantiate() as Enemy
+	var ranged_nav: NavigationAgent3D = test_ranged.get_node("NavigationAgent3D") as NavigationAgent3D
+	if ranged_nav.debug_enabled:
+		printerr("TEST FAILED: RangedEnemy NavigationAgent3D still has debug_enabled = true.")
+		get_tree().quit(1)
+		return
+	test_ranged.free()
+	print("RangedEnemy navigation debug_enabled correctly disabled.")
 
 	for child: Node in VfxManager.get_children():
 		child.queue_free()
