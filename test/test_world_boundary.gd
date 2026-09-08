@@ -16,15 +16,15 @@ func _ready() -> void:
 		return
 	print("WorldBoundary found at position: ", world_boundary.global_position)
 	
-	# 2. Verify Player health_component defeat signal connection to reload_current_scene
+	# 2. Verify Player health_component defeat signal connection to reset_game_state
 	var player: Player = level.get_node("Player") as Player
-	if not player.health_component.defeat.is_connected(get_tree().reload_current_scene):
-		printerr("TEST FAILED: Player health_component defeat is not connected to reload_current_scene.")
+	if not player.health_component.defeat.is_connected(player.reset_game_state):
+		printerr("TEST FAILED: Player health_component defeat is not connected to reset_game_state.")
 		level.queue_free()
 		await get_tree().physics_frame
 		get_tree().quit(1)
 		return
-	print("Player defeat signal connection to reload_current_scene confirmed!")
+	print("Player defeat signal connection to reset_game_state confirmed!")
 	
 	# 3. Test WorldBoundary damage logic on an entity entering the boundary
 	var test_target := Node3D.new()
@@ -55,9 +55,17 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Defeat signal successfully emitted!")
+
+	if test_target.visible != false:
+		printerr("TEST FAILED: Target was not hidden (visible != false) by WorldBoundary.")
+		level.queue_free()
+		await get_tree().physics_frame
+		get_tree().quit(1)
+		return
+	print("Target visibility set to false verified!")
 	
 	# 4. Test Player taking fatal damage through WorldBoundary
-	player.health_component.defeat.disconnect(get_tree().reload_current_scene)
+	player.health_component.defeat.disconnect(player.reset_game_state)
 	var player_state := {"defeat_emitted": false}
 	player.health_component.defeat.connect(func() -> void: player_state["defeat_emitted"] = true)
 	
@@ -119,7 +127,8 @@ func _ready() -> void:
 	print("  1. WorldBoundary Area3D verified at y = -4                        ")
 	print("  2. Entering bodies with HealthComponent take max_health damage    ")
 	print("  3. Defeat signal is emitted upon reaching 0 health               ")
-	print("  4. Player connects defeat signal to get_tree().reload_current_scene")
+	print("  4. Player connects defeat signal to player.reset_game_state       ")
+	print("  5. WorldBoundary sets entering body.visible to false              ")
 	print("====================================================================")
 	level.queue_free()
 	await get_tree().physics_frame

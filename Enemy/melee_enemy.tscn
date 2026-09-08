@@ -42,17 +42,19 @@ initial_state = NodePath("EnemyPursue")
 [node name="EnemyStun" parent="StateMachine" index="1" unique_id=1916096534 node_paths=PackedStringArray("next_state")]
 next_state = NodePath("../EnemyPursue")
 
-[node name="EnemyPursue" type="Node" parent="StateMachine" index="3" unique_id=2067381451 node_paths=PackedStringArray("attack_state", "enemy")]
+[node name="EnemyPursue" type="Node" parent="StateMachine" index="3" unique_id=2067381451 node_paths=PackedStringArray("attack_state", "enemy", "fall_state")]
 script = ExtResource("2_7gxvi")
 attack_state = NodePath("../EnemyAttack")
 enemy = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
 
-[node name="EnemyAttack" type="Node" parent="StateMachine" index="4" unique_id=1290511765 node_paths=PackedStringArray("attack_component", "next_state", "enemy")]
+[node name="EnemyAttack" type="Node" parent="StateMachine" index="4" unique_id=1290511765 node_paths=PackedStringArray("attack_component", "next_state", "enemy", "fall_state")]
 script = ExtResource("3_7r01i")
 attack_component = NodePath("../../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent")
 attack_name = "MeleeAttack"
 next_state = [NodePath("../EnemyPursue")]
 enemy = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
 
 [editable path="AnimationAnchor/AnimatedEnemy"]
 [editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]

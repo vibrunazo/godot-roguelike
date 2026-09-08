@@ -22,8 +22,14 @@ extends CharacterBody3D
 @onready var knockback_component: KnockbackComponent = $KnockbackComponent
 
 func _ready() -> void:
-	health_component.defeat.connect(get_tree().reload_current_scene, CONNECT_DEFERRED)
+	health_component.defeat.connect(reset_game_state)
 	health_component.health_changed.connect(health_component_changed)
+
+
+func reset_game_state() -> void:
+	GlobalVars.level = 1
+	if is_inside_tree():
+		get_tree().reload_current_scene.call_deferred()
 
 ## Returns the current input direction towards camera. Normalized. Returns Vector3.ZERO if no input.
 func get_movement_direction() -> Vector3:

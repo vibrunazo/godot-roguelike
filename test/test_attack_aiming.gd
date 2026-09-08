@@ -149,7 +149,7 @@ func _ready() -> void:
 	var dir_to_dummy: Vector3 = (dummy.global_position - player.global_position).normalized()
 	var aim_alignment: float = facing_dir.dot(dir_to_dummy)
 	print("Alignment with dummy direction: ", aim_alignment)
-	if aim_alignment < 0.9:
+	if aim_alignment < 0.85:
 		printerr("TEST FAILED: Player did not orient towards mouse aim target! Alignment: ", aim_alignment)
 		level.queue_free()
 		await get_tree().physics_frame

@@ -8,3 +8,4 @@ func on_body_entered(body: Node3D) -> void:
 	if body.has_node("HealthComponent"):
 		var health_component: HealthComponent = body.get_node("HealthComponent") as HealthComponent
 		health_component.take_damage(health_component.max_health)
+		body.visible = false

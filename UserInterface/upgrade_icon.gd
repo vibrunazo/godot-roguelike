@@ -19,8 +19,7 @@ func _ready() -> void:
 func take_upgrade() -> void:
 	if texture_button != null and texture_button.disabled:
 		return
-	if texture_button != null:
-		texture_button.disabled = true
+	get_tree().call_group("upgrade_button", "set_disabled", true)
 	if stat_bonus:
 		player.set(stat_name, player.get(stat_name) + stat_bonus)
 	upgrade_taken.emit(self)

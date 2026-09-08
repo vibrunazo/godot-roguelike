@@ -8,11 +8,9 @@ var timer: SceneTreeTimer
 
 
 func physics_update(_delta: float) -> void:
+	if not is_instance_valid(enemy) or not enemy.is_inside_tree():
+		return
 	core_movement(enemy.base_speed, Vector3.ZERO)
-	if not enemy.is_on_floor():
-		enemy.velocity += enemy.get_gravity() * _delta
-	else:
-		enemy.velocity.y = 0.0
 	enemy.move_and_slide()
 
 

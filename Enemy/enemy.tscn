@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyWait.gd" id="7_glvfu"]
 [ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyStun.gd" id="8_0rspp"]
 [ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyDefeat.gd" id="9_efk13"]
+[ext_resource type="Script" uid="uid://b53uetcel424p" path="res://StateMachine/EnemyStates/EnemyFall.gd" id="10_47ove"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
 
@@ -49,18 +50,27 @@ bus = &"SFX"
 script = ExtResource("6_m6jha")
 initial_state = NodePath("EnemyWait")
 
-[node name="EnemyWait" type="Node" parent="StateMachine" unique_id=314606292 node_paths=PackedStringArray("enemy")]
+[node name="EnemyWait" type="Node" parent="StateMachine" unique_id=314606292 node_paths=PackedStringArray("enemy", "fall_state")]
 script = ExtResource("7_glvfu")
 enemy = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
 
-[node name="EnemyStun" type="Node" parent="StateMachine" unique_id=1916096534 node_paths=PackedStringArray("next_state", "enemy")]
+[node name="EnemyStun" type="Node" parent="StateMachine" unique_id=1916096534 node_paths=PackedStringArray("next_state", "enemy", "fall_state")]
 script = ExtResource("8_0rspp")
 next_state = NodePath("../EnemyWait")
 enemy = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
 
-[node name="EnemyDefeat" type="Node" parent="StateMachine" unique_id=1282022813 node_paths=PackedStringArray("enemy")]
+[node name="EnemyDefeat" type="Node" parent="StateMachine" unique_id=1282022813 node_paths=PackedStringArray("enemy", "fall_state")]
 script = ExtResource("9_efk13")
 enemy = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyFall" type="Node" parent="StateMachine" unique_id=347954520 node_paths=PackedStringArray("land_state", "enemy", "fall_state")]
+script = ExtResource("10_47ove")
+land_state = NodePath("../EnemyStun")
+enemy = NodePath("../..")
+fall_state = NodePath(".")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=2019475689]
 

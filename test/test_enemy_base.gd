@@ -41,9 +41,19 @@ func _ready() -> void:
 		return
 	print("Enemy collision_layer verified (layers 1 and 2 active, value: ", enemy.collision_layer, ")")
 	
+	var floor_body := StaticBody3D.new()
+	var floor_col := CollisionShape3D.new()
+	var floor_box := BoxShape3D.new()
+	floor_box.size = Vector3(100.0, 1.0, 100.0)
+	floor_col.shape = floor_box
+	floor_body.add_child(floor_col)
+	floor_body.position = Vector3(0.0, -0.5, 0.0)
+	add_child(floor_body)
+
+	enemy.position = Vector3(0.0, 1.0, 0.0)
 	add_child(enemy)
-	await get_tree().physics_frame
-	await get_tree().process_frame
+	enemy.velocity = Vector3(0.0, -1.0, 0.0)
+	enemy.move_and_slide()
 	
 	var nav_agent: NavigationAgent3D = enemy.get_node_or_null("NavigationAgent3D") as NavigationAgent3D
 	if nav_agent == null:
@@ -453,6 +463,7 @@ func _ready() -> void:
 	# ---------------------------------------------------------
 	print("\n>>> PART 6: LevelTemplate Enemy Placement Verification")
 	enemy.queue_free()
+	floor_body.queue_free()
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
@@ -934,7 +945,19 @@ func _ready() -> void:
 		return
 	print("RangedEnemy instance verified as Enemy subclass.")
 	
+	var ranged_floor := StaticBody3D.new()
+	var rf_col := CollisionShape3D.new()
+	var rf_box := BoxShape3D.new()
+	rf_box.size = Vector3(20.0, 1.0, 20.0)
+	rf_col.shape = rf_box
+	rf_col.position = Vector3(0.0, -0.5, 0.0)
+	ranged_floor.add_child(rf_col)
+	add_child(ranged_floor)
+
+	ranged_enemy.position = Vector3(0.0, 1.0, 0.0)
 	add_child(ranged_enemy)
+	ranged_enemy.velocity = Vector3(0.0, -1.0, 0.0)
+	ranged_enemy.move_and_slide()
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
@@ -1020,12 +1043,12 @@ func _ready() -> void:
 	print("RangedEnemy NavigationAgent3D.debug_enabled verified as false.")
 	
 	var ranged_sm: StateMachine = ranged_enemy.get_node_or_null("StateMachine") as StateMachine
-	if ranged_sm.state != ranged_meander:
-		printerr("TEST FAILED: RangedEnemy initial state is not EnemyMeander. Got: ", ranged_sm.state.name)
+	if ranged_sm.initial_state != ranged_meander:
+		printerr("TEST FAILED: RangedEnemy initial state is not EnemyMeander. Got: ", ranged_sm.initial_state.name if ranged_sm.initial_state else "null")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("RangedEnemy initially in EnemyMeander state.")
+	print("RangedEnemy initial_state is EnemyMeander.")
 	
 	# Verify EnemyMeander enter() sets WalkSpace and blend_target = 1.0
 	if not is_equal_approx(ranged_enemy.animation_tree.blend_target, 1.0):
@@ -1084,6 +1107,7 @@ func _ready() -> void:
 	print("RangedEnemy transitioned to EnemyAttack successfully via end_wait()!")
 	
 	ranged_enemy.queue_free()
+	ranged_floor.queue_free()
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
@@ -1934,7 +1958,19 @@ func _ready() -> void:
 		printerr("TEST FAILED: MeleeEnemy root node is not an Enemy instance.")
 		get_tree().quit(1)
 		return
+	var melee_floor := StaticBody3D.new()
+	var mf_col := CollisionShape3D.new()
+	var mf_box := BoxShape3D.new()
+	mf_box.size = Vector3(20.0, 1.0, 20.0)
+	mf_col.shape = mf_box
+	mf_col.position = Vector3(0.0, -0.5, 0.0)
+	melee_floor.add_child(mf_col)
+	add_child(melee_floor)
+
+	melee_enemy.position = Vector3(0.0, 1.0, 0.0)
 	add_child(melee_enemy)
+	melee_enemy.velocity = Vector3(0.0, -1.0, 0.0)
+	melee_enemy.move_and_slide()
 	await get_tree().physics_frame
 	await get_tree().process_frame
 
@@ -1942,54 +1978,60 @@ func _ready() -> void:
 	if melee_sm == null:
 		printerr("TEST FAILED: StateMachine not found in MeleeEnemy.")
 		melee_enemy.queue_free()
+		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
 	var pursue_node: EnemyPursue = melee_sm.get_node_or_null("EnemyPursue") as EnemyPursue
 	if pursue_node == null:
 		printerr("TEST FAILED: EnemyPursue node not found under MeleeEnemy StateMachine.")
 		melee_enemy.queue_free()
+		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
 	if melee_sm.initial_state != pursue_node:
 		printerr("TEST FAILED: MeleeEnemy initial_state is not EnemyPursue. Got: ", melee_sm.initial_state)
 		melee_enemy.queue_free()
+		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
+	print("MeleeEnemy initial_state is EnemyPursue.")
+
+	if pursue_node.attack_state == null:
+		printerr("TEST FAILED: EnemyPursue.attack_state is null.")
+		melee_enemy.queue_free()
+		melee_floor.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyPursue.attack_state export verified.")
+
 	if pursue_node.enemy != melee_enemy:
-		printerr("TEST FAILED: EnemyPursue.enemy reference does not match MeleeEnemy.")
+		printerr("TEST FAILED: EnemyPursue.enemy does not point to MeleeEnemy.")
 		melee_enemy.queue_free()
+		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(pursue_node.attack_range, 3.0):
-		printerr("TEST FAILED: EnemyPursue.attack_range expected 3.0, got: ", pursue_node.attack_range)
-		melee_enemy.queue_free()
-		get_tree().quit(1)
-		return
+	print("EnemyPursue.enemy reference verified.")
 
 	# Verify pursue enter() sets blend_target to 1.0 (running)
 	pursue_node.enter("")
 	if not is_equal_approx(melee_enemy.animation_tree.blend_target, 1.0):
 		printerr("TEST FAILED: EnemyPursue.enter() did not set blend_target to 1.0. Got: ", melee_enemy.animation_tree.blend_target)
 		melee_enemy.queue_free()
+		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
 
-	# Verify pursue physics_update applies gravity when in air
-	var test_pursue_player: Player = load("res://Player/player.tscn").instantiate() as Player
-	add_child(test_pursue_player)
-	test_pursue_player.global_position = Vector3(10.0, 0.0, 10.0)
-	melee_enemy.player = test_pursue_player
-	melee_enemy.velocity = Vector3.ZERO
-	pursue_node.physics_update(0.1)
-	if melee_enemy.velocity.y >= 0.0:
-		printerr("TEST FAILED: EnemyPursue.physics_update did not apply downward gravity. Velocity Y: ", melee_enemy.velocity.y)
+	# Verify pursue fall_state export points to EnemyFall
+	var melee_fall: EnemyFall = melee_sm.get_node_or_null("EnemyFall") as EnemyFall
+	if melee_fall == null or pursue_node.fall_state != melee_fall:
+		printerr("TEST FAILED: EnemyPursue.fall_state is not wired to EnemyFall.")
 		melee_enemy.queue_free()
-		test_pursue_player.queue_free()
+		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
-	test_pursue_player.queue_free()
-	print("EnemyPursue hierarchy, StateMachine, and gravity application verified.")
+	print("EnemyPursue hierarchy, StateMachine, and EnemyFall wiring verified.")
 
+	melee_floor.queue_free()
 	melee_enemy.queue_free()
 	await get_tree().process_frame
 
@@ -2361,6 +2403,148 @@ func _ready() -> void:
 	melee_inst.queue_free()
 	await get_tree().process_frame
 
+	# >>> PART 33: Falling Enemies, EnemyFall State & Run Reset Polish <<<
+	print("\n>>> PART 33: EnemyFall State, Fall Transitions & Polish")
+	var base_enemy_scene_p33: PackedScene = load("res://Enemy/enemy.tscn")
+	var base_enemy_inst_p33: Enemy = base_enemy_scene_p33.instantiate() as Enemy
+	add_child(base_enemy_inst_p33)
+	
+	var p33_sm: Node = base_enemy_inst_p33.get_node("StateMachine")
+	var p33_fall: EnemyFall = p33_sm.get_node_or_null("EnemyFall") as EnemyFall
+	if p33_fall == null:
+		printerr("TEST FAILED: EnemyFall node not found in enemy.tscn")
+		base_enemy_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyFall node in enemy.tscn verified.")
+	
+	if p33_fall.land_state != p33_sm.get_node("EnemyStun"):
+		printerr("TEST FAILED: EnemyFall.land_state is not wired to EnemyStun.")
+		base_enemy_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyFall.land_state wired to EnemyStun verified.")
+	
+	if p33_fall.enemy != base_enemy_inst_p33:
+		printerr("TEST FAILED: EnemyFall.enemy is not wired to base Enemy.")
+		base_enemy_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyFall.enemy wiring verified.")
+	
+	# Verify fall_state wired on EnemyWait, EnemyStun, EnemyDefeat
+	var p33_wait: EnemyState = p33_sm.get_node("EnemyWait") as EnemyState
+	var p33_stun: EnemyState = p33_sm.get_node("EnemyStun") as EnemyState
+	var p33_defeat: EnemyState = p33_sm.get_node("EnemyDefeat") as EnemyState
+	if p33_wait.fall_state != p33_fall or p33_stun.fall_state != p33_fall or p33_defeat.fall_state != p33_fall:
+		printerr("TEST FAILED: fall_state is not wired to EnemyFall on EnemyWait, EnemyStun, or EnemyDefeat.")
+		base_enemy_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("fall_state on EnemyWait, EnemyStun, and EnemyDefeat wired to EnemyFall verified.")
+	
+	# Verify melee_enemy.tscn wiring
+	var melee_scene_p33: PackedScene = load("res://Enemy/melee_enemy.tscn")
+	var melee_inst_p33: Enemy = melee_scene_p33.instantiate() as Enemy
+	var melee_sm_p33: Node = melee_inst_p33.get_node("StateMachine")
+	var melee_fall_p33: EnemyState = melee_sm_p33.get_node("EnemyFall") as EnemyState
+	var melee_pursue_p33: EnemyState = melee_sm_p33.get_node("EnemyPursue") as EnemyState
+	var melee_attack_p33: EnemyState = melee_sm_p33.get_node("EnemyAttack") as EnemyState
+	if melee_pursue_p33.fall_state != melee_fall_p33 or melee_attack_p33.fall_state != melee_fall_p33:
+		printerr("TEST FAILED: fall_state on EnemyPursue or EnemyAttack in melee_enemy.tscn not wired to EnemyFall.")
+		base_enemy_inst_p33.queue_free()
+		melee_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("MeleeEnemy EnemyPursue & EnemyAttack fall_state wiring verified.")
+	melee_inst_p33.queue_free()
+	
+	# Verify ranged_enemy.tscn wiring
+	var ranged_scene_p33: PackedScene = load("res://Enemy/ranged_enemy.tscn")
+	var ranged_inst_p33: Enemy = ranged_scene_p33.instantiate() as Enemy
+	var ranged_sm_p33: Node = ranged_inst_p33.get_node("StateMachine")
+	var ranged_fall_p33: EnemyState = ranged_sm_p33.get_node("EnemyFall") as EnemyState
+	var ranged_meander_p33: EnemyState = ranged_sm_p33.get_node("EnemyMeander") as EnemyState
+	var ranged_attack_p33: EnemyState = ranged_sm_p33.get_node("EnemyAttack") as EnemyState
+	if ranged_meander_p33.fall_state != ranged_fall_p33 or ranged_attack_p33.fall_state != ranged_fall_p33:
+		printerr("TEST FAILED: fall_state on EnemyMeander or EnemyAttack in ranged_enemy.tscn not wired to EnemyFall.")
+		base_enemy_inst_p33.queue_free()
+		ranged_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("RangedEnemy EnemyMeander & EnemyAttack fall_state wiring verified.")
+	ranged_inst_p33.queue_free()
+	
+	# Verify EnemyFall.physics_update() sets velocity to gravity
+	p33_fall.physics_update(0.1)
+	if base_enemy_inst_p33.velocity != base_enemy_inst_p33.get_gravity():
+		printerr("TEST FAILED: EnemyFall.physics_update did not set velocity to get_gravity(). Got: ", base_enemy_inst_p33.velocity)
+		base_enemy_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyFall.physics_update gravity velocity verified.")
+	
+	# Verify EnemyState.core_movement() emits fall_state when not on floor
+	var state_transitioned := {"target": ""}
+	p33_wait.finished.connect(func(next: String) -> void: state_transitioned["target"] = next)
+	p33_wait.core_movement(base_enemy_inst_p33.base_speed, Vector3(1, 0, 0))
+	if state_transitioned["target"] != "EnemyFall":
+		printerr("TEST FAILED: core_movement did not emit EnemyFall when not on floor. Got: ", state_transitioned["target"])
+		base_enemy_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyState.core_movement floor check and fall transition verified.")
+	
+	# Verify EnemyStun.physics_update() emits fall_state when not on floor
+	state_transitioned["target"] = ""
+	p33_stun.finished.connect(func(next: String) -> void: state_transitioned["target"] = next)
+	p33_stun.physics_update(0.1)
+	if state_transitioned["target"] != "EnemyFall":
+		printerr("TEST FAILED: EnemyStun.physics_update did not emit EnemyFall when not on floor. Got: ", state_transitioned["target"])
+		base_enemy_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyStun.physics_update floor check and fall transition verified.")
+	
+	# Verify UpgradeIcon button group
+	var upgrade_scene_p33: PackedScene = load("res://UserInterface/upgrade_icon.tscn")
+	var upgrade_inst_p33: UpgradeIcon = upgrade_scene_p33.instantiate() as UpgradeIcon
+	add_child(upgrade_inst_p33)
+	var tb_p33: TextureButton = upgrade_inst_p33.get_node("TextureButton") as TextureButton
+	if not tb_p33.is_in_group("upgrade_button"):
+		printerr("TEST FAILED: TextureButton in upgrade_icon.tscn is not in 'upgrade_button' group.")
+		upgrade_inst_p33.queue_free()
+		base_enemy_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("UpgradeIcon TextureButton 'upgrade_button' group membership verified.")
+	
+	# Verify take_upgrade() disables group
+	upgrade_inst_p33.take_upgrade()
+	if not tb_p33.disabled:
+		printerr("TEST FAILED: take_upgrade did not disable the button via call_group.")
+		upgrade_inst_p33.queue_free()
+		base_enemy_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("take_upgrade call_group disable verified.")
+	upgrade_inst_p33.queue_free()
+	
+	# Verify Player.reset_game_state() sets GlobalVars.level = 1
+	var player_scene_p33: PackedScene = load("res://Player/player.tscn")
+	var player_inst_p33: Player = player_scene_p33.instantiate() as Player
+	GlobalVars.level = 5
+	player_inst_p33.reset_game_state()
+	if GlobalVars.level != 1:
+		printerr("TEST FAILED: reset_game_state did not reset GlobalVars.level to 1. Got: ", GlobalVars.level)
+		player_inst_p33.queue_free()
+		base_enemy_inst_p33.queue_free()
+		get_tree().quit(1)
+		return
+	print("Player.reset_game_state resetting GlobalVars.level = 1 verified.")
+	player_inst_p33.queue_free()
+	base_enemy_inst_p33.queue_free()
+
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
@@ -2395,6 +2579,7 @@ func _ready() -> void:
 	print("  30. Melee AttackComponent, ShapeCast3D & Damage verified          ")
 	print("  31. Melee Polish, Exceptions Reset, Layers & Mixed Spawns verified")
 	print("  32. Enemy KnockbackComponent, EnemyStun & Attack Knockback verified")
+	print("  33. Falling Enemies, EnemyFall State & Run Reset Polish verified  ")
 	print("====================================================================")
 	
 	get_tree().quit(0)

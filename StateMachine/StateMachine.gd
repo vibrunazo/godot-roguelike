@@ -23,6 +23,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if not is_inside_tree() or state == null:
+		return
 	state.physics_update(delta)
 
 

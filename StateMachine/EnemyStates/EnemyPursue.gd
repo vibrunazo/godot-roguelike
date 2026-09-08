@@ -11,7 +11,7 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 
 
 func physics_update(_delta: float) -> void:
-	if not enemy or not is_instance_valid(enemy.player):
+	if not is_instance_valid(enemy) or not enemy.is_inside_tree() or not is_instance_valid(enemy.player):
 		return
 	enemy.navigation_agent_3d.target_position = enemy.player.global_position
 	var destination: Vector3 = enemy.navigation_agent_3d.get_next_path_position()
@@ -23,9 +23,5 @@ func physics_update(_delta: float) -> void:
 			finished.emit(attack_state.name)
 		return
 	core_movement(enemy.base_speed, local_destination.normalized())
-	if not enemy.is_on_floor():
-		enemy.velocity += enemy.get_gravity() * _delta
-	else:
-		enemy.velocity.y = 0.0
 	enemy.move_and_slide()
 

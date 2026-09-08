@@ -6,6 +6,10 @@ extends EnemyState
 
 
 func physics_update(_delta: float) -> void:
+	if not is_instance_valid(enemy) or not enemy.is_inside_tree():
+		return
+	if not enemy.is_on_floor() and fall_state:
+		finished.emit(fall_state.name)
 	if enemy.knockback_component.is_active():
 		enemy.velocity = enemy.knockback_component.magnitude
 	else:
