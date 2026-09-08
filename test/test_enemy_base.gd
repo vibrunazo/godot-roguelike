@@ -1920,6 +1920,79 @@ func _ready() -> void:
 	hp_player.queue_free()
 	await get_tree().process_frame
 
+	# ---------------------------------------------------------
+	# PART 28: MeleeEnemy & EnemyPursue Verification (Lecture 81)
+	# ---------------------------------------------------------
+	print("\n>>> PART 28: MeleeEnemy & EnemyPursue Verification")
+	var melee_scene: PackedScene = load("res://Enemy/melee_enemy.tscn")
+	if melee_scene == null:
+		printerr("TEST FAILED: Could not load res://Enemy/melee_enemy.tscn")
+		get_tree().quit(1)
+		return
+	var melee_enemy: Enemy = melee_scene.instantiate() as Enemy
+	if melee_enemy == null:
+		printerr("TEST FAILED: MeleeEnemy root node is not an Enemy instance.")
+		get_tree().quit(1)
+		return
+	add_child(melee_enemy)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	var melee_sm: StateMachine = melee_enemy.get_node_or_null("StateMachine") as StateMachine
+	if melee_sm == null:
+		printerr("TEST FAILED: StateMachine not found in MeleeEnemy.")
+		melee_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	var pursue_node: EnemyPursue = melee_sm.get_node_or_null("EnemyPursue") as EnemyPursue
+	if pursue_node == null:
+		printerr("TEST FAILED: EnemyPursue node not found under MeleeEnemy StateMachine.")
+		melee_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if melee_sm.initial_state != pursue_node:
+		printerr("TEST FAILED: MeleeEnemy initial_state is not EnemyPursue. Got: ", melee_sm.initial_state)
+		melee_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if pursue_node.enemy != melee_enemy:
+		printerr("TEST FAILED: EnemyPursue.enemy reference does not match MeleeEnemy.")
+		melee_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(pursue_node.attack_range, 3.0):
+		printerr("TEST FAILED: EnemyPursue.attack_range expected 3.0, got: ", pursue_node.attack_range)
+		melee_enemy.queue_free()
+		get_tree().quit(1)
+		return
+
+	# Verify pursue enter() sets blend_target to 1.0 (running)
+	pursue_node.enter("")
+	if not is_equal_approx(melee_enemy.animation_tree.blend_target, 1.0):
+		printerr("TEST FAILED: EnemyPursue.enter() did not set blend_target to 1.0. Got: ", melee_enemy.animation_tree.blend_target)
+		melee_enemy.queue_free()
+		get_tree().quit(1)
+		return
+
+	# Verify pursue physics_update applies gravity when in air
+	var test_pursue_player: Player = load("res://Player/player.tscn").instantiate() as Player
+	add_child(test_pursue_player)
+	test_pursue_player.global_position = Vector3(10.0, 0.0, 10.0)
+	melee_enemy.player = test_pursue_player
+	melee_enemy.velocity = Vector3.ZERO
+	pursue_node.physics_update(0.1)
+	if melee_enemy.velocity.y >= 0.0:
+		printerr("TEST FAILED: EnemyPursue.physics_update did not apply downward gravity. Velocity Y: ", melee_enemy.velocity.y)
+		melee_enemy.queue_free()
+		test_pursue_player.queue_free()
+		get_tree().quit(1)
+		return
+	test_pursue_player.queue_free()
+	print("EnemyPursue hierarchy, StateMachine, and gravity application verified.")
+
+	melee_enemy.queue_free()
+	await get_tree().process_frame
+
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
@@ -1949,6 +2022,7 @@ func _ready() -> void:
 	print("  25. UpgradeShop dynamic random selection (GlobalVars.upgrades) & exit ok")
 	print("  26. Window scaling & ui_toggle_fullscreen autoload verified       ")
 	print("  27. Base UpgradeIcon scene, styling, and UpgradeShop placement ok ")
+	print("  28. MeleeEnemy scene, StateMachine & EnemyPursue state verified   ")
 	print("====================================================================")
 	
 	get_tree().quit(0)

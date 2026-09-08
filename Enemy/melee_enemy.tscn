@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://cttwgr00qkjox"]
+
+[ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy.tscn" id="1_cu01m"]
+[ext_resource type="Script" uid="uid://bxjobpwx7ose3" path="res://StateMachine/EnemyStates/EnemyPursue.gd" id="2_7gxvi"]
+
+[node name="MeleeEnemy" unique_id=2117139762 instance=ExtResource("1_cu01m")]
+
+[node name="StateMachine" parent="." index="5" unique_id=1352967922 node_paths=PackedStringArray("initial_state")]
+initial_state = NodePath("EnemyPursue")
+
+[node name="EnemyPursue" type="Node" parent="StateMachine" index="3" unique_id=2067381451 node_paths=PackedStringArray("enemy")]
+script = ExtResource("2_7gxvi")
+enemy = NodePath("../..")
+
+[editable path="AnimationAnchor/AnimatedEnemy"]
+[editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]
+
