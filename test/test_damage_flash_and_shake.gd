@@ -174,13 +174,86 @@ func _ready() -> void:
 		return
 	print("Camera trauma decayed back to 0.0 successfully!")
 	
+	# ---------------------------------------------------------
+	# PART 4: VfxManager & Damage Numbers (Lecture 77)
+	# ---------------------------------------------------------
+	print("\n>>> PART 4: Testing VfxManager and DamageNumber")
+	if VfxManager == null:
+		printerr("TEST FAILED: VfxManager autoload not found.")
+		get_tree().quit(1)
+		return
+	print("VfxManager autoload verified.")
+
+	var damage_num_scene: PackedScene = load("res://Singletons/VFX/DamageNumber.tscn")
+	if damage_num_scene == null:
+		printerr("TEST FAILED: Could not load DamageNumber.tscn.")
+		get_tree().quit(1)
+		return
+	var test_dn: DamageNumber = damage_num_scene.instantiate() as DamageNumber
+	if test_dn == null:
+		printerr("TEST FAILED: DamageNumber root node is not of type DamageNumber.")
+		get_tree().quit(1)
+		return
+	var dn_label: Label = test_dn.get_node_or_null("Label") as Label
+	var dn_anim: AnimationPlayer = test_dn.get_node_or_null("AnimationPlayer") as AnimationPlayer
+	if dn_label == null:
+		printerr("TEST FAILED: DamageNumber does not have a Label child.")
+		get_tree().quit(1)
+		return
+	if dn_anim == null:
+		printerr("TEST FAILED: DamageNumber does not have an AnimationPlayer child.")
+		get_tree().quit(1)
+		return
+	if dn_label.label_settings == null or dn_label.label_settings.font_size != 32 or dn_label.label_settings.outline_size != 4:
+		printerr("TEST FAILED: DamageNumber LabelSettings incorrect.")
+		get_tree().quit(1)
+		return
+	test_dn.free()
+	print("DamageNumber scene structure & LabelSettings verified.")
+
+	for child: Node in VfxManager.get_children():
+		child.queue_free()
+	await get_tree().process_frame
+
+	dummy.global_position = Vector3(5, 1, 5)
+	dummy_health.take_damage(12.0)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	var vfx_children: Array[Node] = VfxManager.get_children()
+	if vfx_children.is_empty():
+		printerr("TEST FAILED: No DamageNumber spawned under VfxManager on take_damage.")
+		get_tree().quit(1)
+		return
+	var spawned_dn: DamageNumber = vfx_children[-1] as DamageNumber
+	if spawned_dn == null:
+		printerr("TEST FAILED: Spawned child in VfxManager is not DamageNumber.")
+		get_tree().quit(1)
+		return
+	if not spawned_dn.target_position.is_equal_approx(dummy.global_position):
+		printerr("TEST FAILED: Spawned DamageNumber target_position (", spawned_dn.target_position, ") does not match dummy position (", dummy.global_position, ")")
+		get_tree().quit(1)
+		return
+
+	var expected_screen_pos: Vector2 = camera.unproject_position(dummy.global_position)
+	if not spawned_dn.position.is_equal_approx(expected_screen_pos):
+		printerr("TEST FAILED: DamageNumber position (", spawned_dn.position, ") does not match unprojected position (", expected_screen_pos, ")")
+		get_tree().quit(1)
+		return
+	print("DamageNumber unproject_position tracking verified: ", spawned_dn.position)
+
+	for child: Node in VfxManager.get_children():
+		child.queue_free()
+	await get_tree().process_frame
+
 	print("\n====================================================================")
-	print("  ALL DAMAGE FLASH & SCREEN SHAKE TESTS PASSED!                     ")
+	print("  ALL DAMAGE FLASH, SCREEN SHAKE & VFX TESTS PASSED!                ")
 	print("  1. DamageTint ColorRect properly configured (preset, mouse_filter)")
 	print("  2. Hurt signal triggers quick_shake(1.0) & red screen flash tween ")
 	print("  3. DamageTint fades back to transparent in 0.2 seconds            ")
 	print("  4. AttackComponent shake_on_damage triggers quick_shake(0.75) on hit")
 	print("  5. Trauma decays smoothly back to 0.0                             ")
+	print("  6. VfxManager spawns DamageNumber with 3D unproject on take_damage")
 	print("====================================================================")
 	
 	level.queue_free()

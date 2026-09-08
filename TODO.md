@@ -154,5 +154,26 @@ This document tracks architectural improvements, optimizations, and technical de
     - Instead of actors directly instantiating scenes and adding them to the hierarchy, actors emit a spawn request signal (e.g. `projectile_spawn_requested(scene, transform, velocity)`) or call a centralized manager service.
     - *Benefits*: Decouples actors from scene management, facilitates centralized projectile pooling to eliminate allocation spikes, and standardizes collision layer assignment.
 
+---
 
-
+## 11. File & Resource Naming Consistency (`snake_case` vs. `PascalCase`)
+- **Problem**:
+  - The project exhibits mixed and inconsistent naming conventions across folders, scenes, and scripts:
+    - **PascalCase scripts vs. snake_case scripts**: `Components/HealthComponent.gd`, `Singletons/GlobalVars.gd`, `Singletons/VFXManager.gd`, and state scripts (`PlayerDash.gd`, `EnemyMeander.gd`) use PascalCase; while `Components/health_bar.gd`, `Levels/exit_point.gd`, `Player/shake_camera_3d.gd`, and `Singletons/scene_transition.gd` use snake_case.
+    - **Scene vs. Script mismatch**: Several components use PascalCase for the `.tscn` file but snake_case for the attached `.gd` file (e.g., `DamageNumber.tscn` with `damage_number.gd`, `LevelTemplate.tscn` with `level_template.gd`).
+    - **Singletons folder**: `GlobalVars.gd` and `VFXManager.gd` vs. `scene_transition.gd` / `scene_transition.tscn`.
+  - Inconsistent casing makes auto-complete and path lookups unpredictable and can lead to silent bugs or import failures on case-sensitive filesystems (such as Linux, Steam Deck, Android, or CI/CD pipelines) when developing on Windows where filesystem paths are case-insensitive.
+- **Refactoring Options**:
+  - **Standardize on Official Godot Conventions (Recommended)**:
+    - Godot's official style guide recommends `snake_case` for all file names (`.gd`, `.tscn`, `.tres`, `.glsl`).
+    - Rename all files and references to follow uniform `snake_case`:
+      - `HealthComponent.gd` -> `health_component.gd`
+      - `VFXManager.gd` -> `vfx_manager.gd`
+      - `GlobalVars.gd` -> `global_vars.gd`
+      - `DamageNumber.tscn` -> `damage_number.tscn`
+      - `LevelTemplate.tscn` -> `level_template.tscn`
+      - State scripts (`PlayerDash.gd` -> `player_dash.gd`, `EnemyMeander.gd` -> `enemy_meander.gd`, etc.)
+  - **Alternative (PascalCase for Scenes/Classes, snake_case for utilities)**:
+    - If choosing PascalCase for class-bound scenes and scripts, enforce it consistently so every scene matches its script basename (e.g. `DamageNumber.tscn` + `DamageNumber.gd`).
+  - **Batch Path & UID Update**:
+    - Use Godot's filesystem rename in the editor or a batch refactoring script to ensure all `ext_resource` UIDs, `preload()` calls, and `project.godot` autoload paths update cleanly without breaking scene dependencies.

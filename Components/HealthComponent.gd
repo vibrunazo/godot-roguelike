@@ -27,6 +27,8 @@ func _ready() -> void:
 	
 func take_damage(damage_in: float) -> void:
 	current_health -= damage_in
-	print(current_health)
+	var parent: Node = get_parent()
+	if parent is Node3D:
+		VfxManager.spawn_damage_number(parent as Node3D, damage_in)
 	if hit_audio: hit_audio.play()
 	if current_health <= 0.0: defeat.emit()

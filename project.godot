@@ -19,6 +19,7 @@ config/icon="uid://cai13gaviuuvu"
 
 GlobalVars="*res://Singletons/GlobalVars.gd"
 SceneTransition="*res://Singletons/scene_transition.tscn"
+VfxManager="*res://Singletons/VFXManager.gd"
 
 [debug]
 
