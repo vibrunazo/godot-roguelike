@@ -275,6 +275,57 @@ func _ready() -> void:
 		child.queue_free()
 	await get_tree().process_frame
 
+	# ---------------------------------------------------------
+	# PART 7: KnockbackComponent & Momentum Verification (Lecture 85)
+	# ---------------------------------------------------------
+	print("\n>>> PART 7: KnockbackComponent & Momentum Checks")
+	if player.knockback_component == null:
+		printerr("TEST FAILED: player.knockback_component is null.")
+		get_tree().quit(1)
+		return
+	var kb: KnockbackComponent = player.knockback_component
+	if not is_equal_approx(kb.decay, 8.0) or not is_equal_approx(kb.max_knockback, 50.0):
+		printerr("TEST FAILED: KnockbackComponent decay or max_knockback default mismatch.")
+		get_tree().quit(1)
+		return
+	if not kb.magnitude.is_zero_approx() or kb.is_active():
+		printerr("TEST FAILED: KnockbackComponent should be inactive at start.")
+		get_tree().quit(1)
+		return
+	
+	# Test clamping via setter
+	kb.add_knockback(Vector3(0.0, 0.0, 100.0))
+	if not is_equal_approx(kb.magnitude.length(), 50.0) or not kb.is_active():
+		printerr("TEST FAILED: KnockbackComponent magnitude was not clamped to max_knockback 50.0.")
+		get_tree().quit(1)
+		return
+	print("KnockbackComponent max_knockback limit_length clamping verified: ", kb.magnitude.length())
+	
+	# Test physics process decay
+	var prev_mag: float = kb.magnitude.length()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if kb.magnitude.length() >= prev_mag:
+		printerr("TEST FAILED: KnockbackComponent magnitude did not decay.")
+		get_tree().quit(1)
+		return
+	print("KnockbackComponent exponential decay verified: ", prev_mag, " -> ", kb.magnitude.length())
+	
+	# Test PlayerState core_movement priority
+	var run_state: PlayerState = player.get_node_or_null("StateMachine/PlayerRun") as PlayerState
+	if run_state != null:
+		kb.magnitude = Vector3(10.0, 0.0, 0.0)
+		run_state.core_movement(0.016, 8.0)
+		if not player.velocity.is_equal_approx(Vector3(10.0, 0.0, 0.0)):
+			printerr("TEST FAILED: Player velocity should follow knockback magnitude when active, got: ", player.velocity)
+			get_tree().quit(1)
+			return
+		kb.magnitude = Vector3.ZERO
+		run_state.core_movement(0.016, 8.0)
+		print("PlayerState core_movement knockback priority verified.")
+	
+	kb.magnitude = Vector3.ZERO
+
 	print("\n====================================================================")
 	print("  ALL DAMAGE FLASH, SCREEN SHAKE & VFX TESTS PASSED!                ")
 	print("  1. DamageTint ColorRect properly configured (preset, mouse_filter)")
@@ -283,6 +334,7 @@ func _ready() -> void:
 	print("  4. AttackComponent shake_on_damage triggers quick_shake(0.75) on hit")
 	print("  5. Trauma decays smoothly back to 0.0                             ")
 	print("  6. VfxManager spawns DamageNumber with 3D unproject on take_damage")
+	print("  7. KnockbackComponent decay, clamp, and core_movement verified    ")
 	print("====================================================================")
 	
 	level.queue_free()

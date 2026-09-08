@@ -26,6 +26,7 @@ bone_idx = 14
 [node name="ShapeCast3D" type="ShapeCast3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0" unique_id=1605059902]
 shape = SubResource("BoxShape3D_7r01i")
 target_position = Vector3(0, 2, 0)
+collision_mask = 16
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D" index="0" unique_id=1069743798]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)

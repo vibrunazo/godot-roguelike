@@ -2213,6 +2213,71 @@ func _ready() -> void:
 	anim_enemy_chk.queue_free()
 	print("AnimatedEnemy RESET animation keyframes verified.")
 
+	# ---------------------------------------------------------
+	# PART 31: Melee Enemy Polish, Exception Reset, Collision Layers & Mixed Spawns (Lecture 84)
+	# ---------------------------------------------------------
+	print("\n>>> PART 31: Melee Enemy Polish, Exception Reset, Collision Layers & Mixed Spawns")
+
+	# 1. Verify ShapeCast3D collision_mask == 16 (Layer 5)
+	if sc.collision_mask != 16:
+		printerr("TEST FAILED: Melee weapon ShapeCast3D collision_mask expected 16, got: ", sc.collision_mask)
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	print("Melee weapon ShapeCast3D collision_mask = 16 (Layer 5 only) verified.")
+
+	# 2. Verify EnemyAttack.enter() calls attack_component.reset_exceptions()
+	var dummy_col: StaticBody3D = StaticBody3D.new()
+	add_child(dummy_col)
+	att_comp.temporary_exceptions.append(dummy_col)
+	sc.add_exception(dummy_col)
+	if att_comp.temporary_exceptions.is_empty():
+		printerr("TEST FAILED: Failed to add temporary exception to AttackComponent.")
+		dummy_col.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	melee_attack_state.enter("EnemyPursue")
+	if not att_comp.temporary_exceptions.is_empty():
+		printerr("TEST FAILED: EnemyAttack.enter() did not clear temporary_exceptions.")
+		dummy_col.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	dummy_col.queue_free()
+	print("EnemyAttack.enter() attack_component.reset_exceptions() verified.")
+
+	# 3. Verify Player collision_layer == 17 (Layer 1 + Layer 5)
+	var player_chk: CharacterBody3D = load("res://Player/player.tscn").instantiate() as CharacterBody3D
+	if player_chk == null or player_chk.collision_layer != 17:
+		printerr("TEST FAILED: Player collision_layer expected 17, got: ", player_chk.collision_layer if player_chk else "null")
+		if player_chk: player_chk.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	player_chk.queue_free()
+	print("Player collision_layer = 17 (Layers 1 and 5) verified.")
+
+	# 4. Verify WaveObjective mixed enemy random selection
+	var mixed_wave_obj: WaveObjective = WaveObjective.new()
+	add_child(mixed_wave_obj)
+	await get_tree().process_frame
+	if mixed_wave_obj.all_enemies.is_empty():
+		printerr("TEST FAILED: WaveObjective all_enemies is empty.")
+		mixed_wave_obj.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	for spawned_enemy: Enemy in mixed_wave_obj.all_enemies:
+		if spawned_enemy == null or not (spawned_enemy is Enemy):
+			printerr("TEST FAILED: WaveObjective spawned invalid enemy instance.")
+			mixed_wave_obj.queue_free()
+			melee_inst.queue_free()
+			get_tree().quit(1)
+			return
+	mixed_wave_obj.queue_free()
+	print("WaveObjective mixed enemy template random instantiation verified.")
+
 	melee_inst.queue_free()
 	await get_tree().process_frame
 
@@ -2248,6 +2313,7 @@ func _ready() -> void:
 	print("  28. MeleeEnemy scene, StateMachine & EnemyPursue state verified   ")
 	print("  29. Melee Attack, AnimationTree & Pursue Transition verified      ")
 	print("  30. Melee AttackComponent, ShapeCast3D & Damage verified          ")
+	print("  31. Melee Polish, Exceptions Reset, Layers & Mixed Spawns verified")
 	print("====================================================================")
 	
 	get_tree().quit(0)

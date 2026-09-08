@@ -11,7 +11,8 @@ var all_enemies: Array[Enemy] = []
 
 func _ready() -> void:
 	for _i: int in GlobalVars.get_enemy_count():
-		var new_enemy: Enemy = MELEE_ENEMY.instantiate() as Enemy
+		var template: PackedScene = [MELEE_ENEMY, RANGED_ENEMY].pick_random()
+		var new_enemy: Enemy = template.instantiate() as Enemy
 		all_enemies.append(new_enemy)
 
 	var tween: Tween = create_tween()

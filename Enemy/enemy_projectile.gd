@@ -14,7 +14,7 @@ const FIREBALL_HIT: PackedScene = preload("res://Enemy/fireball_hit.tscn")
 
 func _physics_process(delta: float) -> void:
 	global_position += global_basis.z * delta * speed
-	attack_component.deal_damage(damage, Vector3.ZERO)
+	attack_component.deal_damage(damage, global_basis.z * 1000.0)
 	if is_colliding():
 		hit_effect()
 		queue_free()

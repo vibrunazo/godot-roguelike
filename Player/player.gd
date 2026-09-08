@@ -19,6 +19,7 @@ extends CharacterBody3D
 @onready var damage_tint: ColorRect = $DamageTint
 @onready var dash_root: Node3D = $DashRoot
 @onready var dash_animation_player: AnimationPlayer = $DashRoot/AnimationPlayer
+@onready var knockback_component: KnockbackComponent = $KnockbackComponent
 
 func _ready() -> void:
 	health_component.defeat.connect(get_tree().reload_current_scene, CONNECT_DEFERRED)

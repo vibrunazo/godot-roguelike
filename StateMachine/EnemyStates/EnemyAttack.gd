@@ -20,6 +20,8 @@ func physics_update(_delta: float) -> void:
 
 
 func enter(_previous_state_path: String, _data := {}) -> void:
+	if attack_component:
+		attack_component.reset_exceptions()
 	enemy.animation_tree.change_immediate(attack_name)
 	if not enemy.animation_tree.animation_finished.is_connected(end_attack):
 		enemy.animation_tree.animation_finished.connect(end_attack, CONNECT_ONE_SHOT)

@@ -177,3 +177,34 @@ This document tracks architectural improvements, optimizations, and technical de
     - If choosing PascalCase for class-bound scenes and scripts, enforce it consistently so every scene matches its script basename (e.g. `DamageNumber.tscn` + `DamageNumber.gd`).
   - **Batch Path & UID Update**:
     - Use Godot's filesystem rename in the editor or a batch refactoring script to ensure all `ext_resource` UIDs, `preload()` calls, and `project.godot` autoload paths update cleanly without breaking scene dependencies.
+
+---
+
+## 12. Dedicated Hurtbox & Hitbox Pattern (Decouple Damage from Physics Bodies & String Node Lookups)
+- **Problem**:
+  - `AttackComponent` currently inspects hit colliders directly from a `ShapeCast3D` using runtime string lookups: `collider.has_node("HealthComponent")` and `collider.has_node("KnockbackComponent")`.
+  - This introduces several architectural and performance drawbacks:
+    1. **Performance Overhead**: Calling `has_node()` and `get_node()` on colliders builds `NodePath` objects, hashes strings, and traverses scene tree children on every collision tick of an active attack.
+    2. **Violation of the Open/Closed Principle**: The attacker's `AttackComponent` must explicitly know about every possible reactive component on the target (`HealthComponent`, `KnockbackComponent`, and future additions like `StatusEffectsComponent`, `ArmorComponent`, etc.). Adding a new reaction requires modifying `AttackComponent`.
+    3. **Coupled Movement & Damage Collisions**: Weapons collide directly with the entity's primary movement collider (`CharacterBody3D`). This makes it difficult to implement invulnerability frames (e.g. during a dash or roll), localized damage zones (weak points, headshots, shields), or distinct damage boundaries separate from wall/floor navigation collision.
+- **Refactoring Options**:
+  - **Dedicated `Hurtbox` Area3D Component (Recommended)**:
+    - Create a `Hurtbox` class (`extends Area3D`) assigned to a dedicated collision layer (e.g., `Hurtboxes`).
+    - The `Hurtbox` holds direct, typed references to its actor's `health_component`, `knockback_component`, and any defensive stats.
+    - Weapons/projectiles (`Hitbox` components or `ShapeCast3D`) only mask the `Hurtbox` layer, completely ignoring the root `CharacterBody3D`.
+    - On collision, the attacker calls a single typed method:
+      ```gdscript
+      hurtbox.receive_hit(damage, knockback)
+      ```
+    - The `Hurtbox` encapsulates all response logic: delegating damage to `HealthComponent`, applying momentum to `KnockbackComponent`, triggering invulnerability flash/timers, and dispatching hit reactions.
+  - **Entity-Level `take_hit()` Method Interface (Lightweight Alternative)**:
+    - If dedicated `Area3D` nodes are not desired for simple props, define a standardized `take_hit(damage: float, knockback: Vector3)` method on characters or destructible actors.
+    - The attacker performs a single cached symbol check:
+      ```gdscript
+      if collider.has_method(&"take_hit"):
+          collider.take_hit(damage, knockback)
+      ```
+  - *Benefits*:
+    - **Zero String Tree Lookups**: Replaces runtime string lookups with compile-time typed method calls or fast native symbol checks (`&"take_hit"`).
+    - **True Decoupling**: Attackers only know that they applied force and damage; targets decide how they react.
+    - **Flexible Combat Mechanics**: Enables i-frames (by disabling the hurtbox collision shape while keeping movement collision active), precision hitboxes, and non-character destructible props (crates, barrels, doors) without special-case logic in `AttackComponent`.

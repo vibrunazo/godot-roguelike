@@ -21,6 +21,7 @@
 [ext_resource type="AudioStream" uid="uid://bt4mtq3k6bfu1" path="res://Assets/Audio/dash.ogg" id="17_dash"]
 [ext_resource type="Shader" uid="uid://blvpj1ywd506d" path="res://Assets/Shaders/Dash.tres" id="20_n471f"]
 [ext_resource type="Script" uid="uid://brm6ulu844i0u" path="res://Player/slash_vfx.gd" id="21_slashvfx"]
+[ext_resource type="Script" uid="uid://bmbhix5t0xhx4" path="res://Components/KnockbackComponent.gd" id="22_knockback"]
 
 [sub_resource type="Gradient" id="Gradient_vtle1"]
 offsets = PackedFloat32Array(0, 0.25247526, 0.7574257)
@@ -277,6 +278,7 @@ _data = {
 }
 
 [node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("dash_audio") groups=["player"]]
+collision_layer = 17
 script = ExtResource("1_l8h54")
 dash_audio = NodePath("DashAudio")
 
@@ -482,6 +484,9 @@ dash_state = NodePath("../PlayerDash")
 script = ExtResource("12_5htga")
 hit_audio = NodePath("../DamageAudio")
 max_health = 60.0
+
+[node name="KnockbackComponent" type="Node" parent="." unique_id=531001606]
+script = ExtResource("22_knockback")
 
 [node name="DamageTint" type="ColorRect" parent="." unique_id=241735057]
 anchors_preset = 15

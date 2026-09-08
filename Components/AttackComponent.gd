@@ -20,6 +20,9 @@ func deal_damage(damage: float, knockback: Vector3) -> void:
 			attack_shapecast.add_exception(collider)
 			temporary_exceptions.append(collider)
 			has_hit = true
+		if collider and is_instance_valid(collider) and collider.has_node("KnockbackComponent"):
+			var knockback_component: KnockbackComponent = collider.get_node("KnockbackComponent") as KnockbackComponent
+			knockback_component.add_knockback(knockback)
 	if shake_on_damage and has_hit:
 		var camera := get_viewport().get_camera_3d() as ShakeCamera3D
 		if camera != null:
