@@ -20,7 +20,7 @@ func fade_out(tween: Tween) -> void:
 
 
 func fade_in(tween: Tween) -> void:
-	tween.tween_property(color_rect, "color:a", 1.0, 0.25)
+	tween.tween_property(color_rect, "color:a", 1.0, 1.0)
 
 
 func load_scene_path(path_in: String, args: Dictionary = {}) -> void:

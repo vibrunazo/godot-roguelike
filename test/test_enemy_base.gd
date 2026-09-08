@@ -566,8 +566,8 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	var cutoff_val: Variant = wisp_mat.get_shader_parameter("Cuttoff")
-	if cutoff_val == null or not is_equal_approx(float(cutoff_val), 0.5):
-		printerr("TEST FAILED: WispMesh shader Cuttoff expected 0.5, got: ", cutoff_val)
+	if cutoff_val == null or not is_equal_approx(float(cutoff_val), 0.41):
+		printerr("TEST FAILED: WispMesh shader Cuttoff expected 0.41, got: ", cutoff_val)
 		level.queue_free()
 		get_tree().quit(1)
 		return
@@ -577,6 +577,49 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("ExitPoint WispMesh (CylinderMesh & ShaderMaterial) verified.")
+
+	# Verify ExitPoint AnimationPlayer & GPUParticles3D (Lecture 74)
+	var exit_anim: AnimationPlayer = exit_point.get_node_or_null("AnimationPlayer") as AnimationPlayer
+	if exit_anim == null or exit_point.animation_player != exit_anim:
+		printerr("TEST FAILED: ExitPoint AnimationPlayer node missing or onready var not wired.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if not exit_anim.has_animation(&"Exit") or not exit_anim.has_animation(&"RESET"):
+		printerr("TEST FAILED: ExitPoint AnimationPlayer missing Exit or RESET animation.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var exit_torus_particles: GPUParticles3D = exit_point.get_node_or_null("GPUParticles3D") as GPUParticles3D
+	if exit_torus_particles == null:
+		printerr("TEST FAILED: ExitPoint GPUParticles3D missing.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if not exit_torus_particles.one_shot or not is_equal_approx(exit_torus_particles.lifetime, 3.0) or not is_equal_approx(exit_torus_particles.preprocess, 1.0):
+		printerr("TEST FAILED: ExitPoint GPUParticles3D lifetime/one_shot/preprocess invalid.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var torus_mesh: TorusMesh = exit_torus_particles.draw_pass_1 as TorusMesh
+	if torus_mesh == null or not is_equal_approx(torus_mesh.inner_radius, 0.9):
+		printerr("TEST FAILED: ExitPoint TorusMesh draw pass or inner_radius invalid.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var torus_mat: StandardMaterial3D = exit_torus_particles.material_override as StandardMaterial3D
+	if torus_mat == null or torus_mat.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA or torus_mat.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED or not torus_mat.vertex_color_use_as_albedo:
+		printerr("TEST FAILED: ExitPoint TorusMesh material_override invalid.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var torus_proc_mat: ParticleProcessMaterial = exit_torus_particles.process_material as ParticleProcessMaterial
+	if torus_proc_mat == null or torus_proc_mat.gravity != Vector3.ZERO or not is_equal_approx(torus_proc_mat.scale_min, 5.0) or not is_equal_approx(torus_proc_mat.scale_max, 5.0):
+		printerr("TEST FAILED: ExitPoint TorusMesh process_material gravity/scale invalid.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("ExitPoint AnimationPlayer and Torus GPUParticles3D verified.")
 
 	var is_connected_to_unlock := false
 	for conn: Dictionary in wave_obj.finished.get_connections():
