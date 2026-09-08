@@ -6,6 +6,8 @@ extends PlayerState
 @export var dash_cancel: bool = false
 ## Amount of damage dealt to health components caught in this attack
 @export var damage: float = 10.0
+## Knockback impulse applied to entities hit by this attack.
+@export var knockback: float = 15.0
 ## State to transition into after this attack finishes without a queued combo
 @export var run_state: PlayerState
 ## Next attack state in the combo chain to transition to if an attack input is queued
@@ -24,7 +26,7 @@ var aim_direction: Vector3 = Vector3.ZERO
 
 func physics_update(_delta: float) -> void:
 	player.velocity = player.get_movement_direction() * movement_speed
-	attack_component.deal_damage(damage * player.get_damage_modifier(), Vector3.ZERO)
+	attack_component.deal_damage(damage * player.get_damage_modifier(), player.player_root.global_basis.z * knockback)
 	player.look_toward_direction(aim_direction, 1.0)
 	player.move_and_slide()
 	

@@ -6,7 +6,10 @@ extends EnemyState
 
 
 func physics_update(_delta: float) -> void:
-	enemy.velocity = Vector3.ZERO
+	if enemy.knockback_component.is_active():
+		enemy.velocity = enemy.knockback_component.magnitude
+	else:
+		enemy.velocity = Vector3.ZERO
 	enemy.move_and_slide()
 
 

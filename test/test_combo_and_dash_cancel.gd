@@ -109,6 +109,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Entered state: PlayerAttack3 (Attack 3: Spin)")
+	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.0)
 	
 	# Wait for Attack 3 to hit
 	for i: int in range(40):

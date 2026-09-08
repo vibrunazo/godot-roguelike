@@ -2278,6 +2278,86 @@ func _ready() -> void:
 	mixed_wave_obj.queue_free()
 	print("WaveObjective mixed enemy template random instantiation verified.")
 
+	# ---------------------------------------------------------
+	# PART 32: Enemy KnockbackComponent & Attack Knockback (Lecture 86)
+	# ---------------------------------------------------------
+	print("\n>>> PART 32: Enemy KnockbackComponent & Attack Knockback")
+
+	# 1. Base Enemy KnockbackComponent verification
+	var base_enemy_scene: PackedScene = load("res://Enemy/enemy.tscn")
+	var base_enemy: Enemy = base_enemy_scene.instantiate() as Enemy
+	add_child(base_enemy)
+	await get_tree().process_frame
+	if base_enemy.knockback_component == null:
+		printerr("TEST FAILED: Base Enemy knockback_component is null.")
+		base_enemy.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	var enemy_kb: KnockbackComponent = base_enemy.knockback_component
+	if not is_equal_approx(enemy_kb.decay, 8.0) or not is_equal_approx(enemy_kb.max_knockback, 50.0):
+		printerr("TEST FAILED: Enemy KnockbackComponent decay or max_knockback mismatch.")
+		base_enemy.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	print("Enemy KnockbackComponent onready var & properties verified.")
+
+	# 2. EnemyStun knockback momentum verification
+	var enemy_stun_state: EnemyStun = base_enemy.get_node_or_null("StateMachine/EnemyStun") as EnemyStun
+	if enemy_stun_state != null:
+		enemy_kb.magnitude = Vector3(15.0, 0.0, 0.0)
+		enemy_stun_state.physics_update(0.016)
+		if not base_enemy.velocity.is_equal_approx(Vector3(15.0, 0.0, 0.0)):
+			printerr("TEST FAILED: EnemyStun velocity should match knockback magnitude when active, got: ", base_enemy.velocity)
+			base_enemy.queue_free()
+			melee_inst.queue_free()
+			get_tree().quit(1)
+			return
+		enemy_kb.magnitude = Vector3.ZERO
+		enemy_stun_state.physics_update(0.016)
+		if not base_enemy.velocity.is_zero_approx():
+			printerr("TEST FAILED: EnemyStun velocity should be zero when inactive, got: ", base_enemy.velocity)
+			base_enemy.queue_free()
+			melee_inst.queue_free()
+			get_tree().quit(1)
+			return
+		print("EnemyStun physics_update knockback velocity override verified.")
+	base_enemy.queue_free()
+
+	# 3. EnemyAttack knockback export (20.0)
+	if not is_equal_approx(melee_attack_state.knockback, 20.0):
+		printerr("TEST FAILED: EnemyAttack knockback expected 20.0, got: ", melee_attack_state.knockback)
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyAttack knockback export (20.0) verified.")
+
+	# 4. EnemyProjectile knockback export (15.0)
+	var kb_proj_scene: PackedScene = load("res://Enemy/enemy_projectile.tscn")
+	var test_proj: EnemyProjectile = kb_proj_scene.instantiate() as EnemyProjectile
+	if not is_equal_approx(test_proj.knockback, 15.0):
+		printerr("TEST FAILED: EnemyProjectile knockback expected 15.0, got: ", test_proj.knockback)
+		test_proj.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	test_proj.queue_free()
+	print("EnemyProjectile knockback export (15.0) verified.")
+
+	# 5. PlayerAttack knockback export (15.0)
+	var player_scene_kb: PackedScene = load("res://Player/player.tscn")
+	var test_player_kb: Player = player_scene_kb.instantiate() as Player
+	var player_attack1: PlayerState = test_player_kb.get_node_or_null("StateMachine/PlayerAttack") as PlayerState
+	if player_attack1 == null or not is_equal_approx(float(player_attack1.get("knockback")), 15.0):
+		printerr("TEST FAILED: PlayerAttack knockback expected 15.0, got: ", player_attack1.get("knockback") if player_attack1 else "null")
+		test_player_kb.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	test_player_kb.queue_free()
+	print("PlayerAttack knockback export (15.0) verified.")
+
 	melee_inst.queue_free()
 	await get_tree().process_frame
 
@@ -2314,6 +2394,7 @@ func _ready() -> void:
 	print("  29. Melee Attack, AnimationTree & Pursue Transition verified      ")
 	print("  30. Melee AttackComponent, ShapeCast3D & Damage verified          ")
 	print("  31. Melee Polish, Exceptions Reset, Layers & Mixed Spawns verified")
+	print("  32. Enemy KnockbackComponent, EnemyStun & Attack Knockback verified")
 	print("====================================================================")
 	
 	get_tree().quit(0)

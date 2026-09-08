@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://bwo2c4dl16ces" path="res://Components/health_bar.tscn" id="2_am0pq"]
 [ext_resource type="PackedScene" uid="uid://b7usbbh1tfnjv" path="res://Enemy/animated_enemy.tscn" id="2_ncf7h"]
 [ext_resource type="AudioStream" uid="uid://bhd6x8sglgt14" path="res://Assets/Audio/hit.ogg" id="3_am0pq"]
+[ext_resource type="Script" uid="uid://bmbhix5t0xhx4" path="res://Components/KnockbackComponent.gd" id="4_nmr1a"]
 [ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/StateMachine.gd" id="6_m6jha"]
 [ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyWait.gd" id="7_glvfu"]
 [ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyStun.gd" id="8_0rspp"]
@@ -31,6 +32,9 @@ shape = SubResource("CapsuleShape3D_ncf7h")
 script = ExtResource("1_px1sc")
 hit_audio = NodePath("../HitAudio")
 max_health = 40.0
+
+[node name="KnockbackComponent" type="Node" parent="." unique_id=800122148]
+script = ExtResource("4_nmr1a")
 
 [node name="HealthBar" parent="." unique_id=1961835903 node_paths=PackedStringArray("health_component") instance=ExtResource("2_am0pq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)

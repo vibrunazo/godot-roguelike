@@ -2,6 +2,8 @@
 class_name EnemyAttack
 extends EnemyState
 
+## Knockback impulse applied to entities hit by this attack.
+@export var knockback := 20.0
 ## Amount of damage dealt by this attack.
 @export var weapon_damage := 8.0
 ## AttackComponent handling hitbox queries and dealing damage.
@@ -14,7 +16,7 @@ extends EnemyState
 
 func physics_update(_delta: float) -> void:
 	if attack_component:
-		attack_component.deal_damage(weapon_damage, Vector3.ZERO)
+		attack_component.deal_damage(weapon_damage, enemy.mesh_mount.global_basis.z * knockback)
 	enemy.velocity = Vector3.ZERO
 	enemy.move_and_slide()
 

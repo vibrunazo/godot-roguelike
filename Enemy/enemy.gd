@@ -21,6 +21,7 @@ signal defeat
 @onready var collision_shape_3d: CollisionShape3D = $CollisionShape3D
 @onready var player: Player = get_tree().get_first_node_in_group("player") as Player
 @onready var navigation_agent_3d: NavigationAgent3D = $NavigationAgent3D
+@onready var knockback_component: KnockbackComponent = $KnockbackComponent
 
 
 func _ready() -> void:
