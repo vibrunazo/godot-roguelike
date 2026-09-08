@@ -339,12 +339,59 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 		
+	# =========================================================================
+	# PART 4: SWORD SLASH VFX (Lecture 79)
+	# =========================================================================
+	print("\n>>> PART 4: Testing Sword Slash VFX Setup")
+	var slash_vfx: MeshInstance3D = player.get_node_or_null("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/LazerSword/SlashVFX") as MeshInstance3D
+	if slash_vfx == null:
+		printerr("TEST FAILED: SlashVFX MeshInstance3D not found under LazerSword.")
+		get_tree().quit(1)
+		return
+	if slash_vfx.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+		printerr("TEST FAILED: SlashVFX cast_shadow is not OFF.")
+		get_tree().quit(1)
+		return
+	if slash_vfx.gi_mode != GeometryInstance3D.GI_MODE_DISABLED:
+		printerr("TEST FAILED: SlashVFX gi_mode is not DISABLED.")
+		get_tree().quit(1)
+		return
+	var slash_quad: QuadMesh = slash_vfx.mesh as QuadMesh
+	if slash_quad == null or slash_quad.size != Vector2(4, 2):
+		printerr("TEST FAILED: SlashVFX mesh is not QuadMesh(4, 2).")
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(slash_vfx.position.x, -2.0):
+		printerr("TEST FAILED: SlashVFX position.x expected -2.0, got: ", slash_vfx.position.x)
+		get_tree().quit(1)
+		return
+	var slash_mat: ShaderMaterial = slash_vfx.material_override as ShaderMaterial
+	if slash_mat == null:
+		printerr("TEST FAILED: SlashVFX material_override is not ShaderMaterial.")
+		get_tree().quit(1)
+		return
+	if not slash_mat.get_shader_parameter("NoiseTexture") is NoiseTexture2D:
+		printerr("TEST FAILED: SlashVFX NoiseTexture is not NoiseTexture2D.")
+		get_tree().quit(1)
+		return
+	if not slash_mat.get_shader_parameter("GradientParameter") is GradientTexture1D:
+		printerr("TEST FAILED: SlashVFX GradientParameter is not GradientTexture1D.")
+		get_tree().quit(1)
+		return
+	var slash_speed: float = slash_mat.get_shader_parameter("Speed") as float
+	if not is_equal_approx(slash_speed, 3.0):
+		printerr("TEST FAILED: SlashVFX Speed expected 3.0, got: ", slash_speed)
+		get_tree().quit(1)
+		return
+	print("Sword Slash VFX (QuadMesh, ShaderMaterial, transform) verified successfully!")
+
 	print("\n====================================================================")
 	print("  ALL 3-HIT COMBO & DASH CANCEL TESTS PASSED!                      ")
 	print("  1. Combo Damage: 100 -> 92 (Slash: 8) -> 78 (Stab: 14) -> 68 (Spin: 10)")
 	print("  2. Dash Cancel on Attack 1: Cancelled into PlayerDash successfully")
 	print("  3. Dash Cancel on Attack 3: Correctly blocked / committed to spin")
 	print("  4. State recovery: Clean return to PlayerRun in all scenarios     ")
+	print("  5. Sword Slash VFX: QuadMesh(4, 2), ShaderMaterial & transform ok")
 	print("====================================================================")
 	level.queue_free()
 	await get_tree().physics_frame
