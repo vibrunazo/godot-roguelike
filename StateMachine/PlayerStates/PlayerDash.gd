@@ -16,6 +16,11 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 	player.dash_cooldown.start()
 	dash_duration.start()
 	player.mannequin_animation_tree.change_immediate("DodgeForward")
+	var move_dir: Vector3 = player.get_movement_direction()
+	if not move_dir.is_zero_approx():
+		player.dash_root.look_at(player.global_position + move_dir)
+	elif not direction.is_zero_approx():
+		player.dash_root.look_at(player.global_position + direction)
 	
 func physics_update(_delta: float) -> void:
 	if dash_duration.is_stopped():

@@ -166,7 +166,43 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Dash cancel SUCCESS! Interrupted PlayerAttack directly into PlayerDash.")
-	
+
+	# Verify DashRoot and shader setup (Lecture 75)
+	if player.dash_root == null:
+		printerr("TEST FAILED: player.dash_root is null.")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	var dash_mesh: MeshInstance3D = player.dash_root.get_node_or_null("MeshInstance3D") as MeshInstance3D
+	if dash_mesh == null:
+		printerr("TEST FAILED: DashRoot missing MeshInstance3D child.")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	if dash_mesh.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF or dash_mesh.gi_mode != GeometryInstance3D.GI_MODE_DISABLED:
+		printerr("TEST FAILED: Dash MeshInstance3D cast_shadow or gi_mode invalid.")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	var quad: QuadMesh = dash_mesh.mesh as QuadMesh
+	if quad == null or quad.size != Vector2(3, 2):
+		printerr("TEST FAILED: Dash mesh is not QuadMesh(3, 2).")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	var dash_mat: ShaderMaterial = dash_mesh.material_override as ShaderMaterial
+	if dash_mat == null or dash_mat.shader == null:
+		printerr("TEST FAILED: Dash MeshInstance3D ShaderMaterial or shader missing.")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	if not (dash_mat.get_shader_parameter("NoiseTexture") is NoiseTexture2D) or not (dash_mat.get_shader_parameter("GradientParameter") is GradientTexture1D):
+		printerr("TEST FAILED: Dash shader parameters NoiseTexture or GradientParameter invalid.")
+		Input.action_release("move_forward")
+		get_tree().quit(1)
+		return
+	print("DashRoot, QuadMesh, and ShaderMaterial verified.")
+
 	# Wait for dash to finish and return to PlayerRun
 	back_to_run = false
 	for i: int in range(60):

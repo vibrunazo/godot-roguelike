@@ -19,6 +19,7 @@
 [ext_resource type="AudioStream" uid="uid://cx123snak3vdw" path="res://Assets/Audio/fire-slash.ogg" id="15_fireslash"]
 [ext_resource type="AudioStream" uid="uid://b1ihkudmpnw30" path="res://Assets/Audio/metal-hit.ogg" id="16_metalhit"]
 [ext_resource type="AudioStream" uid="uid://bt4mtq3k6bfu1" path="res://Assets/Audio/dash.ogg" id="17_dash"]
+[ext_resource type="Shader" uid="uid://blvpj1ywd506d" path="res://Assets/Shaders/Dash.tres" id="20_n471f"]
 
 [sub_resource type="Gradient" id="Gradient_vtle1"]
 offsets = PackedFloat32Array(0, 0.25247526, 0.7574257)
@@ -188,6 +189,33 @@ graph_offset = Vector2(41, -108)
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_dkpta"]
 noise_type = 2
 fractal_type = 0
+
+[sub_resource type="Gradient" id="Gradient_7emwf"]
+offsets = PackedFloat32Array(0, 0.5)
+colors = PackedColorArray(0.47843137, 0.8745098, 0.8235294, 1, 0.17254902, 0.44313726, 0.4117647, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_hshwv"]
+gradient = SubResource("Gradient_7emwf")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_gpjlu"]
+noise_type = 2
+frequency = 0.005
+fractal_type = 0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_8mwp6"]
+noise = SubResource("FastNoiseLite_gpjlu")
+seamless = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_qemgg"]
+render_priority = 0
+shader = ExtResource("20_n471f")
+shader_parameter/Speed = 2.0
+shader_parameter/NoiseTexture = SubResource("NoiseTexture2D_8mwp6")
+shader_parameter/GradientParameter = SubResource("GradientTexture1D_hshwv")
+shader_parameter/Threshold = 0.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_8viyr"]
+size = Vector2(3, 2)
 
 [node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("dash_audio") groups=["player"]]
 script = ExtResource("1_l8h54")
@@ -405,6 +433,15 @@ bus = &"SFX"
 [node name="DashAudio" type="AudioStreamPlayer3D" parent="." unique_id=1206433322]
 stream = ExtResource("17_dash")
 bus = &"SFX"
+
+[node name="DashRoot" type="Node3D" parent="." unique_id=1987016137]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="DashRoot" unique_id=1779211005]
+transform = Transform3D(-4.371139e-08, 0, 1, -8.742278e-08, -1, -3.821371e-15, 1, -8.742278e-08, 4.371139e-08, 0, 0, 1.5)
+material_override = SubResource("ShaderMaterial_qemgg")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_8viyr")
 
 [connection signal="slash" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone/AudioStreamPlayer3D" method="play"]

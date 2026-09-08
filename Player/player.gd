@@ -17,6 +17,7 @@ extends CharacterBody3D
 @onready var player_root: Node3D = $GamedevTV_Mannequin_Medium
 @onready var health_component: HealthComponent = $HealthComponent
 @onready var damage_tint: ColorRect = $DamageTint
+@onready var dash_root: Node3D = $DashRoot
 
 func _ready() -> void:
 	health_component.defeat.connect(get_tree().reload_current_scene, CONNECT_DEFERRED)
