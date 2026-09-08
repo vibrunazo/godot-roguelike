@@ -32,6 +32,8 @@ scale_curve = SubResource("CurveTexture_m50cp")
 color_ramp = SubResource("GradientTexture1D_fsk83")
 
 [sub_resource type="SphereMesh" id="SphereMesh_ixk8y"]
+radial_segments = 16
+rings = 8
 
 [sub_resource type="Animation" id="Animation_rf7ny"]
 resource_name = "hit"

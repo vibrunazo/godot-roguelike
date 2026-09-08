@@ -541,6 +541,43 @@ func _ready() -> void:
 		return
 	print("ExitPoint Area3D and SphereShape3D (radius 2.0) verified.")
 
+	# Verify ExitPoint WispMesh & ShaderMaterial (Lecture 73)
+	var wisp_mesh: MeshInstance3D = exit_point.get_node_or_null("WispMesh") as MeshInstance3D
+	if wisp_mesh == null:
+		printerr("TEST FAILED: ExitPoint missing WispMesh child.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(wisp_mesh.position.y, 10.0) or wisp_mesh.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+		printerr("TEST FAILED: WispMesh position or cast_shadow invalid.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var cyl_mesh: CylinderMesh = wisp_mesh.mesh as CylinderMesh
+	if cyl_mesh == null or not is_equal_approx(cyl_mesh.top_radius, 2.0) or not is_equal_approx(cyl_mesh.bottom_radius, 2.0) or not is_equal_approx(cyl_mesh.height, 20.0) or cyl_mesh.cap_top or cyl_mesh.cap_bottom:
+		printerr("TEST FAILED: WispMesh CylinderMesh configuration invalid.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var wisp_mat: ShaderMaterial = wisp_mesh.material_override as ShaderMaterial
+	if wisp_mat == null or wisp_mat.shader == null:
+		printerr("TEST FAILED: WispMesh ShaderMaterial or shader invalid.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var cutoff_val: Variant = wisp_mat.get_shader_parameter("Cuttoff")
+	if cutoff_val == null or not is_equal_approx(float(cutoff_val), 0.5):
+		printerr("TEST FAILED: WispMesh shader Cuttoff expected 0.5, got: ", cutoff_val)
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	if not (wisp_mat.get_shader_parameter("GradientParam") is GradientTexture2D) or not (wisp_mat.get_shader_parameter("NoiseParam") is NoiseTexture2D):
+		printerr("TEST FAILED: WispMesh shader GradientParam or NoiseParam invalid.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("ExitPoint WispMesh (CylinderMesh & ShaderMaterial) verified.")
+
 	var is_connected_to_unlock := false
 	for conn: Dictionary in wave_obj.finished.get_connections():
 		if conn["callable"].get_object() == exit_point and conn["callable"].get_method() == "unlock":

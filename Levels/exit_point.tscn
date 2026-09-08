@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://dfx801p3nbkl3"]
 
 [ext_resource type="Script" uid="uid://yat7w55wsnj3" path="res://Levels/exit_point.gd" id="1_vaxgh"]
+[ext_resource type="Shader" uid="uid://haw3kiymg2dw" path="res://Assets/Shaders/spawn_point.tres" id="2_sdxlw"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_sdxlw"]
 render_priority = 1
@@ -30,6 +31,36 @@ height = 2.0
 [sub_resource type="SphereShape3D" id="SphereShape3D_vaxgh"]
 radius = 2.0
 
+[sub_resource type="Gradient" id="Gradient_aud5m"]
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_dlxbb"]
+gradient = SubResource("Gradient_aud5m")
+fill_to = Vector2(0, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_2e1bn"]
+noise_type = 2
+fractal_type = 0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_gmhql"]
+noise = SubResource("FastNoiseLite_2e1bn")
+seamless = true
+normalize = false
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_xp7fd"]
+render_priority = 0
+shader = ExtResource("2_sdxlw")
+shader_parameter/Cuttoff = 0.5
+shader_parameter/GradientParam = SubResource("GradientTexture2D_dlxbb")
+shader_parameter/NoiseParam = SubResource("NoiseTexture2D_gmhql")
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_y0nvk"]
+top_radius = 2.0
+bottom_radius = 2.0
+height = 20.0
+radial_segments = 32
+cap_top = false
+cap_bottom = false
+
 [node name="ExitPoint" type="Node3D" unique_id=71757807]
 script = ExtResource("1_vaxgh")
 
@@ -40,5 +71,11 @@ mesh = SubResource("SphereMesh_dlxbb")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D" unique_id=471314181]
 shape = SubResource("SphereShape3D_vaxgh")
+
+[node name="WispMesh" type="MeshInstance3D" parent="." unique_id=1995161327]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
+material_override = SubResource("ShaderMaterial_xp7fd")
+cast_shadow = 0
+mesh = SubResource("CylinderMesh_y0nvk")
 
 [connection signal="body_entered" from="Area3D" to="." method="_on_area_3d_body_entered"]
