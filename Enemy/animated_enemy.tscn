@@ -7,6 +7,7 @@
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Spawn_Ground.res" id="5_qbo8f"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Death_A.res" id="4_qbo8f"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_1H_Attack_Slice_Diagonal.res" id="7_pje6n"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_2H_Attack_Chop.res" id="8_nqs35"]
 [ext_resource type="Script" path="res://Player/weapon_slot.gd" id="2_lxq1s"]
 [ext_resource type="Script" path="res://Player/foot_bone.gd" id="3_qbo8f"]
 [ext_resource type="Script" path="res://Player/mannequin_animation_tree.gd" id="6_b6t3m"]
@@ -17,12 +18,16 @@ _data = {
 &"Hit_A": ExtResource("2_b6t3m"),
 &"Idle_A": ExtResource("3_ipeb3"),
 &"Melee_1H_Attack_Slice_Diagonal": ExtResource("7_pje6n"),
+&"Melee_2H_Attack_Chop": ExtResource("8_nqs35"),
 &"Running_B": ExtResource("4_lxq1s"),
 &"Spawn_Ground": ExtResource("5_qbo8f")
 }
 
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_pje6n"]
 animation = &"EnemyAnimations/Death_A"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_7e68y"]
+animation = &"EnemyAnimations/Melee_2H_Attack_Chop"
 
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_phjxc"]
 animation = &"EnemyAnimations/Melee_1H_Attack_Slice_Diagonal"
@@ -66,19 +71,28 @@ xfade_time = 0.2
 switch_mode = 2
 advance_mode = 2
 
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_pjlot"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_3kfqk"]
+xfade_time = 0.2
+switch_mode = 2
+advance_mode = 2
+
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_m75i3"]
 states/Defeat/node = SubResource("AnimationNodeAnimation_pje6n")
 states/Defeat/position = Vector2(800.44446, 32.666664)
 states/EnemyAnimations_Spawn_Ground/node = SubResource("AnimationNodeAnimation_8wj31")
 states/EnemyAnimations_Spawn_Ground/position = Vector2(388, 185.33334)
+states/MeleeAttack/node = SubResource("AnimationNodeAnimation_7e68y")
+states/MeleeAttack/position = Vector2(399.33334, -25)
 states/RangedAttack/node = SubResource("AnimationNodeAnimation_phjxc")
 states/RangedAttack/position = Vector2(583.6667, -31.666668)
 states/Stun/node = SubResource("AnimationNodeAnimation_nqs35")
 states/Stun/position = Vector2(800, 183.77779)
 states/WalkSpace/node = SubResource("AnimationNodeBlendSpace1D_phjxc")
 states/WalkSpace/position = Vector2(595.3333, 100.666664)
-transitions = ["EnemyAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_7e68y"), "WalkSpace", "Stun", SubResource("AnimationNodeStateMachineTransition_nxi5q"), "Stun", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_tlxba"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_nqs35"), "WalkSpace", "RangedAttack", SubResource("AnimationNodeStateMachineTransition_m75i3"), "RangedAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_iaunu")]
-graph_offset = Vector2(302, -76)
+transitions = ["EnemyAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_7e68y"), "WalkSpace", "Stun", SubResource("AnimationNodeStateMachineTransition_nxi5q"), "Stun", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_tlxba"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_nqs35"), "WalkSpace", "RangedAttack", SubResource("AnimationNodeStateMachineTransition_m75i3"), "RangedAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_iaunu"), "WalkSpace", "MeleeAttack", SubResource("AnimationNodeStateMachineTransition_pjlot"), "MeleeAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_3kfqk")]
+graph_offset = Vector2(194, -91)
 
 [node name="AnimatedEnemy" type="Node3D" unique_id=1495277970]
 

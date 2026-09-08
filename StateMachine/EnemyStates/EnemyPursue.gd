@@ -18,6 +18,11 @@ func physics_update(_delta: float) -> void:
 	var local_direction: Vector3 = destination - enemy.global_position
 	local_direction.y = 0.0
 	var direction: Vector3 = local_direction.normalized()
+	look_at_target(destination)
+	if enemy.distance_to_player() < attack_range:
+		if attack_state:
+			finished.emit(attack_state.name)
+		return
 	core_movement(enemy.base_speed, direction)
 	if not enemy.is_on_floor():
 		enemy.velocity += enemy.get_gravity() * _delta

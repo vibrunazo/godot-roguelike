@@ -1993,6 +1993,124 @@ func _ready() -> void:
 	melee_enemy.queue_free()
 	await get_tree().process_frame
 
+	# ---------------------------------------------------------
+	# PART 29: Melee Attack, AnimationTree & Pursue Transition (Lecture 82)
+	# ---------------------------------------------------------
+	print("\n>>> PART 29: Melee Attack, AnimationTree & Pursue Transition")
+	# 1. Verify Melee_2H_Attack_Chop animation resource exists
+	var chop_anim: Animation = load("res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_2H_Attack_Chop.res") as Animation
+	if chop_anim == null or chop_anim.length <= 0.0:
+		printerr("TEST FAILED: Melee_2H_Attack_Chop.res missing or invalid.")
+		get_tree().quit(1)
+		return
+	print("Melee_2H_Attack_Chop animation resource verified (length: ", chop_anim.length, ").")
+
+	# 2. Verify AnimatedEnemy scene AnimationPlayer and AnimationTree
+	var anim_enemy_scene: PackedScene = load("res://Enemy/animated_enemy.tscn")
+	if anim_enemy_scene == null:
+		printerr("TEST FAILED: Could not load res://Enemy/animated_enemy.tscn")
+		get_tree().quit(1)
+		return
+	var anim_enemy: Node3D = anim_enemy_scene.instantiate() as Node3D
+	add_child(anim_enemy)
+	var chop_anim_player: AnimationPlayer = anim_enemy.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if chop_anim_player == null:
+		printerr("TEST FAILED: AnimationPlayer not found in AnimatedEnemy.")
+		anim_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if not chop_anim_player.has_animation_library(&"EnemyAnimations") or not chop_anim_player.get_animation_library(&"EnemyAnimations").has_animation(&"Melee_2H_Attack_Chop"):
+		printerr("TEST FAILED: AnimationPlayer missing Melee_2H_Attack_Chop in EnemyAnimations library.")
+		anim_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	var chop_anim_tree: AnimationTree = anim_enemy.find_child("AnimationTree", true, false) as AnimationTree
+	if chop_anim_tree == null or not (chop_anim_tree.tree_root is AnimationNodeStateMachine):
+		printerr("TEST FAILED: AnimationTree or root state machine missing in AnimatedEnemy.")
+		anim_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	var sm_root: AnimationNodeStateMachine = chop_anim_tree.tree_root as AnimationNodeStateMachine
+	if not sm_root.has_node(&"MeleeAttack"):
+		printerr("TEST FAILED: AnimationTree state machine missing MeleeAttack node.")
+		anim_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	var melee_attack_node: AnimationNodeAnimation = sm_root.get_node(&"MeleeAttack") as AnimationNodeAnimation
+	if melee_attack_node == null or melee_attack_node.animation != &"EnemyAnimations/Melee_2H_Attack_Chop":
+		printerr("TEST FAILED: MeleeAttack node does not play EnemyAnimations/Melee_2H_Attack_Chop.")
+		anim_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	# Check transitions into and out of MeleeAttack
+	var found_in := false
+	var found_out := false
+	for i: int in sm_root.get_transition_count():
+		var from_node: StringName = sm_root.get_transition_from(i)
+		var to_node: StringName = sm_root.get_transition_to(i)
+		var trans: AnimationNodeStateMachineTransition = sm_root.get_transition(i)
+		if from_node == &"WalkSpace" and to_node == &"MeleeAttack":
+			if trans.advance_mode == AnimationNodeStateMachineTransition.ADVANCE_MODE_ENABLED:
+				found_in = true
+		elif from_node == &"MeleeAttack" and to_node == &"WalkSpace":
+			if trans.switch_mode == AnimationNodeStateMachineTransition.SWITCH_MODE_AT_END and trans.advance_mode == AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO and is_equal_approx(trans.xfade_time, 0.2):
+				found_out = true
+	if not found_in or not found_out:
+		printerr("TEST FAILED: Transitions for MeleeAttack invalid. found_in: ", found_in, " found_out: ", found_out)
+		anim_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("AnimatedEnemy AnimationPlayer & AnimationTree MeleeAttack state and transitions verified.")
+	anim_enemy.queue_free()
+	await get_tree().process_frame
+
+	# 3. Verify MeleeEnemy StateMachine wiring & transitions
+	var test_melee: Enemy = melee_scene.instantiate() as Enemy
+	add_child(test_melee)
+	await get_tree().physics_frame
+	var melee_sm_node: StateMachine = test_melee.get_node_or_null("StateMachine") as StateMachine
+	var stun_node: EnemyStun = melee_sm_node.get_node_or_null("EnemyStun") as EnemyStun
+	var pursue_state: EnemyPursue = melee_sm_node.get_node_or_null("EnemyPursue") as EnemyPursue
+	var attack_node: EnemyAttack = melee_sm_node.get_node_or_null("EnemyAttack") as EnemyAttack
+	if stun_node == null or stun_node.next_state != pursue_state:
+		printerr("TEST FAILED: EnemyStun.next_state expected EnemyPursue, got: ", stun_node.next_state if stun_node else "null")
+		test_melee.queue_free()
+		get_tree().quit(1)
+		return
+	if attack_node == null or attack_node.attack_name != "MeleeAttack" or attack_node.next_state.is_empty() or attack_node.next_state[0] != pursue_state:
+		printerr("TEST FAILED: EnemyAttack not configured with attack_name MeleeAttack or next_state EnemyPursue.")
+		test_melee.queue_free()
+		get_tree().quit(1)
+		return
+	if pursue_state == null or pursue_state.attack_state != attack_node:
+		printerr("TEST FAILED: EnemyPursue.attack_state expected EnemyAttack, got: ", pursue_state.attack_state if pursue_state else "null")
+		test_melee.queue_free()
+		get_tree().quit(1)
+		return
+	print("MeleeEnemy EnemyStun, EnemyPursue, and EnemyAttack state wiring verified.")
+
+	# 4. Verify Pursue -> Attack transition on player proximity
+	var p_player: Player = load("res://Player/player.tscn").instantiate() as Player
+	add_child(p_player)
+	test_melee.player = p_player
+	p_player.global_position = test_melee.global_position + Vector3(1.5, 0.0, 0.0) # within attack_range (3.0)
+	var transition_result := {"transitioned": false, "state": ""}
+	pursue_state.finished.connect(func(target_state: String) -> void:
+		transition_result.transitioned = true
+		transition_result.state = target_state
+	)
+	pursue_state.physics_update(0.1)
+	if not transition_result.transitioned or transition_result.state != "EnemyAttack":
+		printerr("TEST FAILED: EnemyPursue did not emit finished(EnemyAttack) when in range. Emitted: ", transition_result.state)
+		p_player.queue_free()
+		test_melee.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyPursue proximity transition to EnemyAttack verified.")
+	p_player.queue_free()
+	test_melee.queue_free()
+	await get_tree().process_frame
+
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
@@ -2023,6 +2141,7 @@ func _ready() -> void:
 	print("  26. Window scaling & ui_toggle_fullscreen autoload verified       ")
 	print("  27. Base UpgradeIcon scene, styling, and UpgradeShop placement ok ")
 	print("  28. MeleeEnemy scene, StateMachine & EnemyPursue state verified   ")
+	print("  29. Melee Attack, AnimationTree & Pursue Transition verified      ")
 	print("====================================================================")
 	
 	get_tree().quit(0)
