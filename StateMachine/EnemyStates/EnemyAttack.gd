@@ -36,6 +36,8 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 func exit() -> void:
 	if enemy.animation_tree.animation_finished.is_connected(end_attack):
 		enemy.animation_tree.animation_finished.disconnect(end_attack)
+	if attack_component and attack_component.attack_shapecast:
+		attack_component.attack_shapecast.enabled = false
 
 
 func end_attack(_animation_name: String) -> void:

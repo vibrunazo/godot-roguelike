@@ -18,12 +18,14 @@ bottom_radius = 0.1
 [node name="MeleeEnemy" unique_id=2117139762 node_paths=PackedStringArray("weapon_shape_cast") instance=ExtResource("1_cu01m")]
 weapon_shape_cast = NodePath("AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D")
 
-[node name="WeaponSlot" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1733204277) index="6" unique_id=211580224]
+[node name="WeaponSlot" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="6" unique_id=211580224 node_paths=PackedStringArray("shapecast")]
 transform = Transform3D(-0.999999, 4.6839318e-07, 4.5751068e-07, 3.9800034e-07, -5.8875344e-07, 0.99999946, 3.9761645e-07, 0.99999946, 5.358822e-07, -0.8831323, 1.0492611, -7.2884757e-07)
 bone_name = "handslot.r"
 bone_idx = 14
+shapecast = NodePath("ShapeCast3D")
 
 [node name="ShapeCast3D" type="ShapeCast3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0" unique_id=1605059902]
+enabled = false
 shape = SubResource("BoxShape3D_7r01i")
 target_position = Vector3(0, 2, 0)
 collision_mask = 16
@@ -36,7 +38,7 @@ mesh = SubResource("CylinderMesh_skqvj")
 [node name="AttackComponent" type="Node" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D" index="1" unique_id=1866258911]
 script = ExtResource("2_7p80c")
 
-[node name="StateMachine" parent="." index="5" unique_id=1352967922 node_paths=PackedStringArray("initial_state")]
+[node name="StateMachine" parent="." index="6" unique_id=1352967922 node_paths=PackedStringArray("initial_state")]
 initial_state = NodePath("EnemyPursue")
 
 [node name="EnemyStun" parent="StateMachine" index="1" unique_id=1916096534 node_paths=PackedStringArray("next_state")]
@@ -58,4 +60,3 @@ fall_state = NodePath("../EnemyFall")
 
 [editable path="AnimationAnchor/AnimatedEnemy"]
 [editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]
-

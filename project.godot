@@ -32,6 +32,10 @@ gdscript/warnings/untyped_declaration=1
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[editor]
+
+movie_writer/movie_file="D:/docs/godot/godot-roguelite-starting-project/movies/test1.avi"
+
 [file_customization]
 
 folder_colors={

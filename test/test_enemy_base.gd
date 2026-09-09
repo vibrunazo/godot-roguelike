@@ -2218,14 +2218,36 @@ func _ready() -> void:
 		return
 	print("Melee AttackComponent verified under ShapeCast3D (shake_on_damage = false).")
 
-	# 5. Verify WeaponSlot bone_name is "handslot.r"
+	# 5. Verify WeaponSlot bone_name is "handslot.r" and shapecast wiring
 	var ws: BoneAttachment3D = sc.get_parent() as BoneAttachment3D
 	if ws == null or ws.bone_name != "handslot.r":
 		printerr("TEST FAILED: WeaponSlot bone_name expected handslot.r, got: ", ws.bone_name if ws else "null")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	print("WeaponSlot bone_name 'handslot.r' verified.")
+	if not (ws is WeaponSlot) or (ws as WeaponSlot).shapecast != sc:
+		printerr("TEST FAILED: WeaponSlot shapecast export is not wired to ShapeCast3D.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	if sc.enabled != false:
+		printerr("TEST FAILED: Melee ShapeCast3D should be disabled by default, got enabled=true.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	(ws as WeaponSlot).enabled = true
+	if sc.enabled != true:
+		printerr("TEST FAILED: Setting WeaponSlot.enabled=true did not enable ShapeCast3D.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	(ws as WeaponSlot).enabled = false
+	if sc.enabled != false:
+		printerr("TEST FAILED: Setting WeaponSlot.enabled=false did not disable ShapeCast3D.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	print("WeaponSlot bone_name 'handslot.r', shapecast wiring, and enabled toggle verified.")
 
 	# 6. Verify EnemyAttack exports
 	var melee_attack_state: EnemyAttack = melee_inst.get_node_or_null("StateMachine/EnemyAttack") as EnemyAttack

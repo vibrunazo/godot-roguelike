@@ -1,16 +1,16 @@
 [gd_scene format=3 uid="uid://b7usbbh1tfnjv"]
 
 [ext_resource type="PackedScene" uid="uid://bjyddhs4xquvp" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/Enemy_Medium.glb" id="1_g45cs"]
-[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Hit_A.res" id="2_b6t3m"]
+[ext_resource type="Animation" uid="uid://c1bxm6amiw2rr" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Hit_A.res" id="2_b6t3m"]
+[ext_resource type="Script" uid="uid://btugq3clpmbs4" path="res://Player/weapon_slot.gd" id="2_lxq1s"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Idle_A.res" id="3_ipeb3"]
-[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Running_B.res" id="4_lxq1s"]
-[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Spawn_Ground.res" id="5_qbo8f"]
+[ext_resource type="Script" uid="uid://c0x01dljgkxd" path="res://Player/foot_bone.gd" id="3_qbo8f"]
+[ext_resource type="Animation" uid="uid://wstyutqav8dy" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Running_B.res" id="4_lxq1s"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Death_A.res" id="4_qbo8f"]
-[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_1H_Attack_Slice_Diagonal.res" id="7_pje6n"]
+[ext_resource type="Animation" uid="uid://bsuljiyu6i40b" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Spawn_Ground.res" id="5_qbo8f"]
+[ext_resource type="Script" uid="uid://b6sf47mawx7hp" path="res://Player/mannequin_animation_tree.gd" id="6_b6t3m"]
+[ext_resource type="Animation" uid="uid://n2j7todulikj" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_1H_Attack_Slice_Diagonal.res" id="7_pje6n"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_2H_Attack_Chop.res" id="8_nqs35"]
-[ext_resource type="Script" path="res://Player/weapon_slot.gd" id="2_lxq1s"]
-[ext_resource type="Script" path="res://Player/foot_bone.gd" id="3_qbo8f"]
-[ext_resource type="Script" path="res://Player/mannequin_animation_tree.gd" id="6_b6t3m"]
 
 [sub_resource type="Animation" id="Animation_nqs35"]
 length = 0.001
@@ -46,6 +46,9 @@ _data = {
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_pje6n"]
 animation = &"EnemyAnimations/Death_A"
 
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_8wj31"]
+animation = &"EnemyAnimations/Spawn_Ground"
+
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_7e68y"]
 animation = &"EnemyAnimations/Melee_2H_Attack_Chop"
 
@@ -54,9 +57,6 @@ animation = &"EnemyAnimations/Melee_1H_Attack_Slice_Diagonal"
 
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_nqs35"]
 animation = &"EnemyAnimations/Hit_A"
-
-[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_8wj31"]
-animation = &"EnemyAnimations/Spawn_Ground"
 
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_af5ud"]
 animation = &"EnemyAnimations/Idle_A"
@@ -67,8 +67,10 @@ animation = &"EnemyAnimations/Running_B"
 [sub_resource type="AnimationNodeBlendSpace1D" id="AnimationNodeBlendSpace1D_phjxc"]
 blend_point_0/node = SubResource("AnimationNodeAnimation_af5ud")
 blend_point_0/pos = -1.0
+blend_point_0/name = &"0"
 blend_point_1/node = SubResource("AnimationNodeAnimation_er1a1")
 blend_point_1/pos = 1.0
+blend_point_1/name = &"1"
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_7e68y"]
 xfade_time = 0.2
@@ -118,19 +120,22 @@ graph_offset = Vector2(194, -91)
 
 [node name="Enemy_Medium" parent="." unique_id=1921158861 instance=ExtResource("1_g45cs")]
 
-[node name="WeaponSlot" type="BoneAttachment3D" parent="Enemy_Medium/Rig_Medium/Skeleton3D" index="6" unique_id=211580224]
+[node name="WeaponSlot" type="BoneAttachment3D" parent="Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1921158861, 1960628849) index="6" unique_id=211580224]
+transform = Transform3D(1.0561198e-05, -0.99999917, 4.5035844e-07, 4.0452986e-07, 3.9085265e-07, 0.9999996, -0.9999995, -1.06319785e-05, 3.51663e-07, -0.7131815, 1.1067611, 5.9604645e-08)
 bone_name = "hand.r"
 bone_idx = 12
 script = ExtResource("2_lxq1s")
 attack_mode = 1
 vfx_threshold = 1.0
 
-[node name="RightFootBone" type="BoneAttachment3D" parent="Enemy_Medium/Rig_Medium/Skeleton3D" index="7" unique_id=1694837124]
+[node name="RightFootBone" type="BoneAttachment3D" parent="Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1921158861, 1960628849) index="7" unique_id=1694837124]
+transform = Transform3D(1, -4.5086495e-08, 1.4679384e-07, 6.943411e-08, -0.7198734, -0.6941055, 1.3696801e-07, 0.69410753, -0.7198728, 0.17094503, 0.14523712, -0.01858591)
 bone_name = "foot.r"
 bone_idx = 21
 script = ExtResource("3_qbo8f")
 
-[node name="LeftFootBone" type="BoneAttachment3D" parent="Enemy_Medium/Rig_Medium/Skeleton3D" index="8" unique_id=1147941419]
+[node name="LeftFootBone" type="BoneAttachment3D" parent="Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1921158861, 1960628849) index="8" unique_id=1147941419]
+transform = Transform3D(1, 3.453806e-10, 1.4679381e-07, 1.02139325e-07, -0.7198734, -0.6941055, 1.054336e-07, 0.69410753, -0.7198728, -0.17094503, 0.14523712, -0.01858591)
 bone_name = "foot.l"
 bone_idx = 17
 script = ExtResource("3_qbo8f")

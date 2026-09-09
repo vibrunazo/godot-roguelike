@@ -15,3 +15,8 @@ enum mode {NONE, SLASH, STAB}
 		enabled = value
 		if shapecast:
 			shapecast.enabled = enabled
+
+
+func _ready() -> void:
+	if shapecast:
+		shapecast.enabled = enabled
