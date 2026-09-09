@@ -18,18 +18,35 @@
 
 ---
 
-## 3. Testing Routine
-Automated test suites reside in `test/*.tscn`. Every change must pass all test suites without errors (exit code 0).
+## 3. Testing & CLI Execution Policy (CRITICAL TIMEOUT RULES)
 
-- **Run all test suites (with per-test timeout guardrail & timing summary)**:
+### Why Bare Commands Are Forbidden
+Godot does not exit on GDScript compilation errors, cyclic preloads, or unhandled runtime exceptions. If an error occurs, Godot prints the error to the console, skips the rest of the function, and idles indefinitely. Because `--quit-after` only counts process frames after the engine initializes, scripts that fail to compile or hit missing autoloads will hang the terminal forever.
+
+> **NEVER execute bare `godot --headless` commands directly under any circumstances.**
+>
+> All headless commands must run through an external OS watchdog that forcefully terminates the process after a hard timeout (60 seconds max).
+
+### Approved Test Execution Commands
+
+- **Run Full Test Suite (Preferred):**
   ```bash
   python run_tests.py
   ```
-- **Run a single test suite**:
+
+- **Run a Single Test Suite via Python Runner:**
   ```bash
   python run_tests.py test/test_combo_and_dash_cancel.tscn
-  # or directly:
-  godot --headless --path . test/test_combo_and_dash_cancel.tscn
+  ```
+
+- **Running Scratch / Diagnostic Scripts via PowerShell (Windows Default):**
+  ```powershell
+  pwsh -Command "$p = Start-Process godot -ArgumentList '--headless','--path','.','--quit-after','60','-s','scratch/my_script.gd' -PassThru; if (-not $p.WaitForExit(10000)) { $p.Kill(); exit 1 } exit $p.ExitCode"
+  ```
+
+- **Running Scratch / Diagnostic Scripts via Python One-Liner:**
+  ```bash
+  python -c "import subprocess; subprocess.run(['godot', '--headless', '--path', '.', '--quit-after', '60', '-s', 'scratch/my_script.gd'], timeout=10)"
   ```
 
 ---
@@ -50,21 +67,3 @@ Automated test suites reside in `test/*.tscn`. Every change must pass all test s
 
 ---
 
-
-## Headless Godot Execution Rules
-
-When writing scratch scripts or running verification tests via CLI:
-
-1. **Always Use `--quit-after` as a Safety Rail:**
-   Never run `godot --headless -s ...` bare. Always include `--quit-after <frames>` (e.g., `--quit-after 1` for static checks, or `--quit-after 120` for simulated physics). This forces Godot’s engine loop to terminate even if GDScript hits a fatal runtime error and bypasses `quit()`.
-   * Example: `godot --headless --path . --quit-after 60 -s path/to/script.gd`
-
-2. **Wrap Long-Running Tests in a Shell Timeout:**
-   If a test requires indefinite frame stepping or signal awaits, do not invoke raw `godot`. Run it through a PowerShell timeout wrapper that force-kills the PID if it runs longer than 10 seconds:
-   * `pwsh -Command "$p = Start-Process godot -ArgumentList '--headless','--path','.','-s','path/to/script.gd' -PassThru; if (-not $p.WaitForExit(10000)) { $p.Kill(); exit 1 } exit $p.ExitCode"`
-
-3. **No Unchecked Node Lookups in `_init()`:**
-   Standalone scripts extending `SceneTree` must use `get_node_or_null()` and guard clauses. Never chain method calls or property accessors on `find_child()` directly. If an asset is missing, log the error and call `quit(1)`.
-
-4. **Always Include `timeout=<seconds>` in Python Test Runners:**
-   When orchestrating test suites via Python `subprocess.run()`, always pass `timeout=20` (or appropriate per-test limit). If Godot encounters an unhandled runtime error or signal deadlock that bypasses `get_tree().quit()`, Python will automatically raise `subprocess.TimeoutExpired`, terminate the child process, and prevent the test runner from hanging indefinitely.
