@@ -16,7 +16,7 @@ func _ready() -> void:
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
 	var dummy_health: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var camera: ShakeCamera3D = player.get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
-	var attack_comp: AttackComponent = player.get_node_or_null("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent") as AttackComponent
+	var attack_comp: AttackComponent = player.get_node_or_null("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent") as AttackComponent
 	
 	# ---------------------------------------------------------
 	# PART 1: Node & Component Setup Verification
@@ -59,8 +59,7 @@ func _ready() -> void:
 	# Verify AttackComponent reset_exceptions does not error when collision exceptions are freed
 	var dummy_col: StaticBody3D = StaticBody3D.new()
 	add_child(dummy_col)
-	attack_comp.attack_shapecast.add_exception(dummy_col)
-	attack_comp.temporary_exceptions.append(dummy_col)
+	attack_comp.add_exception(dummy_col)
 	dummy_col.free()
 	attack_comp.reset_exceptions()
 	if not attack_comp.temporary_exceptions.is_empty():
@@ -125,13 +124,15 @@ func _ready() -> void:
 	# ---------------------------------------------------------
 	print("\n>>> PART 3: Testing Weapon Hit Shake (shake_on_damage = true)")
 	camera.trauma = 0.0
-	var shapecast: ShapeCast3D = attack_comp.get_parent() as ShapeCast3D
+	var hitbox: Area3D = attack_comp.get_parent() as Area3D
 	
 	# First test: swing in empty air -> should NOT shake camera
 	player.global_position = Vector3(50, player.global_position.y, 50)
 	await get_tree().physics_frame
-	shapecast.enabled = true
-	attack_comp.deal_damage(8.0, Vector3.ZERO)
+	hitbox.monitoring = true
+	attack_comp.damage = 8.0
+	attack_comp.knockback = Vector3.ZERO
+	await get_tree().physics_frame
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if camera.trauma != 0.0:
@@ -139,8 +140,9 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Empty swing verified: no camera shake when no health component is hit.")
+	hitbox.monitoring = false
 	
-	# Second test: Position player and dummy on floor so weapon shapecast overlaps dummy
+	# Second test: Position player and dummy on floor so weapon hitbox overlaps dummy
 	dummy.global_position = Vector3(0, 1, 0)
 	dummy.velocity = Vector3.ZERO
 	player.global_position = Vector3(0, 1, -1.3)
@@ -151,9 +153,11 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 
-	
-	shapecast.enabled = true
-	attack_comp.deal_damage(8.0, Vector3.ZERO)
+	attack_comp.reset_exceptions()
+	attack_comp.damage = 8.0
+	attack_comp.knockback = Vector3.ZERO
+	hitbox.monitoring = true
+	attack_comp.deal_damage_to(dummy, 8.0, Vector3.ZERO)
 	# Wait for tween to begin and apply initial .from(0.75) value
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -173,6 +177,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Camera trauma decayed back to 0.0 successfully!")
+	hitbox.monitoring = false
 	
 	# ---------------------------------------------------------
 	# PART 4: VfxManager & Damage Numbers (Lecture 77)

@@ -37,11 +37,14 @@ color_ramp = SubResource("GradientTexture1D_gh88d")
 radial_segments = 16
 rings = 8
 
-[node name="EnemyProjectile" type="ShapeCast3D" unique_id=935244502]
+[node name="EnemyProjectile" type="Area3D" unique_id=935244502]
 top_level = true
-shape = SubResource("SphereShape3D_6uikd")
-target_position = Vector3(0, 0, 0)
+collision_layer = 0
+collision_mask = 17
 script = ExtResource("1_6uikd")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=418290374]
+shape = SubResource("SphereShape3D_6uikd")
 
 [node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=588356880]
 stream = ExtResource("1_qhog7")
@@ -54,6 +57,7 @@ autostart = true
 
 [node name="AttackComponent" type="Node" parent="." unique_id=321443246]
 script = ExtResource("3_td6rc")
+damage = 5.0
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=341094992]
 material_override = SubResource("StandardMaterial3D_td6rc")

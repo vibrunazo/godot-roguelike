@@ -1372,14 +1372,13 @@ func _ready() -> void:
 	# Test projectile collision & damage dealing
 	var target_health: HealthComponent = test_player.get_node_or_null("HealthComponent") as HealthComponent
 	var initial_health: float = target_health.current_health
-	# Place projectile directly at test_player to trigger shapecast collision
+	# Place projectile directly at test_player to trigger Area3D collision
+	var child_count_before: int = get_child_count()
 	var hit_proj: EnemyProjectile = proj_scene.instantiate() as EnemyProjectile
 	add_child(hit_proj)
 	hit_proj.global_position = test_player.global_position
 	await get_tree().physics_frame
-	# Run physics process on projectile
-	var child_count_before: int = get_child_count()
-	hit_proj._physics_process(0.016)
+	await get_tree().physics_frame
 	var spawned_hit: Node3D = null
 	for i: int in range(child_count_before, get_child_count()):
 		var c: Node = get_child(i)
@@ -1420,7 +1419,7 @@ func _ready() -> void:
 		hit_proj.queue_free()
 		get_tree().quit(1)
 		return
-	print("Projectile deleted on collision (is_colliding() -> queue_free()) verified.")
+	print("Projectile deleted on collision (body_entered -> queue_free()) verified.")
 
 	shooter.queue_free()
 	test_player.queue_free()
@@ -2154,39 +2153,35 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	# ---------------------------------------------------------
-	# PART 30: Melee AttackComponent, ShapeCast3D & Damage (Lecture 83)
+	# PART 30: Melee AttackComponent, Area3D Hitbox & Damage (Lecture 83)
 	# ---------------------------------------------------------
-	print("\n>>> PART 30: Melee AttackComponent, ShapeCast3D & Damage")
+	print("\n>>> PART 30: Melee AttackComponent, Area3D Hitbox & Damage")
 	var melee_inst: Enemy = melee_scene.instantiate() as Enemy
 	add_child(melee_inst)
 	await get_tree().physics_frame
 	await get_tree().process_frame
 
-	# 1. Verify weapon_shape_cast export & self-exception
-	if melee_inst.weapon_shape_cast == null:
-		printerr("TEST FAILED: MeleeEnemy weapon_shape_cast export is null.")
+	# 1. Verify weapon_hitbox export
+	if melee_inst.weapon_hitbox == null:
+		printerr("TEST FAILED: MeleeEnemy weapon_hitbox export is null.")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	var sc: ShapeCast3D = melee_inst.weapon_shape_cast
-	print("weapon_shape_cast assigned: ", sc.name)
+	var hitbox: Area3D = melee_inst.weapon_hitbox
+	print("weapon_hitbox assigned: ", hitbox.name)
 
-	# 2. Verify ShapeCast3D configuration: shape BoxShape3D, target_position Vector3(0, 2, 0)
-	if sc.shape == null or not (sc.shape is BoxShape3D):
-		printerr("TEST FAILED: weapon_shape_cast shape is not BoxShape3D.")
-		melee_inst.queue_free()
-		get_tree().quit(1)
-		return
-	if not sc.target_position.is_equal_approx(Vector3(0.0, 2.0, 0.0)):
-		printerr("TEST FAILED: weapon_shape_cast target_position expected (0, 2, 0), got: ", sc.target_position)
+	# 2. Verify Area3D configuration: shape BoxShape3D
+	var hitbox_col_shape: CollisionShape3D = hitbox.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if hitbox_col_shape == null or hitbox_col_shape.shape == null or not (hitbox_col_shape.shape is BoxShape3D):
+		printerr("TEST FAILED: weapon_hitbox CollisionShape3D is not BoxShape3D.")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
 
 	# 3. Verify weapon visual mesh & material
-	var mesh_inst: MeshInstance3D = sc.get_node_or_null("MeshInstance3D") as MeshInstance3D
+	var mesh_inst: MeshInstance3D = hitbox.get_node_or_null("MeshInstance3D") as MeshInstance3D
 	if mesh_inst == null or not (mesh_inst.mesh is CylinderMesh):
-		printerr("TEST FAILED: MeshInstance3D missing under ShapeCast3D or not CylinderMesh.")
+		printerr("TEST FAILED: MeshInstance3D missing under hitbox or not CylinderMesh.")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
@@ -2207,47 +2202,47 @@ func _ready() -> void:
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	print("weapon_shape_cast BoxShape3D, target_position, and cylinder mesh verified.")
+	print("weapon_hitbox BoxShape3D and cylinder mesh verified.")
 
 	# 4. Verify AttackComponent child
-	var att_comp: AttackComponent = sc.get_node_or_null("AttackComponent") as AttackComponent
+	var att_comp: AttackComponent = hitbox.get_node_or_null("AttackComponent") as AttackComponent
 	if att_comp == null or att_comp.shake_on_damage:
-		printerr("TEST FAILED: AttackComponent missing under ShapeCast3D or shake_on_damage is true.")
+		printerr("TEST FAILED: AttackComponent missing under hitbox or shake_on_damage is true.")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	print("Melee AttackComponent verified under ShapeCast3D (shake_on_damage = false).")
+	print("Melee AttackComponent verified under hitbox (shake_on_damage = false).")
 
-	# 5. Verify WeaponSlot bone_name is "handslot.r" and shapecast wiring
-	var ws: BoneAttachment3D = sc.get_parent() as BoneAttachment3D
+	# 5. Verify WeaponSlot bone_name is "handslot.r" and hitbox wiring
+	var ws: BoneAttachment3D = hitbox.get_parent() as BoneAttachment3D
 	if ws == null or ws.bone_name != "handslot.r":
 		printerr("TEST FAILED: WeaponSlot bone_name expected handslot.r, got: ", ws.bone_name if ws else "null")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	if not (ws is WeaponSlot) or (ws as WeaponSlot).shapecast != sc:
-		printerr("TEST FAILED: WeaponSlot shapecast export is not wired to ShapeCast3D.")
+	if not (ws is WeaponSlot) or (ws as WeaponSlot).hitbox != hitbox:
+		printerr("TEST FAILED: WeaponSlot hitbox export is not wired to Area3D.")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	if sc.enabled != false:
-		printerr("TEST FAILED: Melee ShapeCast3D should be disabled by default, got enabled=true.")
+	if hitbox.monitoring != false:
+		printerr("TEST FAILED: Melee hitbox should be disabled by default, got monitoring=true.")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
 	(ws as WeaponSlot).enabled = true
-	if sc.enabled != true:
-		printerr("TEST FAILED: Setting WeaponSlot.enabled=true did not enable ShapeCast3D.")
+	if hitbox.monitoring != true:
+		printerr("TEST FAILED: Setting WeaponSlot.enabled=true did not enable hitbox monitoring.")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
 	(ws as WeaponSlot).enabled = false
-	if sc.enabled != false:
-		printerr("TEST FAILED: Setting WeaponSlot.enabled=false did not disable ShapeCast3D.")
+	if hitbox.monitoring != false:
+		printerr("TEST FAILED: Setting WeaponSlot.enabled=false did not disable hitbox monitoring.")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	print("WeaponSlot bone_name 'handslot.r', shapecast wiring, and enabled toggle verified.")
+	print("WeaponSlot bone_name 'handslot.r', hitbox wiring, and enabled toggle verified.")
 
 	# 6. Verify EnemyAttack exports
 	var melee_attack_state: EnemyAttack = melee_inst.get_node_or_null("StateMachine/EnemyAttack") as EnemyAttack
@@ -2282,19 +2277,18 @@ func _ready() -> void:
 	# ---------------------------------------------------------
 	print("\n>>> PART 31: Melee Enemy Polish, Exception Reset, Collision Layers & Mixed Spawns")
 
-	# 1. Verify ShapeCast3D collision_mask == 16 (Layer 5)
-	if sc.collision_mask != 16:
-		printerr("TEST FAILED: Melee weapon ShapeCast3D collision_mask expected 16, got: ", sc.collision_mask)
+	# 1. Verify Area3D collision_mask == 16 (Layer 5)
+	if hitbox.collision_mask != 16:
+		printerr("TEST FAILED: Melee weapon hitbox collision_mask expected 16, got: ", hitbox.collision_mask)
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	print("Melee weapon ShapeCast3D collision_mask = 16 (Layer 5 only) verified.")
+	print("Melee weapon hitbox collision_mask = 16 (Layer 5 only) verified.")
 
 	# 2. Verify EnemyAttack.enter() calls attack_component.reset_exceptions()
 	var dummy_col: StaticBody3D = StaticBody3D.new()
 	add_child(dummy_col)
 	att_comp.temporary_exceptions.append(dummy_col)
-	sc.add_exception(dummy_col)
 	if att_comp.temporary_exceptions.is_empty():
 		printerr("TEST FAILED: Failed to add temporary exception to AttackComponent.")
 		dummy_col.queue_free()
@@ -2598,7 +2592,7 @@ func _ready() -> void:
 	print("  27. Base UpgradeIcon scene, styling, and UpgradeShop placement ok ")
 	print("  28. MeleeEnemy scene, StateMachine & EnemyPursue state verified   ")
 	print("  29. Melee Attack, AnimationTree & Pursue Transition verified      ")
-	print("  30. Melee AttackComponent, ShapeCast3D & Damage verified          ")
+	print("  30. Melee AttackComponent, Area3D Hitbox & Damage verified        ")
 	print("  31. Melee Polish, Exceptions Reset, Layers & Mixed Spawns verified")
 	print("  32. Enemy KnockbackComponent, EnemyStun & Attack Knockback verified")
 	print("  33. Falling Enemies, EnemyFall State & Run Reset Polish verified  ")

@@ -17,10 +17,6 @@ extends EnemyState
 func physics_update(_delta: float) -> void:
 	if not is_instance_valid(enemy) or not enemy.is_inside_tree():
 		return
-	if attack_component:
-		attack_component.deal_damage(weapon_damage, enemy.mesh_mount.global_basis.z * knockback)
-	if not is_instance_valid(enemy) or not enemy.is_inside_tree():
-		return
 	enemy.velocity = Vector3.ZERO
 	enemy.move_and_slide()
 
@@ -28,6 +24,8 @@ func physics_update(_delta: float) -> void:
 func enter(_previous_state_path: String, _data := {}) -> void:
 	if attack_component:
 		attack_component.reset_exceptions()
+		attack_component.damage = weapon_damage
+		attack_component.knockback = enemy.mesh_mount.global_basis.z * knockback
 	enemy.animation_tree.change_immediate(attack_name)
 	if not enemy.animation_tree.animation_finished.is_connected(end_attack):
 		enemy.animation_tree.animation_finished.connect(end_attack, CONNECT_ONE_SHOT)
@@ -36,8 +34,8 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 func exit() -> void:
 	if enemy.animation_tree.animation_finished.is_connected(end_attack):
 		enemy.animation_tree.animation_finished.disconnect(end_attack)
-	if attack_component and attack_component.attack_shapecast:
-		attack_component.attack_shapecast.enabled = false
+	if attack_component:
+		attack_component.reset_exceptions()
 
 
 func end_attack(_animation_name: String) -> void:

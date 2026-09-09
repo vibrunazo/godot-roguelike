@@ -4,22 +4,18 @@ This document tracks architectural improvements, optimizations, and technical de
 
 ---
 
-## 1. Projectile Collision & Performance (ShapeCast vs. Event-Driven)
+## 1. Projectile & Melee Weapon Collision & Performance (ShapeCast vs. Event-Driven Area3D) [RESOLVED]
+- **Status**: Completed. Converted both melee weapons (Player, MeleeEnemy) and projectiles (EnemyProjectile) from polling-based `ShapeCast3D` to pure event-driven `Area3D` signals.
 - **Problem**: 
-  - `EnemyProjectile` currently extends `ShapeCast3D` with `enabled = true` by default.
-  - In `_physics_process()`, the script updates `global_position` and calls `attack_component.deal_damage()`, which invokes `attack_shapecast.force_shapecast_update()`.
-  - This results in **duplicate collision sweeps per physics tick** (the engine's automatic sweep at the start of the tick at the old position + the manual `force_shapecast_update()` sweep at the new position).
-  - Furthermore, polling `is_colliding()` and looping through collisions in GDScript every physics tick introduces unnecessary interpreter overhead across multiple projectiles.
-- **Refactoring Options**:
-  1. **Event-Driven via `Area3D`**:
-     - Change projectiles from `ShapeCast3D` to `Area3D`.
-     - Connect to the `body_entered` / `area_entered` signals.
-     - *Benefits*: Collision checks run entirely in Godot's compiled C++ physics pipeline. Zero GDScript collision code runs during flight when flying through empty space; script execution only triggers on actual impacts.
-  2. **Single-Sweep `ShapeCast3D` (Anti-Tunneling)**:
-     - If continuous shape-sweeping is needed for fast-moving projectiles to prevent tunneling through thin colliders, keep `ShapeCast3D` but set `enabled = false`.
-     - Move the node in `_physics_process()`, call `force_shapecast_update()` once, and process hits.
-  3. **Decouple `AttackComponent`**:
-     - Refactor `AttackComponent` so it does not strictly expect a `ShapeCast3D` parent, allowing it to work with `Area3D`, melee weapon hitboxes, or standalone collision events.
+  - `AttackComponent` previously relied on `attack_shapecast.force_shapecast_update()` and polled collisions every physics tick in `_physics_process()`.
+  - Melee weapons and projectiles used `ShapeCast3D`, polling queries each frame in GDScript instead of letting Godot's C++ physics engine dispatch collision events.
+- **Resolution**:
+  - Replaced `ShapeCast3D` under `WeaponSlot` in `Player` and `MeleeEnemy` scenes with `HitboxArea` (`Area3D`), collision shapes, and visual meshes.
+  - Refactored `WeaponSlot` to export `hitbox: Area3D`, dynamically toggling `hitbox.monitoring` and `hitbox.monitorable` when `enabled` changes.
+  - Converted `EnemyProjectile` to extend `Area3D`, completely removing polling and physics sweeps from `_physics_process()`.
+  - Refactored `AttackComponent` to listen to `Area3D` built-in `body_entered` and `area_entered` signals, completely eliminating `force_shapecast_update()` and per-tick GDScript collision polling.
+  - Added `deal_damage_to()` and export properties `damage` and `knockback`, configured upon entering attack states.
+  - All 12 automated test suites pass cleanly with exit code 0.
 
 ---
 

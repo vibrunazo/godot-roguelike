@@ -29,13 +29,16 @@ var aim_direction: Vector3 = Vector3.ZERO
 
 func physics_update(_delta: float) -> void:
 	player.velocity = player.get_movement_direction() * movement_speed
-	attack_component.deal_damage(damage * player.get_damage_modifier(), player.player_root.global_basis.z * knockback, rehit_interval)
 	player.look_toward_direction(aim_direction, 1.0)
 	player.move_and_slide()
 	
 func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	queued_attack = false
-	attack_component.reset_exceptions()
+	if attack_component:
+		attack_component.reset_exceptions()
+		attack_component.damage = damage * player.get_damage_modifier()
+		attack_component.knockback = player.player_root.global_basis.z * knockback
+		attack_component.rehit_interval = rehit_interval
 	player.mannequin_animation_tree.change_immediate(attack_animation_name)
 	player.mannequin_animation_tree.animation_finished.connect(finish_attack, CONNECT_ONE_SHOT)
 	attack_timer = get_tree().create_timer(queued_attack_time)

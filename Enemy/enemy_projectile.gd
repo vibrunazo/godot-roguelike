@@ -1,6 +1,6 @@
 ## Base projectile fired by enemies.
 class_name EnemyProjectile
-extends ShapeCast3D
+extends Area3D
 
 const FIREBALL_HIT: PackedScene = preload("res://Enemy/fireball_hit.tscn")
 
@@ -13,13 +13,46 @@ const FIREBALL_HIT: PackedScene = preload("res://Enemy/fireball_hit.tscn")
 
 @onready var attack_component: AttackComponent = $AttackComponent
 
+var _is_hit: bool = false
+
+
+func _ready() -> void:
+	body_entered.connect(_on_body_entered)
+	area_entered.connect(_on_area_entered)
+	if attack_component:
+		attack_component.damage = damage
+
 
 func _physics_process(delta: float) -> void:
 	global_position += global_basis.z * delta * speed
-	attack_component.deal_damage(damage, global_basis.z * knockback)
-	if is_colliding():
-		hit_effect()
-		queue_free()
+
+
+func _on_body_entered(body: Node3D) -> void:
+	if _is_hit or is_queued_for_deletion():
+		return
+	if body == self or body == get_parent() or body is Enemy:
+		return
+	_is_hit = true
+	if attack_component:
+		attack_component.deal_damage_to(body, damage, global_basis.z * knockback)
+	hit_effect()
+	queue_free()
+
+
+func _on_area_entered(area: Area3D) -> void:
+	if _is_hit or is_queued_for_deletion():
+		return
+	if area == self or area.get_parent() == get_parent() or area.get_parent() is Enemy:
+		return
+	_is_hit = true
+	if attack_component:
+		attack_component.deal_damage_to(area, damage, global_basis.z * knockback)
+	hit_effect()
+	queue_free()
+
+
+func is_colliding() -> bool:
+	return has_overlapping_bodies() or has_overlapping_areas()
 
 
 func hit_effect() -> void:
@@ -30,4 +63,3 @@ func hit_effect() -> void:
 
 func _on_timer_timeout() -> void:
 	queue_free()
-

@@ -79,6 +79,7 @@ bottom_radius = 0.05
 height = 0.5
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_apopc"]
+size = Vector3(2, 1, 1)
 
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_gu6f8"]
 streams_count = 4
@@ -339,9 +340,9 @@ bones/21/scale = Vector3(0.9999999, 1.0000007, 0.999999)
 bones/22/rotation = Quaternion(-4.4668544e-05, 0.9203637, -0.3910637, 1.0170476e-05)
 bones/22/scale = Vector3(1.0000001, 0.99999726, 1.0000031)
 
-[node name="WeaponSlot" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="6" node_paths=PackedStringArray("shapecast")]
+[node name="WeaponSlot" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="6" node_paths=PackedStringArray("hitbox")]
 transform = Transform3D(0.16129291, -0.11851935, -0.97976387, -0.5813006, -0.8136833, 0.0027335286, -0.79754174, 0.56909645, -0.20013694, -0.47284132, 0.699036, 0.23425877)
-shapecast = NodePath("ShapeCast3D")
+hitbox = NodePath("HitboxArea")
 
 [node name="LazerSword" type="MeshInstance3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0" unique_id=514338177]
 transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, -1.25, 0, 0)
@@ -365,14 +366,17 @@ transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0
 gi_mode = 0
 mesh = SubResource("CylinderMesh_5htga")
 
-[node name="ShapeCast3D" type="ShapeCast3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="2" unique_id=471258725]
-shape = SubResource("BoxShape3D_apopc")
-target_position = Vector3(-2, 0, 0)
-max_results = 8
+[node name="HitboxArea" type="Area3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="2" unique_id=471258725]
+collision_layer = 0
 collision_mask = 2
-debug_shape_custom_color = Color(1, 0, 0, 1)
+monitoring = false
+monitorable = false
 
-[node name="AttackComponent" type="Node" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D" unique_id=2072364290]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" unique_id=981273941]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, 0)
+shape = SubResource("BoxShape3D_apopc")
+
+[node name="AttackComponent" type="Node" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" unique_id=2072364290]
 script = ExtResource("3_p5o4e")
 shake_on_damage = true
 
@@ -456,7 +460,7 @@ dash_cancel = true
 damage = 8.0
 run_state = NodePath("../PlayerRun")
 next_attack = NodePath("../PlayerAttack2")
-attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent")
+attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 player = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
 
@@ -467,7 +471,7 @@ damage = 14.0
 run_state = NodePath("../PlayerRun")
 next_attack = NodePath("../PlayerAttack3")
 attack_animation_name = "StabAttack"
-attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent")
+attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 player = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
 
@@ -479,7 +483,7 @@ knockback = 7.5
 rehit_interval = 0.32
 run_state = NodePath("../PlayerRun")
 attack_animation_name = "SpinAttack"
-attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/ShapeCast3D/AttackComponent")
+attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 player = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
 
