@@ -111,16 +111,30 @@ func _ready() -> void:
 	print("Entered state: PlayerAttack3 (Attack 3: Spin)")
 	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.0)
 	
-	# Wait for Attack 3 to hit
+	# Wait for Attack 3 (Spin) first hit
 	for i: int in range(40):
 		await get_tree().physics_frame
 		if health_comp.current_health <= initial_health - 32.0:
 			break
 	if health_comp.current_health != initial_health - 32.0:
-		printerr("TEST FAILED: Attack 3 damage mismatch. Expected: ", initial_health - 32.0, ", got: ", health_comp.current_health)
+		printerr("TEST FAILED: Attack 3 first hit damage mismatch. Expected: ", initial_health - 32.0, ", got: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("Attack 3 hit confirmed! Dummy health: ", health_comp.current_health, " (-10.0 damage)")
+	print("Attack 3 first hit confirmed! Dummy health: ", health_comp.current_health, " (-10.0 damage)")
+	
+	# Ensure player stays within range for second slash of spin attack
+	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.0)
+	
+	# Wait for Attack 3 (Spin) second hit (rehit_interval = 0.32s)
+	for i: int in range(40):
+		await get_tree().physics_frame
+		if health_comp.current_health <= initial_health - 42.0:
+			break
+	if health_comp.current_health != initial_health - 42.0:
+		printerr("TEST FAILED: Attack 3 second hit damage mismatch. Expected: ", initial_health - 42.0, ", got: ", health_comp.current_health)
+		get_tree().quit(1)
+		return
+	print("Attack 3 second hit confirmed via rehit_interval! Dummy health: ", health_comp.current_health, " (-10.0 damage, 20.0 total)")
 	
 	# Wait for Attack 3 to finish and return to PlayerRun
 	var back_to_run := false
@@ -542,7 +556,7 @@ func _ready() -> void:
 
 	print("\n====================================================================")
 	print("  ALL 3-HIT COMBO & DASH CANCEL TESTS PASSED!                      ")
-	print("  1. Combo Damage: 100 -> 92 (Slash: 8) -> 78 (Stab: 14) -> 68 (Spin: 10)")
+	print("  1. Combo Damage: Slash (8) -> Stab (14) -> Spin (10 x 2 = 20)")
 	print("  2. Dash Cancel on Attack 1: Cancelled into PlayerDash successfully")
 	print("  3. Dash Cancel on Attack 3: Correctly blocked / committed to spin")
 	print("  4. State recovery: Clean return to PlayerRun in all scenarios     ")

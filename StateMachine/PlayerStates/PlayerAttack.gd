@@ -19,6 +19,9 @@ extends PlayerState
 @export var attack_animation_name: String = "SlashAttack"
 ## Reference to the AttackComponent handling damage dealing and hit collision exceptions
 @export var attack_component: AttackComponent
+## Minimum interval (in seconds) before the same target can be hit again during this attack state.
+## If <= 0.0, targets are only hit once for the entire duration of the attack.
+@export var rehit_interval: float = 0.0
 
 var queued_attack: bool = false
 var attack_timer: SceneTreeTimer
@@ -26,7 +29,7 @@ var aim_direction: Vector3 = Vector3.ZERO
 
 func physics_update(_delta: float) -> void:
 	player.velocity = player.get_movement_direction() * movement_speed
-	attack_component.deal_damage(damage * player.get_damage_modifier(), player.player_root.global_basis.z * knockback)
+	attack_component.deal_damage(damage * player.get_damage_modifier(), player.player_root.global_basis.z * knockback, rehit_interval)
 	player.look_toward_direction(aim_direction, 1.0)
 	player.move_and_slide()
 	
@@ -56,6 +59,8 @@ func exit() -> void:
 		attack_timer.timeout.disconnect(attempt_queue_attack)
 	if player.mannequin_animation_tree.animation_finished.is_connected(finish_attack):
 		player.mannequin_animation_tree.animation_finished.disconnect(finish_attack)
+	if attack_component:
+		attack_component.reset_exceptions()
 
 func finish_attack(_animation_name: String) -> void:
 	finished.emit(run_state.name)
