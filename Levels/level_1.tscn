@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cr64dhtb6fer3"]
 
-[ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/LevelTemplate.tscn" id="1_n0qsc"]
+[ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/level_template.tscn" id="1_n0qsc"]
 [ext_resource type="VoxelGIData" uid="uid://cawdua4hjiihs" path="res://Levels/GlobalIlluminationData/level_1_voxel_gi_data.res" id="2_dilhk"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_3mhv4"]

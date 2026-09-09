@@ -2,8 +2,8 @@
 
 [ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy.tscn" id="1_6jo5i"]
 [ext_resource type="Script" path="res://Enemy/ranged_enemy.gd" id="2_4m11m"]
-[ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyAttack.gd" id="2_cnthi"]
-[ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyMeander.gd" id="4_vj72k"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_attack.gd" id="2_cnthi"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_meander.gd" id="4_vj72k"]
 
 [node name="RangedEnemy" unique_id=2117139762 node_paths=PackedStringArray("attack_bone") instance=ExtResource("1_6jo5i")]
 script = ExtResource("2_4m11m")

@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://cttwgr00qkjox"]
 
 [ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy.tscn" id="1_cu01m"]
-[ext_resource type="Script" uid="uid://bxjobpwx7ose3" path="res://StateMachine/EnemyStates/EnemyPursue.gd" id="2_7gxvi"]
-[ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/AttackComponent.gd" id="2_7p80c"]
-[ext_resource type="Script" uid="uid://ebg6wepe60cc" path="res://StateMachine/EnemyStates/EnemyAttack.gd" id="3_7r01i"]
+[ext_resource type="Script" uid="uid://bxjobpwx7ose3" path="res://StateMachine/EnemyStates/enemy_pursue.gd" id="2_7gxvi"]
+[ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="2_7p80c"]
+[ext_resource type="Script" uid="uid://ebg6wepe60cc" path="res://StateMachine/EnemyStates/enemy_attack.gd" id="3_7r01i"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_7r01i"]
 

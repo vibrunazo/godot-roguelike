@@ -17,9 +17,9 @@ config/icon="uid://cai13gaviuuvu"
 
 [autoload]
 
-GlobalVars="*res://Singletons/GlobalVars.gd"
+GlobalVars="*res://Singletons/global_vars.gd"
 SceneTransition="*res://Singletons/scene_transition.tscn"
-VfxManager="*res://Singletons/VFXManager.gd"
+VfxManager="*res://Singletons/vfx_manager.gd"
 
 [debug]
 

@@ -4,7 +4,7 @@ const TestUtils = preload("res://test/test_utils.gd")
 
 func _ready() -> void:
 	print("--- RUNNING QUEUED ATTACK (ATTACK CHAINING) TEST ---")
-	var level_scene: PackedScene = load("res://Levels/LevelTemplate.tscn")
+	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
 	var level: Node3D = level_scene.instantiate() as Node3D
 	add_child(level)
 	

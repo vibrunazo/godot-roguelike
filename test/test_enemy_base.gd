@@ -467,7 +467,7 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
-	var level_scene: PackedScene = load("res://Levels/LevelTemplate.tscn")
+	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
 	var level: Node3D = level_scene.instantiate() as Node3D
 	add_child(level)
 	await get_tree().physics_frame
@@ -515,7 +515,7 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	var valid_paths: Array[String] = ["res://Levels/LevelTemplate.tscn", "uid://dyj3auoai18wd", ""]
+	var valid_paths: Array[String] = ["res://Levels/level_template.tscn", "res://Levels/LevelTemplate.tscn", "uid://dyj3auoai18wd", ""]
 	if not exit_point.next_scene_path in valid_paths or not exit_point.next_level_path in valid_paths:
 		printerr("TEST FAILED: ExitPoint next_scene_path: '", exit_point.next_scene_path, "', next_level_path: '", exit_point.next_level_path, "'")
 		level.queue_free()
@@ -1465,9 +1465,9 @@ func _ready() -> void:
 		return
 	print("GlobalVars upgrade constants and upgrades array verified.")
 
-	var shop_scene: PackedScene = load("res://UserInterface/UpgradeShop.tscn") as PackedScene
+	var shop_scene: PackedScene = load("res://UserInterface/upgrade_shop.tscn") as PackedScene
 	if shop_scene == null:
-		printerr("TEST FAILED: Failed to load res://UserInterface/UpgradeShop.tscn")
+		printerr("TEST FAILED: Failed to load res://UserInterface/upgrade_shop.tscn")
 		get_tree().quit(1)
 		return
 

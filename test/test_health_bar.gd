@@ -188,7 +188,7 @@ func _ready() -> void:
 	# PART 4: Enemy HealthBar in LevelTemplate & Defeat Handling
 	# ---------------------------------------------------------
 	print("\n>>> PART 4: Testing Enemy HealthBar in LevelTemplate & Defeat Fade-Out")
-	var level_scene: PackedScene = load("res://Levels/LevelTemplate.tscn")
+	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
 	var level: Node3D = level_scene.instantiate() as Node3D
 	add_child(level)
 	await get_tree().physics_frame

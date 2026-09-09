@@ -1,16 +1,16 @@
 [gd_scene format=3 uid="uid://bk4gxfbdgjgln"]
 
 [ext_resource type="Script" uid="uid://c0rnrehscwlx" path="res://Enemy/enemy.gd" id="1_eqilm"]
-[ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/HealthComponent.gd" id="1_px1sc"]
+[ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/health_component.gd" id="1_px1sc"]
 [ext_resource type="PackedScene" uid="uid://bwo2c4dl16ces" path="res://Components/health_bar.tscn" id="2_am0pq"]
 [ext_resource type="PackedScene" uid="uid://b7usbbh1tfnjv" path="res://Enemy/animated_enemy.tscn" id="2_ncf7h"]
 [ext_resource type="AudioStream" uid="uid://bhd6x8sglgt14" path="res://Assets/Audio/hit.ogg" id="3_am0pq"]
-[ext_resource type="Script" uid="uid://bmbhix5t0xhx4" path="res://Components/KnockbackComponent.gd" id="4_nmr1a"]
-[ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/StateMachine.gd" id="6_m6jha"]
-[ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyWait.gd" id="7_glvfu"]
-[ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyStun.gd" id="8_0rspp"]
-[ext_resource type="Script" path="res://StateMachine/EnemyStates/EnemyDefeat.gd" id="9_efk13"]
-[ext_resource type="Script" uid="uid://b53uetcel424p" path="res://StateMachine/EnemyStates/EnemyFall.gd" id="10_47ove"]
+[ext_resource type="Script" uid="uid://bmbhix5t0xhx4" path="res://Components/knockback_component.gd" id="4_nmr1a"]
+[ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/state_machine.gd" id="6_m6jha"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_wait.gd" id="7_glvfu"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_stun.gd" id="8_0rspp"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_defeat.gd" id="9_efk13"]
+[ext_resource type="Script" uid="uid://b53uetcel424p" path="res://StateMachine/EnemyStates/enemy_fall.gd" id="10_47ove"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
 

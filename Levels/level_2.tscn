@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dxtkfp1w28vp0"]
 
-[ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/LevelTemplate.tscn" id="1_ll1bl"]
+[ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/level_template.tscn" id="1_ll1bl"]
 [ext_resource type="PackedScene" uid="uid://t4a6aocg2p7h" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Couch.gltf" id="2_dgq3b"]
 [ext_resource type="PackedScene" uid="uid://b8by0o2p8jju0" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Barrel_A.gltf" id="3_bcgyv"]
 [ext_resource type="VoxelGIData" uid="uid://3btyhew56tju" path="res://Levels/GlobalIlluminationData/level_2_voxel_gi_data.res" id="4_fbld2"]

@@ -2,14 +2,14 @@ extends Node
 
 func _ready() -> void:
 	print("--- RUNNING WORLD BOUNDARY TEST ---")
-	var level_scene: PackedScene = load("res://Levels/LevelTemplate.tscn")
+	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
 	var level: Node3D = level_scene.instantiate() as Node3D
 	add_child(level)
 	
 	# 1. Verify WorldBoundary node exists in LevelTemplate
 	var world_boundary: Area3D = level.get_node_or_null("WorldBoundary") as Area3D
 	if world_boundary == null:
-		printerr("TEST FAILED: WorldBoundary node not found in LevelTemplate.tscn")
+		printerr("TEST FAILED: WorldBoundary node not found in level_template.tscn")
 		level.queue_free()
 		await get_tree().physics_frame
 		get_tree().quit(1)

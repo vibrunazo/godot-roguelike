@@ -1,6 +1,6 @@
 extends Node
 
-const DAMAGE_NUMBER: PackedScene = preload("res://Singletons/VFX/DamageNumber.tscn")
+const DAMAGE_NUMBER: PackedScene = preload("res://Singletons/VFX/damage_number.tscn")
 
 
 func spawn_damage_number(source: Node3D, damage: float) -> void:

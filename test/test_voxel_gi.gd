@@ -2,14 +2,14 @@ extends Node
 
 func _ready() -> void:
 	print("--- RUNNING VOXEL GI TEST ---")
-	var level_scene: PackedScene = load("res://Levels/LevelTemplate.tscn")
+	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
 	var level: Node3D = level_scene.instantiate() as Node3D
 	add_child(level)
 	
 	# 1. Verify VoxelGI node exists in LevelTemplate
 	var voxel_gi: VoxelGI = level.get_node_or_null("VoxelGI") as VoxelGI
 	if voxel_gi == null:
-		printerr("TEST FAILED: VoxelGI node not found in LevelTemplate.tscn")
+		printerr("TEST FAILED: VoxelGI node not found in level_template.tscn")
 		level.queue_free()
 		await get_tree().physics_frame
 		get_tree().quit(1)

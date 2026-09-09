@@ -5,7 +5,7 @@ const TestUtils = preload("res://test/test_utils.gd")
 func _ready() -> void:
 	print("--- RUNNING DAMAGE FLASH & SCREEN SHAKE TEST ---")
 	
-	var level_scene: PackedScene = load("res://Levels/LevelTemplate.tscn")
+	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
 	var level: Node3D = level_scene.instantiate() as Node3D
 	add_child(level)
 	
@@ -184,9 +184,9 @@ func _ready() -> void:
 		return
 	print("VfxManager autoload verified.")
 
-	var damage_num_scene: PackedScene = load("res://Singletons/VFX/DamageNumber.tscn")
+	var damage_num_scene: PackedScene = load("res://Singletons/VFX/damage_number.tscn")
 	if damage_num_scene == null:
-		printerr("TEST FAILED: Could not load DamageNumber.tscn.")
+		printerr("TEST FAILED: Could not load damage_number.tscn.")
 		get_tree().quit(1)
 		return
 	var test_dn: DamageNumber = damage_num_scene.instantiate() as DamageNumber

@@ -33,4 +33,4 @@ func _on_area_3d_body_entered(body: Node3D) -> void:
 		if not next_scene_path.is_empty():
 			SceneTransition.load_scene_path(next_scene_path)
 		else:
-			SceneTransition.load_scene_path("res://UserInterface/UpgradeShop.tscn")
+			SceneTransition.load_scene_path("res://UserInterface/upgrade_shop.tscn")
