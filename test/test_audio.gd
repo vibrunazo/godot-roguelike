@@ -26,26 +26,28 @@ func _ready() -> void:
 	# ---------------------------------------------------------
 	print("\n>>> PART 2: Player Audio Components & Wiring")
 	var player_scene: PackedScene = load("res://Player/player.tscn")
-	var player: Player = player_scene.instantiate() as Player
+	var player: Character = player_scene.instantiate() as Character
 	add_child(player)
 	
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
 	# Check Dash Audio
-	if player.dash_audio == null:
-		printerr("TEST FAILED: player.dash_audio is null.")
+	var input_comp: PlayerInputComponent = player.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
+	var dash_audio: AudioStreamPlayer3D = input_comp.dash_audio if input_comp != null else player.get_node_or_null("DashAudio") as AudioStreamPlayer3D
+	if dash_audio == null:
+		printerr("TEST FAILED: dash_audio is null.")
 		get_tree().quit(1)
 		return
-	if player.dash_audio.stream == null:
-		printerr("TEST FAILED: player.dash_audio stream is null.")
+	if dash_audio.stream == null:
+		printerr("TEST FAILED: dash_audio stream is null.")
 		get_tree().quit(1)
 		return
-	if player.dash_audio.bus != &"SFX":
-		printerr("TEST FAILED: Expected dash_audio bus to be 'SFX', got: ", player.dash_audio.bus)
+	if dash_audio.bus != &"SFX":
+		printerr("TEST FAILED: Expected dash_audio bus to be 'SFX', got: ", dash_audio.bus)
 		get_tree().quit(1)
 		return
-	print("player.dash_audio verified: node found, stream assigned, SFX bus assigned.")
+	print("dash_audio verified: node found, stream assigned, SFX bus assigned.")
 	
 	# Check Damage Audio
 	var health_comp: HealthComponent = player.health_component
@@ -104,7 +106,7 @@ func _ready() -> void:
 	
 	# 1. Damage audio plays on take_damage()
 	attack_audio.stop()
-	player.dash_audio.stop()
+	dash_audio.stop()
 	health_comp.hit_audio.stop()
 	
 	health_comp.take_damage(5.0)
@@ -120,12 +122,12 @@ func _ready() -> void:
 	var state_machine: StateMachine = player.get_node("StateMachine") as StateMachine
 	state_machine._transition_to_next_state("PlayerDash", {"direction": Vector3.FORWARD})
 	await get_tree().process_frame
-	if not player.dash_audio.playing:
+	if not dash_audio.playing:
 		printerr("TEST FAILED: dash_audio is not playing after entering PlayerDash state.")
 		get_tree().quit(1)
 		return
 	print("Dash audio playback confirmed on entering PlayerDash state.")
-	player.dash_audio.stop()
+	dash_audio.stop()
 	
 	# 3. Slash audio plays when WeaponSlot emits slash signal
 	weapon_slot.emit_signal("slash")

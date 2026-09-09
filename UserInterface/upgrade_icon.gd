@@ -10,7 +10,7 @@ signal upgrade_taken(this: UpgradeIcon)
 @onready var texture_button: TextureButton = $TextureButton
 @onready var title: RichTextLabel = $VBoxContainer/Title
 @onready var description: RichTextLabel = $VBoxContainer/Control/Description
-@onready var player: Player = get_tree().get_first_node_in_group("player") as Player
+@onready var player: Character = get_tree().get_first_node_in_group("player") as Character
 
 func _ready() -> void:
 	texture_button.pressed.connect(take_upgrade)

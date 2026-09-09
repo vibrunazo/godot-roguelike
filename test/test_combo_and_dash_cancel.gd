@@ -8,7 +8,10 @@ func _ready() -> void:
 	var level: Node3D = level_scene.instantiate() as Node3D
 	add_child(level)
 	
-	var player: Player = level.get_node("Player") as Player
+	var player: Character = level.get_node("Player") as Character
+	var input_comp: PlayerInputComponent = player.get_node("PlayerInputComponent") as PlayerInputComponent
+	var dash_root: Node3D = player.get_node("DashRoot") as Node3D
+	var dash_animation_player: AnimationPlayer = dash_root.get_node("AnimationPlayer") as AnimationPlayer
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
 	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
@@ -31,8 +34,8 @@ func _ready() -> void:
 	# Position player facing dummy
 	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.3)
 	var dir: Vector3 = Vector3(0, 0, 1)
-	var target: Transform3D = player.player_root.global_transform.looking_at(player.player_root.global_position + dir, Vector3.UP, true)
-	player.player_root.global_transform = target
+	var target: Transform3D = player.mesh_mount.global_transform.looking_at(player.mesh_mount.global_position + dir, Vector3.UP, true)
+	player.mesh_mount.global_transform = target
 	
 	for i: int in range(60):
 		await get_tree().physics_frame
@@ -183,12 +186,12 @@ func _ready() -> void:
 	print("Dash cancel SUCCESS! Interrupted PlayerAttack directly into PlayerDash.")
 
 	# Verify DashRoot and shader setup (Lecture 75)
-	if player.dash_root == null:
-		printerr("TEST FAILED: player.dash_root is null.")
+	if dash_root == null:
+		printerr("TEST FAILED: dash_root is null.")
 		Input.action_release("move_forward")
 		get_tree().quit(1)
 		return
-	var dash_mesh: MeshInstance3D = player.dash_root.get_node_or_null("MeshInstance3D") as MeshInstance3D
+	var dash_mesh: MeshInstance3D = dash_root.get_node_or_null("MeshInstance3D") as MeshInstance3D
 	if dash_mesh == null:
 		printerr("TEST FAILED: DashRoot missing MeshInstance3D child.")
 		Input.action_release("move_forward")
@@ -219,28 +222,28 @@ func _ready() -> void:
 	print("DashRoot, QuadMesh, and ShaderMaterial verified.")
 
 	# Verify Dash AnimationPlayer & cross-section MeshInstance3D2 (Lecture 76)
-	if player.dash_animation_player == null:
-		printerr("TEST FAILED: player.dash_animation_player is null.")
+	if dash_animation_player == null:
+		printerr("TEST FAILED: dash_animation_player is null.")
 		Input.action_release("move_forward")
 		get_tree().quit(1)
 		return
-	if not player.dash_animation_player.has_animation(&"dash") or not player.dash_animation_player.has_animation(&"RESET"):
+	if not dash_animation_player.has_animation(&"dash") or not dash_animation_player.has_animation(&"RESET"):
 		printerr("TEST FAILED: dash_animation_player missing 'dash' or 'RESET' animation.")
 		Input.action_release("move_forward")
 		get_tree().quit(1)
 		return
-	if player.dash_animation_player.autoplay != &"RESET":
+	if dash_animation_player.autoplay != &"RESET":
 		printerr("TEST FAILED: dash_animation_player autoplay is not RESET.")
 		Input.action_release("move_forward")
 		get_tree().quit(1)
 		return
-	var dash_anim: Animation = player.dash_animation_player.get_animation(&"dash")
+	var dash_anim: Animation = dash_animation_player.get_animation(&"dash")
 	if not is_equal_approx(dash_anim.length, 0.5):
 		printerr("TEST FAILED: dash animation length expected 0.5, got: ", dash_anim.length)
 		Input.action_release("move_forward")
 		get_tree().quit(1)
 		return
-	var dash_mesh2: MeshInstance3D = player.dash_root.get_node_or_null("MeshInstance3D2") as MeshInstance3D
+	var dash_mesh2: MeshInstance3D = dash_root.get_node_or_null("MeshInstance3D2") as MeshInstance3D
 	if dash_mesh2 == null:
 		printerr("TEST FAILED: DashRoot missing MeshInstance3D2 child.")
 		Input.action_release("move_forward")
@@ -276,7 +279,7 @@ func _ready() -> void:
 	# Wait for dash cooldown so player can dash again
 	for i: int in range(60):
 		await get_tree().physics_frame
-		if player.can_dash():
+		if input_comp.can_dash():
 			break
 			
 	# =========================================================================
@@ -462,12 +465,12 @@ func _ready() -> void:
 	# Ensure dash cooldown has reset
 	for i: int in range(60):
 		await get_tree().physics_frame
-		if player.can_dash() and sm.state.name == "PlayerRun":
+		if input_comp.can_dash() and sm.state.name == "PlayerRun":
 			break
 
 	# 1. Test stationary dash (no WASD pressed)
-	if not player.can_dash():
-		printerr("TEST FAILED: player.can_dash() returned false when stationary with cooldown stopped.")
+	if not input_comp.can_dash():
+		printerr("TEST FAILED: input_comp.can_dash() returned false when stationary with cooldown stopped.")
 		get_tree().quit(1)
 		return
 	var stationary_dash := InputEventAction.new()
@@ -484,7 +487,7 @@ func _ready() -> void:
 	# Wait for stationary dash to finish and cooldown to reset
 	for i: int in range(60):
 		await get_tree().physics_frame
-		if sm.state.name == "PlayerRun" and player.can_dash():
+		if sm.state.name == "PlayerRun" and input_comp.can_dash():
 			break
 
 	# 2. Test queuing Attack 3 during Attack 2, then dash cancelling Attack 2

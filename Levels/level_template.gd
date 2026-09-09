@@ -1,7 +1,7 @@
 class_name LevelTemplate
 extends Node3D
 
-@onready var player: Player = $Player
+@onready var player: Character = $Player
 
 
 func _ready() -> void:

@@ -79,7 +79,7 @@ func _ready() -> void:
 			return
 		print("Dummy enemy MeshInstance3D gi_mode correctly disabled (gi_mode = 0).")
 	
-	var player: Player = level.get_node("Player") as Player
+	var player: Character = level.get_node("Player") as Character
 	var sword_mesh: MeshInstance3D = player.get_node("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/LazerSword") as MeshInstance3D
 	var handle_mesh: MeshInstance3D = player.get_node("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Handle") as MeshInstance3D
 	if sword_mesh.gi_mode != GeometryInstance3D.GI_MODE_DISABLED or handle_mesh.gi_mode != GeometryInstance3D.GI_MODE_DISABLED:

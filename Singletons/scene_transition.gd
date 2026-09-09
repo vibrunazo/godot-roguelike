@@ -2,7 +2,7 @@ extends CanvasLayer
 
 @onready var color_rect: ColorRect = $ColorRect
 
-var player_cache: Player
+var player_cache: Character
 var levels: Array[String] = [
 	"res://Levels/level_1.tscn",
 	"res://Levels/level_2.tscn",
@@ -24,7 +24,7 @@ func fade_in(tween: Tween) -> void:
 
 
 func load_scene_path(path_in: String, args: Dictionary = {}) -> void:
-	var player: Player = get_tree().get_first_node_in_group("player") as Player
+	var player: Character = get_tree().get_first_node_in_group("player") as Character
 	if player:
 		player.process_mode = Node.PROCESS_MODE_DISABLED
 	var tween: Tween = create_tween()

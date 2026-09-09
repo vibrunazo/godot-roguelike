@@ -19,19 +19,31 @@ This document tracks architectural improvements, optimizations, and technical de
 
 ---
 
-## 2. Character & State Machine Architecture (Decoupling AI from Body Action States)
+## 2. Character & State Machine Architecture (Decoupling AI from Body Action States) [RESOLVED]
+- **Status**: Completed. Unified Player and Enemies into a single `Character` class, decoupled player inputs and AI decision-making into dedicated components, implemented dual state machines (Mind vs Body) on enemies, and standardized team targeting via `"player"` and `"enemy"` groups.
 - **Problem**:
-  - `Player` and `Enemy` have separate, parallel state machines with duplicated movement logic (`core_movement()` in both `PlayerState` and `EnemyState`).
-  - Enemy states tightly couple high-level AI decisions (wait timers, aiming, target selection, transition decisions) directly with physical body actions (animations, movement physics, projectile spawning).
-  - This prevents reusing abilities/actions between player and enemies, creates a combinatorial explosion of states for different AI behaviors, and makes advanced tactics (kiting, fleeing, utility scoring) difficult to implement.
-- **Refactoring Options**:
-  - **Controller Layer (The Mind)**:
-    - Separate decision-making into an `AIController` (or Behavior Tree / Utility AI) and a `PlayerController`.
-    - Both controllers output standardized high-level intents: `move_intent(direction)`, `aim_intent(target)`, `try_activate_ability(ability_name)`.
-  - **Character & Ability Layer (The Body)**:
-    - The character's state machine manages only physical body commitments and abilities: `Idle`, `Move`, `Attack`, `Dodge`, `Stunned`, `Defeated`.
-    - States handle animation playback, root motion, and hitbox/projectile activation windows. They report completion back to the character/controller (e.g. `action_finished` signal) rather than deciding what state to transition to next.
-    - Create a unified character base class / component structure shared by player and enemies.
+  - `Player` and `Enemy` had separate, parallel classes with duplicated movement logic (`core_movement()` in both `PlayerState` and `EnemyState`).
+  - Enemy states tightly coupled high-level AI decisions (wait timers, aiming, target selection, transition decisions) directly with physical body actions (animations, movement physics, projectile spawning).
+  - This prevented reusing abilities/actions between player and enemies and caused hit reactions (Stun) to interrupt mind logic.
+- **Resolution**:
+  - **Unified `Character` Base Class**:
+    - Both Player and Enemies now use `Character` (`res://Character/character.gd`) extending `CharacterBody3D`.
+    - Removed redundant `player.gd` and `enemy.gd`.
+    - Distinct behavior is established purely through attached components and membership in the `"player"` or `"enemy"` group.
+    - Added team query methods (`is_player()`, `is_enemy()`, `get_nearest_target()`).
+  - **Decoupled Controller Layer**:
+    - Created `PlayerInputComponent` (`res://Components/player_input_component.gd`) listening to user inputs and updating Character intents (`move_direction`, `aim_direction`, `can_dash`).
+    - Created `AIStateMachine` (`res://StateMachine/ai_state_machine.gd`) extending `StateMachine` to manage AI mind behaviors (`AIWait`, `AIMeander`, `AIPursue`) that issue movement and attack commands to the Character body.
+    - Created `ProjectileSpawnerComponent` (`res://Components/projectile_spawner_component.gd`) to handle ranged weapon projectile spawning decoupled from Character logic.
+  - **Physical Body State Machine**:
+    - Created `CharacterState` (`res://StateMachine/character_state.gd`) unifying core movement, floor checks, knockback, and velocity decay.
+    - `EnemyMove` manages physical locomotion and animation blending without decision-making.
+    - `EnemyAttack`, `EnemyStun`, `EnemyFall`, and `EnemyDefeat` execute physical animations and body reactions independently.
+    - Dual state machines run concurrently: taking damage or entering Stun executes purely on the physical body without breaking the AI mind.
+  - **Verification**:
+    - Refactored all 33 parts of `test/test_enemy_base.gd`.
+    - Added dedicated automated test suite `test/test_character_and_ai.tscn` verifying unified Character class, groups, intent vectors, dual state machines, stun recovery, and projectile spawning.
+    - All 13 test suites pass cleanly with exit code 0 (`python run_tests.py`).
 
 ---
 

@@ -1,32 +1,30 @@
+## Base class for player-specific physical states.
 class_name PlayerState
-extends State
+extends CharacterState
 
-@export var player: Player
-@export var dash_state: PlayerState
-@export var attack_state: PlayerState
+## State to transition to when dash action is pressed.
+@export var dash_state: CharacterState
+## State to transition to when attack action is pressed.
+@export var attack_state: CharacterState
 
-## Sets player velocity based on current input direction and speed
-func core_movement(delta: float, speed: float) -> void:
-	var direction := player.get_movement_direction()
-	if player.knockback_component.is_active():
-		player.velocity = player.knockback_component.magnitude
-	else:
-		player.velocity = direction * speed
-	player.look_toward_direction(direction, delta)
 
-## changes to Dash State with current input direction if dash action was pressed
+## Checks for dash input and transitions to dash_state if available.
 func check_dash(event: InputEvent) -> void:
-	if not player.can_dash():
+	if character == null or dash_state == null:
+		return
+	var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
+	if input_comp != null and not input_comp.can_dash():
 		return
 	if event.is_action_pressed("dash"):
-		var direction := player.get_movement_direction()
+		var direction: Vector3 = character.move_direction
+		if direction.is_zero_approx() and character.mesh_mount != null:
+			direction = character.mesh_mount.global_basis.z.normalized()
 		if direction.is_zero_approx():
-			direction = player.player_root.global_basis.z.normalized()
-			if direction.is_zero_approx():
-				direction = Vector3.FORWARD
+			direction = Vector3.FORWARD
 		finished.emit(dash_state.name, {"direction": direction})
-		
+
+
+## Checks for attack input and transitions to attack_state if available.
 func check_attack(event: InputEvent) -> void:
-	if event.is_action_pressed("click"):
-		var direction := player.get_movement_direction()
-		finished.emit(attack_state.name, {"direction": direction})
+	if attack_state != null and event.is_action_pressed("click"):
+		finished.emit(attack_state.name, {"direction": character.move_direction})

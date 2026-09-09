@@ -1,25 +1,35 @@
 [gd_scene format=3 uid="uid://bk4gxfbdgjgln"]
 
-[ext_resource type="Script" uid="uid://c0rnrehscwlx" path="res://Enemy/enemy.gd" id="1_eqilm"]
+[ext_resource type="Script" path="res://Character/character.gd" id="1_eqilm"]
 [ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/health_component.gd" id="1_px1sc"]
 [ext_resource type="PackedScene" uid="uid://bwo2c4dl16ces" path="res://Components/health_bar.tscn" id="2_am0pq"]
 [ext_resource type="PackedScene" uid="uid://b7usbbh1tfnjv" path="res://Enemy/animated_enemy.tscn" id="2_ncf7h"]
 [ext_resource type="AudioStream" uid="uid://bhd6x8sglgt14" path="res://Assets/Audio/hit.ogg" id="3_am0pq"]
 [ext_resource type="Script" uid="uid://bmbhix5t0xhx4" path="res://Components/knockback_component.gd" id="4_nmr1a"]
 [ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/state_machine.gd" id="6_m6jha"]
-[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_wait.gd" id="7_glvfu"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_move.gd" id="7_move"]
 [ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_stun.gd" id="8_0rspp"]
 [ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_defeat.gd" id="9_efk13"]
 [ext_resource type="Script" uid="uid://b53uetcel424p" path="res://StateMachine/EnemyStates/enemy_fall.gd" id="10_47ove"]
+[ext_resource type="Script" path="res://StateMachine/ai_state_machine.gd" id="11_aism"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_wait.gd" id="12_aiwait"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
 
-[node name="Enemy" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("stun_state", "defeat_state", "mesh_mount")]
+[node name="Enemy" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "stun_state", "defeat_state") groups=["enemy"]]
 collision_layer = 3
 script = ExtResource("1_eqilm")
+movement_speed = 3.5
+mesh_mount = NodePath("AnimationAnchor")
+health_component = NodePath("HealthComponent")
+knockback_component = NodePath("KnockbackComponent")
+animation_tree = NodePath("AnimationAnchor/AnimatedEnemy/Enemy_Medium/AnimationTree")
+state_machine = NodePath("StateMachine")
+ai_state_machine = NodePath("AIStateMachine")
+navigation_agent_3d = NodePath("NavigationAgent3D")
+collision_shape_3d = NodePath("CollisionShape3D")
 stun_state = NodePath("StateMachine/EnemyStun")
 defeat_state = NodePath("StateMachine/EnemyDefeat")
-mesh_mount = NodePath("AnimationAnchor")
 
 [node name="AnimationAnchor" type="Node3D" parent="." unique_id=930518751]
 
@@ -48,29 +58,38 @@ bus = &"SFX"
 
 [node name="StateMachine" type="Node" parent="." unique_id=1352967922 node_paths=PackedStringArray("initial_state")]
 script = ExtResource("6_m6jha")
-initial_state = NodePath("EnemyWait")
+initial_state = NodePath("EnemyMove")
 
-[node name="EnemyWait" type="Node" parent="StateMachine" unique_id=314606292 node_paths=PackedStringArray("enemy", "fall_state")]
-script = ExtResource("7_glvfu")
-enemy = NodePath("../..")
+[node name="EnemyMove" type="Node" parent="StateMachine" unique_id=314606292 node_paths=PackedStringArray("character", "fall_state")]
+script = ExtResource("7_move")
+character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
-[node name="EnemyStun" type="Node" parent="StateMachine" unique_id=1916096534 node_paths=PackedStringArray("next_state", "enemy", "fall_state")]
+[node name="EnemyStun" type="Node" parent="StateMachine" unique_id=1916096534 node_paths=PackedStringArray("next_state", "character", "fall_state")]
 script = ExtResource("8_0rspp")
-next_state = NodePath("../EnemyWait")
-enemy = NodePath("../..")
+next_state = NodePath("../EnemyMove")
+character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
-[node name="EnemyDefeat" type="Node" parent="StateMachine" unique_id=1282022813 node_paths=PackedStringArray("enemy", "fall_state")]
+[node name="EnemyDefeat" type="Node" parent="StateMachine" unique_id=1282022813 node_paths=PackedStringArray("character", "fall_state")]
 script = ExtResource("9_efk13")
-enemy = NodePath("../..")
+character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
-[node name="EnemyFall" type="Node" parent="StateMachine" unique_id=347954520 node_paths=PackedStringArray("land_state", "enemy", "fall_state")]
+[node name="EnemyFall" type="Node" parent="StateMachine" unique_id=347954520 node_paths=PackedStringArray("land_state", "character", "fall_state")]
 script = ExtResource("10_47ove")
 land_state = NodePath("../EnemyStun")
-enemy = NodePath("../..")
+character = NodePath("../..")
 fall_state = NodePath(".")
+
+[node name="AIStateMachine" type="Node" parent="." unique_id=1832049182 node_paths=PackedStringArray("character", "initial_state")]
+script = ExtResource("11_aism")
+character = NodePath("..")
+initial_state = NodePath("AIWait")
+
+[node name="AIWait" type="Node" parent="AIStateMachine" unique_id=1748291048 node_paths=PackedStringArray("ai_state_machine")]
+script = ExtResource("12_aiwait")
+ai_state_machine = NodePath("..")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=2019475689]
 

@@ -26,7 +26,7 @@ func unlock() -> void:
 func _on_area_3d_body_entered(body: Node3D) -> void:
 	if locked:
 		return
-	if body is Player:
+	if body is Character and (body as Character).is_player():
 		locked = true
 		animation_player.play("Exit")
 		GlobalVars.finish_level()

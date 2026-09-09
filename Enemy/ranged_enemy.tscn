@@ -1,35 +1,49 @@
 [gd_scene format=3 uid="uid://d0l671aaonnqf"]
 
 [ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy.tscn" id="1_6jo5i"]
-[ext_resource type="Script" path="res://Enemy/ranged_enemy.gd" id="2_4m11m"]
 [ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_attack.gd" id="2_cnthi"]
-[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_meander.gd" id="4_vj72k"]
+[ext_resource type="Script" path="res://Components/projectile_spawner_component.gd" id="3_proj"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_meander.gd" id="4_meander"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_attack.gd" id="5_attack"]
 
-[node name="RangedEnemy" unique_id=2117139762 node_paths=PackedStringArray("attack_bone") instance=ExtResource("1_6jo5i")]
-script = ExtResource("2_4m11m")
-attack_bone = NodePath("AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
+[node name="RangedEnemy" unique_id=2117139762 instance=ExtResource("1_6jo5i")]
+
+[node name="ProjectileSpawnerComponent" type="Node" parent="." unique_id=1948271058 node_paths=PackedStringArray("spawn_point", "character")]
+script = ExtResource("3_proj")
+spawn_point = NodePath("../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
+character = NodePath("..")
 
 [node name="StateMachine" parent="." parent_id_path=PackedInt32Array(2117139762) index="5" unique_id=1352967922 node_paths=PackedStringArray("initial_state")]
-initial_state = NodePath("EnemyMeander")
+initial_state = NodePath("EnemyMove")
 
-[node name="EnemyWait" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="0" unique_id=314606292 node_paths=PackedStringArray("next_state")]
-next_state = NodePath("../EnemyAttack")
-
-[node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="3" unique_id=539557262 node_paths=PackedStringArray("next_state", "enemy", "fall_state")]
+[node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=539557262 node_paths=PackedStringArray("next_state", "character", "fall_state")]
 script = ExtResource("2_cnthi")
 attack_name = "RangedAttack"
-next_state = [NodePath("../EnemyWait"), NodePath("../EnemyMeander")]
-enemy = NodePath("../..")
+next_state = [NodePath("../EnemyMove")]
+character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
-[node name="EnemyMeander" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=856220418 node_paths=PackedStringArray("attack_state", "enemy", "fall_state")]
-script = ExtResource("4_vj72k")
-attack_state = NodePath("../EnemyAttack")
-enemy = NodePath("../..")
-fall_state = NodePath("../EnemyFall")
+[node name="AIStateMachine" parent="." index="7" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
+initial_state = NodePath("AIMeander")
 
+[node name="AIWait" parent="AIStateMachine" index="0" unique_id=1748291048 node_paths=PackedStringArray("next_state")]
+wait_duration = 2.0
+next_state = NodePath("../AIAttack")
 
-[connection signal="ranged_attack" from="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="." method="_on_weapon_slot_ranged_attack"]
+[node name="AIMeander" type="Node" parent="AIStateMachine" index="1" unique_id=856220418 node_paths=PackedStringArray("attack_state", "wait_state", "ai_state_machine")]
+script = ExtResource("4_meander")
+attack_state = NodePath("../AIAttack")
+attack_range = 4.0
+wait_state = NodePath("../AIWait")
+ai_state_machine = NodePath("..")
+
+[node name="AIAttack" type="Node" parent="AIStateMachine" index="2" unique_id=984729104 node_paths=PackedStringArray("next_states", "ai_state_machine")]
+script = ExtResource("5_attack")
+attack_state_name = "EnemyAttack"
+next_states = [NodePath("../AIWait"), NodePath("../AIMeander")]
+ai_state_machine = NodePath("..")
+
+[connection signal="ranged_attack" from="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="ProjectileSpawnerComponent" method="spawn_projectile"]
 
 [editable path="AnimationAnchor/AnimatedEnemy"]
 [editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]

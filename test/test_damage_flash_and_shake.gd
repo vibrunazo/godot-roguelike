@@ -12,11 +12,12 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
-	var player: Player = level.get_node("Player") as Player
+	var player: Character = level.get_node("Player") as Character
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
 	var dummy_health: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var camera: ShakeCamera3D = player.get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
 	var attack_comp: AttackComponent = player.get_node_or_null("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent") as AttackComponent
+	var damage_tint: ColorRect = player.get_node_or_null("DamageTint") as ColorRect
 	
 	# ---------------------------------------------------------
 	# PART 1: Node & Component Setup Verification
@@ -28,20 +29,20 @@ func _ready() -> void:
 		return
 	camera.make_current()
 	
-	if player.damage_tint == null:
-		printerr("TEST FAILED: damage_tint (ColorRect) reference is null on Player.")
+	if damage_tint == null:
+		printerr("TEST FAILED: damage_tint (ColorRect) not found under Player.")
 		get_tree().quit(1)
 		return
-	print("DamageTint node found: ", player.damage_tint.name)
+	print("DamageTint node found: ", damage_tint.name)
 	
-	if player.damage_tint.mouse_filter != Control.MOUSE_FILTER_IGNORE:
-		printerr("TEST FAILED: Expected DamageTint mouse_filter == MOUSE_FILTER_IGNORE (2), got: ", player.damage_tint.mouse_filter)
+	if damage_tint.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		printerr("TEST FAILED: Expected DamageTint mouse_filter == MOUSE_FILTER_IGNORE (2), got: ", damage_tint.mouse_filter)
 		get_tree().quit(1)
 		return
 	print("DamageTint mouse_filter verified (MOUSE_FILTER_IGNORE)")
 	
-	if not is_zero_approx(player.damage_tint.color.a):
-		printerr("TEST FAILED: Expected DamageTint initial alpha == 0.0, got: ", player.damage_tint.color.a)
+	if not is_zero_approx(damage_tint.color.a):
+		printerr("TEST FAILED: Expected DamageTint initial alpha == 0.0, got: ", damage_tint.color.a)
 		get_tree().quit(1)
 		return
 	print("DamageTint initial color verified (alpha 0.0)")
@@ -92,20 +93,20 @@ func _ready() -> void:
 		return
 	print("Camera trauma confirmed on hurt! (magnitude ~ 1.0)")
 	
-	print("DamageTint alpha immediately after hurt: ", player.damage_tint.color.a)
-	if player.damage_tint.color.a < 0.1:
-		printerr("TEST FAILED: DamageTint alpha did not flash red. alpha: ", player.damage_tint.color.a)
+	print("DamageTint alpha immediately after hurt: ", damage_tint.color.a)
+	if damage_tint.color.a < 0.1:
+		printerr("TEST FAILED: DamageTint alpha did not flash red. alpha: ", damage_tint.color.a)
 		get_tree().quit(1)
 		return
-	print("Red flash confirmed! Alpha flashed to: ", player.damage_tint.color.a)
+	print("Red flash confirmed! Alpha flashed to: ", damage_tint.color.a)
 	
 	# Wait for 0.25s for DamageTint tween to fade back to transparent (0.2s duration)
 	await get_tree().create_timer(0.25).timeout
 	await get_tree().process_frame
 	
-	print("DamageTint alpha after fade duration: ", player.damage_tint.color.a)
-	if player.damage_tint.color.a > 0.05:
-		printerr("TEST FAILED: DamageTint did not fade back to transparent. Current alpha: ", player.damage_tint.color.a)
+	print("DamageTint alpha after fade duration: ", damage_tint.color.a)
+	if damage_tint.color.a > 0.05:
+		printerr("TEST FAILED: DamageTint did not fade back to transparent. Current alpha: ", damage_tint.color.a)
 		get_tree().quit(1)
 		return
 	print("DamageTint successfully faded back to transparent!")
@@ -148,8 +149,8 @@ func _ready() -> void:
 	player.global_position = Vector3(0, 1, -1.3)
 	player.velocity = Vector3.ZERO
 	var dir: Vector3 = Vector3(0, 0, 1)
-	var target: Transform3D = player.player_root.global_transform.looking_at(player.player_root.global_position + dir, Vector3.UP, true)
-	player.player_root.global_transform = target
+	var target: Transform3D = player.mesh_mount.global_transform.looking_at(player.mesh_mount.global_position + dir, Vector3.UP, true)
+	player.mesh_mount.global_transform = target
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 
@@ -267,7 +268,7 @@ func _ready() -> void:
 
 	# Verify RangedEnemy NavigationAgent3D has debug_enabled = false
 	var ranged_scene: PackedScene = load("res://Enemy/ranged_enemy.tscn")
-	var test_ranged: Enemy = ranged_scene.instantiate() as Enemy
+	var test_ranged: Character = ranged_scene.instantiate() as Character
 	var ranged_nav: NavigationAgent3D = test_ranged.get_node("NavigationAgent3D") as NavigationAgent3D
 	if ranged_nav.debug_enabled:
 		printerr("TEST FAILED: RangedEnemy NavigationAgent3D still has debug_enabled = true.")

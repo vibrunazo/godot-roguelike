@@ -8,7 +8,7 @@ func _ready() -> void:
 	var level: Node3D = level_scene.instantiate() as Node3D
 	add_child(level)
 	
-	var player: Player = level.get_node("Player") as Player
+	var player: Character = level.get_node("Player") as Character
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
 	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
@@ -31,8 +31,8 @@ func _ready() -> void:
 	# Position player facing dummy
 	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.3)
 	var dir: Vector3 = Vector3(0, 0, 1)
-	var target: Transform3D = player.player_root.global_transform.looking_at(player.player_root.global_position + dir, Vector3.UP, true)
-	player.player_root.global_transform = target
+	var target: Transform3D = player.mesh_mount.global_transform.looking_at(player.mesh_mount.global_position + dir, Vector3.UP, true)
+	player.mesh_mount.global_transform = target
 	
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -80,7 +80,7 @@ func _ready() -> void:
 	print("\n--- Triggering Attack 2 (Testing repeat attack & exception reset) ---")
 	# Re-align player facing dummy in case dummy was repositioned (e.g. by navigation spawn)
 	player.global_position = Vector3(dummy.global_position.x, dummy.global_position.y, dummy.global_position.z - 1.3)
-	player.player_root.global_transform = player.player_root.global_transform.looking_at(player.player_root.global_position + dir, Vector3.UP, true)
+	player.mesh_mount.global_transform = player.mesh_mount.global_transform.looking_at(player.mesh_mount.global_position + dir, Vector3.UP, true)
 	for i: int in range(60):
 		await get_tree().physics_frame
 		if player.is_on_floor() and sm.state.name == "PlayerRun":

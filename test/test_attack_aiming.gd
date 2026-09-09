@@ -8,7 +8,8 @@ func _ready() -> void:
 	var level: Node3D = level_scene.instantiate() as Node3D
 	add_child(level)
 	
-	var player: Player = level.get_node("Player") as Player
+	var player: Character = level.get_node("Player") as Character
+	var player_input: PlayerInputComponent = player.get_node("PlayerInputComponent") as PlayerInputComponent
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
 	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
@@ -45,10 +46,10 @@ func _ready() -> void:
 	player.get_window().size = Vector2i(1152, 648)
 	await get_tree().process_frame
 	
-	var player_2d: Vector2 = player.get_player_position_2d()
+	var player_2d: Vector2 = player_input.get_character_position_2d()
 	print("Player 2D screen position: ", player_2d)
 	if player_2d == Vector2.ZERO:
-		printerr("TEST FAILED: get_player_position_2d() returned (0,0).")
+		printerr("TEST FAILED: get_character_position_2d() returned (0,0).")
 		level.queue_free()
 		await get_tree().physics_frame
 		get_tree().quit(1)
@@ -63,7 +64,7 @@ func _ready() -> void:
 	player.get_viewport().warp_mouse(right_screen_target)
 	await get_tree().process_frame
 	
-	var aim_right: Vector3 = player.get_aim_direction()
+	var aim_right: Vector3 = player_input.get_aim_direction()
 	print("Aim direction (aiming right on screen): ", aim_right)
 	if aim_right.length_squared() < 0.001:
 		printerr("TEST FAILED: get_aim_direction() was zero vector.")
@@ -81,7 +82,7 @@ func _ready() -> void:
 	player.get_viewport().warp_mouse(left_screen_target)
 	await get_tree().process_frame
 	
-	var aim_left: Vector3 = player.get_aim_direction()
+	var aim_left: Vector3 = player_input.get_aim_direction()
 	print("Aim direction (aiming left on screen): ", aim_left)
 	
 	# Left and Right aim vectors should point in opposite horizontal directions
@@ -103,10 +104,10 @@ func _ready() -> void:
 	
 	# Position player facing forward (+Z)
 	player.global_position = Vector3(0, player.global_position.y, 0)
-	var forward_target: Transform3D = player.player_root.global_transform.looking_at(
-		player.player_root.global_position + Vector3(0, 0, 1), Vector3.UP, true
+	var forward_target: Transform3D = player.mesh_mount.global_transform.looking_at(
+		player.mesh_mount.global_position + Vector3(0, 0, 1), Vector3.UP, true
 	)
-	player.player_root.global_transform = forward_target
+	player.mesh_mount.global_transform = forward_target
 	
 	# Position dummy 2.3 meters to the right (+X)
 	dummy.global_position = Vector3(2.3, player.global_position.y, 0)
@@ -144,7 +145,7 @@ func _ready() -> void:
 	
 	# Verify player turned towards the dummy (+X)
 	await get_tree().physics_frame
-	var facing_dir: Vector3 = player.player_root.global_transform.basis.z.normalized()
+	var facing_dir: Vector3 = player.mesh_mount.global_transform.basis.z.normalized()
 	print("Player facing vector after attack start: ", facing_dir)
 	var dir_to_dummy: Vector3 = (dummy.global_position - player.global_position).normalized()
 	var aim_alignment: float = facing_dir.dot(dir_to_dummy)

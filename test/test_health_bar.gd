@@ -6,7 +6,7 @@ func _ready() -> void:
 	print("--- RUNNING HEALTH BAR TEST ---")
 	
 	var player_scene: PackedScene = load("res://Player/player.tscn")
-	var player: Player = player_scene.instantiate() as Player
+	var player: Character = player_scene.instantiate() as Character
 	add_child(player)
 	
 	await get_tree().physics_frame

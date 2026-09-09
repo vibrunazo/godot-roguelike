@@ -17,12 +17,16 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 		
-	var enemy: Enemy = enemy_scene.instantiate() as Enemy
-	if enemy == null:
-		printerr("TEST FAILED: enemy is not an instance of class_name Enemy.")
+	var enemy: Character = enemy_scene.instantiate() as Character
+	if enemy == null or not (enemy is Character):
+		printerr("TEST FAILED: enemy is not an instance of class_name Character.")
 		get_tree().quit(1)
 		return
-	print("Enemy scene loaded and class_name Enemy verified.")
+	if not enemy.is_in_group("enemy"):
+		printerr("TEST FAILED: enemy is not in group 'enemy'.")
+		get_tree().quit(1)
+		return
+	print("Enemy scene loaded and Character with 'enemy' group verified.")
 	
 	if not (enemy is CharacterBody3D):
 		printerr("TEST FAILED: Enemy is not a CharacterBody3D.")
@@ -184,11 +188,11 @@ func _ready() -> void:
 		return
 	print("Enemy.animation_tree onready variable verified.")
 	
-	if not is_equal_approx(enemy.base_speed, 3.5):
-		printerr("TEST FAILED: Expected Enemy.base_speed == 3.5, got: ", enemy.base_speed)
+	if not is_equal_approx(enemy.movement_speed, 3.5):
+		printerr("TEST FAILED: Expected Enemy.movement_speed == 3.5, got: ", enemy.movement_speed)
 		get_tree().quit(1)
 		return
-	print("Enemy.base_speed (3.5) verified.")
+	print("Enemy.movement_speed (3.5) verified.")
 	
 	var col_shape: CollisionShape3D = enemy.get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if col_shape == null:
@@ -232,9 +236,9 @@ func _ready() -> void:
 	print("HealthBar health_component reference verified.")
 	
 	# ---------------------------------------------------------
-	# PART 4: StateMachine, EnemyWait & EnemyStun Verification
+	# PART 4: StateMachine, EnemyMove, EnemyStun & AIStateMachine Verification
 	# ---------------------------------------------------------
-	print("\n>>> PART 4: StateMachine, EnemyWait & EnemyStun State Verification")
+	print("\n>>> PART 4: StateMachine, EnemyMove, EnemyStun & AIStateMachine Verification")
 	var state_machine: StateMachine = enemy.get_node_or_null("StateMachine") as StateMachine
 	if state_machine == null:
 		printerr("TEST FAILED: StateMachine node not found on Enemy.")
@@ -246,14 +250,14 @@ func _ready() -> void:
 		printerr("TEST FAILED: Enemy.state_machine does not point to StateMachine.")
 		get_tree().quit(1)
 		return
-	print("Enemy.state_machine onready variable verified.")
+	print("Enemy.state_machine export verified.")
 
-	var enemy_wait: EnemyWait = state_machine.get_node_or_null("EnemyWait") as EnemyWait
-	if enemy_wait == null:
-		printerr("TEST FAILED: EnemyWait node not found under StateMachine.")
+	var enemy_move: EnemyMove = state_machine.get_node_or_null("EnemyMove") as EnemyMove
+	if enemy_move == null:
+		printerr("TEST FAILED: EnemyMove node not found under StateMachine.")
 		get_tree().quit(1)
 		return
-	print("EnemyWait node found.")
+	print("EnemyMove node found.")
 
 	var enemy_stun: EnemyStun = state_machine.get_node_or_null("EnemyStun") as EnemyStun
 	if enemy_stun == null:
@@ -262,35 +266,35 @@ func _ready() -> void:
 		return
 	print("EnemyStun node found.")
 
-	if state_machine.initial_state != enemy_wait:
-		printerr("TEST FAILED: StateMachine initial_state is not EnemyWait.")
+	if state_machine.initial_state != enemy_move:
+		printerr("TEST FAILED: StateMachine initial_state is not EnemyMove.")
 		get_tree().quit(1)
 		return
-	print("StateMachine initial_state is EnemyWait.")
+	print("StateMachine initial_state is EnemyMove.")
 
-	if state_machine.state != enemy_wait:
-		printerr("TEST FAILED: Current state is not EnemyWait.")
+	if state_machine.state != enemy_move:
+		printerr("TEST FAILED: Current state is not EnemyMove.")
 		get_tree().quit(1)
 		return
-	print("StateMachine current state is EnemyWait.")
+	print("StateMachine current state is EnemyMove.")
 
-	if enemy_wait.enemy != enemy:
-		printerr("TEST FAILED: EnemyWait.enemy is not wired to Enemy.")
+	if enemy_move.character != enemy:
+		printerr("TEST FAILED: EnemyMove.character is not wired to Enemy.")
 		get_tree().quit(1)
 		return
-	print("EnemyWait.enemy reference verified.")
+	print("EnemyMove.character reference verified.")
 
-	if enemy_stun.enemy != enemy:
-		printerr("TEST FAILED: EnemyStun.enemy is not wired to Enemy.")
+	if enemy_stun.character != enemy:
+		printerr("TEST FAILED: EnemyStun.character is not wired to Enemy.")
 		get_tree().quit(1)
 		return
-	print("EnemyStun.enemy reference verified.")
+	print("EnemyStun.character reference verified.")
 
-	if enemy_stun.next_state != enemy_wait:
-		printerr("TEST FAILED: EnemyStun.next_state is not wired to EnemyWait.")
+	if enemy_stun.next_state != enemy_move:
+		printerr("TEST FAILED: EnemyStun.next_state is not wired to EnemyMove.")
 		get_tree().quit(1)
 		return
-	print("EnemyStun.next_state wired to EnemyWait.")
+	print("EnemyStun.next_state wired to EnemyMove.")
 
 	if enemy.stun_state != enemy_stun:
 		printerr("TEST FAILED: Enemy.stun_state is not wired to EnemyStun.")
@@ -305,11 +309,11 @@ func _ready() -> void:
 		return
 	print("EnemyDefeat node found.")
 
-	if enemy_defeat.enemy != enemy:
-		printerr("TEST FAILED: EnemyDefeat.enemy is not wired to Enemy.")
+	if enemy_defeat.character != enemy:
+		printerr("TEST FAILED: EnemyDefeat.character is not wired to Enemy.")
 		get_tree().quit(1)
 		return
-	print("EnemyDefeat.enemy reference verified.")
+	print("EnemyDefeat.character reference verified.")
 
 	if enemy.defeat_state != enemy_defeat:
 		printerr("TEST FAILED: Enemy.defeat_state is not wired to EnemyDefeat.")
@@ -317,27 +321,42 @@ func _ready() -> void:
 		return
 	print("Enemy.defeat_state export verified.")
 
-	# Verify EnemyWait.enter sets WalkSpace and blend_target = -1.0
-	enemy_wait.enter("")
-	var anim_tree_script_inst: Object = anim_tree
-	var blend_target_val: Variant = anim_tree_script_inst.get("blend_target")
-	if blend_target_val == null or not is_equal_approx(float(blend_target_val), -1.0):
-		printerr("TEST FAILED: blend_target was not set to -1.0 on enter. Got: ", blend_target_val)
+	# Verify AIStateMachine & AIWait
+	var ai_sm: StateMachine = enemy.ai_state_machine
+	if ai_sm == null:
+		printerr("TEST FAILED: Enemy.ai_state_machine is null.")
 		get_tree().quit(1)
 		return
-	print("EnemyWait.enter() verified (blend_target = -1.0).")
+	var ai_wait: AIWait = ai_sm.get_node_or_null("AIWait") as AIWait
+	if ai_wait == null:
+		printerr("TEST FAILED: AIWait node not found under AIStateMachine.")
+		get_tree().quit(1)
+		return
+	if ai_sm.initial_state != ai_wait:
+		printerr("TEST FAILED: AIStateMachine initial_state is not AIWait.")
+		get_tree().quit(1)
+		return
+	if ai_wait.character != enemy:
+		printerr("TEST FAILED: AIWait.character is not wired to Enemy.")
+		get_tree().quit(1)
+		return
+	print("AIStateMachine and AIWait verified.")
+
+	# Verify EnemyMove.enter sets WalkSpace
+	enemy_move.enter("")
+	print("EnemyMove.enter() verified.")
 
 	# Test core_movement with direction
 	var move_dir := Vector3(1.0, 0.0, 0.0)
-	enemy_wait.core_movement(enemy.base_speed, move_dir)
-	if not is_equal_approx(enemy.velocity.x, enemy.base_speed) or not is_equal_approx(enemy.velocity.z, 0.0):
+	enemy_move.core_movement(0.1, enemy.movement_speed, move_dir)
+	if not is_equal_approx(enemy.velocity.x, enemy.movement_speed) or not is_equal_approx(enemy.velocity.z, 0.0):
 		printerr("TEST FAILED: core_movement did not set velocity correctly with direction.")
 		get_tree().quit(1)
 		return
 	print("core_movement with direction verified.")
 
 	# Test core_movement deceleration with ZERO direction
-	enemy_wait.core_movement(enemy.base_speed, Vector3.ZERO)
+	enemy_move.core_movement(0.1, enemy.movement_speed, Vector3.ZERO)
 	if not is_equal_approx(enemy.velocity.x, 0.0):
 		printerr("TEST FAILED: core_movement did not decelerate velocity to 0.")
 		get_tree().quit(1)
@@ -407,14 +426,14 @@ func _ready() -> void:
 		return
 	print("StateMachine transition to EnemyStun on damage verified!")
 
-	# Simulate animation finish on AnimationTree to verify return to EnemyWait
+	# Simulate animation finish on AnimationTree to verify return to EnemyMove
 	anim_tree.animation_finished.emit("Stun")
 	await get_tree().process_frame
-	if state_machine.state != enemy_wait:
-		printerr("TEST FAILED: StateMachine did not return to EnemyWait after animation finished. Got: ", state_machine.state.name)
+	if state_machine.state != enemy_move:
+		printerr("TEST FAILED: StateMachine did not return to EnemyMove after animation finished. Got: ", state_machine.state.name)
 		get_tree().quit(1)
 		return
-	print("StateMachine returned to EnemyWait after stun animation finished!")
+	print("StateMachine returned to EnemyMove after stun animation finished!")
 
 	# Test defeat emission and transition to EnemyDefeat
 	var enemy_defeat_emitted: Array[bool] = [false]
@@ -694,7 +713,7 @@ func _ready() -> void:
 
 	# Verify LevelTemplate player replacement via player_cache
 	var cached_player_scene: PackedScene = preload("res://Player/player.tscn")
-	var cached_player: Player = cached_player_scene.instantiate() as Player
+	var cached_player: Character = cached_player_scene.instantiate() as Character
 	scene_trans.add_child(cached_player)
 	cached_player.process_mode = Node.PROCESS_MODE_DISABLED
 	cached_player.health_component.current_health = 42.0
@@ -734,9 +753,9 @@ func _ready() -> void:
 	scene_trans.player_cache = null
 	test_level.queue_free()
 
-	var level_enemy: Enemy = TestUtils.find_enemy(level)
-	if level_enemy == null:
-		printerr("TEST FAILED: No Enemy subclass instance found via TestUtils in LevelTemplate scene.")
+	var level_enemy: Character = TestUtils.find_enemy(level)
+	if level_enemy == null or not level_enemy.is_in_group("enemy"):
+		printerr("TEST FAILED: No enemy Character instance found via TestUtils in LevelTemplate scene.")
 		level.queue_free()
 		get_tree().quit(1)
 		return
@@ -938,12 +957,12 @@ func _ready() -> void:
 		printerr("TEST FAILED: Could not load res://Enemy/ranged_enemy.tscn")
 		get_tree().quit(1)
 		return
-	var ranged_enemy: Enemy = ranged_scene.instantiate() as Enemy
-	if ranged_enemy == null:
-		printerr("TEST FAILED: RangedEnemy is not an instance of Enemy.")
+	var ranged_enemy: Character = ranged_scene.instantiate() as Character
+	if ranged_enemy == null or not (ranged_enemy is Character) or not ranged_enemy.is_in_group("enemy"):
+		printerr("TEST FAILED: RangedEnemy is not a Character instance in group 'enemy'.")
 		get_tree().quit(1)
 		return
-	print("RangedEnemy instance verified as Enemy subclass.")
+	print("RangedEnemy instance verified as Character subclass in group 'enemy'.")
 	
 	var ranged_floor := StaticBody3D.new()
 	var rf_col := CollisionShape3D.new()
@@ -976,135 +995,113 @@ func _ready() -> void:
 		return
 	print("EnemyAttack.attack_name verified as 'RangedAttack'.")
 	
-	if ranged_attack.enemy != ranged_enemy:
-		printerr("TEST FAILED: EnemyAttack.enemy does not point to RangedEnemy.")
+	if ranged_attack.character != ranged_enemy:
+		printerr("TEST FAILED: EnemyAttack.character does not point to RangedEnemy.")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyAttack.enemy reference verified.")
-	
-	var ranged_wait: EnemyWait = ranged_enemy.get_node_or_null("StateMachine/EnemyWait") as EnemyWait
-	if ranged_wait == null:
-		printerr("TEST FAILED: EnemyWait node missing under RangedEnemy StateMachine.")
+	print("EnemyAttack.character reference verified.")
+
+	var spawner: ProjectileSpawnerComponent = ranged_enemy.get_node_or_null("ProjectileSpawnerComponent") as ProjectileSpawnerComponent
+	if spawner == null:
+		printerr("TEST FAILED: ProjectileSpawnerComponent missing on RangedEnemy.")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyWait node verified under RangedEnemy StateMachine.")
-	
-	if ranged_wait.next_state != ranged_attack:
-		printerr("TEST FAILED: EnemyWait.next_state does not point to EnemyAttack. Got: ", ranged_wait.next_state)
+	if spawner.character != ranged_enemy:
+		printerr("TEST FAILED: ProjectileSpawnerComponent.character does not point to RangedEnemy.")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyWait.next_state -> EnemyAttack verified.")
-	
-	# Verify EnemyMeander node and initial state
-	var ranged_meander: EnemyMeander = ranged_enemy.get_node_or_null("StateMachine/EnemyMeander") as EnemyMeander
-	if ranged_meander == null:
-		printerr("TEST FAILED: EnemyMeander node missing under RangedEnemy StateMachine.")
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("EnemyMeander node verified under RangedEnemy StateMachine.")
-	
-	if ranged_meander.enemy != ranged_enemy:
-		printerr("TEST FAILED: EnemyMeander.enemy does not point to RangedEnemy.")
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("EnemyMeander.enemy reference verified.")
-	
-	if ranged_meander.attack_state != ranged_attack:
-		printerr("TEST FAILED: EnemyMeander.attack_state does not point to EnemyAttack. Got: ", ranged_meander.attack_state)
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("EnemyMeander.attack_state -> EnemyAttack verified.")
-	
-	if not is_equal_approx(ranged_meander.attack_range, 4.0):
-		printerr("TEST FAILED: EnemyMeander.attack_range expected 4.0, got: ", ranged_meander.attack_range)
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("EnemyMeander.attack_range (4.0) verified.")
-	
-	if ranged_attack.next_state.size() != 2 or not ranged_attack.next_state.has(ranged_wait) or not ranged_attack.next_state.has(ranged_meander):
-		printerr("TEST FAILED: EnemyAttack.next_state array is improper: ", ranged_attack.next_state)
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("EnemyAttack.next_state array [EnemyWait, EnemyMeander] verified.")
-	
-	if ranged_enemy.navigation_agent_3d.debug_enabled:
-		printerr("TEST FAILED: RangedEnemy NavigationAgent3D.debug_enabled is still true (should be false).")
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("RangedEnemy NavigationAgent3D.debug_enabled verified as false.")
-	
+	print("ProjectileSpawnerComponent verified on RangedEnemy.")
+
 	var ranged_sm: StateMachine = ranged_enemy.get_node_or_null("StateMachine") as StateMachine
-	if ranged_sm.initial_state != ranged_meander:
-		printerr("TEST FAILED: RangedEnemy initial state is not EnemyMeander. Got: ", ranged_sm.initial_state.name if ranged_sm.initial_state else "null")
+	var ranged_move: EnemyMove = ranged_sm.get_node_or_null("EnemyMove") as EnemyMove
+	if ranged_move == null or ranged_sm.initial_state != ranged_move:
+		printerr("TEST FAILED: RangedEnemy StateMachine initial_state is not EnemyMove.")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("RangedEnemy initial_state is EnemyMeander.")
-	
-	# Verify EnemyMeander enter() sets WalkSpace and blend_target = 1.0
-	if not is_equal_approx(ranged_enemy.animation_tree.blend_target, 1.0):
-		printerr("TEST FAILED: EnemyMeander did not set animation_tree.blend_target to 1.0. Got: ", ranged_enemy.animation_tree.blend_target)
+	print("RangedEnemy StateMachine initial_state is EnemyMove.")
+
+	var ranged_ai_sm: AIStateMachine = ranged_enemy.ai_state_machine as AIStateMachine
+	if ranged_ai_sm == null:
+		printerr("TEST FAILED: RangedEnemy AIStateMachine missing.")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyMeander enter() set blend_target = 1.0 verified.")
 	
-	# Verify distance_to_player() calculation and attack transition
-	var test_player_inst: Player = load("res://Player/player.tscn").instantiate() as Player
-	test_player_inst.add_to_group("player")
+	var ranged_meander: AIMeander = ranged_ai_sm.get_node_or_null("AIMeander") as AIMeander
+	var ranged_wait: AIWait = ranged_ai_sm.get_node_or_null("AIWait") as AIWait
+	var ranged_ai_attack: AIAttack = ranged_ai_sm.get_node_or_null("AIAttack") as AIAttack
+	if ranged_meander == null or ranged_wait == null or ranged_ai_attack == null:
+		printerr("TEST FAILED: AI states missing under RangedEnemy AIStateMachine (AIMeander, AIWait, AIAttack).")
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if ranged_ai_sm.initial_state != ranged_meander:
+		printerr("TEST FAILED: RangedEnemy AIStateMachine initial_state is not AIMeander.")
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if ranged_meander.attack_state != ranged_ai_attack or not is_equal_approx(ranged_meander.attack_range, 4.0):
+		printerr("TEST FAILED: AIMeander attack_state or attack_range mismatch (expected AIAttack and 4.0).")
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if ranged_wait.next_state != ranged_ai_attack or not is_equal_approx(ranged_wait.wait_duration, 2.0):
+		printerr("TEST FAILED: AIWait next_state or wait_duration mismatch (expected AIAttack and 2.0s).")
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if ranged_ai_attack.attack_state_name != "EnemyAttack" or ranged_ai_attack.next_states.size() != 2 or not ranged_ai_attack.next_states.has(ranged_wait) or not ranged_ai_attack.next_states.has(ranged_meander):
+		printerr("TEST FAILED: AIAttack next_states mismatch (expected [AIWait, AIMeander]).")
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("RangedEnemy AIStateMachine (AIMeander, AIWait, AIAttack) configuration verified.")
+	
+	# Verify target acquisition and proximity attack trigger
+	var test_player_inst: Character = load("res://Player/player.tscn").instantiate() as Character
 	add_child(test_player_inst)
-	ranged_enemy.player = test_player_inst
-	ranged_enemy.global_position = Vector3(0, 0, 0)
-	test_player_inst.global_position = Vector3(3, 0, 0)
-	if not is_equal_approx(ranged_enemy.distance_to_player(), 3.0):
-		printerr("TEST FAILED: distance_to_player() expected 3.0, got: ", ranged_enemy.distance_to_player())
+	ranged_enemy.global_position = Vector3.ZERO
+	test_player_inst.global_position = Vector3(3.0, 0.0, 0.0)
+	
+	var resolved_target: Character = ranged_ai_sm.get_target()
+	if resolved_target != test_player_inst:
+		printerr("TEST FAILED: AIStateMachine.get_target() did not resolve player from group.")
 		test_player_inst.queue_free()
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("distance_to_player() verified.")
-	
-	# Proximity check triggers transition to EnemyAttack
+	print("AIStateMachine target acquisition from 'player' group verified.")
+
 	ranged_meander.physics_update(0.016)
 	await get_tree().process_frame
-	if ranged_sm.state != ranged_attack:
-		printerr("TEST FAILED: EnemyMeander did not transition to EnemyAttack when distance <= attack_range. Got: ", ranged_sm.state.name)
+	if ranged_ai_sm.state != ranged_ai_attack:
+		printerr("TEST FAILED: AIMeander did not transition AIStateMachine to AIAttack on proximity. Got: ", ranged_ai_sm.state.name if ranged_ai_sm.state else "null")
 		test_player_inst.queue_free()
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyMeander proximity attack trigger verified.")
+	if ranged_sm.state != ranged_attack:
+		printerr("TEST FAILED: AIAttack did not transition body StateMachine to EnemyAttack. Got: ", ranged_sm.state.name if ranged_sm.state else "null")
+		test_player_inst.queue_free()
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("AIMeander -> AIAttack -> EnemyAttack proximity attack trigger verified.")
 	test_player_inst.queue_free()
-	
-	# Verify EnemyAttack transitions back randomly to EnemyWait or EnemyMeander via end_attack
+
+	# Verify EnemyAttack transitions back to EnemyMove via end_attack
 	ranged_attack.end_attack("RangedAttack")
 	await get_tree().process_frame
-	if ranged_sm.state != ranged_wait and ranged_sm.state != ranged_meander:
-		printerr("TEST FAILED: end_attack() did not transition RangedEnemy to EnemyWait or EnemyMeander. Got: ", ranged_sm.state.name)
+	if ranged_sm.state != ranged_move:
+		printerr("TEST FAILED: end_attack() did not transition RangedEnemy back to EnemyMove. Got: ", ranged_sm.state.name if ranged_sm.state else "null")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("RangedEnemy transitioned to random next state (", ranged_sm.state.name, ") successfully via end_attack()!")
-	
-	# Verify EnemyWait transitions to EnemyAttack via end_wait
-	ranged_sm.state = ranged_wait
-	ranged_wait.end_wait()
-	await get_tree().process_frame
-	if ranged_sm.state != ranged_attack:
-		printerr("TEST FAILED: end_wait() did not transition RangedEnemy to EnemyAttack. Got: ", ranged_sm.state.name)
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("RangedEnemy transitioned to EnemyAttack successfully via end_wait()!")
+	print("RangedEnemy transitioned to EnemyMove successfully via end_attack()!")
 	
 	ranged_enemy.queue_free()
 	ranged_floor.queue_free()
@@ -1287,7 +1284,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Could not load res://Player/player.tscn")
 		get_tree().quit(1)
 		return
-	var test_player: Player = player_scene.instantiate() as Player
+	var test_player: Character = player_scene.instantiate() as Character
 	if not test_player.is_in_group("player"):
 		printerr("TEST FAILED: Player is not in group 'player'.")
 		test_player.queue_free()
@@ -1299,31 +1296,32 @@ func _ready() -> void:
 	add_child(test_player)
 	test_player.global_position = Vector3(5.0, 0.0, 0.0)
 
-	var shooter: RangedEnemy = ranged_scene.instantiate() as RangedEnemy
+	var shooter: Character = ranged_scene.instantiate() as Character
 	add_child(shooter)
 	shooter.global_position = Vector3.ZERO
 	await get_tree().physics_frame
 	await get_tree().process_frame
 
-	if shooter.player != test_player:
-		printerr("TEST FAILED: shooter.player did not resolve test_player from group 'player'.")
+	var resolved_shooter_target: Character = shooter.get_nearest_target("player")
+	if resolved_shooter_target != test_player:
+		printerr("TEST FAILED: shooter did not resolve test_player from group 'player'.")
 		shooter.queue_free()
 		test_player.queue_free()
 		get_tree().quit(1)
 		return
-	print("shooter.player successfully found Player via group.")
+	print("shooter successfully found Player via group.")
 
-	if shooter.attack_bone == null:
-		printerr("TEST FAILED: RangedEnemy attack_bone is null.")
+	var spawner_comp: ProjectileSpawnerComponent = shooter.get_node_or_null("ProjectileSpawnerComponent") as ProjectileSpawnerComponent
+	if spawner_comp == null or spawner_comp.spawn_point == null:
+		printerr("TEST FAILED: RangedEnemy ProjectileSpawnerComponent or spawn_point is null.")
 		shooter.queue_free()
 		test_player.queue_free()
 		get_tree().quit(1)
 		return
-	print("RangedEnemy attack_bone assigned: ", shooter.attack_bone.name)
+	print("RangedEnemy spawn_point assigned: ", spawner_comp.spawn_point.name)
 
-	# Test look_at_player on EnemyWait
-	var shooter_wait: EnemyWait = shooter.get_node_or_null("StateMachine/EnemyWait") as EnemyWait
-	shooter_wait.look_at_player()
+	# Test look_at_target
+	shooter.look_at_target(test_player.global_position)
 	# The enemy mesh_mount should now face towards the player
 	# With use_model_front = true, mesh_mount +Z basis points towards the target
 	var facing_dir: Vector3 = shooter.mesh_mount.global_transform.basis.z.normalized()
@@ -1336,11 +1334,10 @@ func _ready() -> void:
 		test_player.queue_free()
 		get_tree().quit(1)
 		return
-	print("look_at_player oriented mesh_mount towards player (dot: ", facing_dir.dot(expected_dir), ") verified.")
-
+	print("look_at_target oriented mesh_mount towards player (dot: ", facing_dir.dot(expected_dir), ") verified.")
 
 	# Test projectile spawned matches mesh_mount global_rotation.y
-	shooter._on_weapon_slot_ranged_attack()
+	spawner_comp.spawn_projectile()
 	var spawned_proj: EnemyProjectile = null
 	for c: Node in shooter.get_children():
 		if c is EnemyProjectile:
@@ -1360,9 +1357,9 @@ func _ready() -> void:
 		return
 	print("Spawned projectile rotation.y matches mesh_mount.global_rotation.y verified.")
 
-	# Verify position matched attack_bone
-	if not spawned_proj.global_position.is_equal_approx(shooter.attack_bone.global_position):
-		printerr("TEST FAILED: Spawned projectile position does not match attack_bone.")
+	# Verify position matched spawn_point
+	if not spawned_proj.global_position.is_equal_approx(spawner_comp.spawn_point.global_position):
+		printerr("TEST FAILED: Spawned projectile position does not match spawn_point.")
 		shooter.queue_free()
 		test_player.queue_free()
 		get_tree().quit(1)
@@ -1726,7 +1723,7 @@ func _ready() -> void:
 
 	# Test player speed upgrade functionality
 	var player_scene_upgrade: PackedScene = load("res://Player/player.tscn")
-	var upgrade_player: Player = player_scene_upgrade.instantiate() as Player
+	var upgrade_player: Character = player_scene_upgrade.instantiate() as Character
 	add_child(upgrade_player)
 	add_child(speed_icon)
 	await get_tree().process_frame
@@ -1805,7 +1802,7 @@ func _ready() -> void:
 
 	# Test player damage upgrade functionality
 	var player_scene_dmg: PackedScene = load("res://Player/player.tscn")
-	var dmg_player: Player = player_scene_dmg.instantiate() as Player
+	var dmg_player: Character = player_scene_dmg.instantiate() as Character
 	add_child(dmg_player)
 	add_child(damage_icon)
 	await get_tree().process_frame
@@ -1870,7 +1867,7 @@ func _ready() -> void:
 
 	# Test player health upgrade functionality
 	var player_scene_hp: PackedScene = load("res://Player/player.tscn")
-	var hp_player: Player = player_scene_hp.instantiate() as Player
+	var hp_player: Character = player_scene_hp.instantiate() as Character
 	add_child(hp_player)
 	hp_player.health_component.take_damage(20.0) # Reduce health from 60 to 40
 	add_child(health_icon)
@@ -1952,9 +1949,9 @@ func _ready() -> void:
 		printerr("TEST FAILED: Could not load res://Enemy/melee_enemy.tscn")
 		get_tree().quit(1)
 		return
-	var melee_enemy: Enemy = melee_scene.instantiate() as Enemy
-	if melee_enemy == null:
-		printerr("TEST FAILED: MeleeEnemy root node is not an Enemy instance.")
+	var melee_enemy: Character = melee_scene.instantiate() as Character
+	if melee_enemy == null or not (melee_enemy is Character) or not melee_enemy.is_in_group("enemy"):
+		printerr("TEST FAILED: MeleeEnemy root node is not a Character instance in group 'enemy'.")
 		get_tree().quit(1)
 		return
 	var melee_floor := StaticBody3D.new()
@@ -1980,55 +1977,68 @@ func _ready() -> void:
 		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
-	var pursue_node: EnemyPursue = melee_sm.get_node_or_null("EnemyPursue") as EnemyPursue
+	var move_node: EnemyMove = melee_sm.get_node_or_null("EnemyMove") as EnemyMove
+	if move_node == null:
+		printerr("TEST FAILED: EnemyMove node not found under MeleeEnemy StateMachine.")
+		melee_enemy.queue_free()
+		melee_floor.queue_free()
+		get_tree().quit(1)
+		return
+	if melee_sm.initial_state != move_node:
+		printerr("TEST FAILED: MeleeEnemy initial_state is not EnemyMove. Got: ", melee_sm.initial_state)
+		melee_enemy.queue_free()
+		melee_floor.queue_free()
+		get_tree().quit(1)
+		return
+	print("MeleeEnemy body initial_state is EnemyMove.")
+
+	var melee_ai_sm: AIStateMachine = melee_enemy.ai_state_machine as AIStateMachine
+	if melee_ai_sm == null:
+		printerr("TEST FAILED: AIStateMachine not found in MeleeEnemy.")
+		melee_enemy.queue_free()
+		melee_floor.queue_free()
+		get_tree().quit(1)
+		return
+	var pursue_node: AIPursue = melee_ai_sm.get_node_or_null("AIPursue") as AIPursue
 	if pursue_node == null:
-		printerr("TEST FAILED: EnemyPursue node not found under MeleeEnemy StateMachine.")
+		printerr("TEST FAILED: AIPursue node not found under MeleeEnemy AIStateMachine.")
 		melee_enemy.queue_free()
 		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
-	if melee_sm.initial_state != pursue_node:
-		printerr("TEST FAILED: MeleeEnemy initial_state is not EnemyPursue. Got: ", melee_sm.initial_state)
+	if melee_ai_sm.initial_state != pursue_node:
+		printerr("TEST FAILED: MeleeEnemy AI initial_state is not AIPursue. Got: ", melee_ai_sm.initial_state)
 		melee_enemy.queue_free()
 		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
-	print("MeleeEnemy initial_state is EnemyPursue.")
+	print("MeleeEnemy AI initial_state is AIPursue.")
 
-	if pursue_node.attack_state == null:
-		printerr("TEST FAILED: EnemyPursue.attack_state is null.")
+	if pursue_node.attack_state_name != "EnemyAttack":
+		printerr("TEST FAILED: AIPursue.attack_state_name is not EnemyAttack.")
 		melee_enemy.queue_free()
 		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyPursue.attack_state export verified.")
+	print("AIPursue.attack_state_name export verified.")
 
-	if pursue_node.enemy != melee_enemy:
-		printerr("TEST FAILED: EnemyPursue.enemy does not point to MeleeEnemy.")
+	if pursue_node.character != melee_enemy:
+		printerr("TEST FAILED: AIPursue.character does not point to MeleeEnemy.")
 		melee_enemy.queue_free()
 		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyPursue.enemy reference verified.")
+	print("AIPursue.character reference verified.")
 
-	# Verify pursue enter() sets blend_target to 1.0 (running)
-	pursue_node.enter("")
-	if not is_equal_approx(melee_enemy.animation_tree.blend_target, 1.0):
-		printerr("TEST FAILED: EnemyPursue.enter() did not set blend_target to 1.0. Got: ", melee_enemy.animation_tree.blend_target)
-		melee_enemy.queue_free()
-		melee_floor.queue_free()
-		get_tree().quit(1)
-		return
-
-	# Verify pursue fall_state export points to EnemyFall
+	# Verify move_node fall_state export points to EnemyFall
 	var melee_fall: EnemyFall = melee_sm.get_node_or_null("EnemyFall") as EnemyFall
-	if melee_fall == null or pursue_node.fall_state != melee_fall:
-		printerr("TEST FAILED: EnemyPursue.fall_state is not wired to EnemyFall.")
+	if melee_fall == null or move_node.fall_state != melee_fall:
+		printerr("TEST FAILED: EnemyMove.fall_state is not wired to EnemyFall.")
 		melee_enemy.queue_free()
 		melee_floor.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyPursue hierarchy, StateMachine, and EnemyFall wiring verified.")
+	print("MeleeEnemy hierarchy, StateMachine, AIStateMachine, and EnemyFall wiring verified.")
 
 	melee_floor.queue_free()
 	melee_enemy.queue_free()
@@ -2106,48 +2116,46 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	# 3. Verify MeleeEnemy StateMachine wiring & transitions
-	var test_melee: Enemy = melee_scene.instantiate() as Enemy
+	var test_melee: Character = melee_scene.instantiate() as Character
 	add_child(test_melee)
 	await get_tree().physics_frame
 	var melee_sm_node: StateMachine = test_melee.get_node_or_null("StateMachine") as StateMachine
 	var stun_node: EnemyStun = melee_sm_node.get_node_or_null("EnemyStun") as EnemyStun
-	var pursue_state: EnemyPursue = melee_sm_node.get_node_or_null("EnemyPursue") as EnemyPursue
+	var move_state: EnemyMove = melee_sm_node.get_node_or_null("EnemyMove") as EnemyMove
 	var attack_node: EnemyAttack = melee_sm_node.get_node_or_null("EnemyAttack") as EnemyAttack
-	if stun_node == null or stun_node.next_state != pursue_state:
-		printerr("TEST FAILED: EnemyStun.next_state expected EnemyPursue, got: ", stun_node.next_state if stun_node else "null")
+	var test_melee_ai_sm: AIStateMachine = test_melee.ai_state_machine as AIStateMachine
+	var pursue_state: AIPursue = test_melee_ai_sm.get_node_or_null("AIPursue") as AIPursue
+
+	if stun_node == null or stun_node.next_state != move_state:
+		printerr("TEST FAILED: EnemyStun.next_state expected EnemyMove, got: ", stun_node.next_state if stun_node else "null")
 		test_melee.queue_free()
 		get_tree().quit(1)
 		return
-	if attack_node == null or attack_node.attack_name != "MeleeAttack" or attack_node.next_state.is_empty() or attack_node.next_state[0] != pursue_state:
-		printerr("TEST FAILED: EnemyAttack not configured with attack_name MeleeAttack or next_state EnemyPursue.")
+	if attack_node == null or attack_node.attack_name != "MeleeAttack" or attack_node.next_state.is_empty() or attack_node.next_state[0] != move_state:
+		printerr("TEST FAILED: EnemyAttack not configured with attack_name MeleeAttack or next_state EnemyMove.")
 		test_melee.queue_free()
 		get_tree().quit(1)
 		return
-	if pursue_state == null or pursue_state.attack_state != attack_node:
-		printerr("TEST FAILED: EnemyPursue.attack_state expected EnemyAttack, got: ", pursue_state.attack_state if pursue_state else "null")
+	if pursue_state == null or pursue_state.attack_state_name != "EnemyAttack":
+		printerr("TEST FAILED: AIPursue.attack_state_name expected EnemyAttack, got: ", pursue_state.attack_state_name if pursue_state else "null")
 		test_melee.queue_free()
 		get_tree().quit(1)
 		return
-	print("MeleeEnemy EnemyStun, EnemyPursue, and EnemyAttack state wiring verified.")
+	print("MeleeEnemy EnemyStun, EnemyMove, EnemyAttack, and AIPursue state wiring verified.")
 
 	# 4. Verify Pursue -> Attack transition on player proximity
-	var p_player: Player = load("res://Player/player.tscn").instantiate() as Player
+	var p_player: Character = load("res://Player/player.tscn").instantiate() as Character
 	add_child(p_player)
-	test_melee.player = p_player
 	p_player.global_position = test_melee.global_position + Vector3(1.5, 0.0, 0.0) # within attack_range (3.0)
-	var transition_result := {"transitioned": false, "state": ""}
-	pursue_state.finished.connect(func(target_state: String) -> void:
-		transition_result.transitioned = true
-		transition_result.state = target_state
-	)
 	pursue_state.physics_update(0.1)
-	if not transition_result.transitioned or transition_result.state != "EnemyAttack":
-		printerr("TEST FAILED: EnemyPursue did not emit finished(EnemyAttack) when in range. Emitted: ", transition_result.state)
+	await get_tree().process_frame
+	if melee_sm_node.state != attack_node:
+		printerr("TEST FAILED: AIPursue did not transition body StateMachine to EnemyAttack when in range. Got: ", melee_sm_node.state.name if melee_sm_node.state else "null")
 		p_player.queue_free()
 		test_melee.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyPursue proximity transition to EnemyAttack verified.")
+	print("AIPursue proximity transition to EnemyAttack verified.")
 	p_player.queue_free()
 	test_melee.queue_free()
 	await get_tree().process_frame
@@ -2156,7 +2164,7 @@ func _ready() -> void:
 	# PART 30: Melee AttackComponent, Area3D Hitbox & Damage (Lecture 83)
 	# ---------------------------------------------------------
 	print("\n>>> PART 30: Melee AttackComponent, Area3D Hitbox & Damage")
-	var melee_inst: Enemy = melee_scene.instantiate() as Enemy
+	var melee_inst: Character = melee_scene.instantiate() as Character
 	add_child(melee_inst)
 	await get_tree().physics_frame
 	await get_tree().process_frame
@@ -2295,7 +2303,7 @@ func _ready() -> void:
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	melee_attack_state.enter("EnemyPursue")
+	melee_attack_state.enter("EnemyMove")
 	if not att_comp.temporary_exceptions.is_empty():
 		printerr("TEST FAILED: EnemyAttack.enter() did not clear temporary_exceptions.")
 		dummy_col.queue_free()
@@ -2306,7 +2314,7 @@ func _ready() -> void:
 	print("EnemyAttack.enter() attack_component.reset_exceptions() verified.")
 
 	# 3. Verify Player collision_layer == 17 (Layer 1 + Layer 5)
-	var player_chk: CharacterBody3D = load("res://Player/player.tscn").instantiate() as CharacterBody3D
+	var player_chk: Character = load("res://Player/player.tscn").instantiate() as Character
 	if player_chk == null or player_chk.collision_layer != 17:
 		printerr("TEST FAILED: Player collision_layer expected 17, got: ", player_chk.collision_layer if player_chk else "null")
 		if player_chk: player_chk.queue_free()
@@ -2326,8 +2334,8 @@ func _ready() -> void:
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	for spawned_enemy: Enemy in mixed_wave_obj.all_enemies:
-		if spawned_enemy == null or not (spawned_enemy is Enemy):
+	for spawned_enemy: Character in mixed_wave_obj.all_enemies:
+		if spawned_enemy == null or not (spawned_enemy is Character) or not spawned_enemy.is_in_group("enemy"):
 			printerr("TEST FAILED: WaveObjective spawned invalid enemy instance.")
 			mixed_wave_obj.queue_free()
 			melee_inst.queue_free()
@@ -2343,8 +2351,12 @@ func _ready() -> void:
 
 	# 1. Base Enemy KnockbackComponent verification
 	var base_enemy_scene: PackedScene = load("res://Enemy/enemy.tscn")
-	var base_enemy: Enemy = base_enemy_scene.instantiate() as Enemy
+	var base_enemy: Character = base_enemy_scene.instantiate() as Character
+	base_enemy.position = Vector3(10.0, 1.0, 10.0)
 	add_child(base_enemy)
+	base_enemy.velocity = Vector3(0.0, -1.0, 0.0)
+	base_enemy.move_and_slide()
+	await get_tree().physics_frame
 	await get_tree().process_frame
 	if base_enemy.knockback_component == null:
 		printerr("TEST FAILED: Base Enemy knockback_component is null.")
@@ -2405,7 +2417,7 @@ func _ready() -> void:
 
 	# 5. PlayerAttack knockback export (15.0)
 	var player_scene_kb: PackedScene = load("res://Player/player.tscn")
-	var test_player_kb: Player = player_scene_kb.instantiate() as Player
+	var test_player_kb: Character = player_scene_kb.instantiate() as Character
 	var player_attack1: PlayerState = test_player_kb.get_node_or_null("StateMachine/PlayerAttack") as PlayerState
 	if player_attack1 == null or not is_equal_approx(float(player_attack1.get("knockback")), 15.0):
 		printerr("TEST FAILED: PlayerAttack knockback expected 15.0, got: ", player_attack1.get("knockback") if player_attack1 else "null")
@@ -2422,7 +2434,7 @@ func _ready() -> void:
 	# >>> PART 33: Falling Enemies, EnemyFall State & Run Reset Polish <<<
 	print("\n>>> PART 33: EnemyFall State, Fall Transitions & Polish")
 	var base_enemy_scene_p33: PackedScene = load("res://Enemy/enemy.tscn")
-	var base_enemy_inst_p33: Enemy = base_enemy_scene_p33.instantiate() as Enemy
+	var base_enemy_inst_p33: Character = base_enemy_scene_p33.instantiate() as Character
 	add_child(base_enemy_inst_p33)
 	
 	var p33_sm: Node = base_enemy_inst_p33.get_node("StateMachine")
@@ -2441,54 +2453,54 @@ func _ready() -> void:
 		return
 	print("EnemyFall.land_state wired to EnemyStun verified.")
 	
-	if p33_fall.enemy != base_enemy_inst_p33:
-		printerr("TEST FAILED: EnemyFall.enemy is not wired to base Enemy.")
+	if p33_fall.character != base_enemy_inst_p33:
+		printerr("TEST FAILED: EnemyFall.character is not wired to base Character.")
 		base_enemy_inst_p33.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyFall.enemy wiring verified.")
+	print("EnemyFall.character wiring verified.")
 	
-	# Verify fall_state wired on EnemyWait, EnemyStun, EnemyDefeat
-	var p33_wait: EnemyState = p33_sm.get_node("EnemyWait") as EnemyState
-	var p33_stun: EnemyState = p33_sm.get_node("EnemyStun") as EnemyState
-	var p33_defeat: EnemyState = p33_sm.get_node("EnemyDefeat") as EnemyState
-	if p33_wait.fall_state != p33_fall or p33_stun.fall_state != p33_fall or p33_defeat.fall_state != p33_fall:
-		printerr("TEST FAILED: fall_state is not wired to EnemyFall on EnemyWait, EnemyStun, or EnemyDefeat.")
+	# Verify fall_state wired on EnemyMove, EnemyStun, EnemyDefeat
+	var p33_move: CharacterState = p33_sm.get_node("EnemyMove") as CharacterState
+	var p33_stun: CharacterState = p33_sm.get_node("EnemyStun") as CharacterState
+	var p33_defeat: CharacterState = p33_sm.get_node("EnemyDefeat") as CharacterState
+	if p33_move.fall_state != p33_fall or p33_stun.fall_state != p33_fall or p33_defeat.fall_state != p33_fall:
+		printerr("TEST FAILED: fall_state is not wired to EnemyFall on EnemyMove, EnemyStun, or EnemyDefeat.")
 		base_enemy_inst_p33.queue_free()
 		get_tree().quit(1)
 		return
-	print("fall_state on EnemyWait, EnemyStun, and EnemyDefeat wired to EnemyFall verified.")
+	print("fall_state on EnemyMove, EnemyStun, and EnemyDefeat wired to EnemyFall verified.")
 	
 	# Verify melee_enemy.tscn wiring
 	var melee_scene_p33: PackedScene = load("res://Enemy/melee_enemy.tscn")
-	var melee_inst_p33: Enemy = melee_scene_p33.instantiate() as Enemy
+	var melee_inst_p33: Character = melee_scene_p33.instantiate() as Character
 	var melee_sm_p33: Node = melee_inst_p33.get_node("StateMachine")
-	var melee_fall_p33: EnemyState = melee_sm_p33.get_node("EnemyFall") as EnemyState
-	var melee_pursue_p33: EnemyState = melee_sm_p33.get_node("EnemyPursue") as EnemyState
-	var melee_attack_p33: EnemyState = melee_sm_p33.get_node("EnemyAttack") as EnemyState
-	if melee_pursue_p33.fall_state != melee_fall_p33 or melee_attack_p33.fall_state != melee_fall_p33:
-		printerr("TEST FAILED: fall_state on EnemyPursue or EnemyAttack in melee_enemy.tscn not wired to EnemyFall.")
+	var melee_fall_p33: CharacterState = melee_sm_p33.get_node("EnemyFall") as CharacterState
+	var melee_move_p33: CharacterState = melee_sm_p33.get_node("EnemyMove") as CharacterState
+	var melee_attack_p33: CharacterState = melee_sm_p33.get_node("EnemyAttack") as CharacterState
+	if melee_move_p33.fall_state != melee_fall_p33 or melee_attack_p33.fall_state != melee_fall_p33:
+		printerr("TEST FAILED: fall_state on EnemyMove or EnemyAttack in melee_enemy.tscn not wired to EnemyFall.")
 		base_enemy_inst_p33.queue_free()
 		melee_inst_p33.queue_free()
 		get_tree().quit(1)
 		return
-	print("MeleeEnemy EnemyPursue & EnemyAttack fall_state wiring verified.")
+	print("MeleeEnemy EnemyMove & EnemyAttack fall_state wiring verified.")
 	melee_inst_p33.queue_free()
 	
 	# Verify ranged_enemy.tscn wiring
 	var ranged_scene_p33: PackedScene = load("res://Enemy/ranged_enemy.tscn")
-	var ranged_inst_p33: Enemy = ranged_scene_p33.instantiate() as Enemy
+	var ranged_inst_p33: Character = ranged_scene_p33.instantiate() as Character
 	var ranged_sm_p33: Node = ranged_inst_p33.get_node("StateMachine")
-	var ranged_fall_p33: EnemyState = ranged_sm_p33.get_node("EnemyFall") as EnemyState
-	var ranged_meander_p33: EnemyState = ranged_sm_p33.get_node("EnemyMeander") as EnemyState
-	var ranged_attack_p33: EnemyState = ranged_sm_p33.get_node("EnemyAttack") as EnemyState
-	if ranged_meander_p33.fall_state != ranged_fall_p33 or ranged_attack_p33.fall_state != ranged_fall_p33:
-		printerr("TEST FAILED: fall_state on EnemyMeander or EnemyAttack in ranged_enemy.tscn not wired to EnemyFall.")
+	var ranged_fall_p33: CharacterState = ranged_sm_p33.get_node("EnemyFall") as CharacterState
+	var ranged_move_p33: CharacterState = ranged_sm_p33.get_node("EnemyMove") as CharacterState
+	var ranged_attack_p33: CharacterState = ranged_sm_p33.get_node("EnemyAttack") as CharacterState
+	if ranged_move_p33.fall_state != ranged_fall_p33 or ranged_attack_p33.fall_state != ranged_fall_p33:
+		printerr("TEST FAILED: fall_state on EnemyMove or EnemyAttack in ranged_enemy.tscn not wired to EnemyFall.")
 		base_enemy_inst_p33.queue_free()
 		ranged_inst_p33.queue_free()
 		get_tree().quit(1)
 		return
-	print("RangedEnemy EnemyMeander & EnemyAttack fall_state wiring verified.")
+	print("RangedEnemy EnemyMove & EnemyAttack fall_state wiring verified.")
 	ranged_inst_p33.queue_free()
 	
 	# Verify EnemyFall.physics_update() sets velocity to gravity
@@ -2500,10 +2512,10 @@ func _ready() -> void:
 		return
 	print("EnemyFall.physics_update gravity velocity verified.")
 	
-	# Verify EnemyState.core_movement() emits fall_state when not on floor
+	# Verify CharacterState.core_movement() emits fall_state when not on floor
 	var state_transitioned := {"target": ""}
-	p33_wait.finished.connect(func(next: String) -> void: state_transitioned["target"] = next)
-	p33_wait.core_movement(base_enemy_inst_p33.base_speed, Vector3(1, 0, 0))
+	p33_move.finished.connect(func(next: String) -> void: state_transitioned["target"] = next)
+	p33_move.core_movement(0.1, base_enemy_inst_p33.movement_speed, Vector3(1, 0, 0))
 	if state_transitioned["target"] != "EnemyFall":
 		printerr("TEST FAILED: core_movement did not emit EnemyFall when not on floor. Got: ", state_transitioned["target"])
 		base_enemy_inst_p33.queue_free()
@@ -2548,7 +2560,7 @@ func _ready() -> void:
 	
 	# Verify Player.reset_game_state() sets GlobalVars.level = 1
 	var player_scene_p33: PackedScene = load("res://Player/player.tscn")
-	var player_inst_p33: Player = player_scene_p33.instantiate() as Player
+	var player_inst_p33: Character = player_scene_p33.instantiate() as Character
 	GlobalVars.level = 5
 	player_inst_p33.reset_game_state()
 	if GlobalVars.level != 1:

@@ -17,7 +17,7 @@ func _ready() -> void:
 	print("WorldBoundary found at position: ", world_boundary.global_position)
 	
 	# 2. Verify Player health_component defeat signal connection to reset_game_state
-	var player: Player = level.get_node("Player") as Player
+	var player: Character = level.get_node("Player") as Character
 	if not player.health_component.defeat.is_connected(player.reset_game_state):
 		printerr("TEST FAILED: Player health_component defeat is not connected to reset_game_state.")
 		level.queue_free()

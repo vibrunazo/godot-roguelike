@@ -1,0 +1,199 @@
+## Unified base class for all characters (Player and Enemies).
+## Distinguishes team and role via attached components and assigned groups ("player" vs "enemy").
+class_name Character
+extends CharacterBody3D
+
+## Emitted when this character's health reaches zero.
+signal defeat
+
+## Emitted when this character's health changes.
+signal health_changed(value: float)
+
+## Base movement speed in meters per second.
+@export var movement_speed: float = 8.0
+## Exponential decay rate for orientation smoothing.
+@export var decay: float = 12.0
+## Overall damage percentage stat (default 100.0 = 100%).
+@export var damage_stat: float = 100.0
+## The visual mount node rotated to face movement or aim directions.
+@export var mesh_mount: Node3D
+## Reference to the character's HealthComponent.
+@export var health_component: HealthComponent
+## Reference to the character's KnockbackComponent.
+@export var knockback_component: KnockbackComponent
+## Reference to the character's AnimationTree.
+@export var animation_tree: AnimationTree
+## Physical body StateMachine.
+@export var state_machine: StateMachine
+## Optional AI StateMachine (Mind) for AI-controlled characters.
+@export var ai_state_machine: StateMachine
+## Optional NavigationAgent3D for pathfinding.
+@export var navigation_agent_3d: NavigationAgent3D
+## Primary collision shape of this character body.
+@export var collision_shape_3d: CollisionShape3D
+## Optional Area3D weapon hitbox for melee attacks.
+@export var weapon_hitbox: Area3D
+## State entered when this character is damaged / stunned.
+@export var stun_state: State
+## State entered when this character is defeated.
+@export var defeat_state: State
+
+## Desired movement direction vector (normalized), provided by PlayerInputComponent or AIStateMachine.
+var move_direction: Vector3 = Vector3.ZERO
+## Aim direction vector in 3D world space.
+var aim_direction: Vector3 = Vector3.ZERO
+## Facing direction override in 3D world space (if non-zero, mesh faces this direction).
+var face_direction: Vector3 = Vector3.ZERO
+
+
+func _ready() -> void:
+	if health_component == null:
+		health_component = get_node_or_null("HealthComponent") as HealthComponent
+	if knockback_component == null:
+		knockback_component = get_node_or_null("KnockbackComponent") as KnockbackComponent
+	if state_machine == null:
+		state_machine = get_node_or_null("StateMachine") as StateMachine
+	if ai_state_machine == null:
+		ai_state_machine = get_node_or_null("AIStateMachine") as StateMachine
+	if navigation_agent_3d == null:
+		navigation_agent_3d = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
+	if collision_shape_3d == null:
+		collision_shape_3d = get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if mesh_mount == null:
+		mesh_mount = get_node_or_null("AnimationAnchor") as Node3D
+		if mesh_mount == null:
+			mesh_mount = get_node_or_null("GamedevTV_Mannequin_Medium") as Node3D
+	if animation_tree == null:
+		animation_tree = find_child("AnimationTree", true, false) as AnimationTree
+	if stun_state == null and state_machine != null:
+		stun_state = state_machine.get_node_or_null("EnemyStun") as State
+	if defeat_state == null and state_machine != null:
+		defeat_state = state_machine.get_node_or_null("EnemyDefeat") as State
+
+	if health_component != null:
+		if not health_component.health_changed.is_connected(_on_health_component_health_changed):
+			health_component.health_changed.connect(_on_health_component_health_changed)
+		if not health_component.defeat.is_connected(_on_health_component_defeat):
+			health_component.defeat.connect(_on_health_component_defeat)
+		if is_player() and not health_component.defeat.is_connected(reset_game_state):
+			health_component.defeat.connect(reset_game_state)
+
+	if weapon_hitbox != null:
+		var att_comp: AttackComponent = weapon_hitbox.get_node_or_null("AttackComponent") as AttackComponent
+		if att_comp != null:
+			att_comp.add_exception(self)
+
+
+## Returns true if the character is alive (current_health > 0).
+func is_alive() -> bool:
+	if health_component != null:
+		return health_component.current_health > 0.0
+	return true
+
+
+## Smoothly rotates the mesh_mount towards the given direction using exponential decay.
+func look_toward_direction(direction: Vector3, delta: float) -> void:
+	if not is_alive() or direction.is_zero_approx() or mesh_mount == null:
+		return
+	var target_transform: Transform3D = mesh_mount.global_transform
+	target_transform = target_transform.looking_at(mesh_mount.global_position + direction, Vector3.UP, true)
+	mesh_mount.global_transform = mesh_mount.global_transform.interpolate_with(
+		target_transform,
+		1.0 - exp(-decay * delta)
+	)
+
+
+## Instantly points the mesh_mount towards the target position on the XZ plane.
+func look_at_target(target: Vector3) -> void:
+	if not is_alive() or mesh_mount == null:
+		return
+	var target_pos: Vector3 = target
+	target_pos.y = mesh_mount.global_position.y
+	if mesh_mount.global_position.is_equal_approx(target_pos):
+		return
+	mesh_mount.look_at(target_pos, Vector3.UP, true)
+
+
+## Returns the damage scaling modifier (damage_stat / 100.0).
+func get_damage_modifier() -> float:
+	return damage_stat / 100.0
+
+
+## Returns true if this character is in the "player" group.
+func is_player() -> bool:
+	return is_in_group("player")
+
+
+## Returns true if this character is in the "enemy" group.
+func is_enemy() -> bool:
+	return is_in_group("enemy")
+
+
+## Returns the opposing team group name ("enemy" for player, "player" for enemy).
+func get_opposing_group() -> String:
+	return "enemy" if is_player() else "player"
+
+
+## Finds the nearest alive Character in the specified group (or opposing group by default).
+func get_nearest_target(group_name: String = "") -> Character:
+	var target_group: String = group_name if not group_name.is_empty() else get_opposing_group()
+	var nodes: Array[Node] = get_tree().get_nodes_in_group(target_group)
+	var closest_char: Character = null
+	var min_distance_sq: float = INF
+	for node: Node in nodes:
+		if node == self or not (node is Character):
+			continue
+		var target_char: Character = node as Character
+		if target_char.health_component != null and target_char.health_component.current_health <= 0.0:
+			continue
+		var dist_sq: float = global_position.distance_squared_to(target_char.global_position)
+		if dist_sq < min_distance_sq:
+			min_distance_sq = dist_sq
+			closest_char = target_char
+	return closest_char
+
+
+## Returns the distance in meters to another character, or INF if invalid.
+func distance_to_character(other: Character) -> float:
+	if not is_instance_valid(other):
+		return INF
+	return global_position.distance_to(other.global_position)
+
+
+## Resets game state and reloads level on player defeat.
+func reset_game_state() -> void:
+	GlobalVars.level = 1
+	if is_inside_tree():
+		get_tree().reload_current_scene.call_deferred()
+
+
+func _on_health_component_health_changed(value: float) -> void:
+	health_changed.emit(value)
+	if is_player():
+		reset_game_camera_shake()
+	if stun_state != null and state_machine != null and state_machine.state != null:
+		state_machine.state.finished.emit(stun_state.name)
+
+
+func _on_health_component_defeat() -> void:
+	defeat.emit()
+	move_direction = Vector3.ZERO
+	aim_direction = Vector3.ZERO
+	face_direction = Vector3.ZERO
+	velocity = Vector3.ZERO
+	if ai_state_machine != null:
+		ai_state_machine.command_stop()
+		ai_state_machine.set_physics_process(false)
+		ai_state_machine.set_process_unhandled_input(false)
+	if defeat_state != null and state_machine != null and state_machine.state != null:
+		state_machine.state.finished.emit(defeat_state.name)
+	if collision_shape_3d != null:
+		collision_shape_3d.set_deferred("disabled", true)
+
+
+func reset_game_camera_shake() -> void:
+	if not is_inside_tree():
+		return
+	var camera: ShakeCamera3D = get_viewport().get_camera_3d() as ShakeCamera3D
+	if camera != null:
+		camera.quick_shake(1.0)

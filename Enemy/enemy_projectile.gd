@@ -30,7 +30,7 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node3D) -> void:
 	if _is_hit or is_queued_for_deletion():
 		return
-	if body == self or body == get_parent() or body is Enemy:
+	if body == self or body == get_parent() or (body is Character and (body as Character).is_enemy()):
 		return
 	_is_hit = true
 	if attack_component:
@@ -42,7 +42,7 @@ func _on_body_entered(body: Node3D) -> void:
 func _on_area_entered(area: Area3D) -> void:
 	if _is_hit or is_queued_for_deletion():
 		return
-	if area == self or area.get_parent() == get_parent() or area.get_parent() is Enemy:
+	if area == self or area.get_parent() == get_parent() or (area.get_parent() is Character and (area.get_parent() as Character).is_enemy()):
 		return
 	_is_hit = true
 	if attack_component:

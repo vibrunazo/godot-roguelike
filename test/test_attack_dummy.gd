@@ -8,7 +8,7 @@ func _ready() -> void:
 	var level: Node3D = level_scene.instantiate() as Node3D
 	add_child(level)
 	
-	var player: Player = level.get_node("Player") as Player
+	var player: Character = level.get_node("Player") as Character
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
 	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
@@ -32,8 +32,8 @@ func _ready() -> void:
 	# Position player in front of dummy and face it
 	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.3)
 	var dir: Vector3 = Vector3(0, 0, 1)
-	var target: Transform3D = player.player_root.global_transform.looking_at(player.player_root.global_position + dir, Vector3.UP, true)
-	player.player_root.global_transform = target
+	var target: Transform3D = player.mesh_mount.global_transform.looking_at(player.mesh_mount.global_position + dir, Vector3.UP, true)
+	player.mesh_mount.global_transform = target
 	
 	await get_tree().physics_frame
 	await get_tree().physics_frame
