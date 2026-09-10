@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://Singletons/global_vars.gd" id="1_vars"]
 [ext_resource type="PackedScene" path="res://UserInterface/upgrade_damage.tscn" id="2_dmg"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://Enemy/enemy_projectile.tscn" id="7_proj"]
 [ext_resource type="PackedScene" path="res://Enemy/fireball_hit.tscn" id="8_hit"]
 [ext_resource type="PackedScene" path="res://Singletons/VFX/damage_number.tscn" id="9_dmgnum"]
+[ext_resource type="PackedScene" path="res://Singletons/VFX/target_reticle.tscn" id="11_reticle"]
 [ext_resource type="PackedScene" path="res://UserInterface/upgrade_shop.tscn" id="10_shop"]
 [ext_resource type="Curve" path="res://Singletons/difficulty_curve.tres" id="11_curve"]
 
@@ -23,4 +24,5 @@ enemy_ranged_scene = ExtResource("6_ranged")
 enemy_projectile_scene = ExtResource("7_proj")
 fireball_hit_scene = ExtResource("8_hit")
 damage_number_scene = ExtResource("9_dmgnum")
+target_reticle_scene = ExtResource("11_reticle")
 upgrade_shop_scene = ExtResource("10_shop")

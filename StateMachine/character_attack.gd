@@ -97,11 +97,31 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 
 	attack_timer = get_tree().create_timer(queued_attack_time)
 	attack_timer.timeout.connect(attempt_queue_attack)
+	character.is_attacking = true
 	var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
 	if input_comp != null:
 		input_comp.update_aim_intent()
 	aim_direction = character.aim_direction
+	_aim_at_current_target()
 	_arm_lunge()
+
+
+## Overrides the snapshotted aim with the direction to the character's
+## current_target when one is valid, so attacks rotate toward the auto-aim
+## target instead of the mouse aim. Writes back to character.aim_direction so
+## snapshot and intent stay consistent for the rest of the attack.
+func _aim_at_current_target() -> void:
+	if character == null:
+		return
+	var target: Node3D = character.current_target
+	if target == null or not is_instance_valid(target):
+		return
+	var to_target: Vector3 = target.global_position - character.global_position
+	to_target.y = 0.0
+	if to_target.is_zero_approx():
+		return
+	aim_direction = to_target.normalized()
+	character.aim_direction = aim_direction
 
 
 ## Arms the forward lunge when dash exports are set. The lunge starts when the
@@ -240,6 +260,8 @@ func check_attack() -> bool:
 
 func exit() -> void:
 	queued_attack = false
+	if character != null:
+		character.is_attacking = false
 	_clear_lunge()
 	_clear_hitstop()
 	if attack_timer != null:

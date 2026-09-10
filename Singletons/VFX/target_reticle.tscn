@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://bdd6qt1dd2vr8"]
+
+[ext_resource type="Script" uid="uid://b4ac5y86hmctp" path="res://Singletons/VFX/target_reticle.gd" id="1_reticle"]
+
+[sub_resource type="Gradient" id="Gradient_reticle"]
+offsets = PackedFloat32Array(0, 0.7, 0.78, 0.88, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0.85, 1, 1, 1, 0.85, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_reticle"]
+gradient = SubResource("Gradient_reticle")
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[node name="TargetReticle" type="Node2D" unique_id=1804858385]
+visible = false
+script = ExtResource("1_reticle")
+height_offset = 0.0
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=591471166]
+scale = Vector2(0.4, 0.4)
+texture = SubResource("GradientTexture2D_reticle")

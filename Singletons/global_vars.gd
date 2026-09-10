@@ -28,6 +28,8 @@ extends Node
 @export var fireball_hit_scene: PackedScene
 ## Floating combat text spawned by VfxManager on damage.
 @export var damage_number_scene: PackedScene
+## Player-only target reticle spawned once by VfxManager. Enemies never spawn it.
+@export var target_reticle_scene: PackedScene
 ## Shop scene opened by ExitPoint when no explicit next scene is set.
 @export var upgrade_shop_scene: PackedScene
 

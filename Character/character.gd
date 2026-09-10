@@ -9,6 +9,9 @@ signal defeat
 ## Emitted when this character's health changes.
 signal health_changed(value: float)
 
+## Emitted when the auto-aim target changes (including clearing to null).
+signal target_changed(new_target: Node3D)
+
 ## Base movement speed in meters per second.
 @export var movement_speed: float = 8.0
 ## Exponential decay rate for orientation smoothing.
@@ -40,6 +43,12 @@ signal health_changed(value: float)
 ## Optional cooldown timer preventing dash spamming. Wired on the player;
 ## characters without one (enemies) are always ready and rely on AI gating.
 @export var dash_cooldown: Timer
+## Maximum distance in meters at which auto-aim acquires opposing characters.
+## Values <= 0.0 disable auto-aim acquisition entirely.
+@export var auto_aim_range: float = 5.0
+## Minimum interval in seconds between auto-aim target re-evaluations, so the
+## target does not flicker every tick when candidates sit at similar distances.
+@export var target_retarget_cooldown: float = 0.3
 
 ## Desired movement direction vector (normalized), provided by PlayerInputComponent or AIStateMachine.
 var move_direction: Vector3 = Vector3.ZERO
@@ -53,8 +62,17 @@ var attack_requested: bool = false
 ## Edge-triggered dash request, raised by either controller (PlayerInputComponent
 ## polling or AIStateMachine commands) and consumed exactly once by body states.
 var dash_requested: bool = false
+## Current auto-aim target for attacks and the player reticle. Null when no
+## valid target exists. Written by the auto-aim tick; read by attack states.
+var current_target: Node3D = null
+## True while the body StateMachine is inside an attack state. Set by
+## CharacterAttack enter/exit; while true the auto-aim target never changes
+## (a plain bool avoids a static CharacterAttack reference cycle here).
+var is_attacking: bool = false
 
 var _is_defeated: bool = false
+## Time in seconds until the next allowed auto-aim re-evaluation.
+var _retarget_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -96,6 +114,92 @@ func _ready() -> void:
 		var att_comp: AttackComponent = weapon_hitbox.get_node_or_null("AttackComponent") as AttackComponent
 		if att_comp != null:
 			att_comp.add_exception(self)
+
+
+func _physics_process(delta: float) -> void:
+	_update_auto_aim(delta)
+
+
+## Advances auto-aim: drops invalid targets, then re-evaluates the nearest
+## opposing character within auto_aim_range at most every
+## target_retarget_cooldown seconds. Never changes the target while an attack
+## is running (covers combo chains, which stay inside attack states), except
+## clearing a freed node to avoid holding a dangling reference.
+func _update_auto_aim(delta: float) -> void:
+	if not is_inside_tree() or not is_alive():
+		return
+	if is_attacking:
+		if current_target != null and not is_instance_valid(current_target):
+			_set_current_target(null)
+		return
+	if not _is_current_target_valid():
+		_set_current_target(null)
+	_retarget_timer -= delta
+	if _retarget_timer > 0.0:
+		return
+	_retarget_timer = target_retarget_cooldown
+	if auto_aim_range <= 0.0:
+		return
+	var nearest: Character = get_nearest_target()
+	if nearest != null and global_position.distance_to(nearest.global_position) <= auto_aim_range:
+		_set_current_target(nearest)
+
+
+## Returns true when the current target is still a usable aim point: a live
+## node within auto-aim range (Characters must additionally be alive).
+func _is_current_target_valid() -> bool:
+	if current_target == null or not is_instance_valid(current_target):
+		return false
+	if current_target is Character and not (current_target as Character).is_alive():
+		return false
+	if global_position.distance_to(current_target.global_position) > auto_aim_range:
+		return false
+	return true
+
+
+## Resets the retarget cooldown so the next physics tick re-evaluates the
+## target immediately. Used by tests and event-driven retarget triggers.
+func force_retarget() -> void:
+	_retarget_timer = 0.0
+
+
+## Assigns the auto-aim target, emitting target_changed only on real changes.
+## Tracks the new target's death (and untracks the old one) so a kill drops
+## the corpse at once instead of lingering until the next tick.
+func _set_current_target(new_target: Node3D) -> void:
+	if new_target == current_target:
+		return
+	_disconnect_target_death()
+	current_target = new_target
+	_connect_target_death()
+	target_changed.emit(new_target)
+
+
+## Watches the current target's death signal when it is a Character, so the
+## kill clears synchronously. Non-Character targets have no death signal and
+## stay covered by the per-tick validity check.
+func _connect_target_death() -> void:
+	if current_target != null and is_instance_valid(current_target) and current_target is Character:
+		var target_char: Character = current_target as Character
+		if not target_char.defeat.is_connected(_on_target_defeat):
+			target_char.defeat.connect(_on_target_defeat)
+
+
+## Stops watching the previous target. Safe against already-freed targets.
+func _disconnect_target_death() -> void:
+	if current_target != null and is_instance_valid(current_target) and current_target is Character:
+		var target_char: Character = current_target as Character
+		if target_char.defeat.is_connected(_on_target_defeat):
+			target_char.defeat.disconnect(_on_target_defeat)
+
+
+## Drops a killed target the same frame it dies and re-arms immediate
+## re-evaluation, so the next tick outside an attack acquires a living
+## replacement without waiting out the retarget cooldown. Dead nodes are
+## never valid targets, even while still sitting in the level.
+func _on_target_defeat() -> void:
+	_set_current_target(null)
+	_retarget_timer = 0.0
 
 
 ## Returns true if the character is alive (current_health > 0 and not defeated).
@@ -215,6 +319,8 @@ func on_defeat() -> void:
 	move_direction = Vector3.ZERO
 	aim_direction = Vector3.ZERO
 	face_target = Vector3.ZERO
+	_set_current_target(null)
+	is_attacking = false
 	velocity = Vector3.ZERO
 	if ai_state_machine != null:
 		ai_state_machine.command_stop()
