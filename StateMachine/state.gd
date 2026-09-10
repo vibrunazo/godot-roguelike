@@ -27,3 +27,19 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 ## to clean up the state.
 func exit() -> void:
 	pass
+
+## Connects a callback to a signal for one-shot delivery, ignoring duplicate
+## connects. Use in enter() for fire-once signals (e.g. animation_finished);
+## pair with disconnect_safe() in exit() so early interruptions never leave
+## stale callbacks that would transition the machine after the state is gone.
+func connect_one_shot(sig: Signal, callback: Callable) -> void:
+	if not sig.is_connected(callback):
+		sig.connect(callback, CONNECT_ONE_SHOT)
+
+## Disconnects a callback from a signal, silently skipping when not connected.
+## Use in exit() (and early-cancel paths) for connections made in enter().
+## The guard avoids "non-existent connection" errors when a one-shot signal
+## already fired and auto-disconnected before the state exited.
+func disconnect_safe(sig: Signal, callback: Callable) -> void:
+	if sig.is_connected(callback):
+		sig.disconnect(callback)

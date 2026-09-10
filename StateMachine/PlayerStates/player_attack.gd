@@ -51,8 +51,7 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 
 	if character.animation_tree != null:
 		character.animation_tree.change_immediate(attack_animation_name)
-		if not character.animation_tree.animation_finished.is_connected(finish_attack):
-			character.animation_tree.animation_finished.connect(finish_attack, CONNECT_ONE_SHOT)
+		connect_one_shot(character.animation_tree.animation_finished, finish_attack)
 
 	attack_timer = get_tree().create_timer(queued_attack_time)
 	attack_timer.timeout.connect(attempt_queue_attack)
@@ -67,8 +66,8 @@ func handle_input(_event: InputEvent) -> void:
 		var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
 		if input_comp != null and input_comp.can_dash():
 			queued_attack = false
-			if attack_timer != null and attack_timer.timeout.is_connected(attempt_queue_attack):
-				attack_timer.timeout.disconnect(attempt_queue_attack)
+			if attack_timer != null:
+				disconnect_safe(attack_timer.timeout, attempt_queue_attack)
 			check_dash(_event)
 			return
 	if _event.is_action_pressed("click"):
@@ -77,11 +76,10 @@ func handle_input(_event: InputEvent) -> void:
 
 func exit() -> void:
 	queued_attack = false
-	if attack_timer != null and attack_timer.timeout.is_connected(attempt_queue_attack):
-		attack_timer.timeout.disconnect(attempt_queue_attack)
+	if attack_timer != null:
+		disconnect_safe(attack_timer.timeout, attempt_queue_attack)
 	if character != null and character.animation_tree != null:
-		if character.animation_tree.animation_finished.is_connected(finish_attack):
-			character.animation_tree.animation_finished.disconnect(finish_attack)
+		disconnect_safe(character.animation_tree.animation_finished, finish_attack)
 	if attack_component != null:
 		attack_component.reset_exceptions()
 

@@ -21,14 +21,12 @@ func physics_update(_delta: float) -> void:
 func enter(_previous_state_path: String, _data := {}) -> void:
 	if character != null and character.animation_tree != null:
 		character.animation_tree.change_immediate("Stun")
-		if not character.animation_tree.animation_finished.is_connected(end_stun):
-			character.animation_tree.animation_finished.connect(end_stun, CONNECT_ONE_SHOT)
+		connect_one_shot(character.animation_tree.animation_finished, end_stun)
 
 
 func exit() -> void:
 	if character != null and character.animation_tree != null:
-		if character.animation_tree.animation_finished.is_connected(end_stun):
-			character.animation_tree.animation_finished.disconnect(end_stun)
+		disconnect_safe(character.animation_tree.animation_finished, end_stun)
 
 
 func end_stun(_animation_name: String) -> void:

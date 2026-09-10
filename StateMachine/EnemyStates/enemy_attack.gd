@@ -32,14 +32,12 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 
 	if character != null and character.animation_tree != null:
 		character.animation_tree.change_immediate(attack_name)
-		if not character.animation_tree.animation_finished.is_connected(end_attack):
-			character.animation_tree.animation_finished.connect(end_attack, CONNECT_ONE_SHOT)
+		connect_one_shot(character.animation_tree.animation_finished, end_attack)
 
 
 func exit() -> void:
 	if character != null and character.animation_tree != null:
-		if character.animation_tree.animation_finished.is_connected(end_attack):
-			character.animation_tree.animation_finished.disconnect(end_attack)
+		disconnect_safe(character.animation_tree.animation_finished, end_attack)
 	if attack_component != null:
 		attack_component.reset_exceptions()
 

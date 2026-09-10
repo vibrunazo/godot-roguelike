@@ -78,12 +78,17 @@ This document tracks architectural improvements, optimizations, and technical de
 
 ---
 
-## 6. Signal Lifecycle & Redundant Disconnections in States
+## 6. Signal Lifecycle & Redundant Disconnections in States [RESOLVED]
+- **Status**: Completed. Established a uniform signal lifecycle pattern: one-shot wiring via `State.connect_one_shot()` in `enter()`, cleanup via `State.disconnect_safe()` in `exit()` and early-cancel paths.
 - **Problem**:
   - Multiple state scripts connect to signals using `ConnectFlags.CONNECT_ONE_SHOT` (e.g., `animation_finished.connect(..., CONNECT_ONE_SHOT)`), but also defensively call `disconnect(...)` in `exit()`.
   - This leads to potential disconnection warnings or unnecessary boilerplate guards across states.
-- **Refactoring Options**:
-  - Establish a uniform, clean signal lifecycle pattern across all state machines (either rely consistently on `CONNECT_ONE_SHOT` with safe cleanup helpers, or manage connection lifetime cleanly in `enter()` / `exit()`).
+- **Resolution**:
+  - Added two documented helpers on the `State` base class (`res://StateMachine/state.gd`), inherited by every state: `connect_one_shot(sig, callback)` (guarded one-shot connect) and `disconnect_safe(sig, callback)` (guarded disconnect, silent no-op when already disconnected, e.g. after a one-shot fired).
+  - Converted all four one-shot sites to the helpers: `AIWait` (wait timer), `EnemyAttack` / `EnemyStun` / `PlayerAttack` (`animation_finished`). `PlayerAttack`'s persistent `attack_timer` wiring keeps its plain `connect()` (by design) but now uses `disconnect_safe()` for both `exit()` and dash-cancel cleanup.
+  - Note: the `exit()` disconnects are load-bearing, not redundant — `StateMachine._transition_to_next_state()` does not filter stale emitters, so an interrupted state (dash-cancel, stun) must unwire `animation_finished` or the late signal would force a spurious transition.
+  - Added `test/test_signal_lifecycle.tscn` covering helper idempotence (no duplicate connects, fires once, safe no-op disconnect) and a dash-cancel regression test asserting exit unwires `animation_finished` and no stale transition occurs afterward. Negative control verified: with the `exit()` cleanup removed, the suite fails at the wiring assertion.
+  - All 14 test suites pass cleanly with exit code 0 (`python run_tests.py`).
 
 ---
 
