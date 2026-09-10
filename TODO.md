@@ -47,12 +47,15 @@ This document tracks architectural improvements, optimizations, and technical de
 
 ---
 
-## 3. `ShakeCamera3D` Idle CPU Optimization
+## 3. `ShakeCamera3D` Idle CPU Optimization [RESOLVED]
+- **Status**: Completed. `ShakeCamera3D` now gates physics processing on trauma level, eliminating per-tick noise sampling and offset writes while idle.
 - **Problem**:
   - `ShakeCamera3D._physics_process()` executes every single tick regardless of trauma level, continually generating FastNoiseLite noise values and modifying camera offsets even when `trauma == 0.0`.
-- **Refactoring Options**:
-  - Disable physics processing by default via `set_physics_process(false)`.
-  - Enable processing in `add_trauma()` when trauma is applied, and call `set_physics_process(false)` as soon as trauma decays back to `0.0` and offsets are reset.
+- **Resolution**:
+  - Added a typed setter on the exported `trauma` property: assigning a value `> 0.0` calls `set_physics_process(true)`; assigning `0.0` resets `h_offset`/`v_offset` and calls `set_physics_process(false)`. This covers both `quick_shake()` (whose decay Tween writes through the setter) and direct `trauma` assignments.
+  - `quick_shake()` explicitly enables physics processing up front so the first shake frames run even before the Tween's `.from()` value applies.
+  - `_ready()` initializes processing state from the starting trauma (`set_physics_process(trauma > 0.0)`), and `_physics_process()` disables itself as a safety net once trauma reaches `0.0` and offsets are reset.
+  - Extended `test/test_shake_camera.gd` with idle/shake/decay assertions on `is_physics_processing()` plus direct-assignment setter gating coverage.
 
 ---
 

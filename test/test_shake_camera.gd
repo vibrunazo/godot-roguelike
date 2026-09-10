@@ -45,6 +45,39 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Zero trauma test passed: h_offset = 0.0, v_offset = 0.0")
+
+	# 3b. Verify physics processing is disabled while idle (TODO #3 optimization)
+	if camera.is_physics_processing():
+		printerr("TEST FAILED: Expected physics processing disabled at zero trauma.")
+		player.queue_free()
+		await get_tree().physics_frame
+		get_tree().quit(1)
+		return
+	print("Idle optimization verified: physics processing disabled at zero trauma.")
+
+	# 3c. Verify direct trauma assignment gates physics processing via setter
+	camera.trauma = 0.5
+	if not camera.is_physics_processing():
+		printerr("TEST FAILED: Setting trauma > 0 did not enable physics processing.")
+		player.queue_free()
+		await get_tree().physics_frame
+		get_tree().quit(1)
+		return
+	camera.trauma = 0.0
+	await get_tree().physics_frame
+	if camera.is_physics_processing():
+		printerr("TEST FAILED: Setting trauma to 0 did not disable physics processing.")
+		player.queue_free()
+		await get_tree().physics_frame
+		get_tree().quit(1)
+		return
+	if camera.h_offset != 0.0 or camera.v_offset != 0.0:
+		printerr("TEST FAILED: Setting trauma to 0 did not reset offsets.")
+		player.queue_free()
+		await get_tree().physics_frame
+		get_tree().quit(1)
+		return
+	print("Trauma setter gating verified: enabled above 0, disabled with offsets reset at 0.")
 	
 	# 4. Verify quick_shake sets trauma and applies offsets
 	camera.quick_shake(1.0)
@@ -57,7 +90,14 @@ func _ready() -> void:
 		await get_tree().physics_frame
 		get_tree().quit(1)
 		return
-		
+	if not camera.is_physics_processing():
+		printerr("TEST FAILED: quick_shake(1.0) did not enable physics processing.")
+		player.queue_free()
+		await get_tree().physics_frame
+		get_tree().quit(1)
+		return
+	print("quick_shake enabled physics processing for shake duration.")
+
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	print("Offsets during shake: h_offset = ", camera.h_offset, ", v_offset = ", camera.v_offset)
@@ -80,6 +120,13 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Trauma successfully decayed to 0.0!")
+	if camera.is_physics_processing():
+		printerr("TEST FAILED: Physics processing still enabled after trauma decayed to 0.0.")
+		player.queue_free()
+		await get_tree().physics_frame
+		get_tree().quit(1)
+		return
+	print("Physics processing disabled again after shake completed!")
 	
 	print("\n====================================================================")
 	print("  ALL SHAKE CAMERA TESTS PASSED!                                    ")
@@ -87,6 +134,7 @@ func _ready() -> void:
 	print("  2. Zero trauma results in zero camera offsets                     ")
 	print("  3. quick_shake produces dynamic h_offset & v_offset via noise      ")
 	print("  4. Trauma smoothly decays back to 0 via Tween                     ")
+	print("  5. Physics processing disabled at idle, gated by trauma setter   ")
 	print("====================================================================")
 	
 	player.queue_free()
