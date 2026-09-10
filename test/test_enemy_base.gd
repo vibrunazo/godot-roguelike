@@ -1114,6 +1114,11 @@ func _ready() -> void:
 		printerr("TEST FAILED: EnemyProjectile top_level is false.")
 		get_tree().quit(1)
 		return
+	if proj.physics_interpolation_mode != Node3D.PHYSICS_INTERPOLATION_MODE_ON:
+		printerr("TEST FAILED: EnemyProjectile physics interpolation is off; movement steps at physics rate.")
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile physics interpolation enabled (smooth render-rate motion).")
 	var proj_audio: AudioStreamPlayer3D = proj.get_node_or_null("AudioStreamPlayer3D") as AudioStreamPlayer3D
 	if proj_audio == null or not proj_audio.autoplay or proj_audio.bus != &"SFX":
 		printerr("TEST FAILED: EnemyProjectile AudioStreamPlayer3D improperly configured.")
