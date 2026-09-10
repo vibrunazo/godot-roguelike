@@ -8,17 +8,10 @@ func physics_update(_delta: float) -> void:
 		return
 	character.velocity = Vector3.ZERO
 	character.move_direction = Vector3.ZERO
-	character.face_direction = Vector3.ZERO
+	character.face_target = Vector3.ZERO
 	character.move_and_slide()
 
 
 func enter(_previous_state_path: String, _data := {}) -> void:
-	if character != null:
-		character.velocity = Vector3.ZERO
-		character.move_direction = Vector3.ZERO
-		character.face_direction = Vector3.ZERO
-		if character.ai_state_machine != null:
-			character.ai_state_machine.command_stop()
-			character.ai_state_machine.set_physics_process(false)
-		if character.animation_tree != null:
-			character.animation_tree.change_immediate("Defeat")
+	if character != null and character.animation_tree != null:
+		character.animation_tree.change_immediate("Defeat")

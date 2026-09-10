@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://d0l671aaonnqf"]
 
 [ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy.tscn" id="1_6jo5i"]
-[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_attack.gd" id="2_cnthi"]
-[ext_resource type="Script" path="res://Components/projectile_spawner_component.gd" id="3_proj"]
-[ext_resource type="Script" path="res://StateMachine/AIStates/ai_meander.gd" id="4_meander"]
-[ext_resource type="Script" path="res://StateMachine/AIStates/ai_attack.gd" id="5_attack"]
+[ext_resource type="Script" uid="uid://ebg6wepe60cc" path="res://StateMachine/EnemyStates/enemy_attack.gd" id="2_cnthi"]
+[ext_resource type="Script" uid="uid://0d7edkd4gwy7" path="res://Components/projectile_spawner_component.gd" id="3_proj"]
+[ext_resource type="Script" uid="uid://tkni8sall63a" path="res://StateMachine/AIStates/ai_meander.gd" id="4_meander"]
+[ext_resource type="Script" uid="uid://bhgh7i53ksl7o" path="res://StateMachine/AIStates/ai_attack.gd" id="5_attack"]
 
 [node name="RangedEnemy" unique_id=2117139762 instance=ExtResource("1_6jo5i")]
 

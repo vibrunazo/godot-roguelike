@@ -33,6 +33,7 @@ func _ready() -> void:
 	await test_part_6_ranged_projectile_spawner()
 	await test_part_7_ranged_enemy_ai_attack_timing()
 	await test_part_8_defeat_inactivity_and_rotation_lock()
+	await test_part_9_scattered_enemy_spawning()
 
 	print("\n====================================================================")
 	print("  ALL CHARACTER & AI STATE MACHINE TESTS PASSED!                    ")
@@ -42,8 +43,9 @@ func _ready() -> void:
 	print("  4. Dual State Machines (Body vs Mind) verified                   ")
 	print("  5. Stun state independence & seamless locomotion recovery ok     ")
 	print("  6. ProjectileSpawnerComponent on ranged characters verified      ")
-	print("  7. RangedEnemy attack timing (2s wait / meander cycle) verified  ")
+	print("  7. RangedEnemy attack timing & real polling path verified        ")
 	print("  8. Defeat inactivity & rotation lock on corpses verified        ")
+	print("  9. Scattered enemy spawning on navmesh verified                  ")
 	print("====================================================================")
 	get_tree().quit(0)
 
@@ -230,8 +232,8 @@ func test_part_4_dual_state_machines() -> void:
 		enemy.queue_free()
 		get_tree().quit(1)
 		return
-	if not enemy.face_direction.is_equal_approx(Vector3(0.0, 0.0, 1.0)):
-		printerr("TEST FAILED: command_move did not set character face_direction.")
+	if not enemy.face_target.is_equal_approx(Vector3(0.0, 0.0, 1.0)):
+		printerr("TEST FAILED: command_move did not set character face_target.")
 		enemy.queue_free()
 		get_tree().quit(1)
 		return
@@ -239,7 +241,7 @@ func test_part_4_dual_state_machines() -> void:
 	
 	# Test Mind issuing stop command
 	mind_sm.command_stop()
-	if not enemy.move_direction.is_zero_approx() or not enemy.face_direction.is_zero_approx():
+	if not enemy.move_direction.is_zero_approx() or not enemy.face_target.is_zero_approx():
 		printerr("TEST FAILED: command_stop did not clear intents.")
 		enemy.queue_free()
 		get_tree().quit(1)
@@ -352,7 +354,10 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 	print("\n>>> PART 7: Ranged Enemy AI Attack Timing & State Cycle")
 	var ranged_enemy: Character = RangedEnemyScene.instantiate() as Character
 	add_child(ranged_enemy)
-	ranged_enemy.global_position = Vector3.ZERO
+	ranged_enemy.global_position = Vector3(0.0, 1.0, 0.0)
+	ranged_enemy.velocity = Vector3(0.0, -1.0, 0.0)
+	ranged_enemy.move_and_slide()
+	await get_tree().physics_frame
 	await get_tree().process_frame
 
 	var ai_sm: AIStateMachine = ranged_enemy.ai_state_machine as AIStateMachine
@@ -404,8 +409,10 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 	# Verify proximity trigger in AIMeander transitions AI to AIAttack and Body to EnemyAttack
 	var player: Character = PlayerScene.instantiate() as Character
 	add_child(player)
-	player.global_position = Vector3(3.0, 0.0, 0.0) # within 4.0m
-	ai_meander.physics_update(0.016)
+	player.global_position = Vector3(3.0, 1.0, 0.0) # within 4.0m
+	player.velocity = Vector3(0.0, -1.0, 0.0)
+	player.move_and_slide()
+	await get_tree().physics_frame
 	await get_tree().process_frame
 
 	if ai_sm.state != ai_attack:
@@ -422,22 +429,43 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 		return
 	print("Proximity detection transitioned AI to AIAttack and Body to EnemyAttack.")
 
-	# Simulate attack finish: verify AI does NOT immediately re-attack on next frame,
-	# but transitions to either AIWait or AIMeander
-	ai_attack.end_attack()
-	await get_tree().process_frame
+	# 1. Verify real production polling path:
+	# When Body finishes EnemyAttack and transitions back to EnemyMove,
+	# AIAttack.physics_update() polls that state.name != attack_state_name and completes.
+	body_sm.state.finished.emit("EnemyMove")
+	if body_sm.state.name != "EnemyMove":
+		printerr("TEST FAILED: Body failed to transition back to EnemyMove.")
+		player.queue_free()
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+
+	# Run production polling update
+	ai_attack.physics_update(0.016)
 	if ai_sm.state == ai_attack:
-		printerr("TEST FAILED: AI immediately re-attacked on next frame instead of waiting/meandering!")
+		printerr("TEST FAILED: Polling path failed: AI remained in AIAttack after body left EnemyAttack!")
 		player.queue_free()
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
 	if ai_sm.state != ai_wait and ai_sm.state != ai_meander:
-		printerr("TEST FAILED: AI state after attack is neither AIWait nor AIMeander. Got: ", ai_sm.state.name if ai_sm.state else "null")
+		printerr("TEST FAILED: AI state after polled attack completion is neither AIWait nor AIMeander. Got: ", ai_sm.state.name if ai_sm.state else "null")
 		player.queue_free()
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
+	print("Production polling path verified: AI transitioned cleanly to ", ai_sm.state.name, " upon body leaving EnemyAttack.")
+
+	# 2. Unit check for manual end_attack() method
+	ai_sm._transition_to_next_state("AIAttack")
+	ai_attack.end_attack()
+	if ai_sm.state == ai_attack:
+		printerr("TEST FAILED: ai_attack.end_attack() unit check failed: AI remained in AIAttack!")
+		player.queue_free()
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("Unit check end_attack() verified.")
 	print("Post-attack transition verified: AI transitioned cleanly to ", ai_sm.state.name, " without spamming.")
 
 	player.queue_free()
@@ -451,8 +479,13 @@ func test_part_8_defeat_inactivity_and_rotation_lock() -> void:
 	var player: Character = PlayerScene.instantiate() as Character
 	add_child(melee_enemy)
 	add_child(player)
-	melee_enemy.global_position = Vector3.ZERO
-	player.global_position = Vector3(5.0, 0.0, 0.0)
+	melee_enemy.global_position = Vector3(0.0, 1.0, 0.0)
+	player.global_position = Vector3(5.0, 1.0, 0.0)
+	melee_enemy.velocity = Vector3(0.0, -1.0, 0.0)
+	player.velocity = Vector3(0.0, -1.0, 0.0)
+	melee_enemy.move_and_slide()
+	player.move_and_slide()
+	await get_tree().physics_frame
 	await get_tree().process_frame
 
 	var ai_sm: AIStateMachine = melee_enemy.ai_state_machine as AIStateMachine
@@ -493,7 +526,7 @@ func test_part_8_defeat_inactivity_and_rotation_lock() -> void:
 		return
 	print("AIStateMachine physics processing disabled on defeat verified.")
 
-	if not melee_enemy.move_direction.is_zero_approx() or not melee_enemy.face_direction.is_zero_approx():
+	if not melee_enemy.move_direction.is_zero_approx() or not melee_enemy.face_target.is_zero_approx():
 		printerr("TEST FAILED: Character intent vectors not zeroed on defeat.")
 		player.queue_free()
 		melee_enemy.queue_free()
@@ -526,7 +559,7 @@ func test_part_8_defeat_inactivity_and_rotation_lock() -> void:
 
 	# Attempt to command movement and attack via AIStateMachine on dead character
 	ai_sm.command_move(Vector3(1.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0))
-	if not melee_enemy.move_direction.is_zero_approx() or not melee_enemy.face_direction.is_zero_approx():
+	if not melee_enemy.move_direction.is_zero_approx() or not melee_enemy.face_target.is_zero_approx():
 		printerr("TEST FAILED: command_move set intents on a dead character!")
 		player.queue_free()
 		melee_enemy.queue_free()
@@ -546,5 +579,75 @@ func test_part_8_defeat_inactivity_and_rotation_lock() -> void:
 	player.queue_free()
 	melee_enemy.queue_free()
 	await get_tree().process_frame
+
+
+func test_part_9_scattered_enemy_spawning() -> void:
+	print("\n>>> PART 9: Scattered Enemy Spawning & Navmesh Placement")
+	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
+	if level_scene == null:
+		printerr("TEST FAILED: Could not load LevelTemplate.")
+		get_tree().quit(1)
+		return
+	var level: Node3D = level_scene.instantiate() as Node3D
+	add_child(level)
+	# Wait for navigation map sync (iteration > 0 and regions active)
+	var nav_map: RID = level.get_world_3d().navigation_map
+	for _i: int in range(10):
+		await get_tree().physics_frame
+		await get_tree().process_frame
+		if NavigationServer3D.map_get_iteration_id(nav_map) > 0 and not NavigationServer3D.map_get_regions(nav_map).is_empty():
+			break
+
+	var wave_obj: WaveObjective = level.get_node_or_null("WaveObjective") as WaveObjective
+	if wave_obj == null:
+		printerr("TEST FAILED: WaveObjective not found in level.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+
+	# Spawn up to 3 enemies via wave_obj.spawn_enemy
+	var spawn_count: int = mini(3, wave_obj.all_enemies.size())
+	var spawned: Array[Character] = []
+	for i: int in range(spawn_count):
+		var enemy: Character = wave_obj.all_enemies[i]
+		wave_obj.spawn_enemy(enemy)
+		spawned.append(enemy)
+
+	if spawned.size() < 2:
+		printerr("TEST FAILED: Not enough enemies in wave to verify scattered placement.")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+
+	# Verify enemies are not all at the origin
+	var all_at_origin: bool = true
+	for enemy: Character in spawned:
+		if not enemy.global_position.is_equal_approx(Vector3(0.0, 1.0, 0.0)):
+			all_at_origin = false
+			break
+	if all_at_origin:
+		printerr("TEST FAILED: All spawned enemies were placed at the hardcoded origin (0, 1, 0)!")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("Enemies not stacked at hardcoded origin verified.")
+
+	# Check pairwise distances: enemies should have distinct positions on the navmesh
+	var identical_positions: bool = true
+	for i: int in range(spawned.size()):
+		for j: int in range(i + 1, spawned.size()):
+			if spawned[i].global_position.distance_squared_to(spawned[j].global_position) > 0.01:
+				identical_positions = false
+				break
+	if identical_positions:
+		printerr("TEST FAILED: Spawned enemies are stacked at identical positions!")
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("Pairwise distinct enemy placement on navmesh verified.")
+
+	level.queue_free()
+	await get_tree().process_frame
+
 
 

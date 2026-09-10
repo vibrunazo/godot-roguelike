@@ -14,7 +14,7 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 	if ai_state_machine != null:
 		ai_state_machine.command_stop()
 	timer = get_tree().create_timer(wait_duration)
-	timer.timeout.connect(end_wait)
+	timer.timeout.connect(end_wait, CONNECT_ONE_SHOT)
 
 
 func physics_update(_delta: float) -> void:

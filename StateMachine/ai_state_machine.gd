@@ -13,6 +13,8 @@ var target: Character = null
 
 
 func _ready() -> void:
+	# Mind executes before physical body StateMachine (priority -1 vs 0) to avoid 1-frame latency.
+	process_physics_priority = -1
 	if character == null:
 		character = get_parent() as Character
 	super._ready()
@@ -35,25 +37,33 @@ func get_target() -> Character:
 	return target
 
 
-## Sets desired movement direction and optional facing orientation on the body.
-func command_move(direction: Vector3, face_dir: Vector3 = Vector3.ZERO) -> void:
+## Sets desired movement direction and optional facing orientation target on the body.
+func command_move(direction: Vector3, face_pos: Vector3 = Vector3.ZERO) -> void:
 	if character != null and character.is_alive():
 		character.move_direction = direction
-		character.face_direction = face_dir
+		character.face_target = face_pos
 
 
 ## Orders the body to cease movement.
 func command_stop() -> void:
 	if character != null:
 		character.move_direction = Vector3.ZERO
-		character.face_direction = Vector3.ZERO
+		character.face_target = Vector3.ZERO
 
 
 ## Orders the physical body StateMachine to execute an attack state if available.
 func order_attack(attack_state_name: String = "") -> bool:
-	if character == null or not character.is_alive() or character.state_machine == null or character.state_machine.state == null:
+	if character == null or not character.is_alive():
 		return false
-	if character.state_machine.state.name == attack_state_name or character.state_machine.state.name == "EnemyStun" or character.state_machine.state.name == "EnemyDefeat" or character.state_machine.state.name == "EnemyFall":
+	if character.state_machine == null or character.state_machine.state == null:
+		#push_warning("AIStateMachine: order_attack('%s') failed because body StateMachine or active state is null." % attack_state_name)
+		return false
+	var current_body_state: String = character.state_machine.state.name
+	if current_body_state == attack_state_name or current_body_state == "EnemyStun" or current_body_state == "EnemyDefeat" or current_body_state == "EnemyFall":
+		#push_warning("AIStateMachine: order_attack('%s') rejected because body is currently in '%s'." % [attack_state_name, current_body_state])
+		return false
+	if character.state_machine.get_node_or_null(attack_state_name) == null:
+		#push_warning("AIStateMachine: order_attack('%s') requested non-existent state on body StateMachine." % attack_state_name)
 		return false
 	character.state_machine.state.finished.emit(attack_state_name)
 	return true

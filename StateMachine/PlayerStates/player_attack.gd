@@ -1,3 +1,4 @@
+## State handling player attack executions, hitbox activation, aim locking, and attack chaining.
 class_name PlayerAttack
 extends PlayerState
 
@@ -50,7 +51,8 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 
 	if character.animation_tree != null:
 		character.animation_tree.change_immediate(attack_animation_name)
-		character.animation_tree.animation_finished.connect(finish_attack, CONNECT_ONE_SHOT)
+		if not character.animation_tree.animation_finished.is_connected(finish_attack):
+			character.animation_tree.animation_finished.connect(finish_attack, CONNECT_ONE_SHOT)
 
 	attack_timer = get_tree().create_timer(queued_attack_time)
 	attack_timer.timeout.connect(attempt_queue_attack)

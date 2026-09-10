@@ -20,7 +20,9 @@ func physics_update(delta: float) -> void:
 		else:
 			character.animation_tree.blend_target = 1.0
 
-	if not character.face_direction.is_zero_approx():
-		look_at_target(character.face_direction)
+	# When moving, core_movement provides smooth orientation toward move_direction.
+	# When idle, snap-rotate towards face_target if specified.
+	if character.move_direction.is_zero_approx() and not character.face_target.is_zero_approx():
+		look_at_target(character.face_target)
 
 	character.move_and_slide()

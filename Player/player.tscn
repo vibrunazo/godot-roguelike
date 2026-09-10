@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dveet4y3bg7gi"]
 
-[ext_resource type="Script" path="res://Character/character.gd" id="1_l8h54"]
-[ext_resource type="Script" path="res://Components/player_input_component.gd" id="2_input"]
+[ext_resource type="Script" uid="uid://c6dnkrcmpkn7o" path="res://Character/character.gd" id="1_l8h54"]
+[ext_resource type="Script" uid="uid://uveugrtqxdf2" path="res://Components/player_input_component.gd" id="2_input"]
 [ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/state_machine.gd" id="2_4ntmi"]
 [ext_resource type="PackedScene" path="res://Player/animated_player.tscn" id="2_fhl08"]
 [ext_resource type="Script" uid="uid://b5csf0k51tkb5" path="res://StateMachine/PlayerStates/player_run.gd" id="3_btcbx"]

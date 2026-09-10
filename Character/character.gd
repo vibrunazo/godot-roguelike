@@ -26,7 +26,7 @@ signal health_changed(value: float)
 ## Physical body StateMachine.
 @export var state_machine: StateMachine
 ## Optional AI StateMachine (Mind) for AI-controlled characters.
-@export var ai_state_machine: StateMachine
+@export var ai_state_machine: AIStateMachine
 ## Optional NavigationAgent3D for pathfinding.
 @export var navigation_agent_3d: NavigationAgent3D
 ## Primary collision shape of this character body.
@@ -42,8 +42,10 @@ signal health_changed(value: float)
 var move_direction: Vector3 = Vector3.ZERO
 ## Aim direction vector in 3D world space.
 var aim_direction: Vector3 = Vector3.ZERO
-## Facing direction override in 3D world space (if non-zero, mesh faces this direction).
-var face_direction: Vector3 = Vector3.ZERO
+## Target position in 3D world space for facing orientation (used when idle).
+var face_target: Vector3 = Vector3.ZERO
+
+var _is_defeated: bool = false
 
 
 func _ready() -> void:
@@ -54,7 +56,7 @@ func _ready() -> void:
 	if state_machine == null:
 		state_machine = get_node_or_null("StateMachine") as StateMachine
 	if ai_state_machine == null:
-		ai_state_machine = get_node_or_null("AIStateMachine") as StateMachine
+		ai_state_machine = get_node_or_null("AIStateMachine") as AIStateMachine
 	if navigation_agent_3d == null:
 		navigation_agent_3d = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
 	if collision_shape_3d == null:
@@ -65,10 +67,11 @@ func _ready() -> void:
 			mesh_mount = get_node_or_null("GamedevTV_Mannequin_Medium") as Node3D
 	if animation_tree == null:
 		animation_tree = find_child("AnimationTree", true, false) as AnimationTree
-	if stun_state == null and state_machine != null:
-		stun_state = state_machine.get_node_or_null("EnemyStun") as State
-	if defeat_state == null and state_machine != null:
-		defeat_state = state_machine.get_node_or_null("EnemyDefeat") as State
+	if is_enemy():
+		if stun_state == null:
+			push_warning("Character '%s' in 'enemy' group has no stun_state assigned." % name)
+		if defeat_state == null:
+			push_warning("Character '%s' in 'enemy' group has no defeat_state assigned." % name)
 
 	if health_component != null:
 		if not health_component.health_changed.is_connected(_on_health_component_health_changed):
@@ -84,8 +87,10 @@ func _ready() -> void:
 			att_comp.add_exception(self)
 
 
-## Returns true if the character is alive (current_health > 0).
+## Returns true if the character is alive (current_health > 0 and not defeated).
 func is_alive() -> bool:
+	if _is_defeated:
+		return false
 	if health_component != null:
 		return health_component.current_health > 0.0
 	return true
@@ -175,20 +180,31 @@ func _on_health_component_health_changed(value: float) -> void:
 		state_machine.state.finished.emit(stun_state.name)
 
 
-func _on_health_component_defeat() -> void:
+## Centralized idempotent defeat handler that halts motion, disables AI & input, and enters defeat state.
+func on_defeat() -> void:
+	if _is_defeated:
+		return
+	_is_defeated = true
 	defeat.emit()
 	move_direction = Vector3.ZERO
 	aim_direction = Vector3.ZERO
-	face_direction = Vector3.ZERO
+	face_target = Vector3.ZERO
 	velocity = Vector3.ZERO
 	if ai_state_machine != null:
 		ai_state_machine.command_stop()
 		ai_state_machine.set_physics_process(false)
 		ai_state_machine.set_process_unhandled_input(false)
+	var input_comp: PlayerInputComponent = get_node_or_null("PlayerInputComponent") as PlayerInputComponent
+	if input_comp != null:
+		input_comp.set_physics_process(false)
 	if defeat_state != null and state_machine != null and state_machine.state != null:
 		state_machine.state.finished.emit(defeat_state.name)
 	if collision_shape_3d != null:
 		collision_shape_3d.set_deferred("disabled", true)
+
+
+func _on_health_component_defeat() -> void:
+	on_defeat()
 
 
 func reset_game_camera_shake() -> void:

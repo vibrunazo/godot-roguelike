@@ -13,6 +13,8 @@ extends Node
 
 
 func _ready() -> void:
+	# Input translates intents before physical StateMachine ticks (priority -1 vs 0).
+	process_physics_priority = -1
 	if character == null:
 		character = get_parent() as Character
 	if character != null:
@@ -20,7 +22,7 @@ func _ready() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if character == null or not is_inside_tree():
+	if character == null or not is_inside_tree() or not character.is_alive():
 		return
 	update_movement_intent()
 	update_aim_intent()

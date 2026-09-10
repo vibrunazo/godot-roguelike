@@ -18,8 +18,9 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 			character.look_at_target(target.global_position)
 		_attack_ordered = ai_state_machine.order_attack(attack_state_name)
 		if not _attack_ordered:
-			# If the body is unable to attack (e.g. stunned/falling), transition out immediately
-			_finish_attack()
+			# If the body is unable to attack (e.g. stunned/falling), transition out deferred
+			# to prevent synchronous re-entrant state transitions while still entering this state.
+			_finish_attack.call_deferred()
 
 
 func physics_update(_delta: float) -> void:

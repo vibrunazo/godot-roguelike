@@ -18,8 +18,10 @@ static func find_dummy(level: Node, exclude: Node = null) -> CollisionObject3D:
 		if "all_enemies" in wave_obj and not (wave_obj.all_enemies as Array).is_empty():
 			var enemy: Character = wave_obj.all_enemies[0] as Character
 			if not enemy.is_inside_tree():
-				enemy.position = Vector3(0.0, 1.0, 0.0)
-				wave_obj.add_child(enemy)
+				if wave_obj.has_method("spawn_enemy"):
+					wave_obj.spawn_enemy(enemy)
+				else:
+					wave_obj.add_child(enemy)
 			return enemy
 	return null
 
@@ -36,7 +38,9 @@ static func find_enemy(level: Node) -> Character:
 		if "all_enemies" in wave_obj and not (wave_obj.all_enemies as Array).is_empty():
 			var enemy: Character = wave_obj.all_enemies[0] as Character
 			if not enemy.is_inside_tree():
-				enemy.position = Vector3(0.0, 1.0, 0.0)
-				wave_obj.add_child(enemy)
+				if wave_obj.has_method("spawn_enemy"):
+					wave_obj.spawn_enemy(enemy)
+				else:
+					wave_obj.add_child(enemy)
 			return enemy
 	return null

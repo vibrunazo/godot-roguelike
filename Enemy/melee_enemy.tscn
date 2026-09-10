@@ -2,8 +2,8 @@
 
 [ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy.tscn" id="1_cu01m"]
 [ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="2_7p80c"]
-[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_attack.gd" id="3_7r01i"]
-[ext_resource type="Script" path="res://StateMachine/AIStates/ai_pursue.gd" id="4_pursue"]
+[ext_resource type="Script" uid="uid://ebg6wepe60cc" path="res://StateMachine/EnemyStates/enemy_attack.gd" id="3_7r01i"]
+[ext_resource type="Script" uid="uid://0n22etq4hpy8" path="res://StateMachine/AIStates/ai_pursue.gd" id="4_pursue"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_7r01i"]
 size = Vector3(1, 2, 1)
@@ -60,10 +60,11 @@ initial_state = NodePath("AIPursue")
 [node name="AIWait" parent="AIStateMachine" index="0" unique_id=1748291048 node_paths=PackedStringArray("next_state")]
 next_state = NodePath("../AIPursue")
 
-[node name="AIPursue" type="Node" parent="AIStateMachine" index="1" unique_id=2067381451 node_paths=PackedStringArray("ai_state_machine")]
+[node name="AIPursue" type="Node" parent="AIStateMachine" index="1" unique_id=2067381451 node_paths=PackedStringArray("lost_target_state", "ai_state_machine")]
 script = ExtResource("4_pursue")
 attack_state_name = "EnemyAttack"
 attack_range = 3.0
+lost_target_state = NodePath("../AIWait")
 ai_state_machine = NodePath("..")
 
 [editable path="AnimationAnchor/AnimatedEnemy"]
