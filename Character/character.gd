@@ -36,6 +36,8 @@ signal target_changed(new_target: Node3D)
 @export var collision_shape_3d: CollisionShape3D
 ## Optional Area3D weapon hitbox for melee attacks.
 @export var weapon_hitbox: Area3D
+## Optional Hurtbox for taking damage.
+@export var hurtbox: Hurtbox
 ## State entered when this character is damaged / stunned.
 @export var stun_state: State
 ## State entered when this character is defeated.
@@ -88,6 +90,8 @@ func _ready() -> void:
 		navigation_agent_3d = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
 	if collision_shape_3d == null:
 		collision_shape_3d = get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if hurtbox == null:
+		hurtbox = get_node_or_null("Hurtbox") as Hurtbox
 	if dash_cooldown == null:
 		dash_cooldown = get_node_or_null("DashCooldown") as Timer
 	if mesh_mount == null:
@@ -333,6 +337,12 @@ func on_defeat() -> void:
 		state_machine.state.finished.emit(defeat_state.name)
 	if collision_shape_3d != null:
 		collision_shape_3d.set_deferred("disabled", true)
+	if hurtbox != null:
+		hurtbox.set_deferred("monitoring", false)
+		hurtbox.set_deferred("monitorable", false)
+		var hurtbox_shape: CollisionShape3D = hurtbox.get_node_or_null("CollisionShape3D") as CollisionShape3D
+		if hurtbox_shape != null:
+			hurtbox_shape.set_deferred("disabled", true)
 
 
 func _on_health_component_defeat() -> void:

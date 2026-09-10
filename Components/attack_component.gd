@@ -54,11 +54,14 @@ func set_attack_area(area: Area3D) -> void:
 
 
 ## Returns true when the hurtbox is a legal target: not our own signals, and
-## never the wielder's own hurtbox (hitbox and hurtbox overlap on the same body).
+## never the wielder's own hurtbox (hitbox and hurtbox overlap on the same body),
+## and target must be alive.
 func _is_valid_target(area: Area3D) -> bool:
 	if area == self or area == get_parent():
 		return false
 	if not (area is Hurtbox):
+		return false
+	if not (area as Hurtbox).is_alive():
 		return false
 	if wielder != null and area.get_parent() == wielder:
 		return false

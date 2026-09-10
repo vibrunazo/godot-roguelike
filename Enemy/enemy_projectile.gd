@@ -43,9 +43,12 @@ func _on_area_entered(area: Area3D) -> void:
 		return
 	if area == self or not (area is Hurtbox) or area.get_parent() == shooter:
 		return
+	var hurtbox: Hurtbox = area as Hurtbox
+	if not hurtbox.is_alive():
+		return
 	_is_hit = true
 	if attack_component:
-		attack_component.deal_damage_to(area as Hurtbox, damage, global_basis.z * knockback)
+		attack_component.deal_damage_to(hurtbox, damage, global_basis.z * knockback)
 	hit_effect()
 	queue_free()
 

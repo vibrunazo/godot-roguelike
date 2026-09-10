@@ -2806,6 +2806,100 @@ func _ready() -> void:
 	team_player_target.queue_free()
 	await get_tree().physics_frame
 
+	# ---------------------------------------------------------
+	# PART 35: Projectile Corpse Penetration & Hurtbox Deactivation
+	# ---------------------------------------------------------
+	print("\n>>> PART 35: Projectile Corpse Penetration & Hurtbox Deactivation")
+	var corpse_enemy: Character = melee_scene_p33.instantiate() as Character
+	add_child(corpse_enemy)
+	corpse_enemy.global_position = Vector3(0.0, 1.0, 50.0)
+	(corpse_enemy.get_node("AIStateMachine") as Node).set_physics_process(false)
+	var corpse_hurtbox: Hurtbox = corpse_enemy.get_node_or_null("Hurtbox") as Hurtbox
+	var corpse_shape: CollisionShape3D = corpse_hurtbox.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if corpse_hurtbox == null or corpse_shape == null:
+		printerr("TEST FAILED: Melee enemy Hurtbox or CollisionShape3D missing.")
+		corpse_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if not corpse_hurtbox.is_alive():
+		printerr("TEST FAILED: Hurtbox.is_alive() was false for living enemy.")
+		corpse_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("Hurtbox.is_alive() true on alive enemy verified.")
+
+	# Defeat enemy to make it a corpse
+	corpse_enemy.health_component.take_damage(9999.0)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+
+	if corpse_hurtbox.is_alive():
+		printerr("TEST FAILED: Hurtbox.is_alive() is true for defeated enemy.")
+		corpse_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if corpse_hurtbox.monitorable or corpse_hurtbox.monitoring:
+		printerr("TEST FAILED: Hurtbox monitoring/monitorable not disabled on defeat.")
+		corpse_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if not corpse_shape.disabled:
+		printerr("TEST FAILED: Hurtbox CollisionShape3D not disabled on defeat.")
+		corpse_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("Hurtbox disabled and is_alive() false on corpse verified.")
+
+	# Instantiate living player target behind the corpse
+	var living_target: Character = player_scene_p33.instantiate() as Character
+	add_child(living_target)
+	living_target.global_position = Vector3(0.0, 1.0, 60.0)
+	await get_tree().physics_frame
+
+	# Instantiate projectile directly on top of corpse
+	var corpse_proj: EnemyProjectile = proj_scene_p34.instantiate() as EnemyProjectile
+	add_child(corpse_proj)
+	corpse_proj.global_position = corpse_enemy.global_position
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+
+	if corpse_proj.is_queued_for_deletion():
+		printerr("TEST FAILED: EnemyProjectile detonated on corpse!")
+		corpse_proj.queue_free()
+		corpse_enemy.queue_free()
+		living_target.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile ignored corpse verified (did not detonate).")
+
+	# Move projectile onto living target to verify it still hits live entities
+	var target_initial_hp: float = living_target.health_component.current_health
+	corpse_proj.global_position = living_target.global_position
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+
+	var proj_destroyed: bool = not is_instance_valid(corpse_proj) or corpse_proj.is_queued_for_deletion()
+	if not proj_destroyed:
+		printerr("TEST FAILED: EnemyProjectile did not detonate on living target.")
+		corpse_proj.queue_free()
+		corpse_enemy.queue_free()
+		living_target.queue_free()
+		get_tree().quit(1)
+		return
+	if living_target.health_component.current_health >= target_initial_hp:
+		printerr("TEST FAILED: Living target took no damage from projectile.")
+		corpse_enemy.queue_free()
+		living_target.queue_free()
+		get_tree().quit(1)
+		return
+	print("EnemyProjectile hit living target after ignoring corpse verified.")
+
+	if is_instance_valid(corpse_proj):
+		corpse_proj.queue_free()
+	corpse_enemy.queue_free()
+	living_target.queue_free()
+	await get_tree().physics_frame
+
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
@@ -2842,6 +2936,7 @@ func _ready() -> void:
 	print("  32. Enemy KnockbackComponent, EnemyStun & Attack Knockback verified")
 	print("  33. Falling Enemies, EnemyFall State & Run Reset Polish verified  ")
 	print("  34. Melee team filtering & dead-target rejection verified        ")
+	print("  35. Projectile corpse penetration & hurtbox deactivation verified ")
 	print("====================================================================")
 	
 	get_tree().quit(0)
