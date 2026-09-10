@@ -89,6 +89,10 @@ ui_toggle_fullscreen={
 ]
 }
 
+[layer_names]
+
+3d_physics/layer_names/layer_6="Triggers"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

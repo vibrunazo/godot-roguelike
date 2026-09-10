@@ -557,6 +557,46 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("ExitPoint Area3D and SphereShape3D (radius 2.0) verified.")
+	if exit_area.collision_layer != 32 or exit_area.collision_mask != 1:
+		printerr("TEST FAILED: ExitPoint Area3D must sit on trigger layer 6 only (layer 32, mask 1). Got layer ", exit_area.collision_layer, " mask ", exit_area.collision_mask)
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("ExitPoint Area3D trigger-layer isolation verified (layer 32, mask 1).")
+
+	# Projectiles must ignore the exit trigger: no detonation, no FireballHit.
+	var exit_scene: PackedScene = load("res://Levels/exit_point.tscn") as PackedScene
+	var exit_instance: Node3D = exit_scene.instantiate() as Node3D
+	add_child(exit_instance)
+	exit_instance.global_position = Vector3(0.0, 1.0, 50.0)
+	var exit_proj_scene: PackedScene = load("res://Enemy/enemy_projectile.tscn") as PackedScene
+	var exit_proj: EnemyProjectile = exit_proj_scene.instantiate() as EnemyProjectile
+	add_child(exit_proj)
+	exit_proj.global_position = Vector3(0.0, 1.0, 50.0)
+	var fireball_ids_before: Array[int] = []
+	for c: Node in get_tree().current_scene.get_children():
+		if c.name.begins_with("FireballHit"):
+			fireball_ids_before.append(c.get_instance_id())
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var exit_detonated := false
+	for c: Node in get_tree().current_scene.get_children():
+		if c.name.begins_with("FireballHit") and not fireball_ids_before.has(c.get_instance_id()):
+			exit_detonated = true
+			break
+	if exit_proj.is_queued_for_deletion() or exit_detonated:
+		printerr("TEST FAILED: Projectile detonated on ExitPoint trigger.")
+		exit_instance.queue_free()
+		if not exit_proj.is_queued_for_deletion():
+			exit_proj.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	print("Projectile ignores ExitPoint trigger verified (no detonation).")
+	exit_instance.queue_free()
+	exit_proj.queue_free()
+	await get_tree().physics_frame
 
 	# Verify ExitPoint WispMesh & ShaderMaterial (Lecture 73)
 	var wisp_mesh: MeshInstance3D = exit_point.get_node_or_null("WispMesh") as MeshInstance3D
