@@ -1,8 +1,8 @@
 class_name WaveObjective
 extends Node3D
 
-const RANGED_ENEMY: PackedScene = preload("res://Enemy/ranged_enemy.tscn")
-const MELEE_ENEMY: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+## Enemy scenes to spawn, picked at random. Leave empty to use the GlobalVars registry.
+@export var enemy_scenes: Array[PackedScene] = []
 
 signal finished
 
@@ -10,8 +10,10 @@ var all_enemies: Array[Character] = []
 
 
 func _ready() -> void:
+	if enemy_scenes.is_empty():
+		enemy_scenes = [GlobalVars.enemy_melee_scene, GlobalVars.enemy_ranged_scene]
 	for _i: int in GlobalVars.get_enemy_count():
-		var template: PackedScene = [MELEE_ENEMY, RANGED_ENEMY].pick_random()
+		var template: PackedScene = enemy_scenes.pick_random()
 		var new_enemy: Character = template.instantiate() as Character
 		all_enemies.append(new_enemy)
 
@@ -40,4 +42,3 @@ func update_enemies(enemy: Character) -> void:
 	all_enemies.erase(enemy)
 	if all_enemies.is_empty():
 		finished.emit()
-

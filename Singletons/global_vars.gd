@@ -1,23 +1,36 @@
 # TODO: Autoloads should be separated into different global systems with different names and responsibilities, instead of a generic GlobalVars autoload with multiple responsibilities.
 extends Node
 
-const DIFFICULTY_CURVE: Curve = preload("res://Singletons/difficulty_curve.tres")
+## Difficulty scaling curve sampled by get_enemy_count().
+@export var difficulty_curve: Curve
+## Upgrade scenes offered by the UpgradeShop.
+@export var upgrade_damage: PackedScene
+## Upgrade scenes offered by the UpgradeShop.
+@export var upgrade_health: PackedScene
+## Upgrade scenes offered by the UpgradeShop.
+@export var upgrade_speed: PackedScene
+## Enemy scenes spawned by WaveObjective.
+@export var enemy_melee_scene: PackedScene
+## Enemy scenes spawned by WaveObjective.
+@export var enemy_ranged_scene: PackedScene
+## Projectile scene spawned by ProjectileSpawnerComponent.
+@export var enemy_projectile_scene: PackedScene
+## Impact effect spawned by EnemyProjectile on collision.
+@export var fireball_hit_scene: PackedScene
+## Floating combat text spawned by VfxManager on damage.
+@export var damage_number_scene: PackedScene
+## Shop scene opened by ExitPoint when no explicit next scene is set.
+@export var upgrade_shop_scene: PackedScene
 
-const UPGRADE_DAMAGE: PackedScene = preload("res://UserInterface/upgrade_damage.tscn")
-const UPGRADE_HEALTH: PackedScene = preload("res://UserInterface/upgrade_health.tscn")
-const UPGRADE_SPEED: PackedScene = preload("res://UserInterface/upgrade_speed.tscn")
-
-var upgrades: Array[PackedScene] = [
-	UPGRADE_DAMAGE,
-	UPGRADE_HEALTH,
-	UPGRADE_SPEED
-]
+## Upgrade scenes offered by the UpgradeShop, built from the exported upgrade scenes.
+var upgrades: Array[PackedScene] = []
 
 var level: int = 1
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	upgrades = [upgrade_damage, upgrade_health, upgrade_speed]
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -52,4 +65,4 @@ func finish_level() -> void:
 
 
 func get_enemy_count() -> int:
-	return int(floor(DIFFICULTY_CURVE.sample(float(level))))
+	return int(floor(difficulty_curve.sample(float(level))))

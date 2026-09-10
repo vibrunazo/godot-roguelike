@@ -3,7 +3,8 @@ extends CanvasLayer
 @onready var color_rect: ColorRect = $ColorRect
 
 var player_cache: Character
-var levels: Array[String] = [
+## Level scenes rotated by load_next_level. Editable in scene_transition.tscn.
+@export var levels: Array[String] = [
 	"res://Levels/level_1.tscn",
 	"res://Levels/level_2.tscn",
 	"res://Levels/level_3.tscn"

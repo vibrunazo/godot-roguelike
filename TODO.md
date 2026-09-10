@@ -119,27 +119,17 @@ This document tracks architectural improvements, optimizations, and technical de
 
 ---
 
-## 8. Dynamic Scene References vs. Hardcoded Preloads (Wave Spawner)
+## 8. Dynamic Scene References vs. Hardcoded Preloads (Wave Spawner) [RESOLVED]
+- **Status**: Completed. Went beyond the item's scope: eliminated every hardcoded asset reference from production scripts and turned `GlobalVars` into an autoload scene acting as a central, editor-editable scene/resource registry.
 - **Problem**:
   - `WaveObjective` (and similar spawner systems) hardcodes scene preloads in script constants (`const RANGED_ENEMY: PackedScene = preload(...)` / UID strings).
   - Hardcoding scene paths or UIDs directly in scripts tightly couples the spawner to a specific enemy type, preventing reuse across different levels or encounter designs.
   - Level designers cannot swap enemy types, adjust wave compositions, or add new enemy variants in the inspector without modifying or duplicating scripts.
-- **Refactoring Options**:
-  - **Exported `PackedScene` Properties**:
-    - Replace hardcoded `preload` constants with an exported property:
-      ```gdscript
-      @export var enemy_scene: PackedScene
-      ```
-      or an array for multi-enemy encounters:
-      ```gdscript
-      @export var enemy_scenes: Array[PackedScene]
-      ```
-  - **Data-Driven Wave Resources (`WaveData`)**:
-    - Encapsulate wave parameters into custom `Resource` definitions (`WaveData`), configuring enemy scenes, spawn counts, delays, and weights directly in the inspector:
-      ```gdscript
-      @export var waves: Array[WaveData]
-      ```
-    - *Benefits*: Decouples spawner logic from concrete scene assets, allows rapid level design iteration entirely in the inspector, and facilitates varied encounter design.
+- **Resolution**:
+  - **`GlobalVars` autoload scene**: new `Singletons/global_vars.tscn` (root `Node` + existing script, still no `class_name` so all `GlobalVars.*` call sites work); `project.godot` autoload repointed from `.gd` to `.tscn`, following the `SceneTransition` precedent. The four const preloads became documented `@export`s (`difficulty_curve`, `upgrade_damage/health/speed`) plus new registry exports (`enemy_melee_scene`, `enemy_ranged_scene`, `enemy_projectile_scene`, `fireball_hit_scene`, `damage_number_scene`, `upgrade_shop_scene`); `upgrades` is built from the upgrade exports in `_ready()`.
+  - **Consumer rewiring (behavior unchanged)**: `WaveObjective` consts → `@export var enemy_scenes: Array[PackedScene]` with registry fallback (per-level override now possible); `VfxManager` reads `GlobalVars.damage_number_scene` (stays a script autoload); `EnemyProjectile` reads `GlobalVars.fireball_hit_scene` (runtime-spawned, so no local export possible); `ProjectileSpawnerComponent.projectile_scene` default is now `null` with registry fallback; `SceneTransition.levels` is now `@export` (editable in its scene); `ExitPoint` shop fallback string → `@export shop_fallback_scene` with registry fallback.
+  - Verified zero `preload(`/`load("res://...")` literals remain in production scripts; test-harness `load()`s intentionally kept as asset oracles, with `test_enemy_base.gd` wiring assertions updated to the new export names (including a non-null check over the whole registry).
+  - All 14 test suites pass cleanly with exit code 0 (`python run_tests.py`).
 
 ---
 

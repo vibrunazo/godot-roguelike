@@ -2,8 +2,8 @@
 class_name ProjectileSpawnerComponent
 extends Node
 
-## Projectile scene to instantiate.
-@export var projectile_scene: PackedScene = preload("res://Enemy/enemy_projectile.tscn")
+## Projectile scene to instantiate. Leave unset to use the GlobalVars registry.
+@export var projectile_scene: PackedScene
 ## Node representing the projectile spawn origin (e.g., weapon bone or socket).
 @export var spawn_point: Node3D
 ## Character executing the ranged attack.
@@ -17,9 +17,10 @@ func _ready() -> void:
 
 ## Spawns a projectile aligned with the character's facing direction.
 func spawn_projectile() -> void:
-	if projectile_scene == null or not is_inside_tree() or character == null:
+	var scene: PackedScene = projectile_scene if projectile_scene != null else GlobalVars.enemy_projectile_scene
+	if scene == null or not is_inside_tree() or character == null:
 		return
-	var projectile: EnemyProjectile = projectile_scene.instantiate() as EnemyProjectile
+	var projectile: EnemyProjectile = scene.instantiate() as EnemyProjectile
 	if projectile == null:
 		return
 	character.add_child(projectile)

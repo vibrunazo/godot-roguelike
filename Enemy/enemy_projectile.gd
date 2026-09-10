@@ -2,8 +2,6 @@
 class_name EnemyProjectile
 extends Area3D
 
-const FIREBALL_HIT: PackedScene = preload("res://Enemy/fireball_hit.tscn")
-
 ## Movement speed of the projectile.
 @export var speed: float = 8.0
 ## Damage dealt to entities hit by this projectile.
@@ -56,7 +54,7 @@ func is_colliding() -> bool:
 
 
 func hit_effect() -> void:
-	var fireball: Node3D = FIREBALL_HIT.instantiate() as Node3D
+	var fireball: Node3D = (GlobalVars.fireball_hit_scene as PackedScene).instantiate() as Node3D
 	get_parent().add_child(fireball)
 	fireball.global_position = global_position
 

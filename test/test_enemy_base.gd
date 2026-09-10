@@ -1433,20 +1433,24 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	print("\n>>> PART 11: UpgradeShop Scene & UI Verification")
-	# Verify GlobalVars upgrade constants and array
-	if GlobalVars.UPGRADE_DAMAGE == null or GlobalVars.UPGRADE_HEALTH == null or GlobalVars.UPGRADE_SPEED == null:
-		printerr("TEST FAILED: GlobalVars upgrade constants missing or null.")
+	# Verify GlobalVars registry exports and array
+	if GlobalVars.upgrade_damage == null or GlobalVars.upgrade_health == null or GlobalVars.upgrade_speed == null:
+		printerr("TEST FAILED: GlobalVars upgrade scene exports missing or null.")
 		get_tree().quit(1)
 		return
 	if GlobalVars.upgrades.size() != 3:
 		printerr("TEST FAILED: GlobalVars.upgrades does not contain 3 upgrades. Size: ", GlobalVars.upgrades.size())
 		get_tree().quit(1)
 		return
-	if not GlobalVars.upgrades.has(GlobalVars.UPGRADE_DAMAGE) or not GlobalVars.upgrades.has(GlobalVars.UPGRADE_HEALTH) or not GlobalVars.upgrades.has(GlobalVars.UPGRADE_SPEED):
+	if not GlobalVars.upgrades.has(GlobalVars.upgrade_damage) or not GlobalVars.upgrades.has(GlobalVars.upgrade_health) or not GlobalVars.upgrades.has(GlobalVars.upgrade_speed):
 		printerr("TEST FAILED: GlobalVars.upgrades array missing required upgrade packed scenes.")
 		get_tree().quit(1)
 		return
-	print("GlobalVars upgrade constants and upgrades array verified.")
+	if GlobalVars.difficulty_curve == null or GlobalVars.enemy_melee_scene == null or GlobalVars.enemy_ranged_scene == null or GlobalVars.enemy_projectile_scene == null or GlobalVars.fireball_hit_scene == null or GlobalVars.damage_number_scene == null or GlobalVars.upgrade_shop_scene == null:
+		printerr("TEST FAILED: GlobalVars registry exports missing or null.")
+		get_tree().quit(1)
+		return
+	print("GlobalVars registry exports and upgrades array verified.")
 
 	var shop_scene: PackedScene = load("res://UserInterface/upgrade_shop.tscn") as PackedScene
 	if shop_scene == null:
