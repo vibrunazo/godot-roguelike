@@ -33,7 +33,7 @@ monitoring = false
 monitorable = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="0" unique_id=1665729289]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+transform = Transform3D(1, -2.842171e-14, -4.791279e-15, 0, 1, 5.684342e-14, 6.7245742e-15, 0, 1, 5.9604645e-08, 1.1198812, 7.0780516e-08)
 shape = SubResource("BoxShape3D_7r01i")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="1" unique_id=1069743798]
@@ -69,6 +69,7 @@ ai_state_machine = NodePath("..")
 
 [node name="AIPursue" type="Node" parent="AIStateMachine" index="1" unique_id=2067381451 node_paths=PackedStringArray("lost_target_state", "ai_state_machine")]
 script = ExtResource("4_pursue")
+attack_range = 2.0
 lost_target_state = NodePath("../AIWait")
 ai_state_machine = NodePath("..")
 
