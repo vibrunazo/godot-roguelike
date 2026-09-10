@@ -29,6 +29,12 @@ extends CharacterState
 @export var dash_speed: float = 0.0
 ## Duration (in seconds) of the forward lunge. Leave at 0.0 to disable the lunge.
 @export var dash_duration: float = 0.0
+## Time scale applied to this character when one of its hits lands (self hitstop).
+## Values near 0.0 almost freeze the attacker for a sense of impact weight.
+@export var self_hitstop_scale: float = 0.05
+## Duration (in seconds, real time) of the self slowmo after landing a hit.
+## Keep under 0.1 for a snappy hitstop feel. Values <= 0.0 disable the effect.
+@export var self_hitstop_duration: float = 0.1
 
 var queued_attack: bool = false
 var attack_timer: SceneTreeTimer
@@ -37,6 +43,13 @@ var lunging: bool = false
 var lunge_direction: Vector3 = Vector3.ZERO
 var lunge_timer: SceneTreeTimer
 var lunge_slot: WeaponSlot
+## Remaining self-hitstop time in seconds (real time). Above 0.0 means the
+## attacker is slowed by self_hitstop_scale after landing a hit.
+var hitstop_time_remaining: float = 0.0
+## Attack animation TimeScale value to restore when hitstop ends.
+var hitstop_base_timescale: float = 1.0
+## Whether the current attack animation exposes a TimeScale node for slowdown.
+var hitstop_has_timescale: bool = false
 
 
 func physics_update(_delta: float) -> void:
@@ -46,11 +59,14 @@ func physics_update(_delta: float) -> void:
 	# dash_cancel export below, attack intents queue the combo follow-up.
 	check_dash()
 	check_attack()
+	_update_hitstop(_delta)
+	var motion_scale: float = clampf(self_hitstop_scale, 0.0, 1.0) if is_in_hitstop() else 1.0
 	if lunging:
-		character.velocity = lunge_direction * dash_speed
+		character.velocity = lunge_direction * dash_speed * motion_scale
 	else:
-		character.velocity = character.move_direction * movement_speed
-	character.look_toward_direction(aim_direction, 1.0)
+		character.velocity = character.move_direction * movement_speed * motion_scale
+	if not is_in_hitstop():
+		character.look_toward_direction(aim_direction, 1.0)
 	character.move_and_slide()
 
 
@@ -59,6 +75,8 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	lunging = false
 	lunge_direction = Vector3.ZERO
 	lunge_slot = null
+	hitstop_time_remaining = 0.0
+	hitstop_has_timescale = false
 	if character == null:
 		return
 	if attack_component != null:
@@ -69,10 +87,13 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 		else:
 			attack_component.knockback = character.global_basis.z * knockback
 		attack_component.rehit_interval = rehit_interval
+		if not attack_component.hit_landed.is_connected(_on_hit_landed):
+			attack_component.hit_landed.connect(_on_hit_landed)
 
 	if character.animation_tree != null:
 		character.animation_tree.change_immediate(attack_animation_name)
 		connect_one_shot(character.animation_tree.animation_finished, finish_attack)
+		_cache_hitstop_timescale()
 
 	attack_timer = get_tree().create_timer(queued_attack_time)
 	attack_timer.timeout.connect(attempt_queue_attack)
@@ -129,9 +150,76 @@ func _clear_lunge() -> void:
 		lunge_slot = null
 
 
+## Returns true while the attacker is slowed after landing a hit.
+func is_in_hitstop() -> bool:
+	return hitstop_time_remaining > 0.0
+
+
+## Slows this character briefly after one of its hits lands. Called on every
+## AttackComponent.hit_landed emission, so multi-hit attacks refresh the window.
+## Movement slowdown applies even when the attack animation has no TimeScale node.
+func apply_self_hitstop() -> void:
+	if self_hitstop_duration <= 0.0 or character == null or not character.is_inside_tree():
+		return
+	hitstop_time_remaining = self_hitstop_duration
+	if hitstop_has_timescale and character.animation_tree != null:
+		character.animation_tree.set(_get_timescale_param(), clampf(self_hitstop_scale, 0.0, 1.0))
+
+
+## Counts the hitstop window down in real time and restores the attack
+## animation speed when it expires.
+func _update_hitstop(delta: float) -> void:
+	if hitstop_time_remaining <= 0.0:
+		return
+	hitstop_time_remaining -= delta
+	if hitstop_time_remaining <= 0.0:
+		hitstop_time_remaining = 0.0
+		_restore_hitstop_timescale()
+
+
+## Restores the attack animation TimeScale captured at enter().
+func _restore_hitstop_timescale() -> void:
+	if not hitstop_has_timescale or character == null or character.animation_tree == null:
+		return
+	if not character.is_inside_tree():
+		return
+	character.animation_tree.set(_get_timescale_param(), hitstop_base_timescale)
+
+
+## Clears an active hitstop without waiting for expiry. Runs on state exit
+## (including dash-cancel and stun interruptions) so slowed animation speed
+## never leaks into the next state.
+func _clear_hitstop() -> void:
+	if hitstop_time_remaining > 0.0:
+		hitstop_time_remaining = 0.0
+		_restore_hitstop_timescale()
+
+
+## Reads the attack animation's base TimeScale once per attack. Attacks whose
+## animation has no TimeScale node keep movement-only slowdown.
+func _cache_hitstop_timescale() -> void:
+	hitstop_has_timescale = false
+	if character == null or character.animation_tree == null or attack_animation_name.is_empty():
+		return
+	var current: Variant = character.animation_tree.get(_get_timescale_param())
+	if current is float:
+		hitstop_base_timescale = current as float
+		hitstop_has_timescale = true
+
+
+## AnimationTree parameter path of this attack's TimeScale node.
+func _get_timescale_param() -> String:
+	return "parameters/" + attack_animation_name + "/TimeScale/scale"
+
+
+## Hitstop trigger: slows this attacker (not the victim) each time its attack lands.
+func _on_hit_landed(_target: Node) -> void:
+	apply_self_hitstop()
+
+
 ## Dash-cancel gate: only attacks with dash_cancel set can be interrupted.
 ## The intent is still consumed when gated off so the press never leaks into a
-## later state. Cancelling runs exit(), which already clears lunge and timers.
+## later state. Cancelling runs exit(), which already clears lunge, hitstop, and timers.
 func check_dash() -> bool:
 	if not dash_cancel:
 		if character != null:
@@ -153,11 +241,13 @@ func check_attack() -> bool:
 func exit() -> void:
 	queued_attack = false
 	_clear_lunge()
+	_clear_hitstop()
 	if attack_timer != null:
 		disconnect_safe(attack_timer.timeout, attempt_queue_attack)
 	if character != null and character.animation_tree != null:
 		disconnect_safe(character.animation_tree.animation_finished, finish_attack)
 	if attack_component != null:
+		disconnect_safe(attack_component.hit_landed, _on_hit_landed)
 		attack_component.reset_exceptions()
 
 

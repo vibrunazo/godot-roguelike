@@ -2154,9 +2154,21 @@ func _ready() -> void:
 		anim_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	var melee_attack_node: AnimationNodeAnimation = sm_root.get_node(&"MeleeAttack") as AnimationNodeAnimation
-	if melee_attack_node == null or melee_attack_node.animation != &"EnemyAnimations/Melee_2H_Attack_Chop":
+	var melee_attack_node: AnimationNodeBlendTree = sm_root.get_node(&"MeleeAttack") as AnimationNodeBlendTree
+	if melee_attack_node == null:
+		printerr("TEST FAILED: MeleeAttack node is not a BlendTree with TimeScale slowdown support.")
+		anim_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	var melee_attack_anim: AnimationNodeAnimation = melee_attack_node.get_node(&"Animation") as AnimationNodeAnimation
+	if melee_attack_anim == null or melee_attack_anim.animation != &"EnemyAnimations/Melee_2H_Attack_Chop":
 		printerr("TEST FAILED: MeleeAttack node does not play EnemyAnimations/Melee_2H_Attack_Chop.")
+		anim_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	var melee_attack_timescale: AnimationNodeTimeScale = melee_attack_node.get_node(&"TimeScale") as AnimationNodeTimeScale
+	if melee_attack_timescale == null:
+		printerr("TEST FAILED: MeleeAttack BlendTree missing TimeScale node for hitstop slowdown.")
 		anim_enemy.queue_free()
 		get_tree().quit(1)
 		return

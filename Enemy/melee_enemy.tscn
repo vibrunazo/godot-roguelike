@@ -17,7 +17,7 @@ albedo_color = Color(1, 0.5058824, 0, 1)
 top_radius = 0.1
 bottom_radius = 0.1
 
-[node name="MeleeEnemy" unique_id=2117139762 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "stun_state", "defeat_state", "weapon_hitbox") instance=ExtResource("1_cu01m")]
+[node name="MeleeEnemy" unique_id=2117139762 node_paths=PackedStringArray("weapon_hitbox") instance=ExtResource("1_cu01m")]
 weapon_hitbox = NodePath("AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea")
 
 [node name="WeaponSlot" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="6" unique_id=211580224 node_paths=PackedStringArray("hitbox")]
@@ -27,12 +27,12 @@ bone_idx = 14
 hitbox = NodePath("HitboxArea")
 
 [node name="HitboxArea" type="Area3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0" unique_id=1605059902]
-monitoring = false
-monitorable = false
 collision_layer = 0
 collision_mask = 64
+monitoring = false
+monitorable = false
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="0"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="0" unique_id=1665729289]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("BoxShape3D_7r01i")
 
@@ -44,20 +44,22 @@ mesh = SubResource("CylinderMesh_skqvj")
 [node name="AttackComponent" type="Node" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="2" unique_id=1866258911]
 script = ExtResource("2_7p80c")
 
-[node name="StateMachine" parent="." index="6" unique_id=1352967922 node_paths=PackedStringArray("initial_state")]
-initial_state = NodePath("EnemyMove")
+[node name="AnimationTree" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium" parent_id_path=PackedInt32Array(1495277970, 1921158861) index="2" unique_id=1365896023]
+parameters/MeleeAttack/TimeScale/scale = 1.0
+parameters/RangedAttack/TimeScale/scale = 1.0
 
-[node name="EnemyAttack" type="Node" parent="StateMachine" index="4" unique_id=1290511765 node_paths=PackedStringArray("attack_component", "next_states", "character", "fall_state")]
+[node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=1290511765 node_paths=PackedStringArray("next_states", "attack_component", "character", "fall_state")]
 script = ExtResource("3_7r01i")
-attack_component = NodePath("../../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 damage = 8.0
 knockback = 20.0
-attack_animation_name = "MeleeAttack"
 next_states = [NodePath("../EnemyMove")]
+attack_animation_name = "MeleeAttack"
+attack_component = NodePath("../../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
+self_hitstop_duration = 0.2
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
-[node name="AIStateMachine" parent="." index="7" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
+[node name="AIStateMachine" parent="." index="8" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
 initial_state = NodePath("AIPursue")
 
 [node name="AIWait" type="Node" parent="AIStateMachine" index="0" unique_id=1748291048 node_paths=PackedStringArray("next_state", "ai_state_machine")]
@@ -67,8 +69,6 @@ ai_state_machine = NodePath("..")
 
 [node name="AIPursue" type="Node" parent="AIStateMachine" index="1" unique_id=2067381451 node_paths=PackedStringArray("lost_target_state", "ai_state_machine")]
 script = ExtResource("4_pursue")
-attack_state_name = "EnemyAttack"
-attack_range = 3.0
 lost_target_state = NodePath("../AIWait")
 ai_state_machine = NodePath("..")
 

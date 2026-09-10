@@ -52,8 +52,28 @@ animation = &"EnemyAnimations/Spawn_Ground"
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_7e68y"]
 animation = &"EnemyAnimations/Melee_2H_Attack_Chop"
 
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_7e68y"]
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_7e68y"]
+graph_offset = Vector2(199.33333, 78)
+nodes/Animation/node = SubResource("AnimationNodeAnimation_7e68y")
+nodes/Animation/position = Vector2(-40, 133.33333)
+nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_7e68y")
+nodes/TimeScale/position = Vector2(466.66666, 133.33333)
+node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
+
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_phjxc"]
 animation = &"EnemyAnimations/Melee_1H_Attack_Slice_Diagonal"
+
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_phjxc"]
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_phjxc"]
+graph_offset = Vector2(-482.66666, -36.666668)
+nodes/Animation/node = SubResource("AnimationNodeAnimation_phjxc")
+nodes/Animation/position = Vector2(-413.33334, 120)
+nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_phjxc")
+nodes/TimeScale/position = Vector2(40, 133.33333)
+node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
 
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_nqs35"]
 animation = &"EnemyAnimations/Hit_A"
@@ -105,9 +125,9 @@ states/Defeat/node = SubResource("AnimationNodeAnimation_pje6n")
 states/Defeat/position = Vector2(800.44446, 32.666664)
 states/EnemyAnimations_Spawn_Ground/node = SubResource("AnimationNodeAnimation_8wj31")
 states/EnemyAnimations_Spawn_Ground/position = Vector2(388, 185.33334)
-states/MeleeAttack/node = SubResource("AnimationNodeAnimation_7e68y")
+states/MeleeAttack/node = SubResource("AnimationNodeBlendTree_7e68y")
 states/MeleeAttack/position = Vector2(399.33334, -25)
-states/RangedAttack/node = SubResource("AnimationNodeAnimation_phjxc")
+states/RangedAttack/node = SubResource("AnimationNodeBlendTree_phjxc")
 states/RangedAttack/position = Vector2(583.6667, -31.666668)
 states/Stun/node = SubResource("AnimationNodeAnimation_nqs35")
 states/Stun/position = Vector2(800, 183.77779)
