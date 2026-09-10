@@ -12,11 +12,10 @@
 [ext_resource type="Script" uid="uid://c81hirrrp64m2" path="res://StateMachine/EnemyStates/enemy_defeat.gd" id="9_efk13"]
 [ext_resource type="Script" uid="uid://b53uetcel424p" path="res://StateMachine/EnemyStates/enemy_fall.gd" id="10_47ove"]
 [ext_resource type="Script" uid="uid://bktjbk1s3kg6n" path="res://StateMachine/ai_state_machine.gd" id="11_aism"]
-[ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="12_aiwait"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
 
-[node name="Enemy" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "stun_state", "defeat_state") groups=["enemy"]]
+[node name="EnemyBase" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "stun_state", "defeat_state") groups=["enemy"] editor_description="ABSTRACT BASE TEMPLATE: Defines shared physics, health, knockback, and rig. Concrete enemies (melee_enemy.tscn, ranged_enemy.tscn) must inherit from this scene and configure their own attacks and AI states. Do not instantiate directly in waves."]
 collision_layer = 3
 script = ExtResource("1_eqilm")
 movement_speed = 3.5
@@ -82,15 +81,9 @@ land_state = NodePath("../EnemyStun")
 character = NodePath("../..")
 fall_state = NodePath(".")
 
-[node name="AIStateMachine" type="Node" parent="." unique_id=1832049182 node_paths=PackedStringArray("character", "initial_state")]
+[node name="AIStateMachine" type="Node" parent="." unique_id=1832049182 node_paths=PackedStringArray("character")]
 script = ExtResource("11_aism")
 character = NodePath("..")
-initial_state = NodePath("AIWait")
-
-[node name="AIWait" type="Node" parent="AIStateMachine" unique_id=1748291048 node_paths=PackedStringArray("next_state", "ai_state_machine")]
-script = ExtResource("12_aiwait")
-next_state = NodePath(".")
-ai_state_machine = NodePath("..")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=2019475689]
 

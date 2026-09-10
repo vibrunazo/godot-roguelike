@@ -6,7 +6,9 @@ extends Node
 @export var initial_state: State = null
 
 @onready var state: State = (func get_initial_state() -> State:
-	return initial_state if initial_state != null else get_child(0)
+	if initial_state != null:
+		return initial_state
+	return get_child(0) as State if get_child_count() > 0 else null
 ).call()
 
 
@@ -15,11 +17,13 @@ func _ready() -> void:
 		state_node.finished.connect(_transition_to_next_state)
 
 	await owner.ready
-	state.enter("")
+	if state != null:
+		state.enter("")
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	state.handle_input(event)
+	if state != null:
+		state.handle_input(event)
 
 
 func _physics_process(delta: float) -> void:

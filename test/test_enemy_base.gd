@@ -11,9 +11,9 @@ func _ready() -> void:
 	# PART 1: Enemy Scene & Class Verification
 	# ---------------------------------------------------------
 	print("\n>>> PART 1: Enemy Instantiation & Node Types")
-	var enemy_scene: PackedScene = load("res://Enemy/enemy.tscn")
+	var enemy_scene: PackedScene = load("res://Enemy/enemy_base.tscn")
 	if enemy_scene == null:
-		printerr("TEST FAILED: Could not load res://Enemy/enemy.tscn")
+		printerr("TEST FAILED: Could not load res://Enemy/enemy_base.tscn")
 		get_tree().quit(1)
 		return
 		
@@ -321,26 +321,13 @@ func _ready() -> void:
 		return
 	print("Enemy.defeat_state export verified.")
 
-	# Verify AIStateMachine & AIWait
-	var ai_sm: StateMachine = enemy.ai_state_machine
+	# Verify AIStateMachine exists on base enemy (abstract base template; child scenes configure states)
+	var ai_sm: AIStateMachine = enemy.ai_state_machine as AIStateMachine
 	if ai_sm == null:
-		printerr("TEST FAILED: Enemy.ai_state_machine is null.")
+		printerr("TEST FAILED: Enemy.ai_state_machine is null or not AIStateMachine.")
 		get_tree().quit(1)
 		return
-	var ai_wait: AIWait = ai_sm.get_node_or_null("AIWait") as AIWait
-	if ai_wait == null:
-		printerr("TEST FAILED: AIWait node not found under AIStateMachine.")
-		get_tree().quit(1)
-		return
-	if ai_sm.initial_state != ai_wait:
-		printerr("TEST FAILED: AIStateMachine initial_state is not AIWait.")
-		get_tree().quit(1)
-		return
-	if ai_wait.character != enemy:
-		printerr("TEST FAILED: AIWait.character is not wired to Enemy.")
-		get_tree().quit(1)
-		return
-	print("AIStateMachine and AIWait verified.")
+	print("Enemy AIStateMachine verified.")
 
 	# Verify EnemyMove.enter sets WalkSpace
 	enemy_move.enter("")
@@ -2030,6 +2017,27 @@ func _ready() -> void:
 		return
 	print("AIPursue.character reference verified.")
 
+	var melee_wait_node: AIWait = melee_ai_sm.get_node_or_null("AIWait") as AIWait
+	if melee_wait_node == null:
+		printerr("TEST FAILED: AIWait node not found under MeleeEnemy AIStateMachine.")
+		melee_enemy.queue_free()
+		melee_floor.queue_free()
+		get_tree().quit(1)
+		return
+	if melee_wait_node.next_state != pursue_node:
+		printerr("TEST FAILED: MeleeEnemy AIWait next_state is not AIPursue.")
+		melee_enemy.queue_free()
+		melee_floor.queue_free()
+		get_tree().quit(1)
+		return
+	if pursue_node.lost_target_state != melee_wait_node:
+		printerr("TEST FAILED: MeleeEnemy AIPursue lost_target_state is not AIWait.")
+		melee_enemy.queue_free()
+		melee_floor.queue_free()
+		get_tree().quit(1)
+		return
+	print("MeleeEnemy AIWait <-> AIPursue loop verified.")
+
 	# Verify move_node fall_state export points to EnemyFall
 	var melee_fall: EnemyFall = melee_sm.get_node_or_null("EnemyFall") as EnemyFall
 	if melee_fall == null or move_node.fall_state != melee_fall:
@@ -2350,7 +2358,7 @@ func _ready() -> void:
 	print("\n>>> PART 32: Enemy KnockbackComponent & Attack Knockback")
 
 	# 1. Base Enemy KnockbackComponent verification
-	var base_enemy_scene: PackedScene = load("res://Enemy/enemy.tscn")
+	var base_enemy_scene: PackedScene = load("res://Enemy/enemy_base.tscn")
 	var base_enemy: Character = base_enemy_scene.instantiate() as Character
 	base_enemy.position = Vector3(10.0, 1.0, 10.0)
 	add_child(base_enemy)
@@ -2433,7 +2441,7 @@ func _ready() -> void:
 
 	# >>> PART 33: Falling Enemies, EnemyFall State & Run Reset Polish <<<
 	print("\n>>> PART 33: EnemyFall State, Fall Transitions & Polish")
-	var base_enemy_scene_p33: PackedScene = load("res://Enemy/enemy.tscn")
+	var base_enemy_scene_p33: PackedScene = load("res://Enemy/enemy_base.tscn")
 	var base_enemy_inst_p33: Character = base_enemy_scene_p33.instantiate() as Character
 	add_child(base_enemy_inst_p33)
 	

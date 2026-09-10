@@ -56,14 +56,12 @@ func order_attack(attack_state_name: String = "") -> bool:
 	if character == null or not character.is_alive():
 		return false
 	if character.state_machine == null or character.state_machine.state == null:
-		#push_warning("AIStateMachine: order_attack('%s') failed because body StateMachine or active state is null." % attack_state_name)
 		return false
 	var current_body_state: String = character.state_machine.state.name
 	if current_body_state == attack_state_name or current_body_state == "EnemyStun" or current_body_state == "EnemyDefeat" or current_body_state == "EnemyFall":
-		#push_warning("AIStateMachine: order_attack('%s') rejected because body is currently in '%s'." % [attack_state_name, current_body_state])
 		return false
 	if character.state_machine.get_node_or_null(attack_state_name) == null:
-		#push_warning("AIStateMachine: order_attack('%s') requested non-existent state on body StateMachine." % attack_state_name)
+		push_warning("AIStateMachine: order_attack('%s') requested non-existent state on body StateMachine." % attack_state_name)
 		return false
 	character.state_machine.state.finished.emit(attack_state_name)
 	return true

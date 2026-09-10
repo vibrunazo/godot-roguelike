@@ -1,10 +1,11 @@
 [gd_scene format=3 uid="uid://d0l671aaonnqf"]
 
-[ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy.tscn" id="1_6jo5i"]
+[ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy_base.tscn" id="1_6jo5i"]
 [ext_resource type="Script" uid="uid://ebg6wepe60cc" path="res://StateMachine/EnemyStates/enemy_attack.gd" id="2_cnthi"]
 [ext_resource type="Script" uid="uid://0d7edkd4gwy7" path="res://Components/projectile_spawner_component.gd" id="3_proj"]
 [ext_resource type="Script" uid="uid://tkni8sall63a" path="res://StateMachine/AIStates/ai_meander.gd" id="4_meander"]
 [ext_resource type="Script" uid="uid://bhgh7i53ksl7o" path="res://StateMachine/AIStates/ai_attack.gd" id="5_attack"]
+[ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="6_aiwait"]
 
 [node name="RangedEnemy" unique_id=2117139762 instance=ExtResource("1_6jo5i")]
 
@@ -26,9 +27,11 @@ fall_state = NodePath("../EnemyFall")
 [node name="AIStateMachine" parent="." index="7" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
 initial_state = NodePath("AIMeander")
 
-[node name="AIWait" parent="AIStateMachine" index="0" unique_id=1748291048 node_paths=PackedStringArray("next_state")]
+[node name="AIWait" type="Node" parent="AIStateMachine" index="0" unique_id=1748291048 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("6_aiwait")
 wait_duration = 2.0
 next_state = NodePath("../AIAttack")
+ai_state_machine = NodePath("..")
 
 [node name="AIMeander" type="Node" parent="AIStateMachine" index="1" unique_id=856220418 node_paths=PackedStringArray("attack_state", "wait_state", "ai_state_machine")]
 script = ExtResource("4_meander")

@@ -10,7 +10,7 @@ extends Node
 const PlayerScene: PackedScene = preload("res://Player/player.tscn")
 const MeleeEnemyScene: PackedScene = preload("res://Enemy/melee_enemy.tscn")
 const RangedEnemyScene: PackedScene = preload("res://Enemy/ranged_enemy.tscn")
-const BaseEnemyScene: PackedScene = preload("res://Enemy/enemy.tscn")
+const BaseEnemyScene: PackedScene = preload("res://Enemy/enemy_base.tscn")
 
 
 func _ready() -> void:
