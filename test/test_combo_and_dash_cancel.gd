@@ -58,7 +58,8 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Entered state: PlayerAttack (Attack 1: Slash)")
-	
+	var slash_start: Vector2 = Vector2(player.global_position.x, player.global_position.z)
+
 	# Wait for Attack 1 to hit
 	for i: int in range(30):
 		await get_tree().physics_frame
@@ -69,6 +70,11 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Attack 1 hit confirmed! Dummy health: ", health_comp.current_health, " (-8.0 damage)")
+	if Vector2(player.global_position.x, player.global_position.z).distance_to(slash_start) > 0.05:
+		printerr("TEST FAILED: PlayerAttack (slash, zero dash exports) must stay stationary.")
+		get_tree().quit(1)
+		return
+	print("PlayerAttack slash confirmed stationary (lunge disabled at 0.0).")
 	
 	# Queue Attack 2
 	sm._unhandled_input(click)
@@ -85,7 +91,27 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Entered state: PlayerAttack2 (Attack 2: Stab)")
-	
+	var stab_start: Vector2 = Vector2(player.global_position.x, player.global_position.z)
+
+	# The lunge direction must be unit length, or dash_speed scales with pixels.
+	var stab_state_node: Node = sm.get_node("PlayerAttack2")
+	var lunged := false
+	for i: int in range(60):
+		await get_tree().physics_frame
+		if bool(stab_state_node.get("lunging")):
+			lunged = true
+			break
+	if not lunged:
+		printerr("TEST FAILED: PlayerAttack2 never started its lunge.")
+		get_tree().quit(1)
+		return
+	var lunge_dir: Vector3 = stab_state_node.get("lunge_direction") as Vector3
+	if not is_equal_approx(lunge_dir.length(), 1.0):
+		printerr("TEST FAILED: lunge_direction not normalized. Length: ", lunge_dir.length())
+		get_tree().quit(1)
+		return
+	print("PlayerAttack2 lunge direction normalized (unit length).")
+
 	# Wait for Attack 2 to hit
 	for i: int in range(50):
 		await get_tree().physics_frame
@@ -96,6 +122,16 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Attack 2 hit confirmed! Dummy health: ", health_comp.current_health, " (-14.0 damage)")
+	var stab_travel: float = Vector2(player.global_position.x, player.global_position.z).distance_to(stab_start)
+	if stab_travel < 0.3 or stab_travel > 3.0:
+		printerr("TEST FAILED: PlayerAttack2 stab lunge out of bounds. Travelled: ", stab_travel)
+		get_tree().quit(1)
+		return
+	if sm.state.name != "PlayerAttack2":
+		printerr("TEST FAILED: Lunge leaked out of PlayerAttack2. State: ", sm.state.name)
+		get_tree().quit(1)
+		return
+	print("PlayerAttack2 stab lunge verified (travelled ", snappedf(stab_travel, 0.01), " m, still in state).")
 	
 	# Queue Attack 3 (Spin)
 	sm._unhandled_input(click)
