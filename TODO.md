@@ -184,7 +184,8 @@ This document tracks architectural improvements, optimizations, and technical de
 
 ---
 
-## 12. Dedicated Hurtbox & Hitbox Pattern (Decouple Damage from Physics Bodies & String Node Lookups)
+## 12. Dedicated Hurtbox & Hitbox Pattern (Decouple Damage from Physics Bodies & String Node Lookups) [RESOLVED]
+- **Status**: Completed. Implemented the recommended dedicated-`Hurtbox` option: every character carries a hurtbox, attackers call `receive_hit()`, and hitboxes mask only the hurtbox layer.
 - **Problem**:
   - `AttackComponent` currently inspects hit colliders directly from a `ShapeCast3D` using runtime string lookups: `collider.has_node("HealthComponent")` and `collider.has_node("KnockbackComponent")`.
   - This introduces several architectural and performance drawbacks:
@@ -212,3 +213,10 @@ This document tracks architectural improvements, optimizations, and technical de
     - **Zero String Tree Lookups**: Replaces runtime string lookups with compile-time typed method calls or fast native symbol checks (`&"take_hit"`).
     - **True Decoupling**: Attackers only know that they applied force and damage; targets decide how they react.
     - **Flexible Combat Mechanics**: Enables i-frames (by disabling the hurtbox collision shape while keeping movement collision active), precision hitboxes, and non-character destructible props (crates, barrels, doors) without special-case logic in `AttackComponent`.
+- **Resolution**:
+  - New `Components/hurtbox.gd` (`class_name Hurtbox extends Area3D`) with typed `@export` refs and `receive_hit(damage, knockback) -> bool` delegating to `HealthComponent`/`KnockbackComponent`. New `Hurtboxes` physics layer 7 (64); hurtboxes sit on layer 64 / mask 0.
+  - `Player` and `EnemyBase` (inherited by melee + ranged) each gained a `Hurtbox` + `CollisionShape3D` reusing the body capsule, with scene-wired component refs. Hitbox masks are now hurtbox-only: player `2→64`, melee `16→64`, projectile `17→65` (layer 1 kept for wall impacts).
+  - `AttackComponent` is area-driven (`area is Hurtbox` checks, typed `deal_damage_to(Hurtbox, ...)`); `body_entered` wiring removed. New `wielder` resolution (hitbox ancestry walk) excludes the attacker's own overlapping hurtbox. `EnemyProjectile` ignores `Character` bodies (hurtbox event owns damage), detonates on other bodies, and checks `Hurtbox`-vs-`shooter` on areas.
+  - Note: knockback now applies together with damage inside `receive_hit()` (previously it could apply to healthless targets); no such targets exist. Dash i-frames not added (future hook documented on `Hurtbox`); `world_boundary.gd` keeps its once-per-fall lookup.
+  - Tests: Part 30/31 mask + hurtbox presence/wiring assertions, `deal_damage_to` now takes the dummy's hurtbox. Required a headless `godot --import` rescan to register the new global class. All 14 suites pass (`python run_tests.py`).
+  - Follow-up fixes: hurtbox layers split per team (`PlayerHurtbox` 64 / `EnemyHurtbox` 128) after melee gained the ability to hit other enemies — melee hitboxes now mask the opposing team only (player `128`, enemy `64`), projectiles mask walls + both teams (`193`, friendly fire kept). `Hurtbox.receive_hit()` rejects targets at `current_health <= 0.0` since corpses keep an enabled hurtbox shape after the body shape is disabled on defeat. Covered by new Part 34 (team masks, live melee-vs-enemy/player overlap, dead-target rejection; both negative controls verified).

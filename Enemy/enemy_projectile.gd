@@ -31,11 +31,9 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node3D) -> void:
 	if _is_hit or is_queued_for_deletion():
 		return
-	if body == self or body == shooter or (body is Character and (body as Character).is_enemy()):
+	if body == self or body is Character:
 		return
 	_is_hit = true
-	if attack_component:
-		attack_component.deal_damage_to(body, damage, global_basis.z * knockback)
 	hit_effect()
 	queue_free()
 
@@ -43,11 +41,11 @@ func _on_body_entered(body: Node3D) -> void:
 func _on_area_entered(area: Area3D) -> void:
 	if _is_hit or is_queued_for_deletion():
 		return
-	if area == self or area == shooter or area.get_parent() == shooter or (area.get_parent() is Character and (area.get_parent() as Character).is_enemy()):
+	if area == self or not (area is Hurtbox) or area.get_parent() == shooter:
 		return
 	_is_hit = true
 	if attack_component:
-		attack_component.deal_damage_to(area, damage, global_basis.z * knockback)
+		attack_component.deal_damage_to(area as Hurtbox, damage, global_basis.z * knockback)
 	hit_effect()
 	queue_free()
 

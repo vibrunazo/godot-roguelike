@@ -158,7 +158,8 @@ func _ready() -> void:
 	attack_comp.damage = 8.0
 	attack_comp.knockback = Vector3.ZERO
 	hitbox.monitoring = true
-	attack_comp.deal_damage_to(dummy, 8.0, Vector3.ZERO)
+	var dummy_hurtbox: Hurtbox = (dummy as Node).get_node("Hurtbox") as Hurtbox
+	attack_comp.deal_damage_to(dummy_hurtbox, 8.0, Vector3.ZERO)
 	# Wait for tween to begin and apply initial .from(0.75) value
 	await get_tree().process_frame
 	await get_tree().process_frame

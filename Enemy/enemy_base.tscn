@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://b7usbbh1tfnjv" path="res://Enemy/animated_enemy.tscn" id="2_ncf7h"]
 [ext_resource type="AudioStream" uid="uid://bhd6x8sglgt14" path="res://Assets/Audio/hit.ogg" id="3_am0pq"]
 [ext_resource type="Script" uid="uid://bmbhix5t0xhx4" path="res://Components/knockback_component.gd" id="4_nmr1a"]
+[ext_resource type="Script" uid="uid://d7hurtbox41zq" path="res://Components/hurtbox.gd" id="12_hurtbox"]
 [ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/state_machine.gd" id="6_m6jha"]
 [ext_resource type="Script" uid="uid://ncoy0s2ai2o6" path="res://StateMachine/EnemyStates/enemy_move.gd" id="7_move"]
 [ext_resource type="Script" uid="uid://sw7pl5xbk8p7" path="res://StateMachine/EnemyStates/enemy_stun.gd" id="8_0rspp"]
@@ -45,6 +46,16 @@ max_health = 40.0
 
 [node name="KnockbackComponent" type="Node" parent="." unique_id=800122148]
 script = ExtResource("4_nmr1a")
+
+[node name="Hurtbox" type="Area3D" parent="." node_paths=PackedStringArray("health_component", "knockback_component")]
+collision_layer = 128
+collision_mask = 0
+script = ExtResource("12_hurtbox")
+health_component = NodePath("../HealthComponent")
+knockback_component = NodePath("../KnockbackComponent")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+shape = SubResource("CapsuleShape3D_ncf7h")
 
 [node name="HealthBar" parent="." unique_id=1961835903 node_paths=PackedStringArray("health_component") instance=ExtResource("2_am0pq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)

@@ -2352,13 +2352,32 @@ func _ready() -> void:
 	# ---------------------------------------------------------
 	print("\n>>> PART 31: Melee Enemy Polish, Exception Reset, Collision Layers & Mixed Spawns")
 
-	# 1. Verify Area3D collision_mask == 16 (Layer 5)
-	if hitbox.collision_mask != 16:
-		printerr("TEST FAILED: Melee weapon hitbox collision_mask expected 16, got: ", hitbox.collision_mask)
+	# 1. Verify Area3D collision_mask == 64 (Hurtboxes layer only)
+	if hitbox.collision_mask != 64:
+		printerr("TEST FAILED: Melee weapon hitbox collision_mask expected 64, got: ", hitbox.collision_mask)
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	print("Melee weapon hitbox collision_mask = 16 (Layer 5 only) verified.")
+	print("Melee weapon hitbox collision_mask = 64 (Hurtboxes layer only) verified.")
+
+	# 1b. Verify melee enemy Hurtbox presence, layer isolation, and wiring
+	var melee_hurtbox: Hurtbox = melee_inst.get_node_or_null("Hurtbox") as Hurtbox
+	if melee_hurtbox == null or melee_hurtbox.collision_layer != 128 or melee_hurtbox.collision_mask != 0:
+		printerr("TEST FAILED: MeleeEnemy Hurtbox missing or not isolated (layer 128, mask 0).")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	if melee_hurtbox.health_component == null or melee_hurtbox.knockback_component == null:
+		printerr("TEST FAILED: MeleeEnemy Hurtbox missing health/knockback wiring.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	if melee_hurtbox.get_node_or_null("CollisionShape3D") == null:
+		printerr("TEST FAILED: MeleeEnemy Hurtbox missing CollisionShape3D.")
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	print("MeleeEnemy Hurtbox (layer 64, wired refs, shape) verified.")
 
 	# 2. Verify EnemyAttack.enter() calls attack_component.reset_exceptions()
 	var dummy_col: StaticBody3D = StaticBody3D.new()
@@ -2388,8 +2407,22 @@ func _ready() -> void:
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
+	var player_hurtbox: Hurtbox = player_chk.get_node_or_null("Hurtbox") as Hurtbox
+	if player_hurtbox == null or player_hurtbox.collision_layer != 64 or player_hurtbox.collision_mask != 0:
+		printerr("TEST FAILED: Player Hurtbox missing or not isolated (layer 64, mask 0).")
+		player_chk.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
+	if player_hurtbox.health_component != player_chk.health_component or player_hurtbox.knockback_component != player_chk.knockback_component:
+		printerr("TEST FAILED: Player Hurtbox not wired to player health/knockback components.")
+		player_chk.queue_free()
+		melee_inst.queue_free()
+		get_tree().quit(1)
+		return
 	player_chk.queue_free()
 	print("Player collision_layer = 17 (Layers 1 and 5) verified.")
+	print("Player Hurtbox (layer 64, wired refs) verified.")
 
 	# 4. Verify WaveObjective mixed enemy random selection
 	var mixed_wave_obj: WaveObjective = WaveObjective.new()
@@ -2640,6 +2673,127 @@ func _ready() -> void:
 	player_inst_p33.queue_free()
 	base_enemy_inst_p33.queue_free()
 
+	# ---------------------------------------------------------
+	# PART 34: Melee Team Filtering & Dead-Target Rejection
+	# ---------------------------------------------------------
+	print("\n>>> PART 34: Melee Team Filtering & Dead-Target Rejection")
+	var team_attacker: Character = melee_scene_p33.instantiate() as Character
+	var team_enemy_target: Character = melee_scene_p33.instantiate() as Character
+	var team_player_target: Character = player_scene_p33.instantiate() as Character
+	add_child(team_attacker)
+	add_child(team_enemy_target)
+	add_child(team_player_target)
+	# Zero body layers so Jolt depenetration never shoves the stacked bodies apart
+	# (area detection uses separate layers and is unaffected).
+	for c: Character in [team_attacker, team_enemy_target, team_player_target]:
+		c.collision_layer = 0
+		c.collision_mask = 0
+	await get_tree().physics_frame
+	(team_attacker.get_node("AIStateMachine") as Node).set_physics_process(false)
+	(team_enemy_target.get_node("AIStateMachine") as Node).set_physics_process(false)
+	# Freeze the attacker's animation tree so its WeaponSlot tracks stop forcing
+	# monitoring off while the hitbox is manually activated below.
+	team_attacker.animation_tree.active = false
+	team_attacker.global_position = Vector3(0.0, 1.0, 60.0)
+	await get_tree().physics_frame
+
+	# Stack both targets on the hitbox center so overlap is guaranteed.
+	var team_hitbox_early: Area3D = team_attacker.weapon_hitbox
+	team_enemy_target.global_position = team_hitbox_early.global_position
+	team_player_target.global_position = team_hitbox_early.global_position
+	await get_tree().physics_frame
+
+	# Player hitbox must mask enemy hurtboxes only; projectile keeps walls + both teams.
+	var player_hitbox_p34: Area3D = team_player_target.get_node("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea") as Area3D
+	var proj_scene_p34: PackedScene = load("res://Enemy/enemy_projectile.tscn") as PackedScene
+	var proj_probe_p34: Area3D = proj_scene_p34.instantiate() as Area3D
+	if player_hitbox_p34 == null or player_hitbox_p34.collision_mask != 128:
+		printerr("TEST FAILED: Player hitbox must mask enemy hurtboxes only (128).")
+		team_attacker.queue_free()
+		team_enemy_target.queue_free()
+		team_player_target.queue_free()
+		proj_probe_p34.queue_free()
+		get_tree().quit(1)
+		return
+	if proj_probe_p34.collision_mask != 193:
+		printerr("TEST FAILED: Projectile must mask walls + both hurtbox layers (193). Got: ", proj_probe_p34.collision_mask)
+		team_attacker.queue_free()
+		team_enemy_target.queue_free()
+		team_player_target.queue_free()
+		proj_probe_p34.queue_free()
+		get_tree().quit(1)
+		return
+	proj_probe_p34.queue_free()
+	print("Hitbox team masks verified (player 128, projectile 193).")
+
+	# Activate the melee hitbox with all three bodies overlapping it.
+	var team_hitbox: Area3D = team_attacker.weapon_hitbox
+	var team_att: AttackComponent = team_hitbox.get_node_or_null("AttackComponent") as AttackComponent
+	team_att.damage = 8.0
+	team_att.reset_exceptions()
+	(team_hitbox.get_parent() as WeaponSlot).enabled = true
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if team_hitbox.get_overlapping_areas().is_empty():
+		printerr("TEST FAILED: No hurtbox overlaps hitbox (test setup invalid).")
+		team_attacker.queue_free()
+		team_enemy_target.queue_free()
+		team_player_target.queue_free()
+		get_tree().quit(1)
+		return
+	var enemy_health_p34: HealthComponent = team_enemy_target.get_node("HealthComponent") as HealthComponent
+	if not is_equal_approx(enemy_health_p34.current_health, enemy_health_p34.max_health):
+		printerr("TEST FAILED: Melee enemy damaged another enemy (friendly fire). Health: ", enemy_health_p34.current_health)
+		team_attacker.queue_free()
+		team_enemy_target.queue_free()
+		team_player_target.queue_free()
+		get_tree().quit(1)
+		return
+	print("Melee friendly-fire blocked verified (enemy health unchanged).")
+	var player_health_p34: HealthComponent = team_player_target.get_node("HealthComponent") as HealthComponent
+	if player_health_p34.current_health >= player_health_p34.max_health:
+		printerr("TEST FAILED: Melee enemy did not damage the player.")
+		team_attacker.queue_free()
+		team_enemy_target.queue_free()
+		team_player_target.queue_free()
+		get_tree().quit(1)
+		return
+	print("Melee enemy still damages player verified.")
+
+	# Dead targets must reject hits.
+	var enemy_hurtbox_p34: Hurtbox = team_enemy_target.get_node("Hurtbox") as Hurtbox
+	enemy_health_p34.take_damage(9999.0)
+	await get_tree().physics_frame
+	var health_after_kill: float = enemy_health_p34.current_health
+	team_att.reset_exceptions()
+	if enemy_hurtbox_p34.receive_hit(8.0, Vector3.ZERO):
+		printerr("TEST FAILED: Dead enemy accepted receive_hit.")
+		team_attacker.queue_free()
+		team_enemy_target.queue_free()
+		team_player_target.queue_free()
+		get_tree().quit(1)
+		return
+	if team_att.deal_damage_to(enemy_hurtbox_p34, 8.0, Vector3.ZERO):
+		printerr("TEST FAILED: deal_damage_to damaged a dead enemy.")
+		team_attacker.queue_free()
+		team_enemy_target.queue_free()
+		team_player_target.queue_free()
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(enemy_health_p34.current_health, health_after_kill):
+		printerr("TEST FAILED: Dead enemy health changed after rejected hits.")
+		team_attacker.queue_free()
+		team_enemy_target.queue_free()
+		team_player_target.queue_free()
+		get_tree().quit(1)
+		return
+	print("Dead-target hit rejection verified.")
+	team_attacker.queue_free()
+	team_enemy_target.queue_free()
+	team_player_target.queue_free()
+	await get_tree().physics_frame
+
 	print("\n====================================================================")
 	print("  ALL BASE ENEMY & RANGED ENEMY TESTS PASSED!                       ")
 	print("  1. Enemy class_name & CharacterBody3D hierarchy verified          ")
@@ -2675,6 +2829,7 @@ func _ready() -> void:
 	print("  31. Melee Polish, Exceptions Reset, Layers & Mixed Spawns verified")
 	print("  32. Enemy KnockbackComponent, EnemyStun & Attack Knockback verified")
 	print("  33. Falling Enemies, EnemyFall State & Run Reset Polish verified  ")
+	print("  34. Melee team filtering & dead-target rejection verified        ")
 	print("====================================================================")
 	
 	get_tree().quit(0)

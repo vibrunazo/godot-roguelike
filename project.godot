@@ -92,6 +92,8 @@ ui_toggle_fullscreen={
 [layer_names]
 
 3d_physics/layer_names/layer_6="Triggers"
+3d_physics/layer_names/layer_7="PlayerHurtbox"
+3d_physics/layer_names/layer_8="EnemyHurtbox"
 
 [physics]
 
