@@ -92,7 +92,8 @@ This document tracks architectural improvements, optimizations, and technical de
 
 ---
 
-## 7. Distance-to-Player Calculation (Distance Squared Optimization)
+## 7. Distance-to-Player Calculation (Distance Squared Optimization) [RESOLVED]
+- **Status**: Completed. Verified the per-tick proximity checks already use `distance_squared_to()` (adopted during the #2 refactor: `Character.get_nearest_target()`, `AIMeander`, `AIPursue`, all comparing against squared `attack_range` thresholds); removed the last remaining `distance_to()` call, the caller-less `Character.distance_to_character()` helper.
 - **Problem**:
   - In `Enemy.distance_to_player()` and `EnemyMeander.physics_update()`, proximity checks use `global_position.distance_to(player.global_position) <= attack_range`.
   - `distance_to()` performs a square root operation ($\sqrt{\Delta x^2 + \Delta y^2 + \Delta z^2}$) on every physics tick for each active enemy.

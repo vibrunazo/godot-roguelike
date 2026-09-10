@@ -158,13 +158,6 @@ func get_nearest_target(group_name: String = "") -> Character:
 	return closest_char
 
 
-## Returns the distance in meters to another character, or INF if invalid.
-func distance_to_character(other: Character) -> float:
-	if not is_instance_valid(other):
-		return INF
-	return global_position.distance_to(other.global_position)
-
-
 ## Resets game state and reloads level on player defeat.
 func reset_game_state() -> void:
 	ProgressionState.reset_run()
