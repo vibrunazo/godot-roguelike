@@ -1,7 +1,16 @@
-# TODO: Autoloads should be separated into different global systems with different names and responsibilities, instead of a generic GlobalVars autoload with multiple responsibilities.
+## Default global asset references, registered as the `GlobalVars` autoload (scene
+## `Singletons/global_vars.tscn`) in `project.godot`. Access from anywhere via
+## `GlobalVars`, e.g. `GlobalVars.upgrade_damage`.
+##
+## Unique responsibility: hold default global references to scenes and resources
+## used elsewhere in the game. Individual nodes may override these locally via
+## their own `@export`s (falling back to the registry when unset). Anything that
+## is not a shared default reference — run state, difficulty math, input,
+## display, spawning — belongs in another autoload (`ProgressionState`, `UI`,
+## `VfxManager`, `SceneTransition`), never here.
 extends Node
 
-## Difficulty scaling curve sampled by get_enemy_count().
+## Difficulty scaling curve sampled by ProgressionState.get_enemy_count().
 @export var difficulty_curve: Curve
 ## Upgrade scenes offered by the UpgradeShop.
 @export var upgrade_damage: PackedScene
@@ -25,44 +34,5 @@ extends Node
 ## Upgrade scenes offered by the UpgradeShop, built from the exported upgrade scenes.
 var upgrades: Array[PackedScene] = []
 
-var level: int = 1
-
-
 func _ready() -> void:
-	process_mode = Node.PROCESS_MODE_ALWAYS
 	upgrades = [upgrade_damage, upgrade_health, upgrade_speed]
-
-
-func _unhandled_key_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_toggle_fullscreen"):
-		toggle_fullscreen()
-
-
-func is_fullscreen() -> bool:
-	return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN \
-		or DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-
-
-func go_fullscreen() -> void:
-	if Engine.is_embedded_in_editor() or get_window().is_embedded():
-		print("Cannot toggle fullscreen while game is embedded in the editor. Disable 'Game Embed Mode' in Editor Settings -> Run -> Window Placement.")
-		return
-	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
-
-
-func toggle_fullscreen() -> void:
-	if Engine.is_embedded_in_editor() or get_window().is_embedded():
-		print("Cannot toggle fullscreen while game is embedded in the editor. Disable 'Game Embed Mode' in Editor Settings -> Run -> Window Placement.")
-		return
-	if is_fullscreen():
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-	else:
-		go_fullscreen()
-
-
-func finish_level() -> void:
-	level += 1
-
-
-func get_enemy_count() -> int:
-	return int(floor(difficulty_curve.sample(float(level))))

@@ -1,3 +1,12 @@
+## Level transition service, registered as the `SceneTransition` autoload (scene
+## `Singletons/scene_transition.tscn`) in `project.godot`. Access from anywhere
+## via `SceneTransition`, e.g. `SceneTransition.load_next_level()`.
+##
+## Unique responsibilities:
+## - Fade in/out transitions between scenes (`fade_in`, `fade_out`).
+## - Level rotation (`levels`, `load_next_level`) and direct scene loading
+##   (`load_scene_path`), preserving the player across scene changes
+##   (`player_cache`).
 extends CanvasLayer
 
 @onready var color_rect: ColorRect = $ColorRect

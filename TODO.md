@@ -133,20 +133,22 @@ This document tracks architectural improvements, optimizations, and technical de
 
 ---
 
-## 9. Domain-Specific Singletons vs. God-Object `GlobalVars`
+## 9. Domain-Specific Singletons vs. God-Object `GlobalVars` [RESOLVED]
+- **Status**: Completed. `GlobalVars` is now a pure asset registry; progression and UI input live in dedicated autoloads. (Note: this item predates the `VfxManager`/`SceneTransition` autoloads and the #8 registry work — the split below builds on that state.)
 - **Problem**:
   - `GlobalVars` serves as a generic "god object" catch-all singleton, accumulating disparate responsibilities (level progression, enemy count formulas, run state, and potentially future player stats or audio).
   - Mixing multiple unrelated domains into a monolithic global script violates the Single Responsibility Principle (SRP), obscures system dependencies, and complicates unit testing.
-- **Refactoring Options**:
-  - **Decompose into Dedicated, Purpose-Driven Services**:
-    - **`RunManager` / `ProgressionService`**: Manages the current level index, active run seed, run difficulty tier, and progression lifecycle (`level_finished`, `run_won`, `run_lost`).
-    - **`EncounterDirector` / `SpawnDirector`**: Handles encounter scaling logic, wave budgeting, and enemy distribution formulas based on level progression and difficulty.
-    - **`EventBus`**: A lightweight global signal hub (Observer pattern) allowing subsystems to publish and subscribe to gameplay events without referencing concrete system singletons directly.
-  - *Benefits*: Enforces clean architectural boundaries, keeps global state focused and auditable, and ensures systems can be tested or swapped independently.
+- **Resolution**:
+  - **`ProgressionState`** (new script autoload `Singletons/progression_state.gd`): owns `difficulty_level` (renamed from `level`), `advance_level()`, `reset_run()`, and `get_enemy_count()` (sampled from the `GlobalVars.difficulty_curve` registry asset). Call sites migrated: `Character.reset_game_state()`, `ExitPoint`, `WaveObjective`.
+  - **`UI`** (new script autoload `Singletons/ui.gd`): owns fullscreen state/toggling, the `ui_toggle_fullscreen` input event, and `PROCESS_MODE_ALWAYS`; designated home for future global menu flow (none exists yet — no menu code was found to migrate).
+  - **`GlobalVars`**: registry exports + derived `upgrades` array only; fullscreen/input/level/difficulty code removed. No new `EventBus`/`EncounterDirector`/`ProjectileManager` — deferred until pooled projectiles or cross-system events create real demand.
+  - Every global (`GlobalVars`, `ProgressionState`, `UI`, `VfxManager`, `SceneTransition`) now carries a docstring stating its autoload access name and unique responsibilities.
+  - All 14 test suites pass cleanly with exit code 0 (`python run_tests.py`).
 
 ---
 
-## 10. Projectile & VFX Scene Tree Ownership (Decouple from Spawner Lifecycle)
+## 10. Projectile & VFX Scene Tree Ownership (Decouple from Spawner Lifecycle) [RESOLVED]
+- **Status**: Completed. Projectiles and impact effects now parent to the world container via `VfxManager`, surviving shooter removal. (Note: this item predates the #2 refactor — `_on_weapon_slot_ranged_attack()` no longer exists; spawning lives in `ProjectileSpawnerComponent`. Verified nothing despawns enemies today, so this was preventive.)
 - **Problem**:
   - `RangedEnemy` currently adds spawned projectiles directly as its own children (`add_child(projectile)` in `_on_weapon_slot_ranged_attack()`).
   - While `EnemyProjectile` uses `top_level = true` so its position is transformed independently in world coordinates, its scene tree lifecycle is still tightly bound to the enemy node.
@@ -159,6 +161,11 @@ This document tracks architectural improvements, optimizations, and technical de
   - **Signal-Driven / Service-Driven Spawning (`ProjectileManager`)**:
     - Instead of actors directly instantiating scenes and adding them to the hierarchy, actors emit a spawn request signal (e.g. `projectile_spawn_requested(scene, transform, velocity)`) or call a centralized manager service.
     - *Benefits*: Decouples actors from scene management, facilitates centralized projectile pooling to eliminate allocation spikes, and standardizes collision layer assignment.
+- **Resolution**:
+  - Chose the dedicated-container option without a new autoload: `VfxManager.spawn_world_entity()` parents nodes to `current_scene` (fallback: scene root). It owns placement only, never gameplay logic — no `ProjectileManager` was created (a projectile-owning manager would just re-mix gameplay concerns in a new home).
+  - `ProjectileSpawnerComponent` instantiates as before but parents via the helper and assigns the new `EnemyProjectile.shooter` reference; `hit_effect()` parents `FireballHit` via the same helper. Self-collision guards compare against `shooter` instead of `get_parent()`. Damage numbers remain screen-space children of `VfxManager`.
+  - Updated `test_character_and_ai.gd` and `test_enemy_base.gd` parenting assertions to the world container (plus `shooter`-reference checks and stray-projectile cleanup); `top_level`, damage, and cleanup assertions unchanged.
+  - All 14 test suites pass cleanly with exit code 0 (`python run_tests.py`).
 
 ---
 

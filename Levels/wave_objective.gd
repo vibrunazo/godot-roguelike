@@ -12,7 +12,7 @@ var all_enemies: Array[Character] = []
 func _ready() -> void:
 	if enemy_scenes.is_empty():
 		enemy_scenes = [GlobalVars.enemy_melee_scene, GlobalVars.enemy_ranged_scene]
-	for _i: int in GlobalVars.get_enemy_count():
+	for _i: int in ProgressionState.get_enemy_count():
 		var template: PackedScene = enemy_scenes.pick_random()
 		var new_enemy: Character = template.instantiate() as Character
 		all_enemies.append(new_enemy)

@@ -332,20 +332,28 @@ func test_part_6_ranged_projectile_spawner() -> void:
 		get_tree().quit(1)
 		return
 	
-	var child_count_before: int = ranged_enemy.get_child_count()
+	var world: Node = get_tree().current_scene
+	var child_count_before: int = world.get_child_count()
 	spawner.spawn_projectile()
 	var spawned: EnemyProjectile = null
-	for i: int in range(child_count_before, ranged_enemy.get_child_count()):
-		var c: Node = ranged_enemy.get_child(i)
+	for i: int in range(child_count_before, world.get_child_count()):
+		var c: Node = world.get_child(i)
 		if c is EnemyProjectile:
 			spawned = c as EnemyProjectile
 			break
 	if spawned == null:
-		printerr("TEST FAILED: spawn_projectile did not instantiate EnemyProjectile as child.")
+		printerr("TEST FAILED: spawn_projectile did not instantiate EnemyProjectile in world container.")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("ProjectileSpawnerComponent successfully spawned projectile.")
+	if spawned.get_parent() != world or spawned.shooter != ranged_enemy:
+		printerr("TEST FAILED: Projectile not parented to world container with shooter reference.")
+		spawned.queue_free()
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("ProjectileSpawnerComponent successfully spawned projectile into world container.")
+	spawned.queue_free()
 	ranged_enemy.queue_free()
 	await get_tree().process_frame
 

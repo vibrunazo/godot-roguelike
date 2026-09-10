@@ -23,7 +23,8 @@ func spawn_projectile() -> void:
 	var projectile: EnemyProjectile = scene.instantiate() as EnemyProjectile
 	if projectile == null:
 		return
-	character.add_child(projectile)
+	projectile.shooter = character
+	VfxManager.spawn_world_entity(projectile)
 	if spawn_point != null:
 		projectile.global_position = spawn_point.global_position
 	elif character.mesh_mount != null:

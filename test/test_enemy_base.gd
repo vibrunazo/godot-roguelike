@@ -495,12 +495,12 @@ func _ready() -> void:
 		return
 	print("WaveObjective finished signal verified.")
 	
-	if wave_obj.all_enemies.size() != GlobalVars.get_enemy_count():
-		printerr("TEST FAILED: WaveObjective all_enemies size is ", wave_obj.all_enemies.size(), ", expected ", GlobalVars.get_enemy_count())
+	if wave_obj.all_enemies.size() != ProgressionState.get_enemy_count():
+		printerr("TEST FAILED: WaveObjective all_enemies size is ", wave_obj.all_enemies.size(), ", expected ", ProgressionState.get_enemy_count())
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("WaveObjective all_enemies size (", wave_obj.all_enemies.size(), ") matches GlobalVars.get_enemy_count() verified.")
+	print("WaveObjective all_enemies size (", wave_obj.all_enemies.size(), ") matches ProgressionState.get_enemy_count() verified.")
 
 	# Verify ExitPoint
 	var exit_point: ExitPoint = level.get_node_or_null("ExitPoint") as ExitPoint
@@ -529,19 +529,19 @@ func _ready() -> void:
 		return
 	print("ExitPoint initially invisible, locked, and next_scene_path export var verified.")
 
-	# Verify difficulty curve and GlobalVars enemy count
+	# Verify difficulty curve and ProgressionState enemy count
 	var curve_res: Curve = load("res://Singletons/difficulty_curve.tres") as Curve
 	if curve_res == null or curve_res.point_count < 2:
 		printerr("TEST FAILED: difficulty_curve.tres missing or invalid point count.")
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	if GlobalVars.get_enemy_count() < 3:
-		printerr("TEST FAILED: GlobalVars.get_enemy_count() at level 1 is ", GlobalVars.get_enemy_count(), ", expected >= 3.")
+	if ProgressionState.get_enemy_count() < 3:
+		printerr("TEST FAILED: ProgressionState.get_enemy_count() at level 1 is ", ProgressionState.get_enemy_count(), ", expected >= 3.")
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("Difficulty curve and GlobalVars.get_enemy_count() (level 1: ", GlobalVars.get_enemy_count(), ") verified.")
+	print("Difficulty curve and ProgressionState.get_enemy_count() (level 1: ", ProgressionState.get_enemy_count(), ") verified.")
 
 	# Verify ExitPoint Area3D & CollisionShape3D
 	var exit_area: Area3D = exit_point.get_node_or_null("Area3D") as Area3D
@@ -1326,7 +1326,7 @@ func _ready() -> void:
 	# Test projectile spawned matches mesh_mount global_rotation.y
 	spawner_comp.spawn_projectile()
 	var spawned_proj: EnemyProjectile = null
-	for c: Node in shooter.get_children():
+	for c: Node in get_tree().current_scene.get_children():
 		if c is EnemyProjectile:
 			spawned_proj = c as EnemyProjectile
 			break
@@ -1336,6 +1336,14 @@ func _ready() -> void:
 		test_player.queue_free()
 		get_tree().quit(1)
 		return
+	if spawned_proj.get_parent() != get_tree().current_scene or spawned_proj.shooter != shooter:
+		printerr("TEST FAILED: Projectile not parented to world container with shooter reference.")
+		shooter.queue_free()
+		test_player.queue_free()
+		spawned_proj.queue_free()
+		get_tree().quit(1)
+		return
+	print("Projectile parented to world container with shooter reference verified.")
 	if not is_equal_approx(spawned_proj.global_rotation.y, shooter.mesh_mount.global_rotation.y):
 		printerr("TEST FAILED: Spawned projectile rotation.y does not match mesh_mount.global_rotation.y.")
 		shooter.queue_free()
@@ -1349,9 +1357,11 @@ func _ready() -> void:
 		printerr("TEST FAILED: Spawned projectile position does not match spawn_point.")
 		shooter.queue_free()
 		test_player.queue_free()
+		spawned_proj.queue_free()
 		get_tree().quit(1)
 		return
 	print("Spawned projectile position matches attack_bone.")
+	spawned_proj.queue_free()
 
 	# Test projectile collision & damage dealing
 	var target_health: HealthComponent = test_player.get_node_or_null("HealthComponent") as HealthComponent
@@ -1370,7 +1380,7 @@ func _ready() -> void:
 			spawned_hit = c as Node3D
 			break
 	if spawned_hit == null:
-		printerr("TEST FAILED: hit_effect() did not spawn FireballHit into parent.")
+		printerr("TEST FAILED: hit_effect() did not spawn FireballHit into world container.")
 		shooter.queue_free()
 		test_player.queue_free()
 		hit_proj.queue_free()
@@ -1595,18 +1605,18 @@ func _ready() -> void:
 		return
 	print("InputMap ui_toggle_fullscreen with KEY_F verified.")
 
-	if not GlobalVars.has_method("toggle_fullscreen") or not GlobalVars.has_method("is_fullscreen") or not GlobalVars.has_method("go_fullscreen"):
-		printerr("TEST FAILED: GlobalVars missing toggle_fullscreen / is_fullscreen / go_fullscreen methods")
+	if not UI.has_method("toggle_fullscreen") or not UI.has_method("is_fullscreen") or not UI.has_method("go_fullscreen"):
+		printerr("TEST FAILED: UI missing toggle_fullscreen / is_fullscreen / go_fullscreen methods")
 		get_tree().quit(1)
 		return
-	GlobalVars.toggle_fullscreen()
-	print("GlobalVars.toggle_fullscreen() executed successfully.")
+	UI.toggle_fullscreen()
+	print("UI.toggle_fullscreen() executed successfully.")
 
 	var fs_action_event := InputEventAction.new()
 	fs_action_event.action = "ui_toggle_fullscreen"
 	fs_action_event.pressed = true
-	GlobalVars._unhandled_key_input(fs_action_event)
-	print("GlobalVars._unhandled_key_input with ui_toggle_fullscreen verified.")
+	UI._unhandled_key_input(fs_action_event)
+	print("UI._unhandled_key_input with ui_toggle_fullscreen verified.")
 
 	var stretch_mode: Variant = ProjectSettings.get_setting("display/window/stretch/mode")
 	var stretch_aspect: Variant = ProjectSettings.get_setting("display/window/stretch/aspect")
@@ -2570,18 +2580,18 @@ func _ready() -> void:
 	print("take_upgrade call_group disable verified.")
 	upgrade_inst_p33.queue_free()
 	
-	# Verify Player.reset_game_state() sets GlobalVars.level = 1
+	# Verify Player.reset_game_state() resets ProgressionState.difficulty_level = 1
 	var player_scene_p33: PackedScene = load("res://Player/player.tscn")
 	var player_inst_p33: Character = player_scene_p33.instantiate() as Character
-	GlobalVars.level = 5
+	ProgressionState.difficulty_level = 5
 	player_inst_p33.reset_game_state()
-	if GlobalVars.level != 1:
-		printerr("TEST FAILED: reset_game_state did not reset GlobalVars.level to 1. Got: ", GlobalVars.level)
+	if ProgressionState.difficulty_level != 1:
+		printerr("TEST FAILED: reset_game_state did not reset difficulty_level to 1. Got: ", ProgressionState.difficulty_level)
 		player_inst_p33.queue_free()
 		base_enemy_inst_p33.queue_free()
 		get_tree().quit(1)
 		return
-	print("Player.reset_game_state resetting GlobalVars.level = 1 verified.")
+	print("Player.reset_game_state resetting difficulty_level = 1 verified.")
 	player_inst_p33.queue_free()
 	base_enemy_inst_p33.queue_free()
 

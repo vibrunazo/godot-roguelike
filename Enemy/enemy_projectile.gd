@@ -8,6 +8,9 @@ extends Area3D
 @export var damage: float = 5.0
 ## Knockback impulse applied to entities hit by this projectile.
 @export var knockback: float = 15.0
+## Character that fired this projectile. Used to ignore self-collision now that
+## projectiles parent to the world instead of their shooter.
+var shooter: Character
 
 @onready var attack_component: AttackComponent = $AttackComponent
 
@@ -28,7 +31,7 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node3D) -> void:
 	if _is_hit or is_queued_for_deletion():
 		return
-	if body == self or body == get_parent() or (body is Character and (body as Character).is_enemy()):
+	if body == self or body == shooter or (body is Character and (body as Character).is_enemy()):
 		return
 	_is_hit = true
 	if attack_component:
@@ -40,7 +43,7 @@ func _on_body_entered(body: Node3D) -> void:
 func _on_area_entered(area: Area3D) -> void:
 	if _is_hit or is_queued_for_deletion():
 		return
-	if area == self or area.get_parent() == get_parent() or (area.get_parent() is Character and (area.get_parent() as Character).is_enemy()):
+	if area == self or area == shooter or area.get_parent() == shooter or (area.get_parent() is Character and (area.get_parent() as Character).is_enemy()):
 		return
 	_is_hit = true
 	if attack_component:
@@ -55,7 +58,7 @@ func is_colliding() -> bool:
 
 func hit_effect() -> void:
 	var fireball: Node3D = (GlobalVars.fireball_hit_scene as PackedScene).instantiate() as Node3D
-	get_parent().add_child(fireball)
+	VfxManager.spawn_world_entity(fireball)
 	fireball.global_position = global_position
 
 

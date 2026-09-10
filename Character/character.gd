@@ -167,7 +167,7 @@ func distance_to_character(other: Character) -> float:
 
 ## Resets game state and reloads level on player defeat.
 func reset_game_state() -> void:
-	GlobalVars.level = 1
+	ProgressionState.reset_run()
 	if is_inside_tree():
 		get_tree().reload_current_scene.call_deferred()
 

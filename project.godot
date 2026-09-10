@@ -18,6 +18,8 @@ config/icon="uid://cai13gaviuuvu"
 [autoload]
 
 GlobalVars="*res://Singletons/global_vars.tscn"
+ProgressionState="*res://Singletons/progression_state.gd"
+UI="*res://Singletons/ui.gd"
 SceneTransition="*res://Singletons/scene_transition.tscn"
 VfxManager="*res://Singletons/vfx_manager.gd"
 

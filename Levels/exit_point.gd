@@ -31,7 +31,7 @@ func _on_area_3d_body_entered(body: Node3D) -> void:
 	if body is Character and (body as Character).is_player():
 		locked = true
 		animation_player.play("Exit")
-		GlobalVars.finish_level()
+		ProgressionState.advance_level()
 		if not next_scene_path.is_empty():
 			SceneTransition.load_scene_path(next_scene_path)
 		else:
