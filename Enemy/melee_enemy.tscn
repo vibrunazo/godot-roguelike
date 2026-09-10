@@ -2,7 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy_base.tscn" id="1_cu01m"]
 [ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="2_7p80c"]
-[ext_resource type="Script" uid="uid://ebg6wepe60cc" path="res://StateMachine/EnemyStates/enemy_attack.gd" id="3_7r01i"]
+[ext_resource type="Script" uid="uid://cmqolk21i2p4i" path="res://StateMachine/character_attack.gd" id="3_7r01i"]
 [ext_resource type="Script" uid="uid://0n22etq4hpy8" path="res://StateMachine/AIStates/ai_pursue.gd" id="4_pursue"]
 [ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="5_aiwait"]
 
@@ -47,11 +47,13 @@ script = ExtResource("2_7p80c")
 [node name="StateMachine" parent="." index="6" unique_id=1352967922 node_paths=PackedStringArray("initial_state")]
 initial_state = NodePath("EnemyMove")
 
-[node name="EnemyAttack" type="Node" parent="StateMachine" index="4" unique_id=1290511765 node_paths=PackedStringArray("attack_component", "next_state", "character", "fall_state")]
+[node name="EnemyAttack" type="Node" parent="StateMachine" index="4" unique_id=1290511765 node_paths=PackedStringArray("attack_component", "next_states", "character", "fall_state")]
 script = ExtResource("3_7r01i")
 attack_component = NodePath("../../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
-attack_name = "MeleeAttack"
-next_state = [NodePath("../EnemyMove")]
+damage = 8.0
+knockback = 20.0
+attack_animation_name = "MeleeAttack"
+next_states = [NodePath("../EnemyMove")]
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 

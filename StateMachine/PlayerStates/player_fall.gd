@@ -1,9 +1,9 @@
 ## Physical state handling airborne gravity and falling for player characters.
 class_name PlayerFall
-extends PlayerState
+extends CharacterState
 
 ## State to transition to after landing on the floor.
-@export var run_state: PlayerState
+@export var run_state: CharacterState
 
 
 func physics_update(delta: float) -> void:

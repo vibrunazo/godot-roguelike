@@ -51,7 +51,22 @@ func command_stop() -> void:
 		character.face_target = Vector3.ZERO
 
 
+## Raises an edge-triggered attack intent on the body for body states to consume.
+## AIController counterpart to PlayerInputComponent.command_attack (same interface).
+func command_attack() -> void:
+	if character != null:
+		character.attack_requested = true
+
+
+## Raises an edge-triggered dash intent on the body for body states to consume.
+## AIController counterpart to PlayerInputComponent.command_dash (same interface).
+func command_dash() -> void:
+	if character != null:
+		character.dash_requested = true
+
+
 ## Orders the physical body StateMachine to execute an attack state if available.
+## AI-side policy (liveness, stun/defeat/fall veto) wraps the shared transition API.
 func order_attack(attack_state_name: String = "") -> bool:
 	if character == null or not character.is_alive():
 		return false
@@ -63,5 +78,4 @@ func order_attack(attack_state_name: String = "") -> bool:
 	if character.state_machine.get_node_or_null(attack_state_name) == null:
 		push_warning("AIStateMachine: order_attack('%s') requested non-existent state on body StateMachine." % attack_state_name)
 		return false
-	character.state_machine.state.finished.emit(attack_state_name)
-	return true
+	return character.state_machine.request_state(attack_state_name)

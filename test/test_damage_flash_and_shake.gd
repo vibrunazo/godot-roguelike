@@ -319,7 +319,7 @@ func _ready() -> void:
 	print("KnockbackComponent exponential decay verified: ", prev_mag, " -> ", kb.magnitude.length())
 	
 	# Test PlayerState core_movement priority
-	var run_state: PlayerState = player.get_node_or_null("StateMachine/PlayerRun") as PlayerState
+	var run_state: CharacterState = player.get_node_or_null("StateMachine/PlayerRun") as CharacterState
 	if run_state != null:
 		kb.magnitude = Vector3(10.0, 0.0, 0.0)
 		run_state.core_movement(0.016, 8.0)

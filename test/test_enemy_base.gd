@@ -1007,7 +1007,7 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	
-	var ranged_attack: EnemyAttack = ranged_enemy.get_node_or_null("StateMachine/EnemyAttack") as EnemyAttack
+	var ranged_attack: CharacterAttack = ranged_enemy.get_node_or_null("StateMachine/EnemyAttack") as CharacterAttack
 	if ranged_attack == null:
 		printerr("TEST FAILED: EnemyAttack node missing under RangedEnemy StateMachine.")
 		ranged_enemy.queue_free()
@@ -1015,12 +1015,12 @@ func _ready() -> void:
 		return
 	print("EnemyAttack node verified under RangedEnemy StateMachine.")
 	
-	if ranged_attack.attack_name != "RangedAttack":
-		printerr("TEST FAILED: EnemyAttack.attack_name is '", ranged_attack.attack_name, "', expected 'RangedAttack'.")
+	if ranged_attack.attack_animation_name != "RangedAttack":
+		printerr("TEST FAILED: EnemyAttack.attack_animation_name is '", ranged_attack.attack_animation_name, "', expected 'RangedAttack'.")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyAttack.attack_name verified as 'RangedAttack'.")
+	print("EnemyAttack.attack_animation_name verified as 'RangedAttack'.")
 	
 	if ranged_attack.character != ranged_enemy:
 		printerr("TEST FAILED: EnemyAttack.character does not point to RangedEnemy.")
@@ -1120,15 +1120,15 @@ func _ready() -> void:
 	print("AIMeander -> AIAttack -> EnemyAttack proximity attack trigger verified.")
 	test_player_inst.queue_free()
 
-	# Verify EnemyAttack transitions back to EnemyMove via end_attack
-	ranged_attack.end_attack("RangedAttack")
+	# Verify EnemyAttack transitions back to EnemyMove via finish_attack
+	ranged_attack.finish_attack("RangedAttack")
 	await get_tree().process_frame
 	if ranged_sm.state != ranged_move:
-		printerr("TEST FAILED: end_attack() did not transition RangedEnemy back to EnemyMove. Got: ", ranged_sm.state.name if ranged_sm.state else "null")
+		printerr("TEST FAILED: finish_attack() did not transition RangedEnemy back to EnemyMove. Got: ", ranged_sm.state.name if ranged_sm.state else "null")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("RangedEnemy transitioned to EnemyMove successfully via end_attack()!")
+	print("RangedEnemy transitioned to EnemyMove successfully via finish_attack()!")
 	
 	ranged_enemy.queue_free()
 	ranged_floor.queue_free()
@@ -2189,7 +2189,7 @@ func _ready() -> void:
 	var melee_sm_node: StateMachine = test_melee.get_node_or_null("StateMachine") as StateMachine
 	var stun_node: EnemyStun = melee_sm_node.get_node_or_null("EnemyStun") as EnemyStun
 	var move_state: EnemyMove = melee_sm_node.get_node_or_null("EnemyMove") as EnemyMove
-	var attack_node: EnemyAttack = melee_sm_node.get_node_or_null("EnemyAttack") as EnemyAttack
+	var attack_node: CharacterAttack = melee_sm_node.get_node_or_null("EnemyAttack") as CharacterAttack
 	var test_melee_ai_sm: AIStateMachine = test_melee.ai_state_machine as AIStateMachine
 	var pursue_state: AIPursue = test_melee_ai_sm.get_node_or_null("AIPursue") as AIPursue
 
@@ -2198,8 +2198,8 @@ func _ready() -> void:
 		test_melee.queue_free()
 		get_tree().quit(1)
 		return
-	if attack_node == null or attack_node.attack_name != "MeleeAttack" or attack_node.next_state.is_empty() or attack_node.next_state[0] != move_state:
-		printerr("TEST FAILED: EnemyAttack not configured with attack_name MeleeAttack or next_state EnemyMove.")
+	if attack_node == null or attack_node.attack_animation_name != "MeleeAttack" or attack_node.next_states.is_empty() or attack_node.next_states[0] != move_state:
+		printerr("TEST FAILED: EnemyAttack not configured with attack_animation_name MeleeAttack or next_states EnemyMove.")
 		test_melee.queue_free()
 		get_tree().quit(1)
 		return
@@ -2320,13 +2320,13 @@ func _ready() -> void:
 	print("WeaponSlot bone_name 'handslot.r', hitbox wiring, and enabled toggle verified.")
 
 	# 6. Verify EnemyAttack exports
-	var melee_attack_state: EnemyAttack = melee_inst.get_node_or_null("StateMachine/EnemyAttack") as EnemyAttack
-	if melee_attack_state == null or melee_attack_state.attack_component != att_comp or not is_equal_approx(melee_attack_state.weapon_damage, 8.0):
+	var melee_attack_state: CharacterAttack = melee_inst.get_node_or_null("StateMachine/EnemyAttack") as CharacterAttack
+	if melee_attack_state == null or melee_attack_state.attack_component != att_comp or not is_equal_approx(melee_attack_state.damage, 8.0):
 		printerr("TEST FAILED: EnemyAttack state configuration invalid.")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyAttack attack_component and weapon_damage (8.0) verified.")
+	print("EnemyAttack attack_component and damage (8.0) verified.")
 
 	# 7. Verify RESET animation in animated_enemy
 	var anim_enemy_chk: Node3D = load("res://Enemy/animated_enemy.tscn").instantiate() as Node3D
@@ -2518,7 +2518,7 @@ func _ready() -> void:
 	# 5. PlayerAttack knockback export (15.0)
 	var player_scene_kb: PackedScene = load("res://Player/player.tscn")
 	var test_player_kb: Character = player_scene_kb.instantiate() as Character
-	var player_attack1: PlayerState = test_player_kb.get_node_or_null("StateMachine/PlayerAttack") as PlayerState
+	var player_attack1: CharacterAttack = test_player_kb.get_node_or_null("StateMachine/PlayerAttack") as CharacterAttack
 	if player_attack1 == null or not is_equal_approx(float(player_attack1.get("knockback")), 15.0):
 		printerr("TEST FAILED: PlayerAttack knockback expected 15.0, got: ", player_attack1.get("knockback") if player_attack1 else "null")
 		test_player_kb.queue_free()

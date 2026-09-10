@@ -1,6 +1,6 @@
 ## Physical state handling baseline enemy movement, idling, and walking animation blending.
 class_name EnemyMove
-extends EnemyState
+extends CharacterState
 
 
 func enter(_previous_state_path: String, _data := {}) -> void:

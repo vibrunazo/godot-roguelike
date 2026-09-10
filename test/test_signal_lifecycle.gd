@@ -76,7 +76,7 @@ func _part2_no_stale_attack_callback() -> void:
 	var player: Character = level.get_node("Player") as Character
 	var input_comp: PlayerInputComponent = player.get_node("PlayerInputComponent") as PlayerInputComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
-	var attack_state: PlayerAttack = sm.get_node("PlayerAttack") as PlayerAttack
+	var attack_state: CharacterAttack = sm.get_node("PlayerAttack") as CharacterAttack
 	var anim_tree: AnimationTree = player.animation_tree
 
 	# Settle: wait for spawn timer, then for the player to land in PlayerRun.

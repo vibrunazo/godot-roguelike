@@ -15,7 +15,7 @@
 [ext_resource type="AudioStream" uid="uid://cw7xybxcl0jds" path="res://Assets/Audio/footstep-04.ogg" id="6_p5o4e"]
 [ext_resource type="Script" uid="uid://s7bhjeu20n3b" path="res://Player/shake_camera_3d.gd" id="9_dkpta"]
 [ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/health_component.gd" id="12_5htga"]
-[ext_resource type="Script" uid="uid://bktfnyc34e41g" path="res://StateMachine/PlayerStates/player_attack.gd" id="13_gu6f8"]
+[ext_resource type="Script" uid="uid://cmqolk21i2p4i" path="res://StateMachine/character_attack.gd" id="13_gu6f8"]
 [ext_resource type="PackedScene" uid="uid://bwo2c4dl16ces" path="res://Components/health_bar.tscn" id="14_healthbar"]
 [ext_resource type="AudioStream" uid="uid://cx123snak3vdw" path="res://Assets/Audio/fire-slash.ogg" id="15_fireslash"]
 [ext_resource type="AudioStream" uid="uid://b1ihkudmpnw30" path="res://Assets/Audio/metal-hit.ogg" id="16_metalhit"]
@@ -280,7 +280,7 @@ _data = {
 &"dash": SubResource("Animation_7emwf")
 }
 
-[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d") groups=["player"]]
+[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "dash_cooldown") groups=["player"]]
 collision_layer = 17
 script = ExtResource("1_l8h54")
 mesh_mount = NodePath("GamedevTV_Mannequin_Medium")
@@ -289,6 +289,7 @@ knockback_component = NodePath("KnockbackComponent")
 animation_tree = NodePath("GamedevTV_Mannequin_Medium/MannequinAnimationTree")
 state_machine = NodePath("StateMachine")
 collision_shape_3d = NodePath("CollisionShape3D")
+dash_cooldown = NodePath("../DashCooldown")
 
 [node name="PlayerInputComponent" type="Node" parent="." unique_id=1849201948 node_paths=PackedStringArray("character", "dash_cooldown", "dash_audio", "damage_tint")]
 script = ExtResource("2_input")
@@ -466,23 +467,23 @@ metadata/_custom_type_script = "uid://21pflv2d1drw"
 wait_time = 0.1
 one_shot = true
 
-[node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("run_state", "next_attack", "attack_component", "dash_state", "character")]
+[node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("next_states", "combo_next", "attack_component", "dash_state", "character")]
 script = ExtResource("13_gu6f8")
 movement_speed = 1.0
 dash_cancel = true
 damage = 8.0
-run_state = NodePath("../PlayerRun")
-next_attack = NodePath("../PlayerAttack2")
+next_states = [NodePath("../PlayerRun")]
+combo_next = NodePath("../PlayerAttack2")
 attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 dash_state = NodePath("../PlayerDash")
 character = NodePath("../..")
 
-[node name="PlayerAttack2" type="Node" parent="StateMachine" unique_id=210489082 node_paths=PackedStringArray("run_state", "next_attack", "attack_component", "dash_state", "character")]
+[node name="PlayerAttack2" type="Node" parent="StateMachine" unique_id=210489082 node_paths=PackedStringArray("next_states", "combo_next", "attack_component", "dash_state", "character")]
 script = ExtResource("13_gu6f8")
 dash_cancel = true
 damage = 14.0
-run_state = NodePath("../PlayerRun")
-next_attack = NodePath("../PlayerAttack3")
+next_states = [NodePath("../PlayerRun")]
+combo_next = NodePath("../PlayerAttack3")
 attack_animation_name = "StabAttack"
 attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 dash_speed = 12.0
@@ -490,11 +491,11 @@ dash_duration = 0.12
 dash_state = NodePath("../PlayerDash")
 character = NodePath("../..")
 
-[node name="PlayerAttack3" type="Node" parent="StateMachine" unique_id=484078479 node_paths=PackedStringArray("run_state", "attack_component", "dash_state", "character")]
+[node name="PlayerAttack3" type="Node" parent="StateMachine" unique_id=484078479 node_paths=PackedStringArray("next_states", "attack_component", "dash_state", "character")]
 script = ExtResource("13_gu6f8")
 movement_speed = 4.0
 knockback = 7.5
-run_state = NodePath("../PlayerRun")
+next_states = [NodePath("../PlayerRun")]
 attack_animation_name = "SpinAttack"
 attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 rehit_interval = 0.32

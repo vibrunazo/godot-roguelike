@@ -1,9 +1,9 @@
 ## Physical state handling enemy hit reaction and recovery.
 class_name EnemyStun
-extends EnemyState
+extends CharacterState
 
 ## State to transition to after the stun animation finishes.
-@export var next_state: EnemyState
+@export var next_state: CharacterState
 
 
 func physics_update(_delta: float) -> void:

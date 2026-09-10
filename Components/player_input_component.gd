@@ -72,9 +72,50 @@ func update_aim_intent() -> void:
 	character.aim_direction = get_aim_direction()
 
 
-## Returns true if the dash ability is currently off cooldown.
+## Returns true if the dash ability is currently off cooldown (delegates to Character).
 func can_dash() -> bool:
-	return dash_cooldown != null and dash_cooldown.is_stopped()
+	return character != null and character.can_dash()
+
+
+## Raises an edge-triggered attack intent on the character for body states to consume.
+## PlayerController counterpart to AIStateMachine.command_attack (same interface).
+func command_attack() -> void:
+	if character != null:
+		character.attack_requested = true
+
+
+## Raises an edge-triggered dash intent on the character for body states to consume.
+## PlayerController counterpart to AIStateMachine.command_dash (same interface).
+func command_dash() -> void:
+	if character != null:
+		character.dash_requested = true
+
+
+## PlayerController counterpart to AIStateMachine.order_attack(): raises an attack
+## intent and immediately drives the current body state's shared check, so
+## event-driven orders transition synchronously (same timing raw input had).
+func order_attack() -> bool:
+	if character == null or character.state_machine == null:
+		return false
+	command_attack()
+	var body_state: CharacterState = character.state_machine.state as CharacterState
+	if body_state == null:
+		character.attack_requested = false
+		return false
+	return body_state.check_attack()
+
+
+## PlayerController dash order: raises a dash intent and immediately drives the
+## current body state's shared check (cooldown-gated there, like check_dash).
+func order_dash() -> bool:
+	if character == null or character.state_machine == null:
+		return false
+	command_dash()
+	var body_state: CharacterState = character.state_machine.state as CharacterState
+	if body_state == null:
+		character.dash_requested = false
+		return false
+	return body_state.check_dash()
 
 
 ## Flashes the red damage vignette when the character takes damage.

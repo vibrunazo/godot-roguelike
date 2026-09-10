@@ -37,6 +37,9 @@ signal health_changed(value: float)
 @export var stun_state: State
 ## State entered when this character is defeated.
 @export var defeat_state: State
+## Optional cooldown timer preventing dash spamming. Wired on the player;
+## characters without one (enemies) are always ready and rely on AI gating.
+@export var dash_cooldown: Timer
 
 ## Desired movement direction vector (normalized), provided by PlayerInputComponent or AIStateMachine.
 var move_direction: Vector3 = Vector3.ZERO
@@ -44,6 +47,12 @@ var move_direction: Vector3 = Vector3.ZERO
 var aim_direction: Vector3 = Vector3.ZERO
 ## Target position in 3D world space for facing orientation (used when idle).
 var face_target: Vector3 = Vector3.ZERO
+## Edge-triggered attack request, raised by either controller (PlayerInputComponent
+## polling or AIStateMachine commands) and consumed exactly once by body states.
+var attack_requested: bool = false
+## Edge-triggered dash request, raised by either controller (PlayerInputComponent
+## polling or AIStateMachine commands) and consumed exactly once by body states.
+var dash_requested: bool = false
 
 var _is_defeated: bool = false
 
@@ -61,6 +70,8 @@ func _ready() -> void:
 		navigation_agent_3d = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
 	if collision_shape_3d == null:
 		collision_shape_3d = get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if dash_cooldown == null:
+		dash_cooldown = get_node_or_null("DashCooldown") as Timer
 	if mesh_mount == null:
 		mesh_mount = get_node_or_null("AnimationAnchor") as Node3D
 		if mesh_mount == null:
@@ -122,6 +133,28 @@ func look_at_target(target: Vector3) -> void:
 ## Returns the damage scaling modifier (damage_stat / 100.0).
 func get_damage_modifier() -> float:
 	return damage_stat / 100.0
+
+
+## Returns true if the dash ability is currently off cooldown.
+## A null timer means always ready (enemies rely on AI gating instead).
+func can_dash() -> bool:
+	return dash_cooldown == null or dash_cooldown.is_stopped()
+
+
+## Consumes a pending attack request, returning true exactly once per request.
+func consume_attack_request() -> bool:
+	if not attack_requested:
+		return false
+	attack_requested = false
+	return true
+
+
+## Consumes a pending dash request, returning true exactly once per request.
+func consume_dash_request() -> bool:
+	if not dash_requested:
+		return false
+	dash_requested = false
+	return true
 
 
 ## Returns true if this character is in the "player" group.

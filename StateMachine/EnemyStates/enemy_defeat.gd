@@ -1,6 +1,6 @@
 ## Physical state handling enemy defeat animation and disabling.
 class_name EnemyDefeat
-extends EnemyState
+extends CharacterState
 
 
 func physics_update(_delta: float) -> void:

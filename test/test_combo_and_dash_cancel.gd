@@ -553,7 +553,7 @@ func _ready() -> void:
 
 	# Queue Attack 3 (spam click)
 	sm._unhandled_input(click_event)
-	var attack2_node: PlayerState = sm.state
+	var attack2_node: CharacterAttack = sm.state as CharacterAttack
 	if not attack2_node.get("queued_attack"):
 		printerr("TEST FAILED: Attack 3 was not queued in PlayerAttack2.")
 		get_tree().quit(1)

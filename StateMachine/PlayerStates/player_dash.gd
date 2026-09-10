@@ -1,6 +1,6 @@
 ## Physical state handling the player's rapid dash movement, VFX, and cooldown.
 class_name PlayerDash
-extends PlayerState
+extends CharacterState
 
 ## State to transition to after the dash duration finishes.
 @export var running_state: PlayerRun

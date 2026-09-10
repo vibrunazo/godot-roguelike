@@ -1,8 +1,10 @@
-## State handling player attack executions, hitbox activation, aim locking, and attack chaining.
-class_name PlayerAttack
-extends PlayerState
+## Shared physical attack state for all characters (player combo hits and enemy attacks).
+## Player chains use combo_next (ordered); enemies use next_states random-pick.
+## Queue/cancel run through the same intent-driven checks (default off per node).
+class_name CharacterAttack
+extends CharacterState
 
-## Speed at which the player can move while executing this attack.
+## Speed at which the character can move while executing this attack (0.0 = stationary).
 @export var movement_speed: float = 0.0
 ## Whether this attack state can be cancelled early by dashing.
 @export var dash_cancel: bool = false
@@ -10,11 +12,12 @@ extends PlayerState
 @export var damage: float = 10.0
 ## Knockback impulse applied to entities hit by this attack.
 @export var knockback: float = 15.0
-## State to transition into after this attack finishes without a queued combo.
-@export var run_state: PlayerState
-## Next attack state in the combo chain to transition to if an attack input is queued.
-@export var next_attack: PlayerState
-## Time window (in seconds) after the attack starts for the player to press the attack button to queue the next attack.
+## States to transition to when the attack animation finishes (random pick;
+## single-element arrays behave deterministically for ordered chains).
+@export var next_states: Array[CharacterState]
+## Next attack state in the combo chain when an attack intent is queued (null = no chain).
+@export var combo_next: CharacterState
+## Time window (in seconds) after the attack starts to queue the next attack.
 @export var queued_attack_time: float = 0.5
 ## Name of the animation to trigger on the animation tree for this attack.
 @export var attack_animation_name: String = "SlashAttack"
@@ -39,6 +42,10 @@ var lunge_slot: WeaponSlot
 func physics_update(_delta: float) -> void:
 	if character == null or not character.is_inside_tree():
 		return
+	# Same shared checks both controllers drive: dash-cancel is gated by the
+	# dash_cancel export below, attack intents queue the combo follow-up.
+	check_dash()
+	check_attack()
 	if lunging:
 		character.velocity = lunge_direction * dash_speed
 	else:
@@ -122,18 +129,25 @@ func _clear_lunge() -> void:
 		lunge_slot = null
 
 
-func handle_input(_event: InputEvent) -> void:
-	if dash_cancel and _event.is_action_pressed("dash"):
-		var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
-		if input_comp != null and input_comp.can_dash():
-			queued_attack = false
-			if attack_timer != null:
-				disconnect_safe(attack_timer.timeout, attempt_queue_attack)
-			_clear_lunge()
-			check_dash(_event)
-			return
-	if _event.is_action_pressed("click"):
-		queued_attack = true
+## Dash-cancel gate: only attacks with dash_cancel set can be interrupted.
+## The intent is still consumed when gated off so the press never leaks into a
+## later state. Cancelling runs exit(), which already clears lunge and timers.
+func check_dash() -> bool:
+	if not dash_cancel:
+		if character != null:
+			character.consume_dash_request()
+		return false
+	return super.check_dash()
+
+
+## Queues a combo follow-up instead of transitioning (consumes the intent).
+func check_attack() -> bool:
+	if character == null:
+		return false
+	if not character.consume_attack_request():
+		return false
+	queued_attack = true
+	return true
 
 
 func exit() -> void:
@@ -147,16 +161,24 @@ func exit() -> void:
 		attack_component.reset_exceptions()
 
 
+## Transitions to a random pick of next_states when the attack animation finishes.
+## A queued intent does NOT chain here (matching legacy behavior): chaining happens
+## in attempt_queue_attack inside the queue window; late presses are dropped.
 func finish_attack(_animation_name: String) -> void:
-	if run_state != null:
-		finished.emit(run_state.name)
+	if character == null or character.state_machine == null or next_states.is_empty():
+		return
+	var next: CharacterState = next_states.pick_random()
+	if next != null:
+		character.state_machine.request_state(next.name)
 
 
+## Chains combo_next when an attack intent was queued inside the queue window.
 func attempt_queue_attack() -> void:
-	if next_attack != null and queued_attack and character != null:
-		var direction: Vector3 = character.move_direction
-		if direction.is_zero_approx() and character.mesh_mount != null:
-			direction = character.mesh_mount.global_basis.z.normalized()
-		if direction.is_zero_approx():
-			direction = Vector3.FORWARD
-		finished.emit(next_attack.name, {"direction": direction})
+	if combo_next == null or not queued_attack or character == null or character.state_machine == null:
+		return
+	var direction: Vector3 = character.move_direction
+	if direction.is_zero_approx() and character.mesh_mount != null:
+		direction = character.mesh_mount.global_basis.z.normalized()
+	if direction.is_zero_approx():
+		direction = Vector3.FORWARD
+	character.state_machine.request_state(combo_next.name, {"direction": direction})
