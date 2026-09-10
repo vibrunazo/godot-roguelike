@@ -39,10 +39,6 @@ Godot does not exit on GDScript compilation errors, cyclic preloads, or unhandle
   python run_tests.py test/test_combo_and_dash_cancel.tscn
   ```
 
-- **Running Scratch / Diagnostic Scripts via PowerShell (Windows Default):**
-  ```powershell
-  pwsh -Command "$p = Start-Process godot -ArgumentList '--headless','--path','.','--quit-after','60','-s','scratch/my_script.gd' -PassThru; if (-not $p.WaitForExit(10000)) { $p.Kill(); exit 1 } exit $p.ExitCode"
-  ```
 
 - **Running Scratch / Diagnostic Scripts via Python One-Liner:**
   ```bash
