@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="UpgradeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://UserInterface/upgrade_resource.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+title = "[wave]Speed[/wave]"
+text_template = "%.1f -> [color=\"7fffd4\"]%.1f[/color] m/s"
+upgrade_type = 0
+stat_name = "movement_speed"
+stat_bonus = 1.5

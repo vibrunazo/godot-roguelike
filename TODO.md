@@ -220,3 +220,31 @@ This document tracks architectural improvements, optimizations, and technical de
   - Note: knockback now applies together with damage inside `receive_hit()` (previously it could apply to healthless targets); no such targets exist. Dash i-frames not added (future hook documented on `Hurtbox`); `world_boundary.gd` keeps its once-per-fall lookup.
   - Tests: Part 30/31 mask + hurtbox presence/wiring assertions, `deal_damage_to` now takes the dummy's hurtbox. Required a headless `godot --import` rescan to register the new global class. All 14 suites pass (`python run_tests.py`).
   - Follow-up fixes: hurtbox layers split per team (`PlayerHurtbox` 64 / `EnemyHurtbox` 128) after melee gained the ability to hit other enemies — melee hitboxes now mask the opposing team only (player `128`, enemy `64`), projectiles mask walls + both teams (`193`, friendly fire kept). `Hurtbox.receive_hit()` rejects targets at `current_health <= 0.0` since corpses keep an enabled hurtbox shape after the body shape is disabled on defeat. Covered by new Part 34 (team masks, live melee-vs-enemy/player overlap, dead-target rejection; both negative controls verified).
+
+---
+
+## 13. Data-Driven Shop Upgrades (`UpgradeResource` Resources) [RESOLVED]
+- **Status**: Completed. Replaced multiple separate upgrade scenes and custom script inheritance with a single presentation scene (`UserInterface/upgrade_icon.tscn`) dynamically driven by custom `UpgradeResource` assets (`.tres`).
+- **Problem**:
+  - Each upgrade was implemented as a separate Godot PackedScene (`upgrade_damage.tscn`, `upgrade_speed.tscn`, `upgrade_health.tscn`), with health requiring its own subclass script (`upgrade_health.gd`).
+  - This created scene sprawl, coupled gameplay data with scene hierarchy, and required creating new scenes and scripts for every stat addition.
+- **Resolution**:
+  - **`UpgradeResource` Base Class**:
+    - Created `res://UserInterface/upgrade_resource.gd` (`class_name UpgradeResource extends Resource`).
+    - Encapsulates `title`, `text_template`, `upgrade_type` (`STAT` vs `MAX_HEALTH`), `stat_name`, `stat_bonus`, and optional `icon`.
+    - Implements `get_current_value(player)`, `get_upgraded_value(player)`, `format_description(player)`, and `apply(player)`.
+  - **Data Assets (`.tres`)**:
+    - Created `upgrade_damage.tres` (+50% damage stat).
+    - Created `upgrade_speed.tres` (+1.5 m/s movement speed).
+    - Created `upgrade_health.tres` (+20 HP max health and current health).
+  - **Single UI Scene & Decoupled Shop**:
+    - `UserInterface/upgrade_icon.tscn` is now the single presentation card scene for all upgrades.
+    - `upgrade_icon.gd` accepts an `UpgradeResource` via `set_upgrade_resource()` or `@export var upgrade_resource`, updating title and description dynamically and delegating application upon click.
+    - `upgrade_shop.gd` exports `upgrade_card_scene: PackedScene` (fallback to `GlobalVars.upgrade_icon_scene`) and `available_upgrades: Array[UpgradeResource]` (fallback to `GlobalVars.upgrades`).
+    - `GlobalVars` exports `upgrade_icon_scene` and the three `UpgradeResource` assets.
+  - **Cleanup**:
+    - Deleted `upgrade_damage.tscn`, `upgrade_speed.tscn`, `upgrade_health.tscn`, `upgrade_health.gd`, and `upgrade_health.gd.uid`.
+  - **Verification**:
+    - Updated Part 11 and Part 13 in `test/test_enemy_base.gd` to test dynamic resource assignment, formatted text output, stat modifications, button disabling, and repeated click prevention.
+    - All 35 parts of `test_enemy_base.tscn` pass cleanly.
+

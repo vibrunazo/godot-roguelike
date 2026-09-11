@@ -2,7 +2,7 @@ extends Node
 
 const TestUtils = preload("res://test/test_utils.gd")
 const UpgradeIcon = preload("res://UserInterface/upgrade_icon.gd")
-const UpgradeHealth = preload("res://UserInterface/upgrade_health.gd")
+const UpgradeResource = preload("res://UserInterface/upgrade_resource.gd")
 
 func _ready() -> void:
 	print("--- RUNNING BASE ENEMY SCENE & LOGIC TEST ---")
@@ -1489,8 +1489,12 @@ func _ready() -> void:
 
 	print("\n>>> PART 11: UpgradeShop Scene & UI Verification")
 	# Verify GlobalVars registry exports and array
-	if GlobalVars.upgrade_damage == null or GlobalVars.upgrade_health == null or GlobalVars.upgrade_speed == null:
-		printerr("TEST FAILED: GlobalVars upgrade scene exports missing or null.")
+	if GlobalVars.upgrade_icon_scene == null or GlobalVars.upgrade_damage == null or GlobalVars.upgrade_health == null or GlobalVars.upgrade_speed == null:
+		printerr("TEST FAILED: GlobalVars upgrade exports missing or null.")
+		get_tree().quit(1)
+		return
+	if not (GlobalVars.upgrade_damage is UpgradeResource) or not (GlobalVars.upgrade_health is UpgradeResource) or not (GlobalVars.upgrade_speed is UpgradeResource):
+		printerr("TEST FAILED: GlobalVars upgrades are not UpgradeResource instances.")
 		get_tree().quit(1)
 		return
 	if GlobalVars.upgrades.size() != 3:
@@ -1498,7 +1502,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	if not GlobalVars.upgrades.has(GlobalVars.upgrade_damage) or not GlobalVars.upgrades.has(GlobalVars.upgrade_health) or not GlobalVars.upgrades.has(GlobalVars.upgrade_speed):
-		printerr("TEST FAILED: GlobalVars.upgrades array missing required upgrade packed scenes.")
+		printerr("TEST FAILED: GlobalVars.upgrades array missing required upgrade resources.")
 		get_tree().quit(1)
 		return
 	if GlobalVars.difficulty_curve == null or GlobalVars.enemy_melee_scene == null or GlobalVars.enemy_ranged_scene == null or GlobalVars.enemy_projectile_scene == null or GlobalVars.fireball_hit_scene == null or GlobalVars.damage_number_scene == null or GlobalVars.upgrade_shop_scene == null:
@@ -1594,11 +1598,16 @@ func _ready() -> void:
 		return
 	print("UpgradeShop dynamically generated 2 upgrade options successfully.")
 
-	# Verify each child is an UpgradeIcon with size_flags_horizontal == 6 and upgrade_taken connected to shop.exit_shop
+	# Verify each child is an UpgradeIcon with size_flags_horizontal == 6, upgrade_resource set, and upgrade_taken connected to shop.exit_shop
 	for child: Node in shop.upgrade_container.get_children():
 		var icon: UpgradeIcon = child as UpgradeIcon
 		if icon == null:
 			printerr("TEST FAILED: Child of upgrade_container is not an UpgradeIcon.")
+			shop.queue_free()
+			get_tree().quit(1)
+			return
+		if icon.upgrade_resource == null:
+			printerr("TEST FAILED: UpgradeIcon child upgrade_resource is null.")
 			shop.queue_free()
 			get_tree().quit(1)
 			return
@@ -1612,7 +1621,7 @@ func _ready() -> void:
 			shop.queue_free()
 			get_tree().quit(1)
 			return
-	print("UpgradeShop dynamic upgrade children verified (UpgradeIcon type, size_flags_horizontal 6, upgrade_taken connected).")
+	print("UpgradeShop dynamic upgrade children verified (UpgradeIcon type, upgrade_resource set, size_flags_horizontal 6, upgrade_taken connected).")
 
 	# Verify exiting_shop guard
 	if shop.exiting_shop:
@@ -1747,27 +1756,27 @@ func _ready() -> void:
 	icon_inst.queue_free()
 	print("Base UpgradeIcon scene, theme, nodes, and exports verified.")
 
-	# Test UpgradeSpeed scene
-	var speed_scene: PackedScene = load("res://UserInterface/upgrade_speed.tscn")
-	if speed_scene == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_speed.tscn")
+	# Test UpgradeSpeed resource and dynamic card filling
+	var speed_res: UpgradeResource = load("res://UserInterface/upgrade_speed.tres") as UpgradeResource
+	if speed_res == null:
+		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_speed.tres")
 		get_tree().quit(1)
 		return
-	var speed_icon: UpgradeIcon = speed_scene.instantiate() as UpgradeIcon
-	if speed_icon == null:
-		printerr("TEST FAILED: UpgradeSpeed is not an instance of UpgradeIcon")
+	if speed_res.stat_name != "movement_speed" or speed_res.stat_bonus != 1.5:
+		printerr("TEST FAILED: UpgradeSpeed stat_name or stat_bonus incorrect. Got: ", speed_res.stat_name, ", ", speed_res.stat_bonus)
 		get_tree().quit(1)
 		return
-	if speed_icon.stat_name != "movement_speed" or speed_icon.stat_bonus != 1.5:
-		printerr("TEST FAILED: UpgradeSpeed stat_name or stat_bonus incorrect. Got: ", speed_icon.stat_name, ", ", speed_icon.stat_bonus)
+	if speed_res.text_template != "%.1f -> [color=\"7fffd4\"]%.1f[/color] m/s":
+		printerr("TEST FAILED: UpgradeSpeed text_template incorrect: ", speed_res.text_template)
 		get_tree().quit(1)
 		return
-	if speed_icon.text_template != "%.1f -> [color=\"7fffd4\"]%.1f[/color] m/s":
-		printerr("TEST FAILED: UpgradeSpeed text_template incorrect: ", speed_icon.text_template)
+	if speed_res.title != "[wave]Speed[/wave]":
+		printerr("TEST FAILED: UpgradeSpeed title incorrect: ", speed_res.title)
 		get_tree().quit(1)
 		return
 
-	# Test player speed upgrade functionality
+	var speed_icon: UpgradeIcon = upgrade_icon_scene.instantiate() as UpgradeIcon
+	speed_icon.set_upgrade_resource(speed_res)
 	var player_scene_upgrade: PackedScene = load("res://Player/player.tscn")
 	var upgrade_player: Character = player_scene_upgrade.instantiate() as Character
 	add_child(upgrade_player)
@@ -1826,27 +1835,27 @@ func _ready() -> void:
 	upgrade_player.queue_free()
 	await get_tree().process_frame
 
-	# Test UpgradeDamage scene
-	var damage_scene: PackedScene = load("res://UserInterface/upgrade_damage.tscn")
-	if damage_scene == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_damage.tscn")
+	# Test UpgradeDamage resource and dynamic card filling
+	var damage_res: UpgradeResource = load("res://UserInterface/upgrade_damage.tres") as UpgradeResource
+	if damage_res == null:
+		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_damage.tres")
 		get_tree().quit(1)
 		return
-	var damage_icon: UpgradeIcon = damage_scene.instantiate() as UpgradeIcon
-	if damage_icon == null:
-		printerr("TEST FAILED: UpgradeDamage is not an instance of UpgradeIcon")
+	if damage_res.stat_name != "damage_stat" or damage_res.stat_bonus != 50.0:
+		printerr("TEST FAILED: UpgradeDamage stat_name or stat_bonus incorrect. Got: ", damage_res.stat_name, ", ", damage_res.stat_bonus)
 		get_tree().quit(1)
 		return
-	if damage_icon.stat_name != "damage_stat" or damage_icon.stat_bonus != 50.0:
-		printerr("TEST FAILED: UpgradeDamage stat_name or stat_bonus incorrect. Got: ", damage_icon.stat_name, ", ", damage_icon.stat_bonus)
+	if damage_res.text_template != "%d%% -> [color='7fffd4']%d%%[/color] damage":
+		printerr("TEST FAILED: UpgradeDamage text_template incorrect: ", damage_res.text_template)
 		get_tree().quit(1)
 		return
-	if damage_icon.text_template != "%d%% -> [color='7fffd4']%d%%[/color] damage":
-		printerr("TEST FAILED: UpgradeDamage text_template incorrect: ", damage_icon.text_template)
+	if damage_res.title != "[wave]Damage[/wave]":
+		printerr("TEST FAILED: UpgradeDamage title incorrect: ", damage_res.title)
 		get_tree().quit(1)
 		return
 
-	# Test player damage upgrade functionality
+	var damage_icon: UpgradeIcon = upgrade_icon_scene.instantiate() as UpgradeIcon
+	damage_icon.set_upgrade_resource(damage_res)
 	var player_scene_dmg: PackedScene = load("res://Player/player.tscn")
 	var dmg_player: Character = player_scene_dmg.instantiate() as Character
 	add_child(dmg_player)
@@ -1891,27 +1900,27 @@ func _ready() -> void:
 	dmg_player.queue_free()
 	await get_tree().process_frame
 
-	# Test UpgradeHealth scene
-	var health_scene: PackedScene = load("res://UserInterface/upgrade_health.tscn")
-	if health_scene == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_health.tscn")
+	# Test UpgradeHealth resource and dynamic card filling
+	var health_res: UpgradeResource = load("res://UserInterface/upgrade_health.tres") as UpgradeResource
+	if health_res == null:
+		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_health.tres")
 		get_tree().quit(1)
 		return
-	var health_icon: UpgradeIcon = health_scene.instantiate() as UpgradeIcon
-	if health_icon == null:
-		printerr("TEST FAILED: UpgradeHealth is not an instance of UpgradeIcon")
+	if health_res.upgrade_type != UpgradeResource.UpgradeType.MAX_HEALTH or health_res.stat_bonus != 20.0:
+		printerr("TEST FAILED: UpgradeHealth default upgrade_type or stat_bonus incorrect. Got: ", health_res.upgrade_type, ", ", health_res.stat_bonus)
 		get_tree().quit(1)
 		return
-	if (health_icon.get("health_bonus") as float) != 20.0:
-		printerr("TEST FAILED: UpgradeHealth default health_bonus expected 20.0, got: ", health_icon.get("health_bonus"))
+	if health_res.text_template != "%d -> [color='7fffd4']%d[/color] HP":
+		printerr("TEST FAILED: UpgradeHealth text_template incorrect: ", health_res.text_template)
 		get_tree().quit(1)
 		return
-	if health_icon.text_template != "%d -> [color='7fffd4']%d[/color] HP":
-		printerr("TEST FAILED: UpgradeHealth text_template incorrect: ", health_icon.text_template)
+	if health_res.title != "[wave]Max Health[/wave]":
+		printerr("TEST FAILED: UpgradeHealth title incorrect: ", health_res.title)
 		get_tree().quit(1)
 		return
 
-	# Test player health upgrade functionality
+	var health_icon: UpgradeIcon = upgrade_icon_scene.instantiate() as UpgradeIcon
+	health_icon.set_upgrade_resource(health_res)
 	var player_scene_hp: PackedScene = load("res://Player/player.tscn")
 	var hp_player: Character = player_scene_hp.instantiate() as Character
 	add_child(hp_player)
@@ -1937,7 +1946,7 @@ func _ready() -> void:
 	health_icon.upgrade_taken.connect(func(taken_icon: UpgradeIcon) -> void: health_taken_emitted.append(taken_icon))
 	health_icon.take_upgrade()
 	if health_taken_emitted.is_empty() or health_taken_emitted[0] != health_icon:
-		printerr("TEST FAILED: health_icon did not emit upgrade_taken with self via super.take_upgrade()")
+		printerr("TEST FAILED: health_icon did not emit upgrade_taken with self via take_upgrade()")
 		get_tree().quit(1)
 		return
 	print("UpgradeHealth upgrade_taken signal emission verified.")

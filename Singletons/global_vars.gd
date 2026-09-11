@@ -12,12 +12,14 @@ extends Node
 
 ## Difficulty scaling curve sampled by ProgressionState.get_enemy_count().
 @export var difficulty_curve: Curve
-## Upgrade scenes offered by the UpgradeShop.
-@export var upgrade_damage: PackedScene
-## Upgrade scenes offered by the UpgradeShop.
-@export var upgrade_health: PackedScene
-## Upgrade scenes offered by the UpgradeShop.
-@export var upgrade_speed: PackedScene
+## Base upgrade icon scene used to display upgrade cards in the UpgradeShop.
+@export var upgrade_icon_scene: PackedScene
+## Upgrade resource offered by the UpgradeShop.
+@export var upgrade_damage: UpgradeResource
+## Upgrade resource offered by the UpgradeShop.
+@export var upgrade_health: UpgradeResource
+## Upgrade resource offered by the UpgradeShop.
+@export var upgrade_speed: UpgradeResource
 ## Enemy scenes spawned by WaveObjective.
 @export var enemy_melee_scene: PackedScene
 ## Enemy scenes spawned by WaveObjective.
@@ -33,8 +35,9 @@ extends Node
 ## Shop scene opened by ExitPoint when no explicit next scene is set.
 @export var upgrade_shop_scene: PackedScene
 
-## Upgrade scenes offered by the UpgradeShop, built from the exported upgrade scenes.
-var upgrades: Array[PackedScene] = []
+## Upgrade resources offered by the UpgradeShop, built from the exported upgrade resources.
+var upgrades: Array[UpgradeResource] = []
+
 
 func _ready() -> void:
 	upgrades = [upgrade_damage, upgrade_health, upgrade_speed]

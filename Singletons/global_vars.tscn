@@ -1,24 +1,26 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene format=3]
 
-[ext_resource type="Script" path="res://Singletons/global_vars.gd" id="1_vars"]
-[ext_resource type="PackedScene" path="res://UserInterface/upgrade_damage.tscn" id="2_dmg"]
-[ext_resource type="PackedScene" path="res://UserInterface/upgrade_health.tscn" id="3_hp"]
-[ext_resource type="PackedScene" path="res://UserInterface/upgrade_speed.tscn" id="4_spd"]
-[ext_resource type="PackedScene" path="res://Enemy/melee_enemy.tscn" id="5_melee"]
-[ext_resource type="PackedScene" path="res://Enemy/ranged_enemy.tscn" id="6_ranged"]
-[ext_resource type="PackedScene" path="res://Enemy/enemy_projectile.tscn" id="7_proj"]
-[ext_resource type="PackedScene" path="res://Enemy/fireball_hit.tscn" id="8_hit"]
-[ext_resource type="PackedScene" path="res://Singletons/VFX/damage_number.tscn" id="9_dmgnum"]
-[ext_resource type="PackedScene" path="res://Singletons/VFX/target_reticle.tscn" id="11_reticle"]
-[ext_resource type="PackedScene" path="res://UserInterface/upgrade_shop.tscn" id="10_shop"]
-[ext_resource type="Curve" path="res://Singletons/difficulty_curve.tres" id="11_curve"]
+[ext_resource type="Script" uid="uid://dm0w52r0j3l1r" path="res://Singletons/global_vars.gd" id="1_vars"]
+[ext_resource type="PackedScene" uid="uid://3lgqbvbvyeg8" path="res://UserInterface/upgrade_icon.tscn" id="2_icon"]
+[ext_resource type="Resource" path="res://UserInterface/UpgradeResources/upgrade_damage.tres" id="3_dmg"]
+[ext_resource type="Resource" path="res://UserInterface/UpgradeResources/upgrade_health.tres" id="4_hp"]
+[ext_resource type="Resource" path="res://UserInterface/UpgradeResources/upgrade_speed.tres" id="5_spd"]
+[ext_resource type="PackedScene" uid="uid://cttwgr00qkjox" path="res://Enemy/melee_enemy.tscn" id="5_melee"]
+[ext_resource type="PackedScene" uid="uid://d0l671aaonnqf" path="res://Enemy/ranged_enemy.tscn" id="6_ranged"]
+[ext_resource type="PackedScene" uid="uid://0qtans3shtxh" path="res://Enemy/enemy_projectile.tscn" id="7_proj"]
+[ext_resource type="PackedScene" uid="uid://olax7oyumfwu" path="res://Enemy/fireball_hit.tscn" id="8_hit"]
+[ext_resource type="PackedScene" uid="uid://bfih8h7cuu5va" path="res://Singletons/VFX/damage_number.tscn" id="9_dmgnum"]
+[ext_resource type="PackedScene" uid="uid://bdd6qt1dd2vr8" path="res://Singletons/VFX/target_reticle.tscn" id="11_reticle"]
+[ext_resource type="PackedScene" uid="uid://dx5vp0if7ta30" path="res://UserInterface/upgrade_shop.tscn" id="10_shop"]
+[ext_resource type="Curve" uid="uid://cxfev6iu2f3e0" path="res://Singletons/difficulty_curve.tres" id="11_curve"]
 
 [node name="GlobalVars" type="Node"]
 script = ExtResource("1_vars")
 difficulty_curve = ExtResource("11_curve")
-upgrade_damage = ExtResource("2_dmg")
-upgrade_health = ExtResource("3_hp")
-upgrade_speed = ExtResource("4_spd")
+upgrade_icon_scene = ExtResource("2_icon")
+upgrade_damage = ExtResource("3_dmg")
+upgrade_health = ExtResource("4_hp")
+upgrade_speed = ExtResource("5_spd")
 enemy_melee_scene = ExtResource("5_melee")
 enemy_ranged_scene = ExtResource("6_ranged")
 enemy_projectile_scene = ExtResource("7_proj")
