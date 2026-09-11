@@ -153,6 +153,7 @@ ai_state_machine = NodePath("..")
 script = ExtResource("15_pursue")
 attack_state_name = "EnemyPunch"
 attack_range = 2.4
+attack_cooldown = 2.0
 lost_target_state = NodePath("../AIWait")
 ai_state_machine = NodePath("..")
 

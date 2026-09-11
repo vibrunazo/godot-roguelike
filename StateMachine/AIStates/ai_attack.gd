@@ -6,11 +6,28 @@ extends AIState
 @export var attack_state_name: String = "EnemyAttack"
 ## Potential AI states to transition to randomly after the attack finishes.
 @export var next_states: Array[AIState] = []
+## Cooldown time in seconds between attack executions (0.0 = no cooldown).
+@export var cooldown: float = 0.0
 
+## Remaining cooldown time in seconds before this attack can be executed again.
+var cooldown_timer: float = 0.0
 var _attack_ordered: bool = false
 
 
+## Returns true if this attack is currently on cooldown.
+func is_on_cooldown() -> bool:
+	return cooldown_timer > 0.0
+
+
+## Updates the cooldown timer while this state is inactive so cooldown progresses.
+func evaluate_trigger(delta: float) -> bool:
+	if cooldown_timer > 0.0:
+		cooldown_timer -= delta
+	return false
+
+
 func enter(_previous_state_path: String, _data := {}) -> void:
+	cooldown_timer = cooldown
 	if ai_state_machine != null:
 		ai_state_machine.command_stop()
 		var target: Character = ai_state_machine.get_target()
@@ -23,7 +40,9 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 			_finish_attack.call_deferred()
 
 
-func physics_update(_delta: float) -> void:
+func physics_update(delta: float) -> void:
+	if cooldown_timer > 0.0:
+		cooldown_timer -= delta
 	if character == null or not character.is_inside_tree() or ai_state_machine == null or not character.is_alive():
 		return
 	ai_state_machine.command_stop()

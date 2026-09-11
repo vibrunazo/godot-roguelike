@@ -1076,13 +1076,13 @@ func _ready() -> void:
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	if ranged_wait.next_state != ranged_ai_attack or not is_equal_approx(ranged_wait.wait_duration, 2.0):
-		printerr("TEST FAILED: AIWait next_state or wait_duration mismatch (expected AIAttack and 2.0s).")
+	if ranged_wait.next_state != ranged_ai_attack or not is_equal_approx(ranged_wait.wait_duration, 3.0):
+		printerr("TEST FAILED: AIWait next_state or wait_duration mismatch (expected AIAttack and 3.0s).")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	if ranged_ai_attack.attack_state_name != "EnemyAttack" or ranged_ai_attack.next_states.size() != 2 or not ranged_ai_attack.next_states.has(ranged_wait) or not ranged_ai_attack.next_states.has(ranged_meander):
-		printerr("TEST FAILED: AIAttack next_states mismatch (expected [AIWait, AIMeander]).")
+	if ranged_ai_attack.attack_state_name != "EnemyAttack" or not is_equal_approx(ranged_ai_attack.cooldown, 3.0) or ranged_ai_attack.next_states.size() != 2 or not ranged_ai_attack.next_states.has(ranged_wait) or not ranged_ai_attack.next_states.has(ranged_meander):
+		printerr("TEST FAILED: AIAttack configuration mismatch (expected [AIWait, AIMeander] and cooldown 3.0s).")
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return

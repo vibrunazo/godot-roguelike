@@ -48,12 +48,26 @@ func physics_update(_delta: float) -> void:
 		var dist_sq: float = character.global_position.distance_squared_to(target.global_position)
 		in_range = dist_sq <= (attack_range * attack_range)
 
+	var can_attack: bool = false
+	if attack_state != null:
+		if attack_state is AIAttack:
+			can_attack = not (attack_state as AIAttack).is_on_cooldown()
+		else:
+			can_attack = true
+
 	# Transition to attack or wait if destination is reached or target is in range
-	if nav_agent.is_target_reached() or in_range:
+	if in_range and can_attack:
 		ai_state_machine.command_stop()
 		if target != null and character != null:
 			character.look_at_target(target.global_position)
-		if attack_state != null:
+		finished.emit(attack_state.name)
+		return
+
+	if nav_agent.is_target_reached():
+		ai_state_machine.command_stop()
+		if target != null and character != null:
+			character.look_at_target(target.global_position)
+		if in_range and can_attack:
 			finished.emit(attack_state.name)
 			return
 		elif wait_state != null:

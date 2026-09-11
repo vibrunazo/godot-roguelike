@@ -189,8 +189,21 @@ func _ready() -> void:
 		printerr("TEST FAILED: AIPursue attack_state_name is ", ai_pursue.attack_state_name, ", expected 'EnemyPunch'.")
 		get_tree().quit(1)
 		return
+	if not is_equal_approx(ai_pursue.attack_cooldown, 2.0):
+		printerr("TEST FAILED: AIPursue attack_cooldown is ", ai_pursue.attack_cooldown, ", expected 2.0.")
+		get_tree().quit(1)
+		return
 
-	print("AnimationTree, dual attack states, and AIStateMachine wiring verified.")
+	# Verify AIPursue cooldown decay
+	ai_pursue.cooldown_timer = 2.0
+	ai_pursue.evaluate_trigger(0.5)
+	if not is_equal_approx(ai_pursue.cooldown_timer, 1.5):
+		printerr("TEST FAILED: AIPursue evaluate_trigger did not decay cooldown_timer, got: ", ai_pursue.cooldown_timer)
+		get_tree().quit(1)
+		return
+	ai_pursue.cooldown_timer = 0.0
+
+	print("AnimationTree, dual attack states, AIStateMachine wiring, and punch cooldown verified.")
 	passed_steps += 1
 
 	# -------------------------------------------------------------

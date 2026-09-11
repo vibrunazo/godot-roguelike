@@ -8,9 +8,24 @@ extends AIState
 @export var attack_range: float = 3.0
 ## AI state to transition to if the target is lost or defeated.
 @export var lost_target_state: AIState
+## Cooldown time in seconds between attack executions (0.0 = attack whenever ready).
+@export var attack_cooldown: float = 0.0
+
+## Remaining cooldown time in seconds before this state can order an attack again.
+var cooldown_timer: float = 0.0
 
 
-func physics_update(_delta: float) -> void:
+## Updates the cooldown timer while this state is inactive so cooldown progresses.
+func evaluate_trigger(delta: float) -> bool:
+	if cooldown_timer > 0.0:
+		cooldown_timer -= delta
+	return false
+
+
+func physics_update(delta: float) -> void:
+	if cooldown_timer > 0.0:
+		cooldown_timer -= delta
+
 	if character == null or not character.is_inside_tree() or ai_state_machine == null or not character.is_alive():
 		return
 
@@ -29,7 +44,9 @@ func physics_update(_delta: float) -> void:
 	if dist_sq < (attack_range * attack_range):
 		ai_state_machine.command_stop()
 		character.look_at_target(target.global_position)
-		ai_state_machine.order_attack(attack_state_name)
+		if cooldown_timer <= 0.0:
+			if ai_state_machine.order_attack(attack_state_name):
+				cooldown_timer = attack_cooldown
 		return
 
 	nav_agent.target_position = target.global_position

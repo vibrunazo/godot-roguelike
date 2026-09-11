@@ -400,12 +400,19 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 		return
 	print("AIMeander attack_range (4.0m) verified.")
 
-	if not is_equal_approx(ai_wait.wait_duration, 2.0):
-		printerr("TEST FAILED: AIWait wait_duration expected 2.0s, got: ", ai_wait.wait_duration)
+	if not is_equal_approx(ai_wait.wait_duration, 3.0):
+		printerr("TEST FAILED: AIWait wait_duration expected 3.0s, got: ", ai_wait.wait_duration)
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("AIWait wait_duration (2.0s) verified.")
+	print("AIWait wait_duration (3.0s) verified.")
+
+	if not is_equal_approx(ai_attack.cooldown, 3.0):
+		printerr("TEST FAILED: AIAttack cooldown expected 3.0s, got: ", ai_attack.cooldown)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("AIAttack cooldown (3.0s) verified.")
 
 	if ai_attack.next_states.size() != 2 or not ai_attack.next_states.has(ai_wait) or not ai_attack.next_states.has(ai_meander):
 		printerr("TEST FAILED: AIAttack next_states expected [AIWait, AIMeander].")
