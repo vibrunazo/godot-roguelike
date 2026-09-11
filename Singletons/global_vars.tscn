@@ -5,6 +5,7 @@
 [ext_resource type="Resource" path="res://UserInterface/UpgradeResources/upgrade_damage.tres" id="3_dmg"]
 [ext_resource type="Resource" path="res://UserInterface/UpgradeResources/upgrade_health.tres" id="4_hp"]
 [ext_resource type="Resource" path="res://UserInterface/UpgradeResources/upgrade_speed.tres" id="5_spd"]
+[ext_resource type="Resource" path="res://UserInterface/UpgradeResources/upgrade_potion.tres" id="12_pot"]
 [ext_resource type="PackedScene" uid="uid://cttwgr00qkjox" path="res://Enemy/melee_enemy.tscn" id="5_melee"]
 [ext_resource type="PackedScene" uid="uid://d0l671aaonnqf" path="res://Enemy/ranged_enemy.tscn" id="6_ranged"]
 [ext_resource type="PackedScene" uid="uid://0qtans3shtxh" path="res://Enemy/enemy_projectile.tscn" id="7_proj"]
@@ -21,6 +22,7 @@ upgrade_icon_scene = ExtResource("2_icon")
 upgrade_damage = ExtResource("3_dmg")
 upgrade_health = ExtResource("4_hp")
 upgrade_speed = ExtResource("5_spd")
+upgrade_potion = ExtResource("12_pot")
 enemy_melee_scene = ExtResource("5_melee")
 enemy_ranged_scene = ExtResource("6_ranged")
 enemy_projectile_scene = ExtResource("7_proj")

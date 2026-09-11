@@ -20,6 +20,8 @@ extends Node
 @export var upgrade_health: UpgradeResource
 ## Upgrade resource offered by the UpgradeShop.
 @export var upgrade_speed: UpgradeResource
+## Upgrade resource offered by the UpgradeShop.
+@export var upgrade_potion: UpgradeResource
 ## Enemy scenes spawned by WaveObjective.
 @export var enemy_melee_scene: PackedScene
 ## Enemy scenes spawned by WaveObjective.
@@ -40,4 +42,4 @@ var upgrades: Array[UpgradeResource] = []
 
 
 func _ready() -> void:
-	upgrades = [upgrade_damage, upgrade_health, upgrade_speed]
+	upgrades = [upgrade_damage, upgrade_health, upgrade_speed, upgrade_potion]

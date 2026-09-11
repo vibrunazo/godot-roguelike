@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="UpgradeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://UserInterface/upgrade_resource.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+title = "[wave]Potion[/wave]"
+text_template = "%d -> [color='7fffd4']%d[/color] HP"
+upgrade_type = 2
+stat_name = ""
+stat_bonus = 50.0

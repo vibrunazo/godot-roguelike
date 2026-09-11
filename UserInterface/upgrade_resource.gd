@@ -3,8 +3,9 @@ class_name UpgradeResource
 extends Resource
 
 enum UpgradeType {
-	STAT,        ## Applies bonus to a Character property via Character.set()
-	MAX_HEALTH,  ## Modifies Character.health_component.max_health and current_health
+	STAT,         ## Applies bonus to a Character property via Character.set()
+	MAX_HEALTH,   ## Modifies Character.health_component.max_health and current_health
+	HEAL_PERCENT, ## Heals Character.health_component.current_health by a percentage of max_health
 }
 
 ## Display title of the upgrade, e.g. "[wave]Damage[/wave]".
@@ -20,7 +21,7 @@ enum UpgradeType {
 ## Target stat property name on Character when upgrade_type is STAT (e.g. "damage_stat", "movement_speed").
 @export var stat_name: String = ""
 
-## Numeric bonus added to the stat or health.
+## Numeric bonus added to the stat or health (e.g. 50.0 for 50% heal or +50 damage stat).
 @export var stat_bonus: float = 0.0
 
 ## Optional icon texture if icons are displayed in the UI.
@@ -38,11 +39,24 @@ func get_current_value(player: Character) -> float:
 		UpgradeType.MAX_HEALTH:
 			if player.health_component != null:
 				return player.health_component.max_health
+		UpgradeType.HEAL_PERCENT:
+			if player.health_component != null:
+				return player.health_component.current_health
 	return 0.0
 
 
 ## Returns the projected value after taking this upgrade.
 func get_upgraded_value(player: Character) -> float:
+	if player == null:
+		return 0.0
+	match upgrade_type:
+		UpgradeType.STAT, UpgradeType.MAX_HEALTH:
+			return get_current_value(player) + stat_bonus
+		UpgradeType.HEAL_PERCENT:
+			if player.health_component != null:
+				var ratio: float = stat_bonus / 100.0 if stat_bonus > 1.0 else stat_bonus
+				var heal_amount: float = player.health_component.max_health * ratio
+				return minf(player.health_component.max_health, player.health_component.current_health + heal_amount)
 	return get_current_value(player) + stat_bonus
 
 
@@ -69,3 +83,11 @@ func apply(player: Character) -> void:
 			if player.health_component != null:
 				player.health_component.max_health += stat_bonus
 				player.health_component.current_health += stat_bonus
+		UpgradeType.HEAL_PERCENT:
+			if player.health_component != null:
+				var ratio: float = stat_bonus / 100.0 if stat_bonus > 1.0 else stat_bonus
+				var heal_amount: float = player.health_component.max_health * ratio
+				player.health_component.current_health = minf(
+					player.health_component.max_health,
+					player.health_component.current_health + heal_amount
+				)

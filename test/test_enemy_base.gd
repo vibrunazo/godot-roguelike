@@ -1489,19 +1489,19 @@ func _ready() -> void:
 
 	print("\n>>> PART 11: UpgradeShop Scene & UI Verification")
 	# Verify GlobalVars registry exports and array
-	if GlobalVars.upgrade_icon_scene == null or GlobalVars.upgrade_damage == null or GlobalVars.upgrade_health == null or GlobalVars.upgrade_speed == null:
+	if GlobalVars.upgrade_icon_scene == null or GlobalVars.upgrade_damage == null or GlobalVars.upgrade_health == null or GlobalVars.upgrade_speed == null or GlobalVars.upgrade_potion == null:
 		printerr("TEST FAILED: GlobalVars upgrade exports missing or null.")
 		get_tree().quit(1)
 		return
-	if not (GlobalVars.upgrade_damage is UpgradeResource) or not (GlobalVars.upgrade_health is UpgradeResource) or not (GlobalVars.upgrade_speed is UpgradeResource):
+	if not (GlobalVars.upgrade_damage is UpgradeResource) or not (GlobalVars.upgrade_health is UpgradeResource) or not (GlobalVars.upgrade_speed is UpgradeResource) or not (GlobalVars.upgrade_potion is UpgradeResource):
 		printerr("TEST FAILED: GlobalVars upgrades are not UpgradeResource instances.")
 		get_tree().quit(1)
 		return
-	if GlobalVars.upgrades.size() != 3:
-		printerr("TEST FAILED: GlobalVars.upgrades does not contain 3 upgrades. Size: ", GlobalVars.upgrades.size())
+	if GlobalVars.upgrades.size() != 4:
+		printerr("TEST FAILED: GlobalVars.upgrades does not contain 4 upgrades. Size: ", GlobalVars.upgrades.size())
 		get_tree().quit(1)
 		return
-	if not GlobalVars.upgrades.has(GlobalVars.upgrade_damage) or not GlobalVars.upgrades.has(GlobalVars.upgrade_health) or not GlobalVars.upgrades.has(GlobalVars.upgrade_speed):
+	if not GlobalVars.upgrades.has(GlobalVars.upgrade_damage) or not GlobalVars.upgrades.has(GlobalVars.upgrade_health) or not GlobalVars.upgrades.has(GlobalVars.upgrade_speed) or not GlobalVars.upgrades.has(GlobalVars.upgrade_potion):
 		printerr("TEST FAILED: GlobalVars.upgrades array missing required upgrade resources.")
 		get_tree().quit(1)
 		return
@@ -1757,9 +1757,9 @@ func _ready() -> void:
 	print("Base UpgradeIcon scene, theme, nodes, and exports verified.")
 
 	# Test UpgradeSpeed resource and dynamic card filling
-	var speed_res: UpgradeResource = load("res://UserInterface/upgrade_speed.tres") as UpgradeResource
+	var speed_res: UpgradeResource = load("res://UserInterface/UpgradeResources/upgrade_speed.tres") as UpgradeResource
 	if speed_res == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_speed.tres")
+		printerr("TEST FAILED: Could not load res://UserInterface/UpgradeResources/upgrade_speed.tres")
 		get_tree().quit(1)
 		return
 	if speed_res.stat_name != "movement_speed" or speed_res.stat_bonus != 1.5:
@@ -1836,9 +1836,9 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	# Test UpgradeDamage resource and dynamic card filling
-	var damage_res: UpgradeResource = load("res://UserInterface/upgrade_damage.tres") as UpgradeResource
+	var damage_res: UpgradeResource = load("res://UserInterface/UpgradeResources/upgrade_damage.tres") as UpgradeResource
 	if damage_res == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_damage.tres")
+		printerr("TEST FAILED: Could not load res://UserInterface/UpgradeResources/upgrade_damage.tres")
 		get_tree().quit(1)
 		return
 	if damage_res.stat_name != "damage_stat" or damage_res.stat_bonus != 50.0:
@@ -1901,9 +1901,9 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	# Test UpgradeHealth resource and dynamic card filling
-	var health_res: UpgradeResource = load("res://UserInterface/upgrade_health.tres") as UpgradeResource
+	var health_res: UpgradeResource = load("res://UserInterface/UpgradeResources/upgrade_health.tres") as UpgradeResource
 	if health_res == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/upgrade_health.tres")
+		printerr("TEST FAILED: Could not load res://UserInterface/UpgradeResources/upgrade_health.tres")
 		get_tree().quit(1)
 		return
 	if health_res.upgrade_type != UpgradeResource.UpgradeType.MAX_HEALTH or health_res.stat_bonus != 20.0:
@@ -1993,6 +1993,98 @@ func _ready() -> void:
 
 	health_icon.queue_free()
 	hp_player.queue_free()
+	await get_tree().process_frame
+
+	# Test UpgradePotion resource and dynamic card filling
+	var potion_res: UpgradeResource = load("res://UserInterface/UpgradeResources/upgrade_potion.tres") as UpgradeResource
+	if potion_res == null:
+		printerr("TEST FAILED: Could not load res://UserInterface/UpgradeResources/upgrade_potion.tres")
+		get_tree().quit(1)
+		return
+	if potion_res.upgrade_type != UpgradeResource.UpgradeType.HEAL_PERCENT or potion_res.stat_bonus != 50.0:
+		printerr("TEST FAILED: UpgradePotion default upgrade_type or stat_bonus incorrect. Got: ", potion_res.upgrade_type, ", ", potion_res.stat_bonus)
+		get_tree().quit(1)
+		return
+	if potion_res.title != "[wave]Potion[/wave]":
+		printerr("TEST FAILED: UpgradePotion title incorrect: ", potion_res.title)
+		get_tree().quit(1)
+		return
+
+	var potion_icon: UpgradeIcon = upgrade_icon_scene.instantiate() as UpgradeIcon
+	potion_icon.set_upgrade_resource(potion_res)
+	var player_scene_potion: PackedScene = load("res://Player/player.tscn")
+	var potion_player: Character = player_scene_potion.instantiate() as Character
+	add_child(potion_player)
+	potion_player.health_component.take_damage(40.0) # Reduce health from 60 to 20 (max_health = 60)
+	add_child(potion_icon)
+	await get_tree().process_frame
+
+	if potion_icon.title.text != "[wave]Potion[/wave]":
+		printerr("TEST FAILED: UpgradePotion Title text is not [wave]Potion[/wave], got: ", potion_icon.title.text)
+		get_tree().quit(1)
+		return
+
+	var expected_potion_desc: String = "20 -> [color='7fffd4']50[/color] HP"
+	if potion_icon.description.text != expected_potion_desc:
+		printerr("TEST FAILED: UpgradePotion description.text did not match formatted template. Got: '", potion_icon.description.text, "', expected: '", expected_potion_desc, "'")
+		get_tree().quit(1)
+		return
+	print("UpgradePotion setup_label() text formatting verified: ", potion_icon.description.text)
+
+	var potion_taken_emitted: Array[UpgradeIcon] = []
+	potion_icon.upgrade_taken.connect(func(taken_icon: UpgradeIcon) -> void: potion_taken_emitted.append(taken_icon))
+	potion_icon.take_upgrade()
+	if potion_taken_emitted.is_empty() or potion_taken_emitted[0] != potion_icon:
+		printerr("TEST FAILED: potion_icon did not emit upgrade_taken with self via take_upgrade()")
+		get_tree().quit(1)
+		return
+	print("UpgradePotion upgrade_taken signal emission verified.")
+	if not is_equal_approx(potion_player.health_component.max_health, 60.0):
+		printerr("TEST FAILED: take_upgrade should not change max_health. Got: ", potion_player.health_component.max_health)
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(potion_player.health_component.current_health, 50.0):
+		printerr("TEST FAILED: take_upgrade did not heal 50% max_health (+30) from 20 to 50. Got: ", potion_player.health_component.current_health)
+		get_tree().quit(1)
+		return
+	print("take_upgrade() successfully healed player from 20.0 to ", potion_player.health_component.current_health, " (50% of max health 60.0)")
+
+	# Verify player HealthBar updated immediately
+	var potion_health_bar: HealthBar = potion_player.get_node_or_null("HealthBar") as HealthBar
+	if potion_health_bar == null:
+		printerr("TEST FAILED: HealthBar node not found on potion_player")
+		get_tree().quit(1)
+		return
+	var expected_potion_hp_pct: float = (50.0 / 60.0) * 100.0
+	if abs(potion_health_bar.front_progress_bar.value - expected_potion_hp_pct) > 0.1:
+		printerr("TEST FAILED: HealthBar front_progress_bar.value did not update immediately upon potion heal! Got: ", potion_health_bar.front_progress_bar.value, ", expected: ", expected_potion_hp_pct)
+		get_tree().quit(1)
+		return
+
+	if not potion_icon.texture_button.disabled:
+		printerr("TEST FAILED: potion_icon texture_button was not disabled after take_upgrade.")
+		get_tree().quit(1)
+		return
+
+	# Verify multi-click guard prevents repeated heals
+	potion_icon.take_upgrade()
+	potion_icon.texture_button.pressed.emit()
+	if not is_equal_approx(potion_player.health_component.current_health, 50.0):
+		printerr("TEST FAILED: potion_icon applied heal again while disabled! current_health: ", potion_player.health_component.current_health)
+		get_tree().quit(1)
+		return
+	print("UpgradePotion multiple click prevention verified.")
+
+	# Verify cap at max_health
+	potion_res.apply(potion_player) # Heals +30 from 50 -> should cap at 60
+	if not is_equal_approx(potion_player.health_component.current_health, 60.0):
+		printerr("TEST FAILED: Potion heal did not cap at max_health! current_health: ", potion_player.health_component.current_health)
+		get_tree().quit(1)
+		return
+	print("UpgradePotion max_health cap verified (healed 50 -> 60, capped at max 60).")
+
+	potion_icon.queue_free()
+	potion_player.queue_free()
 	await get_tree().process_frame
 
 	# ---------------------------------------------------------
