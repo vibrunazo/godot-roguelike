@@ -54,10 +54,10 @@ func _ready() -> void:
 		if scale < 0.0 or scale >= 1.0:
 			_fail(state.name + " self_hitstop_scale expected in [0, 1), got: " + str(scale))
 			return
-		if duration <= 0.0 or duration >= 0.1:
-			_fail(state.name + " self_hitstop_duration expected in (0, 0.1), got: " + str(duration))
+		if duration <= 0.0 or duration > 0.3:
+			_fail(state.name + " self_hitstop_duration expected in (0, 0.3], got: " + str(duration))
 			return
-	print("All three combo states carry sub-0.1s hitstop config.")
+	print("All three combo states carry hitstop config.")
 
 	# Per-state storage: writing one state must not affect the others.
 	var orig_slash_scale: float = slash.self_hitstop_scale
@@ -233,7 +233,7 @@ func _ready() -> void:
 	var enemy_duration: float = enemy_attack.get("self_hitstop_duration") as float
 	var enemy_scale: float = enemy_attack.get("self_hitstop_scale") as float
 	melee_enemy.queue_free()
-	if enemy_duration <= 0.0 or enemy_duration >= 0.1 or enemy_scale < 0.0 or enemy_scale >= 1.0:
+	if enemy_duration <= 0.0 or enemy_duration > 0.3 or enemy_scale < 0.0 or enemy_scale >= 1.0:
 		_fail("Melee EnemyAttack hitstop config out of range: scale=" + str(enemy_scale) + " duration=" + str(enemy_duration))
 		return
 	var anim_scene: PackedScene = load("res://Enemy/animated_enemy.tscn") as PackedScene

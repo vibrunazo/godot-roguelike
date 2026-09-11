@@ -4,18 +4,40 @@ extends Node3D
 ## Enemy scenes to spawn, picked at random. Leave empty to use the GlobalVars registry.
 @export var enemy_scenes: Array[PackedScene] = []
 
+## Heavy enemy scene spawned deterministically. Leave null to use the GlobalVars registry.
+@export var brute_scene: PackedScene = null
+
 signal finished
 
 var all_enemies: Array[Character] = []
 
 
+## Returns the number of brutes that must spawn for the current difficulty level:
+## 1 brute at difficulty 1-2, increasing by 1 every 2 difficulty levels (e.g. 2 at diff 3-4, 3 at diff 5-6).
+func get_brute_count() -> int:
+	var diff: int = ProgressionState.difficulty_level if ProgressionState != null else 1
+	return 1 + int((diff - 1) / 2)
+
+
 func _ready() -> void:
 	if enemy_scenes.is_empty():
 		enemy_scenes = [GlobalVars.enemy_melee_scene, GlobalVars.enemy_ranged_scene]
-	for _i: int in ProgressionState.get_enemy_count():
+	var brute_template: PackedScene = brute_scene if brute_scene != null else GlobalVars.enemy_brute_scene
+	var total_count: int = ProgressionState.get_enemy_count() if ProgressionState != null else 3
+	var brute_count: int = get_brute_count()
+
+	# Fill standard enemies first
+	var remaining_count: int = max(0, total_count - brute_count)
+	for _i: int in remaining_count:
 		var template: PackedScene = enemy_scenes.pick_random()
 		var new_enemy: Character = template.instantiate() as Character
 		all_enemies.append(new_enemy)
+
+	# Spawn guaranteed brutes according to difficulty progression
+	if brute_template != null:
+		for _b: int in brute_count:
+			var brute_enemy: Character = brute_template.instantiate() as Character
+			all_enemies.append(brute_enemy)
 
 	var tween: Tween = create_tween()
 	tween.tween_interval(2.5)

@@ -1,0 +1,142 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Character/character.gd" id="1_char"]
+[ext_resource type="PackedScene" path="res://Enemy/animated_enemy_brute.tscn" id="2_anim_brute"]
+[ext_resource type="Script" path="res://Components/health_component.gd" id="3_health"]
+[ext_resource type="Script" path="res://Components/knockback_component.gd" id="4_knockback"]
+[ext_resource type="Script" path="res://Components/hurtbox.gd" id="5_hurtbox"]
+[ext_resource type="PackedScene" path="res://Components/health_bar.tscn" id="6_healthbar"]
+[ext_resource type="AudioStream" path="res://Assets/Audio/hit.ogg" id="7_hit_audio"]
+[ext_resource type="Script" path="res://StateMachine/state_machine.gd" id="8_sm"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_move.gd" id="9_move"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_stun.gd" id="10_stun"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_defeat.gd" id="11_defeat"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_fall.gd" id="12_fall"]
+[ext_resource type="Script" path="res://StateMachine/character_attack.gd" id="13_attack"]
+[ext_resource type="Script" path="res://StateMachine/ai_state_machine.gd" id="14_aism"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_pursue.gd" id="15_pursue"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_wait.gd" id="16_wait"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_brute_body"]
+radius = 0.5
+height = 3.0
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_brute_hurtbox"]
+radius = 0.8
+height = 3.0
+
+[node name="EnemyBrute" type="CharacterBody3D" node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "weapon_hitbox", "hurtbox", "stun_state", "defeat_state") groups=["enemy"]]
+collision_layer = 3
+script = ExtResource("1_char")
+movement_speed = 2.2
+mesh_mount = NodePath("AnimationAnchor")
+health_component = NodePath("HealthComponent")
+knockback_component = NodePath("KnockbackComponent")
+animation_tree = NodePath("AnimationAnchor/AnimatedBrute/Enemy_Large/AnimationTree")
+state_machine = NodePath("StateMachine")
+ai_state_machine = NodePath("AIStateMachine")
+navigation_agent_3d = NodePath("NavigationAgent3D")
+collision_shape_3d = NodePath("CollisionShape3D")
+weapon_hitbox = NodePath("AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot/HitboxArea")
+hurtbox = NodePath("Hurtbox")
+stun_state = NodePath("StateMachine/EnemyStun")
+defeat_state = NodePath("StateMachine/EnemyDefeat")
+
+[node name="AnimationAnchor" type="Node3D" parent="."]
+
+[node name="AnimatedBrute" parent="AnimationAnchor" instance=ExtResource("2_anim_brute")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.5, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("CapsuleShape3D_brute_body")
+
+[node name="HealthComponent" type="Node" parent="." node_paths=PackedStringArray("hit_audio")]
+script = ExtResource("3_health")
+hit_audio = NodePath("../HitAudio")
+max_health = 100.0
+
+[node name="KnockbackComponent" type="Node" parent="."]
+script = ExtResource("4_knockback")
+
+[node name="Hurtbox" type="Area3D" parent="." node_paths=PackedStringArray("health_component", "knockback_component")]
+collision_layer = 128
+collision_mask = 0
+script = ExtResource("5_hurtbox")
+health_component = NodePath("../HealthComponent")
+knockback_component = NodePath("../KnockbackComponent")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+shape = SubResource("CapsuleShape3D_brute_hurtbox")
+
+[node name="HealthBar" parent="." node_paths=PackedStringArray("health_component") instance=ExtResource("6_healthbar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
+health_component = NodePath("../HealthComponent")
+health_color = Color(0.890196, 0.290196, 0.258824, 1)
+
+[node name="HitAudio" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("7_hit_audio")
+bus = &"SFX"
+
+[node name="StateMachine" type="Node" parent="." node_paths=PackedStringArray("initial_state")]
+script = ExtResource("8_sm")
+initial_state = NodePath("EnemyMove")
+
+[node name="EnemyMove" type="Node" parent="StateMachine" node_paths=PackedStringArray("character", "fall_state")]
+script = ExtResource("9_move")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyStun" type="Node" parent="StateMachine" node_paths=PackedStringArray("next_state", "character", "fall_state")]
+script = ExtResource("10_stun")
+next_state = NodePath("../EnemyMove")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyDefeat" type="Node" parent="StateMachine" node_paths=PackedStringArray("character", "fall_state")]
+script = ExtResource("11_defeat")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyFall" type="Node" parent="StateMachine" node_paths=PackedStringArray("land_state", "character", "fall_state")]
+script = ExtResource("12_fall")
+land_state = NodePath("../EnemyStun")
+character = NodePath("../..")
+fall_state = NodePath(".")
+
+[node name="EnemyAttack" type="Node" parent="StateMachine" node_paths=PackedStringArray("next_states", "attack_component", "character", "fall_state")]
+script = ExtResource("13_attack")
+damage = 25.0
+knockback = 35.0
+next_states = [NodePath("../EnemyMove")]
+attack_animation_name = "MeleeAttack"
+attack_component = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
+self_hitstop_duration = 0.25
+self_hitstop_scale = 0.05
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="AIStateMachine" type="Node" parent="." node_paths=PackedStringArray("initial_state", "character")]
+script = ExtResource("14_aism")
+initial_state = NodePath("AIPursue")
+character = NodePath("..")
+
+[node name="AIWait" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("16_wait")
+next_state = NodePath("../AIPursue")
+ai_state_machine = NodePath("..")
+
+[node name="AIPursue" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("lost_target_state", "ai_state_machine")]
+script = ExtResource("15_pursue")
+attack_range = 3.5
+lost_target_state = NodePath("../AIWait")
+ai_state_machine = NodePath("..")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+path_desired_distance = 2.0
+target_desired_distance = 2.0
+
+[connection signal="defeat" from="HealthComponent" to="." method="_on_health_component_defeat"]
+[connection signal="health_changed" from="HealthComponent" to="." method="_on_health_component_health_changed"]
+
+[editable path="AnimationAnchor/AnimatedBrute"]
+[editable path="AnimationAnchor/AnimatedBrute/Enemy_Large"]

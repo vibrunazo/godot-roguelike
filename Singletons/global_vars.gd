@@ -26,6 +26,8 @@ extends Node
 @export var enemy_melee_scene: PackedScene
 ## Enemy scenes spawned by WaveObjective.
 @export var enemy_ranged_scene: PackedScene
+## Heavy enemy scene spawned by WaveObjective.
+@export var enemy_brute_scene: PackedScene
 ## Projectile scene spawned by ProjectileSpawnerComponent.
 @export var enemy_projectile_scene: PackedScene
 ## Impact effect spawned by EnemyProjectile on collision.
