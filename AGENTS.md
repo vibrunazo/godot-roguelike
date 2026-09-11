@@ -112,4 +112,35 @@ When adding any attack animation for the Player or Melee Enemies, the animation 
    - Add transition from `WalkSpace` -> `AttackState`: `advance_mode = 1` (manual trigger).
    - Add transition from `AttackState` -> `WalkSpace`: `switch_mode = 2` (At End), `advance_mode = 2` (Auto), `xfade_time = 0.2`.
 
+---
+
+## 6. Level Creation & Environment Guidelines
+
+These are practical conventions and lessons learned from the course lectures rather than rigid rules:
+
+### 1. Level Inheritance & Template Structure
+- Create new levels as inherited scenes from `res://Levels/level_template.tscn` (`Levels/level_template.tscn`).
+- The template already provides the standard lighting (`DirectionalLight3D`), sky environment (`WorldEnvironment`), wave spawner (`WaveObjective`), fall-kill plane (`WorldBoundary`), and exit portal (`ExitPoint`).
+
+### 2. GridMaps & Metrics
+- **Floormap**: Uses `res://Levels/Gridmap/floormap.tres` with `cell_size = Vector3(4, 0.5, 4)`.
+- **Wallmap**: Uses `res://Levels/Gridmap/wall_map.tres` with `cell_size = Vector3(2, 4, 2)`.
+- Decorative litter / props can be grouped under a dedicated `Litter` (Node3D) container to keep the scene tree clean.
+- Gaps in the floor serve as pits; place a `Pit` visual quad beneath gaps, and rely on `WorldBoundary` (at `y = -4`) to detect and eliminate fallen entities.
+
+### 3. VoxelGI Baking & Coverage (Crucial)
+- Every level must have its own baked `VoxelGI` data saved to `res://Levels/GlobalIlluminationData/<level_name>_voxel_gi_data.res`.
+- **Volume Bounds**: Adjust the `VoxelGI` node's `transform` and `size` so the bounding box completely encloses the playable geometry, player spawn, pits, and exit door.
+- **Dynamic Entities Exclusion**: Ensure dynamic entities (characters, weapons, animated props) have `gi_mode = 0` (`GI_MODE_DISABLED`) so they don't bake permanent static shadow artifacts into the global illumination.
+
+### 4. NavigationMesh Coverage
+- Ensure `NavigationRegion3D` has its `NavigationMesh` baked to cover the new floor layout.
+- Verify that the navmesh wraps cleanly around wall obstacles and stays clear of pits so enemy pathfinding doesn't stall or try to walk off ledges.
+
+### 5. Level Rotation & Exit Wiring
+- Position `Player` at the starting spawn point and `ExitPoint` at the end of the dungeon.
+- Ensure `WaveObjective.finished` is connected to `ExitPoint.unlock()` (wired by default in `level_template.tscn`).
+- To include the new level in the random run rotation, add its scene path to `SceneTransition.levels` in `res://Singletons/scene_transition.tscn` (`Singletons/scene_transition.tscn`).
+
+
 
