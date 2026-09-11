@@ -23,7 +23,18 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if character != null and not character.is_alive():
 		return
+	_evaluate_state_triggers(delta)
 	super._physics_process(delta)
+
+
+## Orchestrates conditional interrupts across child AIState nodes.
+## Allows inactive AI states (such as cooldown attacks or phase changes) to preemptively activate.
+func _evaluate_state_triggers(delta: float) -> void:
+	for child: Node in get_children():
+		if child is AIState and child != state:
+			var ai_child: AIState = child as AIState
+			if ai_child.evaluate_trigger(delta):
+				break
 
 
 ## Returns the active target, finding the closest living member of target_group if needed.
@@ -67,13 +78,16 @@ func command_dash() -> void:
 
 ## Orders the physical body StateMachine to execute an attack state if available.
 ## AI-side policy (liveness, stun/defeat/fall veto) wraps the shared transition API.
-func order_attack(attack_state_name: String = "") -> bool:
+## When can_break_stun is true, attacks can break out of EnemyStun.
+func order_attack(attack_state_name: String = "", can_break_stun: bool = false) -> bool:
 	if character == null or not character.is_alive():
 		return false
 	if character.state_machine == null or character.state_machine.state == null:
 		return false
 	var current_body_state: String = character.state_machine.state.name
-	if current_body_state == attack_state_name or current_body_state == "EnemyStun" or current_body_state == "EnemyDefeat" or current_body_state == "EnemyFall":
+	if current_body_state == attack_state_name or current_body_state == "EnemyDefeat" or current_body_state == "EnemyFall":
+		return false
+	if current_body_state == "EnemyStun" and not can_break_stun:
 		return false
 	if character.state_machine.get_node_or_null(attack_state_name) == null:
 		push_warning("AIStateMachine: order_attack('%s') requested non-existent state on body StateMachine." % attack_state_name)

@@ -4,7 +4,7 @@
 extends Node3D
 
 var passed_steps: int = 0
-var total_steps: int = 6
+var total_steps: int = 7
 
 
 func _ready() -> void:
@@ -119,7 +119,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Brute AnimationTree tree_root is not AnimationNodeStateMachine.")
 		get_tree().quit(1)
 		return
-	for state_name: String in ["WalkSpace", "MeleeAttack", "Stun", "Defeat"]:
+	for state_name: String in ["WalkSpace", "MeleeAttack", "PunchAttack", "Stun", "Defeat"]:
 		if not sm_root.has_node(StringName(state_name)):
 			printerr("TEST FAILED: AnimationNodeStateMachine missing state: ", state_name)
 			get_tree().quit(1)
@@ -144,16 +144,53 @@ func _ready() -> void:
 		printerr("TEST FAILED: EnemyAttack attack_animation_name is ", enemy_attack.attack_animation_name, ", expected 'MeleeAttack'.")
 		get_tree().quit(1)
 		return
-
-	# Verify AIStateMachine nodes
-	var ai_sm: AIStateMachine = brute.ai_state_machine
-	var ai_pursue: AIPursue = ai_sm.get_node_or_null("AIPursue") as AIPursue
-	if ai_pursue == null or not is_equal_approx(ai_pursue.attack_range, 3.5):
-		printerr("TEST FAILED: AIPursue missing or attack_range != 3.5.")
+	if not enemy_attack.uninterruptable:
+		printerr("TEST FAILED: EnemyAttack is not marked uninterruptable.")
 		get_tree().quit(1)
 		return
 
-	print("AnimationTree and StateMachine wiring verified.")
+	# Verify EnemyPunch node
+	var enemy_punch: CharacterAttack = body_sm.get_node_or_null("EnemyPunch") as CharacterAttack
+	if enemy_punch == null:
+		printerr("TEST FAILED: EnemyPunch node missing on StateMachine.")
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(enemy_punch.damage, 10.0):
+		printerr("TEST FAILED: EnemyPunch damage is ", enemy_punch.damage, ", expected 10.0.")
+		get_tree().quit(1)
+		return
+	if enemy_punch.uninterruptable:
+		printerr("TEST FAILED: EnemyPunch should not be uninterruptable.")
+		get_tree().quit(1)
+		return
+
+	# Verify AIStateMachine nodes
+	var ai_sm: AIStateMachine = brute.ai_state_machine
+	var ai_slam: AIConditionalAttack = ai_sm.get_node_or_null("AISlam") as AIConditionalAttack
+	if ai_slam == null:
+		printerr("TEST FAILED: AISlam missing on AIStateMachine.")
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(ai_slam.cooldown, 8.0):
+		printerr("TEST FAILED: AISlam cooldown is ", ai_slam.cooldown, ", expected 8.0.")
+		get_tree().quit(1)
+		return
+	if not ai_slam.can_break_stun:
+		printerr("TEST FAILED: AISlam can_break_stun is not true.")
+		get_tree().quit(1)
+		return
+
+	var ai_pursue: AIPursue = ai_sm.get_node_or_null("AIPursue") as AIPursue
+	if ai_pursue == null or not is_equal_approx(ai_pursue.attack_range, 2.4):
+		printerr("TEST FAILED: AIPursue missing or attack_range != 2.4.")
+		get_tree().quit(1)
+		return
+	if ai_pursue.attack_state_name != "EnemyPunch":
+		printerr("TEST FAILED: AIPursue attack_state_name is ", ai_pursue.attack_state_name, ", expected 'EnemyPunch'.")
+		get_tree().quit(1)
+		return
+
+	print("AnimationTree, dual attack states, and AIStateMachine wiring verified.")
 	passed_steps += 1
 
 	# -------------------------------------------------------------
@@ -293,9 +330,27 @@ func _ready() -> void:
 		return
 	print("Directional slam boundary verified: target behind brute took 0 damage.")
 
-	# Phase 4C: Recovery phase
-	for _f: int in range(30):
+	# Phase 4C: Hyper-Armor & Recovery phase
+	# Brute is still in uninterruptable EnemyAttack. Dealing damage must NOT interrupt into EnemyStun!
+	var hp_before_armor_hit: float = brute.health_component.current_health
+	brute.health_component.take_damage(10.0)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	if body_sm.state.name != "EnemyAttack":
+		printerr("TEST FAILED: Brute was interrupted during uninterruptable EnemyAttack! State: ", body_sm.state.name)
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(brute.health_component.current_health, hp_before_armor_hit - 10.0):
+		printerr("TEST FAILED: Brute did not take damage during hyper-armor!")
+		get_tree().quit(1)
+		return
+	print("Hyper-armor verified: damage during 2H slam reduced health but did NOT interrupt into EnemyStun.")
+
+	# Advance frames until EnemyAttack completes and transitions back to move/idle
+	var wait_frames: int = 0
+	while body_sm.state.name == "EnemyAttack" and wait_frames < 90:
 		await get_tree().physics_frame
+		wait_frames += 1
 	await get_tree().process_frame
 
 	_save_debug_screenshot("movies/brute_slam_recovery.png")
@@ -303,34 +358,164 @@ func _ready() -> void:
 		printerr("TEST FAILED: weapon_hitbox remained monitoring during recovery phase!")
 		get_tree().quit(1)
 		return
-	print("Slam recovery phase verified: hitbox deactivated.")
+	print("Slam recovery phase verified: hitbox deactivated, state: ", body_sm.state.name)
 
-	# Cleanup targets
+	# Cleanup slam targets
 	player_target.queue_free()
 	player_outside.queue_free()
 	player_behind.queue_free()
 	passed_steps += 1
 
 	# -------------------------------------------------------------
-	# PART 5: Stun State Verification & Screenshot
+	# PART 5: Punch Attack Timing, Damage & Stunlockability
 	# -------------------------------------------------------------
-	print("\n>>> PART 5: Stun State Verification")
-	brute.health_component.take_damage(20.0)
+	print("\n>>> PART 5: Punch Attack Timing, Damage & Stunlockability")
+	var punch_player: Character = player_scene.instantiate() as Character
+	punch_player.position = Vector3(-0.3, 0.0, 2.4)
+	add_child(punch_player)
 	await get_tree().physics_frame
 	await get_tree().process_frame
 
-	if body_sm.state.name != "EnemyStun":
-		printerr("TEST FAILED: Taking damage did not transition Brute to EnemyStun, current: ", body_sm.state.name)
+	var punch_slot: BoneAttachment3D = brute.find_child("PunchSlot", true, false) as BoneAttachment3D
+	if punch_slot == null or punch_slot.hitbox == null:
+		printerr("TEST FAILED: PunchSlot or PunchSlot hitbox missing on Brute.")
 		get_tree().quit(1)
 		return
+
+	var punch_target_hp_before: float = punch_player.health_component.current_health
+
+	# Trigger Punch
+	print("Triggering EnemyPunch on Brute...")
+	body_sm.request_state("EnemyPunch")
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	if body_sm.state.name != "EnemyPunch":
+		printerr("TEST FAILED: request_state('EnemyPunch') failed, current state: ", body_sm.state.name)
+		get_tree().quit(1)
+		return
+
+	# Windup check (~10 frames)
+	for _f: int in range(10):
+		await get_tree().physics_frame
+	if punch_slot.hitbox.monitoring:
+		printerr("TEST FAILED: Punch hitbox is monitoring during windup!")
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(punch_player.health_component.current_health, punch_target_hp_before):
+		printerr("TEST FAILED: Punch target took damage during windup!")
+		get_tree().quit(1)
+		return
+	print("Punch windup verified: hitbox inactive, no damage dealt.")
+
+	# Apex check: advance frames to find active punch hitbox
+	var saw_punch_monitoring: bool = false
+	for _f: int in range(35):
+		await get_tree().physics_frame
+		if punch_slot.hitbox.monitoring:
+			saw_punch_monitoring = true
+	await get_tree().process_frame
+
+	_save_debug_screenshot("movies/brute_punch_apex.png")
+
+	if not saw_punch_monitoring:
+		printerr("TEST FAILED: Punch hitbox was never activated during punch animation!")
+		get_tree().quit(1)
+		return
+
+	var punch_damage: float = punch_target_hp_before - punch_player.health_component.current_health
+	if not is_equal_approx(punch_damage, 10.0):
+		printerr("TEST FAILED: Punch dealt ", punch_damage, " damage, expected 10.0!")
+		get_tree().quit(1)
+		return
+	print("Punch hit verified: dealt 10.0 damage to target in range.")
+
+	# Wait until Punch finishes
+	var p_wait: int = 0
+	while body_sm.state.name == "EnemyPunch" and p_wait < 60:
+		await get_tree().physics_frame
+		p_wait += 1
+
+	# Test stunlockability during punch (punch is interruptable)
+	body_sm.request_state("EnemyPunch")
+	await get_tree().physics_frame
+	if body_sm.state.name != "EnemyPunch":
+		printerr("TEST FAILED: Could not restart EnemyPunch for stunlock test.")
+		get_tree().quit(1)
+		return
+
+	brute.health_component.take_damage(10.0)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	if body_sm.state.name != "EnemyStun":
+		printerr("TEST FAILED: Punch was NOT interrupted by damage! Current state: ", body_sm.state.name)
+		get_tree().quit(1)
+		return
+	print("Stunlockability verified: Punch attack was interrupted into EnemyStun upon taking damage.")
 	_save_debug_screenshot("movies/brute_stun.png")
-	print("EnemyStun transition verified.")
+
+	punch_player.queue_free()
 	passed_steps += 1
 
 	# -------------------------------------------------------------
-	# PART 6: Defeat State Verification & Screenshot
+	# PART 6: AISlam Cooldown & Stun Break Verification
 	# -------------------------------------------------------------
-	print("\n>>> PART 6: Defeat State Verification")
+	print("\n>>> PART 6: AISlam Cooldown & Stun Break Verification")
+	# Brute is currently in EnemyStun from Part 5!
+	var slam_player: Character = player_scene.instantiate() as Character
+	slam_player.position = Vector3(0.0, 0.0, 2.5) # within 3.5m
+	add_child(slam_player)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	# Ensure AISlam cooldown is 0 so it is ready
+	ai_slam.cooldown_timer = 0.0
+	if body_sm.state.name != "EnemyStun":
+		printerr("TEST FAILED: Brute is not in EnemyStun before stun break test. State: ", body_sm.state.name)
+		get_tree().quit(1)
+		return
+
+	# Evaluate trigger
+	var trigger_result: bool = ai_slam.evaluate_trigger(0.016)
+	if not trigger_result:
+		printerr("TEST FAILED: ai_slam.evaluate_trigger() returned false while ready and in range!")
+		get_tree().quit(1)
+		return
+
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	if body_sm.state.name != "EnemyAttack":
+		printerr("TEST FAILED: AISlam did not break out of EnemyStun into EnemyAttack! Current: ", body_sm.state.name)
+		get_tree().quit(1)
+		return
+	print("Stun break verified: AISlam successfully broke free of EnemyStun into EnemyAttack.")
+
+	if not is_equal_approx(ai_slam.cooldown_timer, 8.0):
+		printerr("TEST FAILED: AISlam cooldown_timer was not reset to 8.0, current: ", ai_slam.cooldown_timer)
+		get_tree().quit(1)
+		return
+	print("Cooldown reset verified: AISlam cooldown set to 8.0s.")
+
+	# Verify evaluate_trigger returns false while on cooldown
+	var trigger_on_cooldown: bool = ai_slam.evaluate_trigger(0.016)
+	if trigger_on_cooldown:
+		printerr("TEST FAILED: AISlam triggered while on cooldown!")
+		get_tree().quit(1)
+		return
+	print("Cooldown gating verified: AISlam cannot trigger while cooldown > 0.")
+
+	# Wait for slam to complete
+	var s_wait: int = 0
+	while body_sm.state.name == "EnemyAttack" and s_wait < 90:
+		await get_tree().physics_frame
+		s_wait += 1
+
+	slam_player.queue_free()
+	passed_steps += 1
+
+	# -------------------------------------------------------------
+	# PART 7: Defeat State Verification & Screenshot
+	# -------------------------------------------------------------
+	print("\n>>> PART 7: Defeat State Verification")
 	var defeat_emitted: Array[bool] = []
 	brute.defeat.connect(func() -> void: 
 		defeat_emitted.append(true)

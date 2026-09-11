@@ -35,6 +35,8 @@ extends CharacterState
 ## Duration (in seconds, real time) of the self slowmo after landing a hit.
 ## Keep under 0.1 for a snappy hitstop feel. Values <= 0.0 disable the effect.
 @export var self_hitstop_duration: float = 0.1
+## Whether this attack state is uninterruptable (immune to stun interruption while active).
+@export var uninterruptable: bool = false
 
 var queued_attack: bool = false
 var attack_timer: SceneTreeTimer
@@ -79,6 +81,8 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	hitstop_has_timescale = false
 	if character == null:
 		return
+	if uninterruptable and character.knockback_component != null:
+		character.knockback_component.magnitude = Vector3.ZERO
 	if attack_component != null:
 		attack_component.reset_exceptions()
 		attack_component.damage = damage * character.get_damage_modifier()

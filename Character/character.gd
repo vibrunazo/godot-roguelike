@@ -118,6 +118,8 @@ func _ready() -> void:
 		var att_comp: AttackComponent = weapon_hitbox.get_node_or_null("AttackComponent") as AttackComponent
 		if att_comp != null:
 			att_comp.add_exception(self)
+	for ac: AttackComponent in find_children("*", "AttackComponent"):
+		ac.add_exception(self)
 
 
 func _physics_process(delta: float) -> void:
@@ -306,10 +308,19 @@ func reset_game_state() -> void:
 		get_tree().reload_current_scene.call_deferred()
 
 
+## Returns true if this character is executing an uninterruptable attack (hyper-armor).
+func is_uninterruptable() -> bool:
+	if state_machine != null and state_machine.state is CharacterAttack:
+		return (state_machine.state as CharacterAttack).uninterruptable
+	return false
+
+
 func _on_health_component_health_changed(value: float) -> void:
 	health_changed.emit(value)
 	if is_player():
 		reset_game_camera_shake()
+	if is_uninterruptable():
+		return
 	if stun_state != null and state_machine != null and state_machine.state != null:
 		state_machine.state.finished.emit(stun_state.name)
 
