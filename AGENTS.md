@@ -63,3 +63,53 @@ Godot does not exit on GDScript compilation errors, cyclic preloads, or unhandle
 
 ---
 
+## 5. Animation & Character Mesh Extraction Guide
+
+### Source Asset Locations
+- **Animation GLBs**: `Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/` (e.g. `Rig_Medium_CombatMelee.glb`, `Rig_Medium_General.glb`, `Rig_Medium_Movement.glb`).
+- **Character Model GLBs**: `Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/` (e.g. `Enemy_Medium.glb`).
+- **Extracted `.res` Destination**: `Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/<AnimationName>.res`.
+
+### Headless Animation Extraction Recipe
+Godot's GUI "Save to File" import option is unavailable to headless CLI agents. Instead, load the source GLB scene in a temporary GDScript, duplicate the target animation, and save it via `ResourceSaver` (wrapped in a Python OS watchdog):
+
+```python
+python -c "
+import subprocess
+script = '''
+extends SceneTree
+func _init() -> void:
+    var glb: Node3D = load(\"res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Rig_Medium_CombatMelee.glb\").instantiate() as Node3D
+    var ap: AnimationPlayer = glb.find_child(\"AnimationPlayer\", true, false) as AnimationPlayer
+    var anim: Animation = ap.get_animation(\"Melee_2H_Attack_Chop\").duplicate() as Animation
+    ResourceSaver.save(anim, \"res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_2H_Attack_Chop.res\")
+    glb.queue_free()
+    quit(0)
+'''
+with open('scratch_extract.gd', 'w') as f: f.write(script.strip())
+subprocess.run(['godot', '--headless', '--path', '.', '-s', 'scratch_extract.gd'], timeout=10)
+import os; os.remove('scratch_extract.gd')
+print('Extracted successfully!')
+"
+```
+
+### The 3 Mandatory Combat Animation Tracks
+When adding any attack animation for the Player or Melee Enemies, the animation `.res` MUST include the following project-specific tracks to interact with the combat systems:
+
+1. **`Rig_Medium/Skeleton3D/WeaponSlot:enabled`** (Value track, discrete update):
+   - `0.0s`: `false` (disabled during windup)
+   - Strike apex: `true` (enables hitbox `ShapeCast3D`)
+   - Strike bottom: `false` (disables hitbox during recovery)
+2. **`Rig_Medium/Skeleton3D/WeaponSlot:attack_mode`** (Value track, discrete update):
+   - Key: `1` for `Slash`, `2` for `Stab`.
+3. **`Rig_Medium/Skeleton3D/WeaponSlot:vfx_threshold`** (Value track, continuous update):
+   - Eased float curve (`1.0` -> `0.0` -> `1.0`) driving the slash trail shader sweep.
+
+### AnimationTree & Library Integration
+1. In `animated_player.tscn` or `animated_enemy.tscn`, add the `.res` file to the `PlayerAnimations` or `EnemyAnimations` library on `AnimationPlayer`.
+2. In the `AnimationTree` root state machine (`AnimationNodeStateMachine`):
+   - Add an `AnimationNodeAnimation` node pointing to `LibraryName/AnimationName`.
+   - Add transition from `WalkSpace` -> `AttackState`: `advance_mode = 1` (manual trigger).
+   - Add transition from `AttackState` -> `WalkSpace`: `switch_mode = 2` (At End), `advance_mode = 2` (Auto), `xfade_time = 0.2`.
+
+
