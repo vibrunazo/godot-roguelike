@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://c8recf1retraps"]
+
+[ext_resource type="Script" path="res://test/record_fire_traps.gd" id="1_rec"]
+
+[node name="RecordFireTraps" type="Node3D"]
+script = ExtResource("1_rec")

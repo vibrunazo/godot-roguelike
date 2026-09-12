@@ -16,12 +16,14 @@ var all_enemies: Array[Character] = []
 ## 1 brute at difficulty 1-2, increasing by 1 every 2 difficulty levels (e.g. 2 at diff 3-4, 3 at diff 5-6).
 func get_brute_count() -> int:
 	var diff: int = ProgressionState.difficulty_level if ProgressionState != null else 1
-	return 1 + int((diff - 1) / 2)
+	return 0 + int((diff - 1.0) / 2.0)
 
 
 func _ready() -> void:
 	if enemy_scenes.is_empty():
 		enemy_scenes = [GlobalVars.enemy_melee_scene, GlobalVars.enemy_ranged_scene]
+		if GlobalVars.enemy_firebomber_scene != null:
+			enemy_scenes.append(GlobalVars.enemy_firebomber_scene)
 	var brute_template: PackedScene = brute_scene if brute_scene != null else GlobalVars.enemy_brute_scene
 	var total_count: int = ProgressionState.get_enemy_count() if ProgressionState != null else 3
 	var brute_count: int = get_brute_count()

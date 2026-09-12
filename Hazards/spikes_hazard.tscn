@@ -1,0 +1,256 @@
+[gd_scene format=3 uid="uid://c6v2j7y4p1mna"]
+
+[ext_resource type="Script" path="res://Hazards/spikes_hazard.gd" id="1_hazard"]
+[ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="2_attack"]
+[ext_resource type="AudioStream" uid="uid://b1ihkudmpnw30" path="res://Assets/Audio/metal-hit.ogg" id="3_audio"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plate"]
+albedo_color = Color(0.25, 0.25, 0.28, 1)
+metallic = 0.2
+roughness = 0.75
+
+[sub_resource type="BoxMesh" id="BoxMesh_plate"]
+material = SubResource("StandardMaterial3D_plate")
+size = Vector3(1, 0.04, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hole"]
+shading_mode = 0
+albedo_color = Color(0.06, 0.06, 0.07, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_hole"]
+material = SubResource("StandardMaterial3D_hole")
+top_radius = 0.045
+bottom_radius = 0.045
+height = 0.01
+radial_segments = 12
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_spike"]
+albedo_color = Color(0.96, 0.96, 0.98, 1)
+metallic = 0.4
+roughness = 0.2
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_spike"]
+material = SubResource("StandardMaterial3D_spike")
+top_radius = 0.0
+bottom_radius = 0.045
+height = 0.7
+radial_segments = 8
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_trigger"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_damage"]
+size = Vector3(0.96, 1, 0.96)
+
+[sub_resource type="Animation" id="Animation_reset"]
+resource_name = "RESET"
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("SpikesRoot:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, -0.68, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("DamageHitbox:monitoring")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [false]
+}
+
+[sub_resource type="Animation" id="Animation_spring"]
+resource_name = "spring"
+length = 0.08
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("SpikesRoot:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.08),
+"transitions": PackedFloat32Array(0.3, 1),
+"update": 0,
+"values": [Vector3(0, -0.68, 0), Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_retract"]
+resource_name = "retract"
+length = 0.4
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("SpikesRoot:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.4),
+"transitions": PackedFloat32Array(2, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, -0.68, 0)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_spikes"]
+_data = {
+&"RESET": SubResource("Animation_reset"),
+&"retract": SubResource("Animation_retract"),
+&"spring": SubResource("Animation_spring")
+}
+
+[node name="SpikesHazard" type="Node3D"]
+script = ExtResource("1_hazard")
+
+[node name="BasePlate" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+gi_mode = 0
+mesh = SubResource("BoxMesh_plate")
+
+[node name="Holes" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.041, 0)
+
+[node name="Hole1" type="MeshInstance3D" parent="Holes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.28, 0, -0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_hole")
+
+[node name="Hole2" type="MeshInstance3D" parent="Holes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_hole")
+
+[node name="Hole3" type="MeshInstance3D" parent="Holes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.28, 0, -0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_hole")
+
+[node name="Hole4" type="MeshInstance3D" parent="Holes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.28, 0, 0)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_hole")
+
+[node name="Hole5" type="MeshInstance3D" parent="Holes"]
+gi_mode = 0
+mesh = SubResource("CylinderMesh_hole")
+
+[node name="Hole6" type="MeshInstance3D" parent="Holes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.28, 0, 0)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_hole")
+
+[node name="Hole7" type="MeshInstance3D" parent="Holes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.28, 0, 0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_hole")
+
+[node name="Hole8" type="MeshInstance3D" parent="Holes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_hole")
+
+[node name="Hole9" type="MeshInstance3D" parent="Holes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.28, 0, 0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_hole")
+
+[node name="SpikesRoot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.68, 0)
+
+[node name="Spike1" type="MeshInstance3D" parent="SpikesRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.28, 0.35, -0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_spike")
+
+[node name="Spike2" type="MeshInstance3D" parent="SpikesRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, -0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_spike")
+
+[node name="Spike3" type="MeshInstance3D" parent="SpikesRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.28, 0.35, -0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_spike")
+
+[node name="Spike4" type="MeshInstance3D" parent="SpikesRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.28, 0.35, 0)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_spike")
+
+[node name="Spike5" type="MeshInstance3D" parent="SpikesRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_spike")
+
+[node name="Spike6" type="MeshInstance3D" parent="SpikesRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.28, 0.35, 0)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_spike")
+
+[node name="Spike7" type="MeshInstance3D" parent="SpikesRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.28, 0.35, 0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_spike")
+
+[node name="Spike8" type="MeshInstance3D" parent="SpikesRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_spike")
+
+[node name="Spike9" type="MeshInstance3D" parent="SpikesRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.28, 0.35, 0.28)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_spike")
+
+[node name="TriggerArea" type="Area3D" parent="."]
+collision_layer = 32
+collision_mask = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TriggerArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BoxShape3D_trigger")
+
+[node name="DamageHitbox" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 192
+monitoring = false
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DamageHitbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BoxShape3D_damage")
+
+[node name="AttackComponent" type="Node" parent="DamageHitbox"]
+script = ExtResource("2_attack")
+damage = 5.0
+knockback = Vector3(0, 4, 0)
+shake_on_damage = true
+rehit_interval = 0.5
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries/ = SubResource("AnimationLibrary_spikes")
+
+[node name="DelayTimer" type="Timer" parent="."]
+one_shot = true
+
+[node name="ActiveTimer" type="Timer" parent="."]
+one_shot = true
+
+[node name="CooldownTimer" type="Timer" parent="."]
+one_shot = true
+
+[node name="SpikeAudio" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("3_audio")
+volume_db = -4.0
+max_distance = 20.0
+bus = &"SFX"

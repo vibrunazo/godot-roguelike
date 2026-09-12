@@ -11,6 +11,7 @@
 [ext_resource type="Script" uid="uid://b6sf47mawx7hp" path="res://Player/mannequin_animation_tree.gd" id="6_b6t3m"]
 [ext_resource type="Animation" uid="uid://n2j7todulikj" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_1H_Attack_Slice_Diagonal.res" id="7_pje6n"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_2H_Attack_Chop.res" id="8_nqs35"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Jump_Full_Short.res" id="9_jump"]
 
 [sub_resource type="Animation" id="Animation_nqs35"]
 length = 0.001
@@ -37,6 +38,7 @@ _data = {
 &"Death_A": ExtResource("4_qbo8f"),
 &"Hit_A": ExtResource("2_b6t3m"),
 &"Idle_A": ExtResource("3_ipeb3"),
+&"Jump_Full_Short": ExtResource("9_jump"),
 &"Melee_1H_Attack_Slice_Diagonal": ExtResource("7_pje6n"),
 &"Melee_2H_Attack_Chop": ExtResource("8_nqs35"),
 &"Running_B": ExtResource("4_lxq1s"),
@@ -120,11 +122,25 @@ xfade_time = 0.2
 switch_mode = 2
 advance_mode = 2
 
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_jump"]
+animation = &"EnemyAnimations/Jump_Full_Short"
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_jump_in"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_jump_out"]
+xfade_time = 0.2
+switch_mode = 2
+advance_mode = 2
+
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_m75i3"]
 states/Defeat/node = SubResource("AnimationNodeAnimation_pje6n")
 states/Defeat/position = Vector2(800.44446, 32.666664)
 states/EnemyAnimations_Spawn_Ground/node = SubResource("AnimationNodeAnimation_8wj31")
 states/EnemyAnimations_Spawn_Ground/position = Vector2(388, 185.33334)
+states/Jump_Full_Short/node = SubResource("AnimationNodeAnimation_jump")
+states/Jump_Full_Short/position = Vector2(200, -25)
+states/LeapDodge/node = SubResource("AnimationNodeAnimation_jump")
+states/LeapDodge/position = Vector2(200, -75)
 states/MeleeAttack/node = SubResource("AnimationNodeBlendTree_7e68y")
 states/MeleeAttack/position = Vector2(399.33334, -25)
 states/RangedAttack/node = SubResource("AnimationNodeBlendTree_phjxc")
@@ -133,7 +149,7 @@ states/Stun/node = SubResource("AnimationNodeAnimation_nqs35")
 states/Stun/position = Vector2(800, 183.77779)
 states/WalkSpace/node = SubResource("AnimationNodeBlendSpace1D_phjxc")
 states/WalkSpace/position = Vector2(595.3333, 100.666664)
-transitions = ["EnemyAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_7e68y"), "WalkSpace", "Stun", SubResource("AnimationNodeStateMachineTransition_nxi5q"), "Stun", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_tlxba"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_nqs35"), "WalkSpace", "RangedAttack", SubResource("AnimationNodeStateMachineTransition_m75i3"), "RangedAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_iaunu"), "WalkSpace", "MeleeAttack", SubResource("AnimationNodeStateMachineTransition_pjlot"), "MeleeAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_3kfqk")]
+transitions = ["EnemyAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_7e68y"), "WalkSpace", "Stun", SubResource("AnimationNodeStateMachineTransition_nxi5q"), "Stun", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_tlxba"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_nqs35"), "WalkSpace", "RangedAttack", SubResource("AnimationNodeStateMachineTransition_m75i3"), "RangedAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_iaunu"), "WalkSpace", "MeleeAttack", SubResource("AnimationNodeStateMachineTransition_pjlot"), "MeleeAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_3kfqk"), "WalkSpace", "Jump_Full_Short", SubResource("AnimationNodeStateMachineTransition_jump_in"), "Jump_Full_Short", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_jump_out"), "WalkSpace", "LeapDodge", SubResource("AnimationNodeStateMachineTransition_jump_in"), "LeapDodge", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_jump_out")]
 graph_offset = Vector2(194, -91)
 
 [node name="AnimatedEnemy" type="Node3D" unique_id=1495277970]

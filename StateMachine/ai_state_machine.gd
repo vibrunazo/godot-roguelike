@@ -79,7 +79,7 @@ func command_dash() -> void:
 ## Orders the physical body StateMachine to execute an attack state if available.
 ## AI-side policy (liveness, stun/defeat/fall veto) wraps the shared transition API.
 ## When can_break_stun is true, attacks can break out of EnemyStun.
-func order_attack(attack_state_name: String = "", can_break_stun: bool = false) -> bool:
+func order_attack(attack_state_name: String = "", can_break_stun: bool = false, data: Dictionary = {}) -> bool:
 	if character == null or not character.is_alive():
 		return false
 	if character.state_machine == null or character.state_machine.state == null:
@@ -92,4 +92,4 @@ func order_attack(attack_state_name: String = "", can_break_stun: bool = false) 
 	if character.state_machine.get_node_or_null(attack_state_name) == null:
 		push_warning("AIStateMachine: order_attack('%s') requested non-existent state on body StateMachine." % attack_state_name)
 		return false
-	return character.state_machine.request_state(attack_state_name)
+	return character.state_machine.request_state(attack_state_name, data)

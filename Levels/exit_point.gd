@@ -28,7 +28,13 @@ func unlock() -> void:
 func _on_area_3d_body_entered(body: Node3D) -> void:
 	if locked:
 		return
-	if body is Character and (body as Character).is_player():
+	var is_player_entity: bool = false
+	if body is Character:
+		is_player_entity = (body as Character).is_player()
+	elif body != null:
+		is_player_entity = body.is_in_group("player")
+
+	if is_player_entity:
 		locked = true
 		animation_player.play("Exit")
 		ProgressionState.advance_level()

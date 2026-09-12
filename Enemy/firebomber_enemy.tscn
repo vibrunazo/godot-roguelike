@@ -1,0 +1,88 @@
+[gd_scene format=3 uid="uid://cqyfy2c8po5v2"]
+
+[ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy_base.tscn" id="1_6jo5i"]
+[ext_resource type="Script" uid="uid://cmqolk21i2p4i" path="res://StateMachine/character_attack.gd" id="2_cnthi"]
+[ext_resource type="Script" uid="uid://0d7edkd4gwy7" path="res://Components/projectile_spawner_component.gd" id="3_proj"]
+[ext_resource type="Script" uid="uid://tkni8sall63a" path="res://StateMachine/AIStates/ai_meander.gd" id="4_meander"]
+[ext_resource type="Script" uid="uid://bhgh7i53ksl7o" path="res://StateMachine/AIStates/ai_attack.gd" id="5_attack"]
+[ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="6_aiwait"]
+[ext_resource type="PackedScene" uid="uid://cmh0ygmsujl6r" path="res://Enemy/firebomb_projectile.tscn" id="7_firebomb_proj"]
+[ext_resource type="Script" uid="uid://dcrhwl4y02ahe" path="res://StateMachine/EnemyStates/enemy_leaping_dodge.gd" id="8_leap_dodge"]
+[ext_resource type="Script" uid="uid://g0la7jp1fgn1" path="res://StateMachine/AIStates/ai_leaping_dodge.gd" id="9_ai_leap_dodge"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_73kdj"]
+shading_mode = 0
+albedo_color = Color(0.779848, 0.6042756, 0.21943095, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_r82ii"]
+radius = 0.3
+height = 0.6
+radial_segments = 16
+rings = 8
+
+[node name="FirebomberEnemy" unique_id=2117139762 instance=ExtResource("1_6jo5i")]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" parent_id_path=PackedInt32Array(1495277970, 211580224) index="0" unique_id=73376948]
+transform = Transform3D(1, 0, 8.526513e-14, 0, 1, 9.256918e-15, 8.526513e-14, -9.322404e-15, 1, -2.1263995e-06, 0.20000017, -8.195639e-08)
+material_override = SubResource("StandardMaterial3D_73kdj")
+mesh = SubResource("SphereMesh_r82ii")
+
+[node name="AnimationTree" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium" parent_id_path=PackedInt32Array(1495277970, 1921158861) index="2" unique_id=1365896023]
+parameters/MeleeAttack/TimeScale/scale = 1.0
+parameters/RangedAttack/TimeScale/scale = 1.0
+
+[node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=539557262 node_paths=PackedStringArray("next_states", "character", "fall_state")]
+script = ExtResource("2_cnthi")
+next_states = [NodePath("../EnemyMove")]
+attack_animation_name = "RangedAttack"
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyLeapingDodge" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="5" unique_id=718293401 node_paths=PackedStringArray("next_state", "character", "fall_state")]
+script = ExtResource("8_leap_dodge")
+next_state = NodePath("../EnemyMove")
+cooldown = 5.0
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="AIStateMachine" parent="." index="8" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
+initial_state = NodePath("AIMeander")
+
+[node name="AIWait" type="Node" parent="AIStateMachine" index="0" unique_id=1748291048 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("6_aiwait")
+next_state = NodePath("../AIAttack")
+wait_duration = 3.0
+ai_state_machine = NodePath("..")
+
+[node name="AIMeander" type="Node" parent="AIStateMachine" index="1" unique_id=856220418 node_paths=PackedStringArray("attack_state", "wait_state", "ai_state_machine")]
+script = ExtResource("4_meander")
+attack_state = NodePath("../AIAttack")
+attack_range = 5.0
+wait_state = NodePath("../AIWait")
+ai_state_machine = NodePath("..")
+
+[node name="AIAttack" type="Node" parent="AIStateMachine" index="2" unique_id=984729104 node_paths=PackedStringArray("next_states", "ai_state_machine")]
+script = ExtResource("5_attack")
+next_states = [NodePath("../AIWait"), NodePath("../AIMeander")]
+cooldown = 3.0
+ai_state_machine = NodePath("..")
+
+[node name="AILeapingDodge" type="Node" parent="AIStateMachine" index="3" unique_id=1483920194 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("9_ai_leap_dodge")
+attack_state_name = "EnemyLeapingDodge"
+cooldown = 5.0
+trigger_range = 5.0
+can_break_stun = false
+next_state = NodePath("../AIMeander")
+ai_state_machine = NodePath("..")
+
+[node name="ProjectileSpawnerComponent" type="Node" parent="." index="10" unique_id=1948271058 node_paths=PackedStringArray("spawn_point", "character")]
+script = ExtResource("3_proj")
+projectile_scene = ExtResource("7_firebomb_proj")
+spawn_point = NodePath("../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
+character = NodePath("..")
+
+[connection signal="ranged_attack" from="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="ProjectileSpawnerComponent" method="spawn_projectile"]
+
+[editable path="AnimationAnchor/AnimatedEnemy"]
+[editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]
