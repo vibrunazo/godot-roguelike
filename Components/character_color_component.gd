@@ -42,8 +42,9 @@ var gradient_mask: int = 255:
 		_update_shader_parameters()
 
 ## The 8 gradient color ramps corresponding to palette columns.
-## In the Inspector, click on any element to open Godot's visual Gradient editor.
-@export var gradients: Array[Gradient] = []:
+## In the Inspector, assign a Gradient to any slot to recolor that part of the character.
+## Unassigned (null) slots leave the original character texture untouched underneath.
+@export var gradients: Array[Gradient] = [null, null, null, null, null, null, null, null]:
 	set(value):
 		gradients = value
 		_rebind_gradient_signals()
@@ -63,13 +64,12 @@ var gradient_mask: int = 255:
 		_update_shader_parameters()
 
 ## Automatically fills empty gradient slots with default color ramps on ready.
-@export var auto_populate_defaults: bool = true
+@export var auto_populate_defaults: bool = false
 
 ## Trigger to reset the gradients to default color ramps for the current palette_mode.
 @export var reset_to_defaults: bool = false:
 	set(value):
 		if value:
-			gradients.clear()
 			_populate_default_gradients()
 			_update_shader_parameters()
 
@@ -87,6 +87,9 @@ var _connected_gradients: Array[Gradient] = []
 
 
 func _ready() -> void:
+	while gradients.size() < 8:
+		gradients.append(null)
+	
 	if auto_populate_defaults:
 		_populate_default_gradients()
 	
@@ -155,13 +158,13 @@ func set_global_tint(color: Color) -> void:
 func _populate_default_gradients() -> void:
 	var default_ramps: Array[Gradient] = []
 	if palette_mode == PaletteMode.PLAYER:
-		# Player default color ramps
+		# Player default color ramps (Slots 2..5 intentionally null to preserve face details)
 		default_ramps.append(_create_ramp(Color("#42465a"), Color("#242632"))) # 0: Boots & gloves
 		default_ramps.append(_create_ramp(Color("#aab8be"), Color("#596064"))) # 1: Trim / Torso accent
-		default_ramps.append(_create_ramp(Color("#68cdb9"), Color("#359f98"))) # 2: Cyan Left
-		default_ramps.append(_create_ramp(Color("#68cdb9"), Color("#359f98"))) # 3: Cyan Right
-		default_ramps.append(_create_ramp(Color("#fbfcfc"), Color("#aebcc1"))) # 4: Visor / Head
-		default_ramps.append(_create_ramp(Color("#3d4154"), Color("#1e202b"))) # 5: Head dark
+		default_ramps.append(null) # 2: Unused
+		default_ramps.append(null) # 3: Head / Face (null preserves base texture eyes/mouth)
+		default_ramps.append(null) # 4: Unused
+		default_ramps.append(null) # 5: Unused
 		default_ramps.append(_create_ramp(Color("#9f7459"), Color("#5d4139"))) # 6: Leather belt
 		default_ramps.append(_create_ramp(Color("#68cdb9"), Color("#359f98"))) # 7: Main outfit
 	else:
@@ -175,14 +178,13 @@ func _populate_default_gradients() -> void:
 		default_ramps.append(_create_ramp(Color("#fed365"), Color("#f58238"))) # 6: Yellow
 		default_ramps.append(_create_ramp(Color("#f15a24"), Color("#a50858"))) # 7: Red / Crimson (Main body)
 	
-	while gradients.size() < 8:
-		gradients.append(null)
+	gradients.clear()
 	for i: int in range(8):
-		if gradients[i] == null:
-			gradients[i] = default_ramps[i]
+		gradients.append(default_ramps[i])
 	
 	_rebind_gradient_signals()
 	_rebuild_gradient_textures()
+	_update_shader_parameters()
 
 
 func _create_ramp(c_top: Color, c_bottom: Color) -> Gradient:
@@ -237,11 +239,14 @@ func _on_gradient_changed() -> void:
 func _rebuild_gradient_textures() -> void:
 	_gradient_textures.clear()
 	for i: int in range(8):
-		var grad: Gradient = gradients[i] if i < gradients.size() else null
-		if not grad:
-			grad = Gradient.new()
+		var grad: Gradient = gradients[i] if (i < gradients.size() and gradients[i] != null) else null
 		var tex: GradientTexture1D = GradientTexture1D.new()
-		tex.gradient = grad
+		if grad:
+			tex.gradient = grad
+		else:
+			var dummy: Gradient = Gradient.new()
+			dummy.colors = PackedColorArray([Color.WHITE, Color.WHITE])
+			tex.gradient = dummy
 		tex.width = 64
 		_gradient_textures.append(tex)
 
@@ -250,9 +255,15 @@ func _update_shader_parameters() -> void:
 	if not material:
 		return
 	
+	var active_mask: int = 0
+	for i: int in range(mini(8, gradients.size())):
+		if gradients[i] != null:
+			active_mask |= (1 << i)
+	
 	material.set_shader_parameter("palette_mode", int(palette_mode))
 	material.set_shader_parameter("enable_palette", enable_palette)
 	material.set_shader_parameter("gradient_mask", gradient_mask)
+	material.set_shader_parameter("active_gradient_mask", active_mask)
 	material.set_shader_parameter("global_tint", global_tint)
 	material.set_shader_parameter("roughness", roughness)
 	material.set_shader_parameter("metallic", metallic)

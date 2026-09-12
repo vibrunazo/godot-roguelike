@@ -26,9 +26,6 @@ func _ready() -> void:
 	if fb.state_machine:
 		fb.state_machine.set_physics_process(false)
 		fb.state_machine.set_process(false)
-	if fb.ai_state_machine:
-		fb.ai_state_machine.set_physics_process(false)
-		fb.ai_state_machine.set_process(false)
 	
 	var anim_tree: AnimationTree = fb.animation_tree
 	if anim_tree:
