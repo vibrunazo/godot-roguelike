@@ -10,6 +10,8 @@ extends Node
 @export var dash_audio: AudioStreamPlayer3D
 ## Fullscreen damage vignette/tint ColorRect.
 @export var damage_tint: ColorRect
+## Range in meters for auto-aim target acquisition (<= 0.0 disables auto-aim).
+@export var auto_aim_range: float = 5.0
 
 
 func _ready() -> void:
@@ -18,6 +20,7 @@ func _ready() -> void:
 	if character == null:
 		character = get_parent() as Character
 	if character != null:
+		character.auto_aim_range = auto_aim_range
 		character.health_changed.connect(_on_character_health_changed)
 
 

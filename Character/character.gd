@@ -46,8 +46,8 @@ signal target_changed(new_target: Node3D)
 ## characters without one (enemies) are always ready and rely on AI gating.
 @export var dash_cooldown: Timer
 ## Maximum distance in meters at which auto-aim acquires opposing characters.
-## Values <= 0.0 disable auto-aim acquisition entirely.
-@export var auto_aim_range: float = 5.0
+## Values <= 0.0 disable auto-aim acquisition entirely (0.0 by default for AI enemies; enabled by PlayerInputComponent).
+@export var auto_aim_range: float = 0.0
 ## Minimum interval in seconds between auto-aim target re-evaluations, so the
 ## target does not flicker every tick when candidates sit at similar distances.
 @export var target_retarget_cooldown: float = 0.3
@@ -123,7 +123,8 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	_update_auto_aim(delta)
+	if auto_aim_range > 0.0:
+		_update_auto_aim(delta)
 
 
 ## Advances auto-aim: drops invalid targets, then re-evaluates the nearest
@@ -132,7 +133,7 @@ func _physics_process(delta: float) -> void:
 ## is running (covers combo chains, which stay inside attack states), except
 ## clearing a freed node to avoid holding a dangling reference.
 func _update_auto_aim(delta: float) -> void:
-	if not is_inside_tree() or not is_alive():
+	if auto_aim_range <= 0.0 or not is_inside_tree() or not is_alive():
 		return
 	if is_attacking:
 		if current_target != null and not is_instance_valid(current_target):
@@ -144,8 +145,6 @@ func _update_auto_aim(delta: float) -> void:
 	if _retarget_timer > 0.0:
 		return
 	_retarget_timer = target_retarget_cooldown
-	if auto_aim_range <= 0.0:
-		return
 	var nearest: Character = get_nearest_target()
 	if nearest != null and global_position.distance_to(nearest.global_position) <= auto_aim_range:
 		_set_current_target(nearest)

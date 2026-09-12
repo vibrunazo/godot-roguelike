@@ -45,8 +45,8 @@ func _ready() -> void:
 	if player.current_target != enemy_a:
 		await _fail(level, "Player did not acquire nearest enemy A.")
 		return
-	if enemy_b.current_target != player:
-		await _fail(level, "Enemy B did not auto-acquire the player.")
+	if enemy_b.current_target != null:
+		await _fail(level, "Enemy B unexpectedly acquired an auto-aim target (auto-aim should be disabled by default on enemies).")
 		return
 	var reticle: TargetReticle = VfxManager.target_reticle
 	if reticle == null:

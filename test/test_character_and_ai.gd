@@ -421,9 +421,24 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 		return
 	print("AIAttack next_states [AIWait, AIMeander] verified (50/50 post-attack cycle).")
 
+	if ranged_enemy.auto_aim_range > 0.0:
+		printerr("TEST FAILED: RangedEnemy auto_aim_range expected 0.0 (disabled by default for AI), got: ", ranged_enemy.auto_aim_range)
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("RangedEnemy auto_aim_range (0.0 - disabled) verified.")
+
 	# Verify proximity trigger in AIMeander transitions AI to AIAttack and Body to EnemyAttack
 	var player: Character = PlayerScene.instantiate() as Character
 	add_child(player)
+	if not is_equal_approx(player.auto_aim_range, 5.0):
+		printerr("TEST FAILED: Player auto_aim_range expected 5.0 (enabled by PlayerInputComponent), got: ", player.auto_aim_range)
+		player.queue_free()
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("Player auto_aim_range (5.0m) enabled via PlayerInputComponent verified.")
+
 	player.global_position = Vector3(3.0, 1.0, 0.0) # within 4.0m
 	player.velocity = Vector3(0.0, -1.0, 0.0)
 	player.move_and_slide()
@@ -482,6 +497,34 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 		return
 	print("Unit check end_attack() verified.")
 	print("Post-attack transition verified: AI transitioned cleanly to ", ai_sm.state.name, " without spamming.")
+
+	# 3. Verify ranged enemy aiming at distances > 5m (where player auto-aim would cut off)
+	player.global_position = Vector3(10.0, 0.0, 0.0) # 10m away along +X
+	ranged_enemy.global_position = Vector3(0.0, 0.0, 0.0)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	if ranged_enemy.current_target != null:
+		printerr("TEST FAILED: RangedEnemy current_target should be null (auto-aim disabled on enemies). Got: ", ranged_enemy.current_target)
+		player.queue_free()
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+
+	# Enter AIAttack directly targeting player at 10m
+	ai_attack.enter("AIWait")
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	var facing: Vector3 = ranged_enemy.mesh_mount.global_basis.z.normalized()
+	var alignment: float = facing.dot(Vector3(1.0, 0.0, 0.0))
+	if alignment < 0.9:
+		printerr("TEST FAILED: RangedEnemy mesh_mount did not align with target at 10m! Facing: ", facing, " dot: ", alignment)
+		player.queue_free()
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("Ranged enemy aiming at >5m verified (facing alignment: ", alignment, ").")
 
 	player.queue_free()
 	ranged_enemy.queue_free()

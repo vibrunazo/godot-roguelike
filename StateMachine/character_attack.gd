@@ -105,7 +105,9 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
 	if input_comp != null:
 		input_comp.update_aim_intent()
-	aim_direction = character.aim_direction
+		aim_direction = character.aim_direction
+	else:
+		aim_direction = Vector3.ZERO
 	_aim_at_current_target()
 	_arm_lunge()
 
@@ -266,6 +268,8 @@ func exit() -> void:
 	queued_attack = false
 	if character != null:
 		character.is_attacking = false
+		if character.get_node_or_null("PlayerInputComponent") == null:
+			character.aim_direction = Vector3.ZERO
 	_clear_lunge()
 	_clear_hitstop()
 	if attack_timer != null:
