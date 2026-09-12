@@ -84,10 +84,32 @@ func _ready() -> void:
 		printerr("TEST FAILED: Particle emission extents not updated properly. Got: ", part_mat.emission_box_extents)
 		get_tree().quit(1)
 		return
-	print("Dynamic sizing properly scaled hitbox, mesh, and particle emission volume.")
+	var expected_particles: int = int(round(float(trap.base_particle_amount) * 3.0 * 2.0))
+	if trap.particles.amount != expected_particles:
+		printerr("TEST FAILED: Particle amount should scale with base_particle_amount. Expected: ", expected_particles, " got: ", trap.particles.amount)
+		get_tree().quit(1)
+		return
+	print("Dynamic sizing properly scaled hitbox, mesh, particle emission volume, and particle amount (", trap.particles.amount, ").")
 
 	# Reset back to default 1.0 x 1.0 for gameplay test
 	trap.set_trap_size(Vector2(1.0, 1.0))
+	if trap.particles.amount != trap.base_particle_amount:
+		printerr("TEST FAILED: Resetting to 1x1 should restore base_particle_amount. Expected: ", trap.base_particle_amount, " got: ", trap.particles.amount)
+		get_tree().quit(1)
+		return
+
+	# Test show_ground_mesh toggle
+	trap.show_ground_mesh = false
+	if trap.ground_mesh.visible:
+		printerr("TEST FAILED: GroundMesh should be hidden when show_ground_mesh = false.")
+		get_tree().quit(1)
+		return
+	trap.show_ground_mesh = true
+	if not trap.ground_mesh.visible:
+		printerr("TEST FAILED: GroundMesh should be visible when show_ground_mesh = true.")
+		get_tree().quit(1)
+		return
+	print("GroundMesh visibility toggling verified.")
 
 	# ---------------------------------------------------------
 	# PART 3: Instant Contact Damage & Lingering Interval (Enemy)
