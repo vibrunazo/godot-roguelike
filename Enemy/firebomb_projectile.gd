@@ -7,8 +7,6 @@ extends EnemyProjectile
 	set(value):
 		fall_gravity = value
 		gravity = value
-## Peak arc height above the higher of launch height or target ground height.
-@export var arc_height: float = 1.5
 ## Explicit target ground position. Set before launch to override auto-targeting.
 @export var target_position: Vector3 = Vector3.ZERO
 ## Fire trap hazard scene spawned on ground impact.
@@ -141,7 +139,8 @@ func _find_ground_y(pos: Vector3) -> float:
 	return 0.0
 
 
-## Calculates initial velocity vector required to hit target_ground with gravity and arc_height.
+## Calculates initial velocity vector required to hit target_ground with gravity and speed.
+## Flight duration varies based on distance and speed: total_time = distance_xz / speed.
 ## Accounts for the collision shape radius so physical floor contact occurs at target_ground.
 func _calculate_velocity(target_ground: Vector3) -> void:
 	var start_pos: Vector3 = global_position
@@ -150,25 +149,18 @@ func _calculate_velocity(target_ground: Vector3) -> void:
 
 	var col_radius: float = _get_collision_radius()
 	var arrival_y: float = target_ground.y + col_radius
+	var delta_y: float = arrival_y - start_pos.y
 
+	var proj_speed: float = maxf(speed, 0.1)
 	var eff_gravity: float = maxf(fall_gravity, 0.01)
-	var eff_arc_height: float = maxf(arc_height, 0.01)
-	var peak_y: float = maxf(start_pos.y, arrival_y) + eff_arc_height
 
-	var rise_height: float = peak_y - start_pos.y
-	var t_rise: float = sqrt(2.0 * rise_height / eff_gravity)
-
-	var fall_height: float = peak_y - arrival_y
-	var t_fall: float = sqrt(2.0 * fall_height / eff_gravity)
-
-	var total_time: float = t_rise + t_fall
+	# Flight time is determined by fixed projectile speed and horizontal distance
+	var total_time: float = distance_xz / proj_speed
 	if total_time <= 0.001:
-		total_time = 1.0
+		total_time = 0.1
 
-	var vy0: float = eff_gravity * t_rise
-	var v_xz: Vector3 = Vector3.ZERO
-	if distance_xz > 0.001:
-		v_xz = to_target_xz / total_time
+	var v_xz: Vector3 = to_target_xz / total_time
+	var vy0: float = (delta_y / total_time) + 0.5 * eff_gravity * total_time
 
 	velocity = Vector3(v_xz.x, vy0, v_xz.z)
 

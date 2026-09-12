@@ -166,8 +166,8 @@ func _ready() -> void:
 		proj.queue_free()
 		get_tree().quit(1)
 		return
-	if proj.arc_height <= 0.0:
-		printerr("TEST FAILED: Expected arc_height > 0.0, got: ", proj.arc_height)
+	if not is_equal_approx(proj.speed, 8.0):
+		printerr("TEST FAILED: Expected speed == 8.0, got: ", proj.speed)
 		proj.queue_free()
 		get_tree().quit(1)
 		return
@@ -186,26 +186,40 @@ func _ready() -> void:
 		proj.queue_free()
 		get_tree().quit(1)
 		return
-	print("Export vars (gravity=0.5, trap_duration=10.0, trap_size=(2,2), fire_trap_scene) verified.")
+	print("Export vars (speed=8.0, gravity=0.5, trap_duration=10.0, trap_size=(2,2), fire_trap_scene) verified.")
 	proj.queue_free()
 	await get_tree().process_frame
 
 	# ---------------------------------------------------------
-	# PART 5: Ballistic Trajectory Calculation (Angled Up & 0.5 Gravity Falling)
+	# PART 5: Ballistic Trajectory (Fixed Speed, Distance-based Time & Gravity)
 	# ---------------------------------------------------------
-	print("\n>>> PART 5: Ballistic Trajectory Calculation (Angled Up & 0.5 Gravity)")
+	print("\n>>> PART 5: Ballistic Trajectory (Fixed Speed & Distance-based Time)")
 	var traj_proj: FirebombProjectile = projectile_scene.instantiate() as FirebombProjectile
 	add_child(traj_proj)
 	traj_proj.global_position = Vector3(0.0, 1.5, 0.0)
 	var target_ground_pos := Vector3(0.0, 0.0, 4.0)
 	traj_proj.initialize_trajectory(target_ground_pos)
 
-	if traj_proj.velocity.y <= 0.0:
-		printerr("TEST FAILED: Firebomb initial vertical velocity must be positive (angled up). Got: ", traj_proj.velocity.y)
+	# Verify horizontal speed matches exported speed variable
+	var v_xz_length: float = Vector2(traj_proj.velocity.x, traj_proj.velocity.z).length()
+	if not is_equal_approx(v_xz_length, traj_proj.speed):
+		printerr("TEST FAILED: Horizontal speed must equal proj.speed (", traj_proj.speed, "). Got: ", v_xz_length)
 		traj_proj.queue_free()
 		get_tree().quit(1)
 		return
-	print("Initial velocity is angled up: velocity.y = ", traj_proj.velocity.y, " > 0.")
+	print("Horizontal speed matches projectile speed variable: ", v_xz_length)
+
+	# Verify time varies with distance (time = distance / speed)
+	var near_target := Vector3(0.0, 0.0, 4.0)
+	var far_target := Vector3(0.0, 0.0, 8.0)
+	var near_time: float = (near_target - traj_proj.global_position).length() / traj_proj.speed
+	var far_time: float = (far_target - traj_proj.global_position).length() / traj_proj.speed
+	if far_time <= near_time:
+		printerr("TEST FAILED: Flight time should increase with distance.")
+		traj_proj.queue_free()
+		get_tree().quit(1)
+		return
+	print("Flight time varies dynamically with distance: near=", near_time, "s, far=", far_time, "s.")
 
 	var initial_vy: float = traj_proj.velocity.y
 	# Run 10 physics frames and verify gravity slows down vy by exactly gravity * delta
@@ -232,7 +246,7 @@ func _ready() -> void:
 		return
 	print("Model front (+Z) orientation along velocity verified (dot: ", facing_dot, ").")
 
-	# Test custom fall_gravity synchronization
+	# Test custom fall_gravity synchronization with native Area3D gravity
 	traj_proj.fall_gravity = 0.8
 	if not is_equal_approx(traj_proj.gravity, 0.8):
 		printerr("TEST FAILED: Changing fall_gravity did not sync with Area3D gravity property.")
@@ -241,21 +255,21 @@ func _ready() -> void:
 		return
 	print("fall_gravity synchronization with native Area3D gravity verified.")
 
-	# Test low arc_height (below 0.5) is respected without clamping
-	var low_arc_proj: FirebombProjectile = projectile_scene.instantiate() as FirebombProjectile
-	add_child(low_arc_proj)
-	low_arc_proj.global_position = Vector3(0.0, 1.0, 0.0)
-	low_arc_proj.arc_height = 0.2
-	low_arc_proj.initialize_trajectory(Vector3(0.0, 0.0, 5.0))
-	var expected_peak_vy: float = sqrt(2.0 * 0.2 * low_arc_proj.fall_gravity)
-	if absf(low_arc_proj.velocity.y - expected_peak_vy) > 0.01:
-		printerr("TEST FAILED: Low arc_height (0.2) was clamped or miscalculated. Vy0: ", low_arc_proj.velocity.y, ", expected ~", expected_peak_vy)
-		low_arc_proj.queue_free()
+	# Test custom speed adjustment (e.g. speed = 12.0)
+	var fast_proj: FirebombProjectile = projectile_scene.instantiate() as FirebombProjectile
+	add_child(fast_proj)
+	fast_proj.global_position = Vector3(0.0, 1.0, 0.0)
+	fast_proj.speed = 12.0
+	fast_proj.initialize_trajectory(Vector3(0.0, 0.0, 6.0))
+	var fast_vxz: float = Vector2(fast_proj.velocity.x, fast_proj.velocity.z).length()
+	if not is_equal_approx(fast_vxz, 12.0):
+		printerr("TEST FAILED: Modifying speed to 12.0 did not update horizontal speed. Got: ", fast_vxz)
+		fast_proj.queue_free()
 		traj_proj.queue_free()
 		get_tree().quit(1)
 		return
-	print("Custom low arc_height (0.2) verified without arbitrary 0.5 clamp.")
-	low_arc_proj.queue_free()
+	print("Adjusting projectile speed to 12.0 verified: horizontal speed = ", fast_vxz)
+	fast_proj.queue_free()
 
 	# Test explicit origin targeting (0, 0, 0)
 	var origin_proj: FirebombProjectile = projectile_scene.instantiate() as FirebombProjectile
@@ -336,7 +350,6 @@ func _ready() -> void:
 	var ground_proj: FirebombProjectile = projectile_scene.instantiate() as FirebombProjectile
 	add_child(ground_proj)
 	ground_proj.global_position = Vector3(5.0, 1.0, 5.0)
-	ground_proj.arc_height = 0.5
 	ground_proj.initialize_trajectory(Vector3(5.0, 0.0, 8.0))
 
 	# Wait for projectile to arc and hit the floor

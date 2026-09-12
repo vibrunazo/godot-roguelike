@@ -1,4 +1,4 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cqyfy2c8po5v2"]
 
 [ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy_base.tscn" id="1_6jo5i"]
 [ext_resource type="Script" uid="uid://cmqolk21i2p4i" path="res://StateMachine/character_attack.gd" id="2_cnthi"]
@@ -6,33 +6,43 @@
 [ext_resource type="Script" uid="uid://tkni8sall63a" path="res://StateMachine/AIStates/ai_meander.gd" id="4_meander"]
 [ext_resource type="Script" uid="uid://bhgh7i53ksl7o" path="res://StateMachine/AIStates/ai_attack.gd" id="5_attack"]
 [ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="6_aiwait"]
-[ext_resource type="PackedScene" path="res://Enemy/firebomb_projectile.tscn" id="7_firebomb_proj"]
+[ext_resource type="PackedScene" uid="uid://cmh0ygmsujl6r" path="res://Enemy/firebomb_projectile.tscn" id="7_firebomb_proj"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_73kdj"]
+shading_mode = 0
+albedo_color = Color(0.779848, 0.6042756, 0.21943095, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_r82ii"]
+radius = 0.3
+height = 0.6
+radial_segments = 16
+rings = 8
 
 [node name="FirebomberEnemy" unique_id=2117139762 instance=ExtResource("1_6jo5i")]
 
-[node name="ProjectileSpawnerComponent" type="Node" parent="." unique_id=1948271058 node_paths=PackedStringArray("spawn_point", "character")]
-script = ExtResource("3_proj")
-projectile_scene = ExtResource("7_firebomb_proj")
-spawn_point = NodePath("../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
-character = NodePath("..")
+[node name="MeshInstance3D" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" parent_id_path=PackedInt32Array(1495277970, 211580224) index="0" unique_id=73376948]
+transform = Transform3D(1, 0, 8.526513e-14, 0, 1, 9.256918e-15, 8.526513e-14, -9.322404e-15, 1, -2.1263995e-06, 0.20000017, -8.195639e-08)
+material_override = SubResource("StandardMaterial3D_73kdj")
+mesh = SubResource("SphereMesh_r82ii")
 
-[node name="StateMachine" parent="." parent_id_path=PackedInt32Array(2117139762) index="5" unique_id=1352967922 node_paths=PackedStringArray("initial_state")]
-initial_state = NodePath("EnemyMove")
+[node name="AnimationTree" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium" parent_id_path=PackedInt32Array(1495277970, 1921158861) index="2" unique_id=1365896023]
+parameters/MeleeAttack/TimeScale/scale = 1.0
+parameters/RangedAttack/TimeScale/scale = 1.0
 
 [node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=539557262 node_paths=PackedStringArray("next_states", "character", "fall_state")]
 script = ExtResource("2_cnthi")
-attack_animation_name = "RangedAttack"
 next_states = [NodePath("../EnemyMove")]
+attack_animation_name = "RangedAttack"
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
-[node name="AIStateMachine" parent="." index="7" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
+[node name="AIStateMachine" parent="." index="8" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
 initial_state = NodePath("AIMeander")
 
 [node name="AIWait" type="Node" parent="AIStateMachine" index="0" unique_id=1748291048 node_paths=PackedStringArray("next_state", "ai_state_machine")]
 script = ExtResource("6_aiwait")
-wait_duration = 3.0
 next_state = NodePath("../AIAttack")
+wait_duration = 3.0
 ai_state_machine = NodePath("..")
 
 [node name="AIMeander" type="Node" parent="AIStateMachine" index="1" unique_id=856220418 node_paths=PackedStringArray("attack_state", "wait_state", "ai_state_machine")]
@@ -44,10 +54,15 @@ ai_state_machine = NodePath("..")
 
 [node name="AIAttack" type="Node" parent="AIStateMachine" index="2" unique_id=984729104 node_paths=PackedStringArray("next_states", "ai_state_machine")]
 script = ExtResource("5_attack")
-attack_state_name = "EnemyAttack"
 next_states = [NodePath("../AIWait"), NodePath("../AIMeander")]
 cooldown = 3.0
 ai_state_machine = NodePath("..")
+
+[node name="ProjectileSpawnerComponent" type="Node" parent="." index="10" unique_id=1948271058 node_paths=PackedStringArray("spawn_point", "character")]
+script = ExtResource("3_proj")
+projectile_scene = ExtResource("7_firebomb_proj")
+spawn_point = NodePath("../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
+character = NodePath("..")
 
 [connection signal="ranged_attack" from="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="ProjectileSpawnerComponent" method="spawn_projectile"]
 
