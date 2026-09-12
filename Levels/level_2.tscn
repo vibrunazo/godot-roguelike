@@ -101,7 +101,7 @@ data = ExtResource("4_fbld2")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, -28)
 
 [node name="SpikesHazard1" parent="." index="10" unique_id=534021016 instance=ExtResource("5_spikes")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -3)
 
 [node name="SpikesHazard2" parent="." index="11" unique_id=178761576 instance=ExtResource("5_spikes")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -25)

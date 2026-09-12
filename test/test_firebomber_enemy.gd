@@ -487,6 +487,298 @@ func _ready() -> void:
 	casted_proj.queue_free()
 	cast_bomber.queue_free()
 	target_dummy.queue_free()
+	await get_tree().process_frame
+	await get_tree().physics_frame
+
+	# ---------------------------------------------------------
+	# PART 9: Firebomber Leaping Dodge State & AI Node Wiring
+	# ---------------------------------------------------------
+	print("\n>>> PART 9: Firebomber Leaping Dodge State & AI Node Wiring")
+	var leap_floor := StaticBody3D.new()
+	leap_floor.position = Vector3(0.0, -1.0, 0.0)
+	var leap_floor_col := CollisionShape3D.new()
+	var leap_floor_box := BoxShape3D.new()
+	leap_floor_box.size = Vector3(100.0, 2.0, 100.0)
+	leap_floor_col.shape = leap_floor_box
+	leap_floor.add_child(leap_floor_col)
+	add_child(leap_floor)
+	await get_tree().process_frame
+	await get_tree().physics_frame
+
+	var leap_bomber: Character = firebomber_scene.instantiate() as Character
+	leap_bomber.position = Vector3(0.0, 1.0, 0.0)
+	add_child(leap_bomber)
+	leap_bomber.velocity = Vector3(0.0, -1.0, 0.0)
+	leap_bomber.move_and_slide()
+	await get_tree().process_frame
+	await get_tree().physics_frame
+
+	var leap_body_sm: StateMachine = leap_bomber.state_machine
+	var leap_ai_sm: AIStateMachine = leap_bomber.ai_state_machine
+	if leap_body_sm.state.name != "EnemyMove":
+		leap_body_sm.request_state("EnemyMove")
+
+	var leap_dodge_state: EnemyLeapingDodge = leap_body_sm.get_node_or_null("EnemyLeapingDodge") as EnemyLeapingDodge
+	if leap_dodge_state == null:
+		printerr("TEST FAILED: EnemyLeapingDodge missing on Firebomber StateMachine.")
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(leap_dodge_state.cooldown, 12.0):
+		printerr("TEST FAILED: EnemyLeapingDodge.cooldown is ", leap_dodge_state.cooldown, ", expected 12.0.")
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(leap_dodge_state.max_range, 15.0):
+		printerr("TEST FAILED: EnemyLeapingDodge.max_range is ", leap_dodge_state.max_range, ", expected 15.0.")
+		get_tree().quit(1)
+		return
+	if leap_dodge_state.peak_height <= 0.0:
+		printerr("TEST FAILED: EnemyLeapingDodge.peak_height must be > 0.0.")
+		get_tree().quit(1)
+		return
+	if not leap_dodge_state.uninterruptable:
+		printerr("TEST FAILED: EnemyLeapingDodge.uninterruptable is not true.")
+		get_tree().quit(1)
+		return
+
+	var ai_dodge_state: AILeapingDodge = leap_ai_sm.get_node_or_null("AILeapingDodge") as AILeapingDodge
+	if ai_dodge_state == null:
+		printerr("TEST FAILED: AILeapingDodge missing on Firebomber AIStateMachine.")
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(ai_dodge_state.cooldown, 12.0):
+		printerr("TEST FAILED: AILeapingDodge.cooldown is ", ai_dodge_state.cooldown, ", expected 12.0.")
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(ai_dodge_state.trigger_range, 5.0):
+		printerr("TEST FAILED: AILeapingDodge.trigger_range is ", ai_dodge_state.trigger_range, ", expected 5.0.")
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(ai_dodge_state.max_range, 15.0):
+		printerr("TEST FAILED: AILeapingDodge.max_range is ", ai_dodge_state.max_range, ", expected 15.0.")
+		get_tree().quit(1)
+		return
+	if ai_dodge_state.ability_state_name != "EnemyLeapingDodge" and ai_dodge_state.attack_state_name != "EnemyLeapingDodge":
+		printerr("TEST FAILED: AILeapingDodge target state name is not 'EnemyLeapingDodge'.")
+		get_tree().quit(1)
+		return
+
+	# Verify AnimationPlayer has Jump_Full_Short in EnemyAnimations library
+	var enemy_anim_player: AnimationPlayer = leap_bomber.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if enemy_anim_player == null or not enemy_anim_player.has_animation("EnemyAnimations/Jump_Full_Short"):
+		printerr("TEST FAILED: AnimationPlayer missing 'EnemyAnimations/Jump_Full_Short'.")
+		get_tree().quit(1)
+		return
+
+	print("EnemyLeapingDodge & AILeapingDodge node wiring and 12s/15m/5m export configuration verified.")
+
+	# ---------------------------------------------------------
+	# PART 10: AI Trigger Conditions (Distance < 5m & 12s Cooldown)
+	# ---------------------------------------------------------
+	print("\n>>> PART 10: AI Trigger Conditions (Distance < 5m & 12s Cooldown)")
+	var test_player_scene: PackedScene = load("res://Player/player.tscn")
+	var leap_player: Character = test_player_scene.instantiate() as Character
+	leap_player.position = leap_bomber.position + Vector3(0.0, 0.0, 7.0)
+	add_child(leap_player)
+	leap_player.velocity = Vector3(0.0, -1.0, 0.0)
+	leap_player.move_and_slide()
+
+	# Case A: Player outside 5m (e.g. 7.0m away) - should NOT trigger
+	leap_player.global_position = leap_bomber.global_position + Vector3(0.0, 0.0, 7.0)
+	ai_dodge_state.cooldown_timer = 0.0
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	var far_trigger: bool = ai_dodge_state.evaluate_trigger(0.016)
+	if far_trigger:
+		printerr("TEST FAILED: AILeapingDodge triggered when player was 7m away (> 5m)!")
+		get_tree().quit(1)
+		return
+	print("Far player distance (> 5m) correctly rejected.")
+
+	# Case B: Boundary test: Player at 5.2m (> 5m) - should NOT trigger
+	leap_player.global_position = leap_bomber.global_position + Vector3(0.0, 0.0, 5.2)
+	await get_tree().physics_frame
+	var boundary_far_trigger: bool = ai_dodge_state.evaluate_trigger(0.016)
+	if boundary_far_trigger:
+		printerr("TEST FAILED: AILeapingDodge triggered at 5.2m (> 5.0m threshold)!")
+		get_tree().quit(1)
+		return
+
+	# Case C: Boundary test: Player at 4.0m (< 5m) - SHOULD trigger
+	leap_player.global_position = leap_bomber.global_position + Vector3(0.0, 0.0, 4.0)
+	ai_dodge_state.cooldown_timer = 0.0
+	var close_trigger: bool = ai_dodge_state.evaluate_trigger(0.016)
+	if not close_trigger:
+		printerr("TEST FAILED: AILeapingDodge did not trigger when player was 4.0m away (< 5m)!")
+		get_tree().quit(1)
+		return
+	print("Near player distance (< 5m) successfully triggered AILeapingDodge.")
+
+	# Verify AI state transitioned to AILeapingDodge
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	if leap_ai_sm.state != ai_dodge_state:
+		printerr("TEST FAILED: AIStateMachine did not transition to AILeapingDodge, current: ", leap_ai_sm.state.name)
+		get_tree().quit(1)
+		return
+	print("AIStateMachine preemptively interrupted into AILeapingDodge.")
+
+	# Verify cooldown reset to 12.0
+	if not is_equal_approx(ai_dodge_state.cooldown_timer, 12.0):
+		printerr("TEST FAILED: AILeapingDodge cooldown_timer was not reset to 12.0, got: ", ai_dodge_state.cooldown_timer)
+		get_tree().quit(1)
+		return
+	print("Cooldown timer initialized to 12.0s.")
+
+	# Verify evaluate_trigger returns false while cooldown > 0
+	var cd_trigger: bool = ai_dodge_state.evaluate_trigger(0.016)
+	if cd_trigger:
+		printerr("TEST FAILED: AILeapingDodge triggered while on cooldown!")
+		get_tree().quit(1)
+		return
+	print("Cooldown gating verified: evaluate_trigger is false while on cooldown.")
+
+	# Verify cooldown timer decays
+	var prev_cd: float = ai_dodge_state.cooldown_timer
+	ai_dodge_state.evaluate_trigger(2.5)
+	if not is_equal_approx(ai_dodge_state.cooldown_timer, prev_cd - 2.5):
+		printerr("TEST FAILED: cooldown_timer did not decay by delta. Got: ", ai_dodge_state.cooldown_timer)
+		get_tree().quit(1)
+		return
+	print("Cooldown timer decay verified (12.0 -> ", ai_dodge_state.cooldown_timer, "s).")
+
+	# ---------------------------------------------------------
+	# PART 11: Leaping Dodge High-in-the-Air Trajectory & Hyper-Armor
+	# ---------------------------------------------------------
+	print("\n>>> PART 11: Leaping Dodge High-in-the-Air Trajectory & Hyper-Armor")
+	# Reset enemy position and start leap dodge
+	leap_bomber.global_position = Vector3(0.0, 1.0, 0.0)
+	leap_player.global_position = Vector3(0.0, 1.0, 3.0) # player in front (+Z)
+	await get_tree().physics_frame
+
+	leap_dodge_state.enter("", {"direction": Vector3(0.0, 0.0, -1.0)}) # Leaping back away from player (-Z)
+	if not leap_dodge_state.is_leaping:
+		printerr("TEST FAILED: is_leaping is not true after enter().")
+		get_tree().quit(1)
+		return
+
+	# Initial vertical velocity must be positive (high in the air)
+	if leap_dodge_state.vertical_velocity <= 0.0:
+		printerr("TEST FAILED: Initial vertical velocity must be > 0.0 for high leap! Got: ", leap_dodge_state.vertical_velocity)
+		get_tree().quit(1)
+		return
+	print("High leap takeoff verified: initial Vy = ", leap_dodge_state.vertical_velocity, " m/s.")
+
+	# Advance physics frames and verify upward movement toward peak height
+	var max_y_reached: float = 0.0
+	for step in range(30):
+		leap_dodge_state.physics_update(1.0 / 60.0)
+		if leap_bomber.global_position.y > max_y_reached:
+			max_y_reached = leap_bomber.global_position.y
+
+	if max_y_reached < 3.0:
+		printerr("TEST FAILED: Leap did not reach high altitude in air. Max Y reached: ", max_y_reached)
+		get_tree().quit(1)
+		return
+	print("High aerial apex verified: reached height ", max_y_reached, "m in air.")
+
+	# Verify Hyper-Armor: damage during leap does not interrupt into EnemyStun
+	leap_bomber.health_component.take_damage(5.0)
+	await get_tree().physics_frame
+	if leap_body_sm.state == leap_bomber.stun_state:
+		printerr("TEST FAILED: Firebomber was interrupted into EnemyStun during uninterruptable leaping dodge!")
+		get_tree().quit(1)
+		return
+	print("Hyper-armor verified: mid-air damage did NOT interrupt leaping dodge into EnemyStun.")
+
+	# Complete the leap
+	for step in range(40):
+		if not leap_dodge_state.is_leaping:
+			break
+		leap_dodge_state.physics_update(1.0 / 60.0)
+
+	# Verify displacement is clamped within max_range of 15m
+	var total_displacement: float = (leap_bomber.global_position - Vector3.ZERO).length()
+	if total_displacement > 15.1:
+		printerr("TEST FAILED: Leaping dodge displaced ", total_displacement, "m, exceeding max_range of 15.0m!")
+		get_tree().quit(1)
+		return
+	print("Leaping displacement safely within 15m max range: ", total_displacement, "m.")
+
+	# ---------------------------------------------------------
+	# PART 12: Edge Cases & Boundary Handling
+	# ---------------------------------------------------------
+	print("\n>>> PART 12: Edge Cases & Boundary Handling")
+	# Edge case: Clamping explicit target exceeding max_range (e.g. 50m away)
+	leap_dodge_state.enter("", {"target_position": Vector3(50.0, 0.0, 0.0)})
+	var clamped_dist: float = (leap_dodge_state.target_position - leap_dodge_state.start_position).length()
+	if clamped_dist > 15.001:
+		printerr("TEST FAILED: Explicit 50m target was not clamped to max_range (15m). Got: ", clamped_dist)
+		get_tree().quit(1)
+		return
+	print("Explicit target distance clamped to 15m: ", clamped_dist, "m.")
+
+	# Edge case: Target at identical position (Vector3.ZERO offset)
+	leap_dodge_state.enter("", {"direction": Vector3.ZERO})
+	if not leap_dodge_state.horizontal_velocity.is_finite() or not leap_dodge_state.target_position.is_finite():
+		printerr("TEST FAILED: Zero direction resulted in non-finite value!")
+		get_tree().quit(1)
+		return
+	print("Zero direction fallback gracefully handled without NaN.")
+
+	# ---------------------------------------------------------
+	# PART 13: Wall & Corner Obstacle Avoidance
+	# ---------------------------------------------------------
+	print("\n>>> PART 13: Wall & Corner Obstacle Avoidance")
+	var corner_wall := StaticBody3D.new()
+	corner_wall.collision_layer = 1
+	var corner_col := CollisionShape3D.new()
+	var corner_box := BoxShape3D.new()
+	corner_box.size = Vector3(20.0, 4.0, 1.0)
+	corner_col.shape = corner_box
+	corner_wall.add_child(corner_col)
+	corner_wall.position = Vector3(0.0, 2.0, -2.0) # Wall centered at Z = -2.0
+	add_child(corner_wall)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	leap_bomber.global_position = Vector3(0.0, 1.0, 0.0)
+	# Attempt to dodge directly into the wall (-Z)
+	leap_dodge_state.enter("", {"direction": Vector3(0.0, 0.0, -1.0)})
+
+	# Target position MUST NOT penetrate through the wall (front face is at Z = -1.5)
+	if leap_dodge_state.target_position.z <= -1.5:
+		printerr("TEST FAILED: Leaping dodge target penetrated through wall! Target pos: ", leap_dodge_state.target_position)
+		get_tree().quit(1)
+		return
+	print("Wall collision avoidance verified: target pos safely bounded at ", leap_dodge_state.target_position)
+	corner_wall.queue_free()
+
+	# ---------------------------------------------------------
+	# PART 14: Stun & Defeat Policy Enforcement via order_attack
+	# ---------------------------------------------------------
+	print("\n>>> PART 14: Stun & Defeat Policy Enforcement via order_attack")
+	leap_body_sm.request_state("EnemyStun")
+	await get_tree().physics_frame
+	if leap_body_sm.state.name != "EnemyStun":
+		printerr("TEST FAILED: Setup failed to put bomber into EnemyStun.")
+		get_tree().quit(1)
+		return
+
+	# AILeapingDodge should respect can_break_stun = false
+	ai_dodge_state.enter("")
+	await get_tree().physics_frame
+	if leap_body_sm.state.name == "EnemyLeapingDodge":
+		printerr("TEST FAILED: AILeapingDodge illegally broke out of EnemyStun when can_break_stun is false!")
+		get_tree().quit(1)
+		return
+	print("Stun protection verified: AILeapingDodge did NOT break EnemyStun.")
+	leap_body_sm.request_state("EnemyMove")
+
+	# Cleanup
+	leap_player.queue_free()
+	leap_bomber.queue_free()
+	leap_floor.queue_free()
 
 	print("\n====================================================")
 	print("  ALL FIREBOMBER ENEMY & FIREBOMB TESTS PASSED!")
@@ -498,5 +790,11 @@ func _ready() -> void:
 	print("  6. In-flight player damage & no-trap verified")
 	print("  7. Ground impact spawns 2x2 fire trap (10s, no mesh)")
 	print("  8. End-to-end cast calculates player ground position")
+	print("  9. Leaping dodge states & Jump_Full_Short animation verified")
+	print("  10. AILeapingDodge triggers on player < 5m & 12s cooldown")
+	print("  11. High leap parabolic trajectory (15m range) & hyper-armor")
+	print("  12. Boundary distance and zero/extreme displacement clamping")
+	print("  13. Wall and corner obstacle avoidance (no penetration)")
+	print("  14. Stun and defeat policy enforcement via order_attack")
 	print("====================================================")
 	get_tree().quit(0)

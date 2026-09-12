@@ -308,10 +308,14 @@ func reset_game_state() -> void:
 		get_tree().reload_current_scene.call_deferred()
 
 
-## Returns true if this character is executing an uninterruptable attack (hyper-armor).
+## Returns true if this character is executing an uninterruptable attack or ability (hyper-armor).
 func is_uninterruptable() -> bool:
 	if state_machine != null and state_machine.state is CharacterAttack:
 		return (state_machine.state as CharacterAttack).uninterruptable
+	if state_machine != null and state_machine.state != null:
+		var unintr: Variant = state_machine.state.get("uninterruptable")
+		if unintr != null and bool(unintr):
+			return true
 	return false
 
 

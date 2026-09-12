@@ -16,12 +16,20 @@ static func find_dummy(level: Node, exclude: Node = null) -> CollisionObject3D:
 			if child is CollisionObject3D and child.has_node("HealthComponent"):
 				return child as CollisionObject3D
 		if "all_enemies" in wave_obj and not (wave_obj.all_enemies as Array).is_empty():
-			var enemy: Character = wave_obj.all_enemies[0] as Character
+			var enemy: Character = null
+			for cand: Character in (wave_obj.all_enemies as Array):
+				if cand != null and (cand.ai_state_machine == null or not cand.ai_state_machine.has_node("AILeapingDodge")):
+					enemy = cand
+					break
+			if enemy == null:
+				enemy = wave_obj.all_enemies[0] as Character
 			if not enemy.is_inside_tree():
 				if wave_obj.has_method("spawn_enemy"):
 					wave_obj.spawn_enemy(enemy)
 				else:
 					wave_obj.add_child(enemy)
+			if enemy.ai_state_machine != null:
+				enemy.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
 			return enemy
 	return null
 
