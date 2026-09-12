@@ -18,7 +18,7 @@ enum State {
 @export var trigger_delay: float = 0.4
 
 ## Duration in seconds that the spikes remain extended and dangerous.
-@export var active_duration: float = 0.8
+@export var active_duration: float = 1.6
 
 ## Cooldown duration in seconds after spikes finish retracting before the trap can re-trigger.
 @export var reset_cooldown: float = 1.0
@@ -80,14 +80,14 @@ func _sync_attack_component() -> void:
 func _on_trigger_area_body_entered(body: Node3D) -> void:
 	if current_state != State.IDLE:
 		return
-	if _is_player_character(body):
+	if _is_trigger_character(body):
 		trigger()
 
 
-func _is_player_character(node: Node) -> bool:
+func _is_trigger_character(node: Node) -> bool:
 	if node is Character:
-		return (node as Character).is_player()
-	return node.is_in_group("player")
+		return (node as Character).is_alive()
+	return node.is_in_group("player") or node.is_in_group("enemy")
 
 
 ## Arms and begins the trigger delay countdown before emerging.
@@ -153,8 +153,8 @@ func _on_retract_completed() -> void:
 
 func _on_cooldown_timer_timeout() -> void:
 	current_state = State.IDLE
-	# Re-trigger if player is still standing inside the trigger area
+	# Re-trigger if any living character is still standing inside the trigger area
 	for body: Node3D in trigger_area.get_overlapping_bodies():
-		if _is_player_character(body):
+		if _is_trigger_character(body):
 			trigger()
 			break
