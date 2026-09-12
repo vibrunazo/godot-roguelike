@@ -144,3 +144,33 @@ These are practical conventions and lessons learned from the course lectures rat
 
 
 
+### Subprocess & Pipe Deadlock Prevention (Python)
+
+When invoking Godot or scratch scripts via Python `subprocess`:
+
+1. **NEVER use `shell=True` with `capture_output=True`:**
+   Spawning commands through a shell (`cmd.exe` on Windows or `/bin/sh` on POSIX/WSL) causes child process orphaning on timeouts. The orphaned process holds standard I/O pipes open, causing Python to hang indefinitely waiting for EOF and ignoring the timeout.
+2. **Always pass commands as an argument list (`shell=False`):**
+   Passing an explicit list ensures Python's runner directly monitors and terminates the `godot` executable on timeout across Windows, Linux, and macOS.
+3. **Always handle `subprocess.TimeoutExpired`:**
+   Catch the timeout exception explicitly so execution terminates cleanly with an exit code instead of an unhandled Python trace.
+
+#### Required Pattern (All Platforms):
+```python
+import subprocess
+
+cmd = [
+    "godot",
+    "--headless",
+    "--path", ".",
+    "--quit-after", "60",
+    "-s", "scratch/my_script.gd"
+]
+
+try:
+    res = subprocess.run(cmd, shell=False, capture_output=True, text=True, timeout=10)
+    print("STDOUT:\n", res.stdout)
+    if res.returncode != 0:
+        print("STDERR:\n", res.stderr)
+except subprocess.TimeoutExpired:
+    print("ERROR: Godot process timed out after 10 seconds and was killed.")

@@ -13,10 +13,11 @@
 [ext_resource type="Script" uid="uid://c81hirrrp64m2" path="res://StateMachine/EnemyStates/enemy_defeat.gd" id="9_efk13"]
 [ext_resource type="Script" uid="uid://b53uetcel424p" path="res://StateMachine/EnemyStates/enemy_fall.gd" id="10_47ove"]
 [ext_resource type="Script" uid="uid://bktjbk1s3kg6n" path="res://StateMachine/ai_state_machine.gd" id="11_aism"]
+[ext_resource type="Script" uid="uid://c8j4cclflxm5n" path="res://Components/character_color_component.gd" id="13_color"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
 
-[node name="EnemyBase" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "stun_state", "defeat_state") groups=["enemy"] editor_description="ABSTRACT BASE TEMPLATE: Defines shared physics, health, knockback, and rig. Concrete enemies (melee_enemy.tscn, ranged_enemy.tscn) must inherit from this scene and configure their own attacks and AI states. Do not instantiate directly in waves."]
+[node name="EnemyBase" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "stun_state", "defeat_state", "color_component") groups=["enemy"] editor_description="ABSTRACT BASE TEMPLATE: Defines shared physics, health, knockback, and rig. Concrete enemies (melee_enemy.tscn, ranged_enemy.tscn) must inherit from this scene and configure their own attacks and AI states. Do not instantiate directly in waves."]
 collision_layer = 3
 script = ExtResource("1_eqilm")
 movement_speed = 3.5
@@ -30,6 +31,7 @@ navigation_agent_3d = NodePath("NavigationAgent3D")
 collision_shape_3d = NodePath("CollisionShape3D")
 stun_state = NodePath("StateMachine/EnemyStun")
 defeat_state = NodePath("StateMachine/EnemyDefeat")
+color_component = NodePath("CharacterColorComponent")
 
 [node name="AnimationAnchor" type="Node3D" parent="." unique_id=930518751]
 
@@ -65,6 +67,9 @@ health_color = Color(0.8901961, 0.2901961, 0.25882354, 1)
 [node name="HitAudio" type="AudioStreamPlayer3D" parent="." unique_id=1636824264]
 stream = ExtResource("3_am0pq")
 bus = &"SFX"
+
+[node name="CharacterColorComponent" type="Node" parent="." unique_id=1409284102]
+script = ExtResource("13_color")
 
 [node name="StateMachine" type="Node" parent="." unique_id=1352967922 node_paths=PackedStringArray("initial_state")]
 script = ExtResource("6_m6jha")

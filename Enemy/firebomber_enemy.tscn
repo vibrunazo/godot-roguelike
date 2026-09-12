@@ -20,6 +20,10 @@ height = 0.6
 radial_segments = 16
 rings = 8
 
+[sub_resource type="Gradient" id="Gradient_orange"]
+offsets = PackedFloat32Array(0, 1)
+colors = PackedColorArray(1, 0.55, 0.05, 1, 0.7, 0.22, 0, 1)
+
 [node name="FirebomberEnemy" unique_id=2117139762 instance=ExtResource("1_6jo5i")]
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" parent_id_path=PackedInt32Array(1495277970, 211580224) index="0" unique_id=73376948]
@@ -45,6 +49,9 @@ next_state = NodePath("../EnemyMove")
 cooldown = 5.0
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
+
+[node name="CharacterColorComponent" parent="." index="7"]
+gradients = [null, null, null, null, null, null, null, SubResource("Gradient_orange")]
 
 [node name="AIStateMachine" parent="." index="8" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
 initial_state = NodePath("AIMeander")

@@ -17,6 +17,7 @@
 [ext_resource type="Script" uid="uid://0n22etq4hpy8" path="res://StateMachine/AIStates/ai_pursue.gd" id="15_pursue"]
 [ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="16_wait"]
 [ext_resource type="Script" uid="uid://ccsy0o7o6ccoh" path="res://StateMachine/AIStates/ai_conditional_attack.gd" id="17_slam_ai"]
+[ext_resource type="Script" uid="uid://c8j4cclflxm5n" path="res://Components/character_color_component.gd" id="18_color"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_brute_body"]
 height = 3.0
@@ -25,7 +26,7 @@ height = 3.0
 radius = 0.8
 height = 3.0
 
-[node name="EnemyBrute" type="CharacterBody3D" unique_id=1709182326 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "weapon_hitbox", "hurtbox", "stun_state", "defeat_state") groups=["enemy"]]
+[node name="EnemyBrute" type="CharacterBody3D" unique_id=1709182326 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "weapon_hitbox", "hurtbox", "stun_state", "defeat_state", "color_component") groups=["enemy"]]
 collision_layer = 3
 script = ExtResource("1_char")
 movement_speed = 2.2
@@ -41,6 +42,7 @@ weapon_hitbox = NodePath("AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Sk
 hurtbox = NodePath("Hurtbox")
 stun_state = NodePath("StateMachine/EnemyStun")
 defeat_state = NodePath("StateMachine/EnemyDefeat")
+color_component = NodePath("CharacterColorComponent")
 
 [node name="AnimationAnchor" type="Node3D" parent="." unique_id=2007436860]
 
@@ -91,6 +93,9 @@ health_color = Color(0.890196, 0.290196, 0.258824, 1)
 [node name="HitAudio" type="AudioStreamPlayer3D" parent="." unique_id=624678774]
 stream = ExtResource("7_hit_audio")
 bus = &"SFX"
+
+[node name="CharacterColorComponent" type="Node" parent="." unique_id=1849102482]
+script = ExtResource("18_color")
 
 [node name="StateMachine" type="Node" parent="." unique_id=1464548142 node_paths=PackedStringArray("initial_state")]
 script = ExtResource("8_sm")

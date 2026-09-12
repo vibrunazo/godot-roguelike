@@ -38,6 +38,8 @@ signal target_changed(new_target: Node3D)
 @export var weapon_hitbox: Area3D
 ## Optional Hurtbox for taking damage.
 @export var hurtbox: Hurtbox
+## Optional CharacterColorComponent for palette recoloring and tints.
+@export var color_component: CharacterColorComponent
 ## State entered when this character is damaged / stunned.
 @export var stun_state: State
 ## State entered when this character is defeated.
