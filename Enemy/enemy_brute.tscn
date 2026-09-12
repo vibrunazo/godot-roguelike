@@ -21,6 +21,13 @@
 [ext_resource type="Script" uid="uid://ccsy0o7o6ccoh" path="res://StateMachine/AIStates/ai_conditional_attack.gd" id="17_slam_ai"]
 [ext_resource type="Script" uid="uid://c8j4cclflxm5n" path="res://Components/character_color_component.gd" id="18_color"]
 
+[sub_resource type="Gradient" id="Gradient_8pxb0"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_wha28"]
+gradient = SubResource("Gradient_8pxb0")
+width = 64
+
 [sub_resource type="Gradient" id="Gradient_2e3mc"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
@@ -63,17 +70,10 @@ colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 gradient = SubResource("Gradient_fmqxm")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_maxeq"]
-colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
-
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_ka78y"]
-gradient = SubResource("Gradient_maxeq")
-width = 64
-
 [sub_resource type="Gradient" id="Gradient_13om6"]
-colors = PackedColorArray(0.53536004, 0.19039999, 0.56, 1, 1, 1, 1, 1)
+colors = PackedColorArray(0.53536004, 0.19039999, 0.56, 1, 0.62967473, 0.62967473, 0.6296747, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_ivxje"]
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_maxeq"]
 gradient = SubResource("Gradient_13om6")
 width = 64
 
@@ -81,11 +81,10 @@ width = 64
 render_priority = 0
 shader = ExtResource("3_8pxb0")
 shader_parameter/albedo_texture = ExtResource("4_wha28")
-shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_a12w5"), SubResource("GradientTexture1D_ncu3x"), SubResource("GradientTexture1D_ugokn"), SubResource("GradientTexture1D_vsohp"), SubResource("GradientTexture1D_uumri"), SubResource("GradientTexture1D_wuy52"), SubResource("GradientTexture1D_ka78y"), SubResource("GradientTexture1D_ivxje")])
+shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_wha28"), SubResource("GradientTexture1D_a12w5"), SubResource("GradientTexture1D_ncu3x"), SubResource("GradientTexture1D_ugokn"), SubResource("GradientTexture1D_vsohp"), SubResource("GradientTexture1D_uumri"), SubResource("GradientTexture1D_wuy52"), SubResource("GradientTexture1D_maxeq")])
 shader_parameter/palette_mode = 0
 shader_parameter/enable_palette = true
 shader_parameter/gradient_mask = 255
-shader_parameter/active_gradient_mask = 128
 shader_parameter/global_tint = Color(1, 1, 1, 1)
 shader_parameter/roughness = 0.3
 shader_parameter/metallic = 0.0

@@ -34,13 +34,6 @@ const PALETTE_SHADER: Shader = preload("res://Shaders/character_palette.gdshader
 		enable_palette = value
 		_update_shader_parameters()
 
-## Bitmask allowing selective enable/disable of individual gradient slots (0..7).
-@export_flags("Slot 0", "Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5", "Slot 6", "Slot 7")
-var gradient_mask: int = 255:
-	set(value):
-		gradient_mask = value
-		_update_shader_parameters()
-
 ## The 8 gradient color ramps corresponding to palette columns.
 ## In the Inspector, assign a Gradient to any slot to recolor that part of the character.
 ## Unassigned (null) slots leave the original character texture untouched underneath.
@@ -262,8 +255,7 @@ func _update_shader_parameters() -> void:
 	
 	material.set_shader_parameter("palette_mode", int(palette_mode))
 	material.set_shader_parameter("enable_palette", enable_palette)
-	material.set_shader_parameter("gradient_mask", gradient_mask)
-	material.set_shader_parameter("active_gradient_mask", active_mask)
+	material.set_shader_parameter("gradient_mask", active_mask)
 	material.set_shader_parameter("global_tint", global_tint)
 	material.set_shader_parameter("roughness", roughness)
 	material.set_shader_parameter("metallic", metallic)

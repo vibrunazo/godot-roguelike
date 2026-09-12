@@ -8,8 +8,7 @@ uniform sampler2D gradient_palettes[8] : source_color, filter_linear, repeat_dis
 // Settings
 uniform int palette_mode : hint_range(0, 2) = 0; // 0 = ENEMY, 1 = PLAYER, 2 = GLOBAL_TINT_ONLY
 uniform bool enable_palette = true;
-uniform int gradient_mask = 255; // Bitmask for columns 0..7 (user toggling)
-uniform int active_gradient_mask = 0; // Bitmask of which gradient slots are actually assigned (non-null)
+uniform int gradient_mask = 0; // Bitmask for active columns 0..7 (computed from non-null gradients)
 uniform vec4 global_tint : source_color = vec4(1.0, 1.0, 1.0, 1.0);
 uniform float roughness : hint_range(0.0, 1.0) = 0.3;
 uniform float metallic : hint_range(0.0, 1.0) = 0.0;
@@ -33,7 +32,6 @@ void fragment() {
 	vec3 out_color = base_color.rgb;
 
 	if (enable_palette) {
-		int effective_mask = gradient_mask & active_gradient_mask;
 		int col_idx = int(floor(clamp(UV.x, 0.0, 0.999) * 8.0));
 
 		if (palette_mode == 0) {
@@ -41,7 +39,7 @@ void fragment() {
 			// Top half (UV.y <= 0.5) contains the 8 gradient columns:
 			// Col 0: Straps/joints, Col 1: Slate armor, Col 2: Cool grey armor,
 			// Col 3: White rivets, Col 4: Blue, Col 5: Green, Col 6: Yellow, Col 7: Main body/tunic
-			if (UV.y <= 0.5 && ((effective_mask & (1 << col_idx)) != 0)) {
+			if (UV.y <= 0.5 && ((gradient_mask & (1 << col_idx)) != 0)) {
 				float t = clamp(UV.y * 2.0, 0.0, 1.0);
 				vec4 grad_col = sample_palette(col_idx, t);
 				out_color = grad_col.rgb;
@@ -58,16 +56,16 @@ void fragment() {
 			// (Cols 0..5 in top half contain head, face, eyes, and mouth -> NEVER overwritten)
 			if (UV.y > 0.5) {
 				float t = clamp((UV.y - 0.5) * 2.0, 0.0, 1.0);
-				if ((col_idx == 2 || col_idx == 3) && ((effective_mask & (1 << 7)) != 0)) {
+				if ((col_idx == 2 || col_idx == 3) && ((gradient_mask & (1 << 7)) != 0)) {
 					out_color = sample_palette(7, t).rgb;
-				} else if ((col_idx == 0 || col_idx == 1) && ((effective_mask & (1 << 1)) != 0)) {
+				} else if ((col_idx == 0 || col_idx == 1) && ((gradient_mask & (1 << 1)) != 0)) {
 					out_color = sample_palette(1, t).rgb;
-				} else if (col_idx >= 4 && ((effective_mask & (1 << 0)) != 0)) {
+				} else if (col_idx >= 4 && ((gradient_mask & (1 << 0)) != 0)) {
 					out_color = sample_palette(0, t).rgb;
 				}
 			} else {
 				float t = clamp(UV.y * 2.0, 0.0, 1.0);
-				if (col_idx >= 6 && ((effective_mask & (1 << 6)) != 0)) {
+				if (col_idx >= 6 && ((gradient_mask & (1 << 6)) != 0)) {
 					out_color = sample_palette(6, t).rgb;
 				}
 				// Head and face features in col_idx 0..5 are preserved from base_color

@@ -199,25 +199,25 @@ func _ready() -> void:
 	print("[OK] FirebomberEnemy orange gradient on slot 7 verified (color: %s)." % str(fb_grad.colors[0]))
 	
 	# ---------------------------------------------------------
-	# PART 7: Pass-Through & Active Gradient Mask Verification
+	# PART 7: Pass-Through & Gradient Mask Verification
 	# ---------------------------------------------------------
-	print("\n>>> PART 7: Pass-Through & Active Gradient Mask Verification")
-	var fb_active_mask: Variant = firebomber.color_component.material.get_shader_parameter("active_gradient_mask")
-	if int(fb_active_mask) != (1 << 7):
-		printerr("TEST FAILED: Firebomber active_gradient_mask should be %d (slot 7 only), got: %s" % [1 << 7, str(fb_active_mask)])
+	print("\n>>> PART 7: Pass-Through & Gradient Mask Verification")
+	var fb_mask: Variant = firebomber.color_component.material.get_shader_parameter("gradient_mask")
+	if int(fb_mask) != (1 << 7):
+		printerr("TEST FAILED: Firebomber gradient_mask should be %d (slot 7 only), got: %s" % [1 << 7, str(fb_mask)])
 		get_tree().quit(1)
 		return
-	print("[OK] Firebomber active_gradient_mask = 128 (slot 7 only; slots 0..6 pass-through untouched).")
+	print("[OK] Firebomber gradient_mask = 128 (slot 7 only; slots 0..6 pass-through untouched).")
 	
 	var pl_test: Character = player_scene.instantiate() as Character
 	add_child(pl_test)
 	await get_tree().process_frame
-	var pl_active_mask: Variant = pl_test.color_component.material.get_shader_parameter("active_gradient_mask")
-	if int(pl_active_mask) != 0:
-		printerr("TEST FAILED: Player active_gradient_mask should be 0 by default (face & outfit untouched), got: %s" % str(pl_active_mask))
+	var pl_mask: Variant = pl_test.color_component.material.get_shader_parameter("gradient_mask")
+	if int(pl_mask) != 0:
+		printerr("TEST FAILED: Player gradient_mask should be 0 by default (face & outfit untouched), got: %s" % str(pl_mask))
 		get_tree().quit(1)
 		return
-	print("[OK] Player active_gradient_mask = 0 (base texture & face 100% preserved).")
+	print("[OK] Player gradient_mask = 0 (base texture & face 100% preserved).")
 	pl_test.queue_free()
 	
 	print("[OK] MeleeEnemy and FirebomberEnemy inherited color_component verified.")

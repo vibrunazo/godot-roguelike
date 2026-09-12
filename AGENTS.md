@@ -174,3 +174,9 @@ try:
         print("STDERR:\n", res.stderr)
 except subprocess.TimeoutExpired:
     print("ERROR: Godot process timed out after 10 seconds and was killed.")
+
+
+
+### Worktree Rules
+- Always create feature worktrees under `.worktrees/<branch-name>` inside the project root.
+- Never create worktrees outside the repository tree.
