@@ -35,6 +35,7 @@ parameters/RangedAttack/TimeScale/scale = 1.0
 script = ExtResource("2_cnthi")
 next_states = [NodePath("../EnemyMove")]
 attack_animation_name = "RangedAttack"
+cooldown = 3.0
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
@@ -64,13 +65,11 @@ ai_state_machine = NodePath("..")
 [node name="AIAttack" type="Node" parent="AIStateMachine" index="2" unique_id=984729104 node_paths=PackedStringArray("next_states", "ai_state_machine")]
 script = ExtResource("5_attack")
 next_states = [NodePath("../AIWait"), NodePath("../AIMeander")]
-cooldown = 3.0
 ai_state_machine = NodePath("..")
 
 [node name="AILeapingDodge" type="Node" parent="AIStateMachine" index="3" unique_id=1483920194 node_paths=PackedStringArray("next_state", "ai_state_machine")]
 script = ExtResource("9_ai_leap_dodge")
 attack_state_name = "EnemyLeapingDodge"
-cooldown = 5.0
 trigger_range = 5.0
 can_break_stun = false
 next_state = NodePath("../AIMeander")

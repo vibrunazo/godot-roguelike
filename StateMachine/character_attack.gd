@@ -37,7 +37,14 @@ extends CharacterState
 @export var self_hitstop_duration: float = 0.1
 ## Whether this attack state is uninterruptable (immune to stun interruption while active).
 @export var uninterruptable: bool = false
+## Cooldown time in seconds between attack executions (0.0 = ready immediately).
+@export var cooldown: float = 0.0
+## Initial cooldown in seconds applied when entering the scene (0.0 = ready immediately).
+@export var starting_cooldown: float = 0.0
 
+## Remaining cooldown time in seconds before this attack can be executed again.
+var cooldown_timer: float = 0.0
+var _last_tick_frame: int = -1
 var queued_attack: bool = false
 var attack_timer: SceneTreeTimer
 var aim_direction: Vector3 = Vector3.ZERO
@@ -52,6 +59,26 @@ var hitstop_time_remaining: float = 0.0
 var hitstop_base_timescale: float = 1.0
 ## Whether the current attack animation exposes a TimeScale node for slowdown.
 var hitstop_has_timescale: bool = false
+
+
+func _ready() -> void:
+	cooldown_timer = starting_cooldown
+
+
+## Returns true if this attack is currently on cooldown.
+func is_on_cooldown() -> bool:
+	return cooldown_timer > 0.0
+
+
+## Progresses cooldown decay by delta.
+func tick_cooldown(delta: float) -> void:
+	if cooldown_timer > 0.0:
+		cooldown_timer = maxf(0.0, cooldown_timer - delta)
+
+
+func _physics_process(delta: float) -> void:
+	if character == null or character.ai_state_machine == null:
+		tick_cooldown(delta)
 
 
 func physics_update(_delta: float) -> void:
@@ -79,6 +106,7 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	lunge_slot = null
 	hitstop_time_remaining = 0.0
 	hitstop_has_timescale = false
+	cooldown_timer = cooldown
 	if character == null:
 		return
 	if uninterruptable and character.knockback_component != null:

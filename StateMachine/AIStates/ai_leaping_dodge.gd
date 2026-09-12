@@ -14,8 +14,6 @@ func _ready() -> void:
 	# Set default values for leaping dodge if not explicitly overridden
 	if attack_state_name == "EnemyAttack":
 		attack_state_name = ability_state_name
-	if is_equal_approx(cooldown, 8.0):
-		cooldown = 12.0
 	if is_equal_approx(trigger_range, 3.5):
 		trigger_range = 5.0
 	can_break_stun = false
@@ -24,12 +22,15 @@ func _ready() -> void:
 ## Evaluates whether this leaping dodge is ready to trigger and preempt the active state.
 ## Triggers whenever target player is closer than 5 meters and cooldown is expired.
 func evaluate_trigger(delta: float) -> bool:
-	if cooldown_timer > 0.0:
-		cooldown_timer -= delta
+	var att: CharacterState = get_attack_state()
+	if att != null and att.has_method("tick_cooldown"):
+		att.tick_cooldown(delta)
+	elif _internal_cooldown_timer > 0.0:
+		_internal_cooldown_timer -= delta
 
 	if character == null or not character.is_inside_tree() or not character.is_alive():
 		return false
-	if cooldown_timer > 0.0:
+	if is_on_cooldown():
 		return false
 	if ai_state_machine == null:
 		return false

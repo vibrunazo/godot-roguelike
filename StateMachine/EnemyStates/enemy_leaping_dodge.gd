@@ -7,6 +7,8 @@ extends CharacterState
 @export var next_state: CharacterState
 ## Cooldown time in seconds for this ability (12.0s default).
 @export var cooldown: float = 12.0
+## Initial cooldown applied when entering the scene (0.0 = ready immediately).
+@export var starting_cooldown: float = 0.0
 ## Maximum horizontal range of the leap in meters (15.0m default).
 @export var max_range: float = 15.0
 ## Minimum horizontal range of the leap in meters.
@@ -34,9 +36,33 @@ var vertical_velocity: float = 0.0
 var gravity_accel: float = 0.0
 ## Flag indicating whether a leap is actively in progress.
 var is_leaping: bool = false
+## Remaining cooldown time in seconds before this ability can be executed again.
+var cooldown_timer: float = 0.0
+var _last_tick_frame: int = -1
+
+
+func _ready() -> void:
+	cooldown_timer = starting_cooldown
+
+
+## Returns true if this ability is currently on cooldown.
+func is_on_cooldown() -> bool:
+	return cooldown_timer > 0.0
+
+
+## Progresses cooldown decay by delta.
+func tick_cooldown(delta: float) -> void:
+	if cooldown_timer > 0.0:
+		cooldown_timer = maxf(0.0, cooldown_timer - delta)
+
+
+func _physics_process(delta: float) -> void:
+	if character == null or character.ai_state_machine == null:
+		tick_cooldown(delta)
 
 
 func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
+	cooldown_timer = cooldown
 	if character == null or not character.is_inside_tree():
 		return
 

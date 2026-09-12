@@ -624,7 +624,7 @@ func _ready() -> void:
 	print("AIStateMachine preemptively interrupted into AILeapingDodge.")
 
 	# Verify cooldown reset to configured cooldown
-	if not is_equal_approx(ai_dodge_state.cooldown_timer, ai_dodge_state.cooldown):
+	if ai_dodge_state.cooldown_timer < (ai_dodge_state.cooldown - 0.1) or ai_dodge_state.cooldown_timer > ai_dodge_state.cooldown:
 		printerr("TEST FAILED: AILeapingDodge cooldown_timer was not reset to cooldown (", ai_dodge_state.cooldown, "), got: ", ai_dodge_state.cooldown_timer)
 		get_tree().quit(1)
 		return

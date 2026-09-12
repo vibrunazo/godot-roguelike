@@ -127,6 +127,8 @@ attack_animation_name = "MeleeAttack"
 attack_component = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 self_hitstop_duration = 0.25
 uninterruptable = true
+cooldown = 8.0
+starting_cooldown = 5.0
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 

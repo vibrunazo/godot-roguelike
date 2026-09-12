@@ -6,23 +6,60 @@ extends AIState
 @export var attack_state_name: String = "EnemyAttack"
 ## Potential AI states to transition to randomly after the attack finishes.
 @export var next_states: Array[AIState] = []
-## Cooldown time in seconds between attack executions (0.0 = no cooldown).
-@export var cooldown: float = 0.0
 
-## Remaining cooldown time in seconds before this attack can be executed again.
-var cooldown_timer: float = 0.0
+var _internal_cooldown: float = 0.0
+var _internal_cooldown_timer: float = 0.0
 var _attack_ordered: bool = false
+
+## Cooldown time in seconds between attack executions (delegates to physical attack state if present).
+var cooldown: float:
+	get:
+		var att: CharacterState = get_attack_state()
+		if att != null and "cooldown" in att:
+			return att.cooldown
+		return _internal_cooldown
+	set(val):
+		_internal_cooldown = val
+		var att: CharacterState = get_attack_state()
+		if att != null and "cooldown" in att:
+			att.cooldown = val
+
+## Remaining cooldown time in seconds before this attack can be executed again (delegates to physical attack state).
+var cooldown_timer: float:
+	get:
+		var att: CharacterState = get_attack_state()
+		if att != null and "cooldown_timer" in att:
+			return att.cooldown_timer
+		return _internal_cooldown_timer
+	set(val):
+		_internal_cooldown_timer = val
+		var att: CharacterState = get_attack_state()
+		if att != null and "cooldown_timer" in att:
+			att.cooldown_timer = val
+
+
+## Helper to look up the physical attack state on the body StateMachine.
+func get_attack_state() -> CharacterState:
+	if character == null or character.state_machine == null:
+		return null
+	return character.state_machine.get_node_or_null(attack_state_name) as CharacterState
 
 
 ## Returns true if this attack is currently on cooldown.
 func is_on_cooldown() -> bool:
+	var att: CharacterState = get_attack_state()
+	if att != null and att.has_method("is_on_cooldown"):
+		return att.is_on_cooldown()
 	return cooldown_timer > 0.0
 
 
 ## Updates the cooldown timer while this state is inactive so cooldown progresses.
 func evaluate_trigger(delta: float) -> bool:
-	if cooldown_timer > 0.0:
-		cooldown_timer -= delta
+	var att: CharacterState = get_attack_state()
+	if att != null and att.has_method("tick_cooldown"):
+		att.tick_cooldown(delta)
+	elif _internal_cooldown_timer > 0.0:
+		_internal_cooldown_timer -= delta
 	return false
 
 
@@ -41,8 +78,11 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 
 
 func physics_update(delta: float) -> void:
-	if cooldown_timer > 0.0:
-		cooldown_timer -= delta
+	var att: CharacterState = get_attack_state()
+	if att != null and att.has_method("tick_cooldown"):
+		att.tick_cooldown(delta)
+	elif _internal_cooldown_timer > 0.0:
+		_internal_cooldown_timer -= delta
 	if character == null or not character.is_inside_tree() or ai_state_machine == null or not character.is_alive():
 		return
 	ai_state_machine.command_stop()

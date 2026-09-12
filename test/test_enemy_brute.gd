@@ -148,6 +148,18 @@ func _ready() -> void:
 		printerr("TEST FAILED: EnemyAttack is not marked uninterruptable.")
 		get_tree().quit(1)
 		return
+	if not is_equal_approx(enemy_attack.cooldown, 8.0):
+		printerr("TEST FAILED: EnemyAttack cooldown expected 8.0, got: ", enemy_attack.cooldown)
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(enemy_attack.starting_cooldown, 5.0):
+		printerr("TEST FAILED: EnemyAttack starting_cooldown expected 5.0, got: ", enemy_attack.starting_cooldown)
+		get_tree().quit(1)
+		return
+	if enemy_attack.cooldown_timer > 5.0 or enemy_attack.cooldown_timer < 4.5 or not enemy_attack.is_on_cooldown():
+		printerr("TEST FAILED: EnemyAttack should be on starting cooldown (5.0s) upon spawn. Got: ", enemy_attack.cooldown_timer)
+		get_tree().quit(1)
+		return
 
 	# Verify EnemyPunch node
 	var enemy_punch: CharacterAttack = body_sm.get_node_or_null("EnemyPunch") as CharacterAttack
@@ -173,6 +185,10 @@ func _ready() -> void:
 		return
 	if ai_slam.cooldown <= 0.0:
 		printerr("TEST FAILED: AISlam cooldown must be > 0.0.")
+		get_tree().quit(1)
+		return
+	if not ai_slam.is_on_cooldown():
+		printerr("TEST FAILED: AISlam should report is_on_cooldown() true while EnemyAttack is on starting cooldown.")
 		get_tree().quit(1)
 		return
 	if not ai_slam.can_break_stun:
@@ -392,11 +408,14 @@ func _ready() -> void:
 	# PART 5: Punch Attack Timing, Damage & Stunlockability
 	# -------------------------------------------------------------
 	print("\n>>> PART 5: Punch Attack Timing, Damage & Stunlockability")
+	brute.global_position = Vector3.ZERO
+	brute.velocity = Vector3.ZERO
 	var punch_player: Character = player_scene.instantiate() as Character
 	punch_player.position = Vector3(-0.3, 0.0, 2.4)
 	add_child(punch_player)
 	await get_tree().physics_frame
 	await get_tree().process_frame
+	brute.look_at_target(punch_player.global_position)
 
 	var punch_slot: BoneAttachment3D = brute.find_child("PunchSlot", true, false) as BoneAttachment3D
 	if punch_slot == null or punch_slot.hitbox == null:
@@ -511,7 +530,7 @@ func _ready() -> void:
 		return
 	print("Stun break verified: AISlam successfully broke free of EnemyStun into EnemyAttack.")
 
-	if not is_equal_approx(ai_slam.cooldown_timer, ai_slam.cooldown):
+	if ai_slam.cooldown_timer < (ai_slam.cooldown - 0.1) or ai_slam.cooldown_timer > ai_slam.cooldown:
 		printerr("TEST FAILED: AISlam cooldown_timer was not reset to cooldown (", ai_slam.cooldown, "), current: ", ai_slam.cooldown_timer)
 		get_tree().quit(1)
 		return

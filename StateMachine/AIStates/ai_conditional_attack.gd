@@ -5,8 +5,6 @@ extends AIState
 
 ## The name of the physical attack state on the body StateMachine to execute.
 @export var attack_state_name: String = "EnemyAttack"
-## Cooldown time in seconds between attack executions.
-@export var cooldown: float = 8.0
 ## Maximum distance to target to trigger this attack.
 @export var trigger_range: float = 3.5
 ## Minimum distance to target to trigger this attack (0.0 = no minimum).
@@ -15,27 +13,69 @@ extends AIState
 @export var can_break_stun: bool = true
 ## AI state to transition to after the attack animation finishes.
 @export var next_state: AIState
-## Initial cooldown applied when entering the scene (0.0 = ready immediately).
-@export var initial_cooldown: float = 0.0
 
-## Remaining cooldown time in seconds before this attack can trigger again.
-var cooldown_timer: float = 0.0
+var _internal_cooldown: float = 0.0
+var _internal_cooldown_timer: float = 0.0
 var _attack_ordered: bool = false
 
+## Cooldown time in seconds between attack executions (delegates to physical attack state if present).
+var cooldown: float:
+	get:
+		var att: CharacterState = get_attack_state()
+		if att != null and "cooldown" in att:
+			return att.cooldown
+		return _internal_cooldown
+	set(val):
+		_internal_cooldown = val
+		var att: CharacterState = get_attack_state()
+		if att != null and "cooldown" in att:
+			att.cooldown = val
 
-func _ready() -> void:
-	super._ready()
-	cooldown_timer = initial_cooldown
+## Remaining cooldown time in seconds before this attack can trigger again (delegates to physical attack state).
+var cooldown_timer: float:
+	get:
+		var att: CharacterState = get_attack_state()
+		if att != null and "cooldown_timer" in att:
+			return att.cooldown_timer
+		return _internal_cooldown_timer
+	set(val):
+		_internal_cooldown_timer = val
+		var att: CharacterState = get_attack_state()
+		if att != null and "cooldown_timer" in att:
+			att.cooldown_timer = val
+
+
+## Helper to look up the physical attack state on the body StateMachine.
+func get_attack_state() -> CharacterState:
+	if character == null or character.state_machine == null:
+		return null
+	var target_name: String = attack_state_name
+	if target_name.is_empty() and "ability_state_name" in self:
+		var custom_name: Variant = self.get("ability_state_name")
+		if custom_name is String and not (custom_name as String).is_empty():
+			target_name = custom_name as String
+	return character.state_machine.get_node_or_null(target_name) as CharacterState
+
+
+## Returns true if this attack is currently on cooldown.
+func is_on_cooldown() -> bool:
+	var att: CharacterState = get_attack_state()
+	if att != null and att.has_method("is_on_cooldown"):
+		return att.is_on_cooldown()
+	return cooldown_timer > 0.0
 
 
 ## Evaluates whether this conditional attack is ready to trigger and preempt the active state.
 func evaluate_trigger(delta: float) -> bool:
-	if cooldown_timer > 0.0:
-		cooldown_timer -= delta
+	var att: CharacterState = get_attack_state()
+	if att != null and att.has_method("tick_cooldown"):
+		att.tick_cooldown(delta)
+	elif _internal_cooldown_timer > 0.0:
+		_internal_cooldown_timer -= delta
 
 	if character == null or not character.is_inside_tree() or not character.is_alive():
 		return false
-	if cooldown_timer > 0.0:
+	if is_on_cooldown():
 		return false
 	if ai_state_machine == null:
 		return false

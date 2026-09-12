@@ -14,7 +14,7 @@
 2. **Documentation Integrity**:
    - Preserve and maintain all docstrings (`## ...`) and comments on classes, exported variables, and functions.
 3. **Git Commits**:
-   - The user manages all git commits. **Never run `git commit` or `git push`**.
+   - The user manages git commits. **Never run `git commit` or `git push` unless explicitly told so by the user**.
 
 ---
 
