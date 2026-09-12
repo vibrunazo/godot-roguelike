@@ -2,11 +2,15 @@
 class_name FirebombProjectile
 extends EnemyProjectile
 
-## Downward gravity acceleration applied during flight (also syncs with native Area3D gravity).
+## Standard Earth gravity acceleration in m/s^2.
+const EARTH_GRAVITY: float = 9.8
+
+## Downward gravity acceleration scale in relation to full Earth gravity (9.8 m/s^2).
+## A value of 1.0 means it falls at full Earth gravity (9.8 m/s^2), while 0.5 means half Earth gravity (4.9 m/s^2).
 @export var fall_gravity: float = 0.5:
 	set(value):
 		fall_gravity = value
-		gravity = value
+		gravity = get_effective_gravity()
 ## Explicit target ground position. Set before launch to override auto-targeting.
 @export var target_position: Vector3 = Vector3.ZERO
 ## Fire trap hazard scene spawned on ground impact.
@@ -24,18 +28,20 @@ var _detonated: bool = false
 var _has_explicit_target: bool = false
 
 
+## Returns the effective downward gravity acceleration in m/s^2 (fall_gravity * EARTH_GRAVITY).
+func get_effective_gravity() -> float:
+	return fall_gravity * EARTH_GRAVITY
+
+
 func _init() -> void:
-	gravity = 0.5
 	fall_gravity = 0.5
+	gravity = get_effective_gravity()
 
 
 func _ready() -> void:
-	if not is_equal_approx(fall_gravity, 0.5) and is_equal_approx(gravity, 0.5):
-		gravity = fall_gravity
-	elif not is_equal_approx(gravity, 0.5) and is_equal_approx(fall_gravity, 0.5):
-		fall_gravity = gravity
-	else:
-		gravity = fall_gravity
+	if not is_equal_approx(gravity, get_effective_gravity()) and not is_equal_approx(gravity, EARTH_GRAVITY):
+		fall_gravity = gravity / EARTH_GRAVITY
+	gravity = get_effective_gravity()
 
 	if not body_entered.is_connected(_on_body_entered):
 		body_entered.connect(_on_body_entered)
@@ -54,7 +60,7 @@ func _physics_process(delta: float) -> void:
 		else:
 			_initialized = true
 
-	velocity.y -= fall_gravity * delta
+	velocity.y -= get_effective_gravity() * delta
 	global_position += velocity * delta
 
 	# Orient along velocity vector using model-front convention (+Z forward)
@@ -152,7 +158,7 @@ func _calculate_velocity(target_ground: Vector3) -> void:
 	var delta_y: float = arrival_y - start_pos.y
 
 	var proj_speed: float = maxf(speed, 0.1)
-	var eff_gravity: float = maxf(fall_gravity, 0.01)
+	var eff_gravity: float = maxf(get_effective_gravity(), 0.01)
 
 	# Flight time is determined by fixed projectile speed and horizontal distance
 	var total_time: float = distance_xz / proj_speed

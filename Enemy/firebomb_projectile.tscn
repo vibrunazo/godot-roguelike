@@ -57,9 +57,9 @@ physics_interpolation_mode = 1
 top_level = true
 collision_layer = 0
 collision_mask = 193
-gravity = 0.5
+gravity = 4.9
 script = ExtResource("1_fb_script")
-fall_gravity = 9.0
+fall_gravity = 0.6
 fire_trap_scene = ExtResource("4_fire_trap")
 speed = 5.0
 

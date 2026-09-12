@@ -161,8 +161,13 @@ func _ready() -> void:
 		proj.queue_free()
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(proj.gravity, 0.5):
-		printerr("TEST FAILED: Expected gravity == 0.5, got: ", proj.gravity)
+	if not is_equal_approx(proj.fall_gravity, 0.5):
+		printerr("TEST FAILED: Expected fall_gravity == 0.5, got: ", proj.fall_gravity)
+		proj.queue_free()
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(proj.gravity, 4.9):
+		printerr("TEST FAILED: Expected gravity == 4.9 (0.5 * 9.8), got: ", proj.gravity)
 		proj.queue_free()
 		get_tree().quit(1)
 		return
@@ -186,7 +191,7 @@ func _ready() -> void:
 		proj.queue_free()
 		get_tree().quit(1)
 		return
-	print("Export vars (speed=8.0, gravity=0.5, trap_duration=10.0, trap_size=(2,2), fire_trap_scene) verified.")
+	print("Export vars (speed=8.0, fall_gravity=0.5 (4.9 m/s^2), trap_duration=10.0, trap_size=(2,2), fire_trap_scene) verified.")
 	proj.queue_free()
 	await get_tree().process_frame
 
@@ -222,19 +227,20 @@ func _ready() -> void:
 	print("Flight time varies dynamically with distance: near=", near_time, "s, far=", far_time, "s.")
 
 	var initial_vy: float = traj_proj.velocity.y
-	# Run 10 physics frames and verify gravity slows down vy by exactly gravity * delta
+	# Run 10 physics frames and verify gravity slows down vy by exactly effective_gravity * delta
 	var prev_vy: float = initial_vy
 	var dt: float = 1.0 / 60.0
+	var eff_g: float = traj_proj.get_effective_gravity()
 	for i: int in range(10):
-		traj_proj.velocity.y -= traj_proj.fall_gravity * dt
-		var expected_vy: float = prev_vy - 0.5 * dt
+		traj_proj.velocity.y -= eff_g * dt
+		var expected_vy: float = prev_vy - eff_g * dt
 		if not is_equal_approx(traj_proj.velocity.y, expected_vy):
-			printerr("TEST FAILED: Velocity Y did not decay by 0.5 * delta. Expected: ", expected_vy, " got: ", traj_proj.velocity.y)
+			printerr("TEST FAILED: Velocity Y did not decay by eff_g * delta. Expected: ", expected_vy, " got: ", traj_proj.velocity.y)
 			traj_proj.queue_free()
 			get_tree().quit(1)
 			return
 		prev_vy = traj_proj.velocity.y
-	print("Downward acceleration by 0.5 gravity verified over time.")
+	print("Downward acceleration by effective gravity (4.9 m/s^2) verified over time.")
 
 	# Verify model-front (+Z) orientation aligns with velocity direction
 	await get_tree().physics_frame
@@ -248,12 +254,13 @@ func _ready() -> void:
 
 	# Test custom fall_gravity synchronization with native Area3D gravity
 	traj_proj.fall_gravity = 0.8
-	if not is_equal_approx(traj_proj.gravity, 0.8):
-		printerr("TEST FAILED: Changing fall_gravity did not sync with Area3D gravity property.")
+	var expected_native_g: float = 0.8 * FirebombProjectile.EARTH_GRAVITY
+	if not is_equal_approx(traj_proj.gravity, expected_native_g):
+		printerr("TEST FAILED: Changing fall_gravity did not sync with Area3D gravity property. Expected: ", expected_native_g, " got: ", traj_proj.gravity)
 		traj_proj.queue_free()
 		get_tree().quit(1)
 		return
-	print("fall_gravity synchronization with native Area3D gravity verified.")
+	print("fall_gravity synchronization with native Area3D gravity verified (0.8 -> ", traj_proj.gravity, " m/s^2).")
 
 	# Test custom speed adjustment (e.g. speed = 12.0)
 	var fast_proj: FirebombProjectile = projectile_scene.instantiate() as FirebombProjectile
