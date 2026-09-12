@@ -16,7 +16,7 @@ var all_enemies: Array[Character] = []
 ## 1 brute at difficulty 1-2, increasing by 1 every 2 difficulty levels (e.g. 2 at diff 3-4, 3 at diff 5-6).
 func get_brute_count() -> int:
 	var diff: int = ProgressionState.difficulty_level if ProgressionState != null else 1
-	return 1 + int((diff - 1) / 2)
+	return 1 + int((diff - 1.0) / 2.0)
 
 
 func _ready() -> void:
