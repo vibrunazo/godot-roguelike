@@ -27,7 +27,7 @@ func _ready() -> void:
 	hazard.trigger_delay = 0.25
 	hazard.active_duration = 0.35
 	hazard.reset_cooldown = 0.2
-	hazard.damage = 15.0
+	hazard.damage = 5.0
 	hazard.knockback_force = 4.0
 	add_child(hazard)
 	hazard.global_position = Vector3(0.0, 0.0, 0.0)
@@ -71,8 +71,8 @@ func _ready() -> void:
 		printerr("TEST FAILED: AttackComponent not found on DamageHitbox.")
 		get_tree().quit(1)
 		return
-	if hazard.attack_component.damage != 15.0:
-		printerr("TEST FAILED: Expected AttackComponent.damage == 15.0, got: ", hazard.attack_component.damage)
+	if hazard.attack_component.damage != 5.0:
+		printerr("TEST FAILED: Expected AttackComponent.damage == 5.0, got: ", hazard.attack_component.damage)
 		get_tree().quit(1)
 		return
 	print("AttackComponent synced damage verified.")

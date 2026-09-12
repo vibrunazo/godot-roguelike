@@ -24,7 +24,7 @@ enum State {
 @export var reset_cooldown: float = 1.0
 
 ## Damage dealt to any character (player or enemy) standing on the spikes.
-@export var damage: float = 15.0
+@export var damage: float = 5.0
 
 ## Vertical knockback impulse applied to damaged characters.
 @export var knockback_force: float = 4.0

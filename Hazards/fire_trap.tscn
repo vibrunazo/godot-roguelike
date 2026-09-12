@@ -1,0 +1,88 @@
+[gd_scene format=3 uid="uid://b1lh7k11b7hq8"]
+
+[ext_resource type="Script" uid="uid://cfgi8w6pg64rp" path="res://Hazards/fire_trap.gd" id="1_fire_trap"]
+[ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="2_attack"]
+[ext_resource type="AudioStream" uid="uid://d0fcu71wibih8" path="res://Assets/Audio/fire.ogg" id="3_audio"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plate"]
+albedo_color = Color(0.12, 0.11, 0.13, 1)
+metallic = 0.5
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="BoxMesh_plate"]
+material = SubResource("StandardMaterial3D_plate")
+size = Vector3(1, 0.02, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hitbox"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_particle"]
+shading_mode = 0
+vertex_color_use_as_albedo = true
+
+[sub_resource type="Gradient" id="Gradient_fire"]
+offsets = PackedFloat32Array(0, 0.25, 0.65, 1)
+colors = PackedColorArray(1, 1, 0.2, 1, 1, 0.55, 0, 0.95, 0.9, 0.15, 0, 0.8, 0.2, 0.05, 0.05, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_fire"]
+gradient = SubResource("Gradient_fire")
+
+[sub_resource type="Curve" id="Curve_scale"]
+_data = [Vector2(0, 0.7), 0.0, 1.5, 0, 0, Vector2(0.2, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.3), -1.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_scale"]
+curve = SubResource("Curve_scale")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_fire"]
+emission_shape = 3
+emission_box_extents = Vector3(0.42, 0.05, 0.42)
+gravity = Vector3(0, 2.5, 0)
+scale_min = 0.6
+scale_max = 1.1
+scale_curve = SubResource("CurveTexture_scale")
+color_ramp = SubResource("GradientTexture1D_fire")
+
+[sub_resource type="SphereMesh" id="SphereMesh_particle"]
+radius = 0.22
+height = 0.44
+radial_segments = 12
+rings = 8
+
+[node name="FireTrap" type="Node3D" unique_id=1489296418]
+script = ExtResource("1_fire_trap")
+
+[node name="GroundMesh" type="MeshInstance3D" parent="." unique_id=162351569]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
+gi_mode = 0
+mesh = SubResource("BoxMesh_plate")
+
+[node name="DamageHitbox" type="Area3D" parent="." unique_id=229634504]
+collision_layer = 0
+collision_mask = 192
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DamageHitbox" unique_id=90678820]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BoxShape3D_hitbox")
+
+[node name="AttackComponent" type="Node" parent="DamageHitbox" unique_id=1483325997]
+script = ExtResource("2_attack")
+damage = 5.0
+rehit_interval = 2.0
+
+[node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=2026722003]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+material_override = SubResource("StandardMaterial3D_particle")
+amount = 28
+lifetime = 0.55
+process_material = SubResource("ParticleProcessMaterial_fire")
+draw_pass_1 = SubResource("SphereMesh_particle")
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=122857354]
+stream = ExtResource("3_audio")
+volume_db = -8.0
+autoplay = true
+max_distance = 15.0
+bus = &"SFX"
+
+[node name="LifeTimer" type="Timer" parent="." unique_id=1803911062]
+one_shot = true

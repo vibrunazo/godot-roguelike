@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/level_template.tscn" id="1_n0qsc"]
 [ext_resource type="VoxelGIData" uid="uid://cawdua4hjiihs" path="res://Levels/GlobalIlluminationData/level_1_voxel_gi_data.res" id="2_dilhk"]
 [ext_resource type="PackedScene" uid="uid://c6v2j7y4p1mna" path="res://Hazards/spikes_hazard.tscn" id="3_spikes"]
+[ext_resource type="PackedScene" path="res://Hazards/fire_trap.tscn" id="4_fire_trap"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_3mhv4"]
 vertices = PackedVector3Array(-12, 0.60000014, 7.5, -11.5, 0.60000014, 8, 7.5, 0.60000014, 8, 8, 0.60000014, -15.5, 7.5, 0.60000014, -16, -11.5, 0.60000014, -16, -12, 0.60000014, -15.5, 8, 0.60000014, 7.5)
@@ -44,3 +45,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.5)
 
 [node name="SpikesHazard2" parent="." index="10" unique_id=602490470 instance=ExtResource("3_spikes")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -4.5)
+
+[node name="FireTrap1" parent="." index="11" instance=ExtResource("4_fire_trap")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -2)
