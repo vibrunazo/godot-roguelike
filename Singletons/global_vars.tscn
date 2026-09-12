@@ -9,6 +9,8 @@
 [ext_resource type="PackedScene" uid="uid://cttwgr00qkjox" path="res://Enemy/melee_enemy.tscn" id="5_melee"]
 [ext_resource type="PackedScene" uid="uid://d0l671aaonnqf" path="res://Enemy/ranged_enemy.tscn" id="6_ranged"]
 [ext_resource type="PackedScene" path="res://Enemy/enemy_brute.tscn" id="13_brute"]
+[ext_resource type="PackedScene" path="res://Enemy/firebomber_enemy.tscn" id="14_firebomber"]
+[ext_resource type="PackedScene" path="res://Enemy/firebomb_projectile.tscn" id="15_firebomb_proj"]
 [ext_resource type="PackedScene" uid="uid://0qtans3shtxh" path="res://Enemy/enemy_projectile.tscn" id="7_proj"]
 [ext_resource type="PackedScene" uid="uid://olax7oyumfwu" path="res://Enemy/fireball_hit.tscn" id="8_hit"]
 [ext_resource type="PackedScene" uid="uid://bfih8h7cuu5va" path="res://Singletons/VFX/damage_number.tscn" id="9_dmgnum"]
@@ -27,7 +29,9 @@ upgrade_potion = ExtResource("12_pot")
 enemy_melee_scene = ExtResource("5_melee")
 enemy_ranged_scene = ExtResource("6_ranged")
 enemy_brute_scene = ExtResource("13_brute")
+enemy_firebomber_scene = ExtResource("14_firebomber")
 enemy_projectile_scene = ExtResource("7_proj")
+firebomb_projectile_scene = ExtResource("15_firebomb_proj")
 fireball_hit_scene = ExtResource("8_hit")
 damage_number_scene = ExtResource("9_dmgnum")
 target_reticle_scene = ExtResource("11_reticle")

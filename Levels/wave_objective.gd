@@ -22,6 +22,8 @@ func get_brute_count() -> int:
 func _ready() -> void:
 	if enemy_scenes.is_empty():
 		enemy_scenes = [GlobalVars.enemy_melee_scene, GlobalVars.enemy_ranged_scene]
+		if GlobalVars.enemy_firebomber_scene != null:
+			enemy_scenes.append(GlobalVars.enemy_firebomber_scene)
 	var brute_template: PackedScene = brute_scene if brute_scene != null else GlobalVars.enemy_brute_scene
 	var total_count: int = ProgressionState.get_enemy_count() if ProgressionState != null else 3
 	var brute_count: int = get_brute_count()

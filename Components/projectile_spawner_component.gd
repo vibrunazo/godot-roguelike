@@ -34,3 +34,6 @@ func spawn_projectile() -> void:
 
 	if character.mesh_mount != null:
 		projectile.global_rotation.y = character.mesh_mount.global_rotation.y
+
+	if projectile.has_method("initialize_trajectory"):
+		projectile.initialize_trajectory()

@@ -28,8 +28,12 @@ extends Node
 @export var enemy_ranged_scene: PackedScene
 ## Heavy enemy scene spawned by WaveObjective.
 @export var enemy_brute_scene: PackedScene
+## Firebomber enemy scene spawned by WaveObjective.
+@export var enemy_firebomber_scene: PackedScene
 ## Projectile scene spawned by ProjectileSpawnerComponent.
 @export var enemy_projectile_scene: PackedScene
+## Firebomb projectile scene spawned by ProjectileSpawnerComponent.
+@export var firebomb_projectile_scene: PackedScene
 ## Impact effect spawned by EnemyProjectile on collision.
 @export var fireball_hit_scene: PackedScene
 ## Floating combat text spawned by VfxManager on damage.
