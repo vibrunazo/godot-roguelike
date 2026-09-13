@@ -13,6 +13,7 @@ extends Node
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	go_fullscreen()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

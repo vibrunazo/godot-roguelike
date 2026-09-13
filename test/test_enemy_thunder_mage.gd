@@ -365,6 +365,42 @@ func _ready() -> void:
 	test_bolt.queue_free()
 	await get_tree().process_frame
 
+	# Verify AudioStreamRandomizer on LightningHit
+	var hit_instance: Node = hit_scene.instantiate()
+	add_child(hit_instance)
+	var hit_audio: AudioStreamPlayer3D = hit_instance.get_node_or_null("AudioStreamPlayer3D") as AudioStreamPlayer3D
+	if hit_audio == null:
+		printerr("TEST FAILED: AudioStreamPlayer3D missing on LightningHit.")
+		hit_instance.queue_free()
+		get_tree().quit(1)
+		return
+	if not (hit_audio.stream is AudioStreamRandomizer):
+		printerr("TEST FAILED: Expected AudioStreamPlayer3D.stream to be AudioStreamRandomizer.")
+		hit_instance.queue_free()
+		get_tree().quit(1)
+		return
+	var randomizer: AudioStreamRandomizer = hit_audio.stream as AudioStreamRandomizer
+	if randomizer.streams_count != 5:
+		printerr("TEST FAILED: Expected 5 audio streams in AudioStreamRandomizer, got: ", randomizer.streams_count)
+		hit_instance.queue_free()
+		get_tree().quit(1)
+		return
+	for s_idx: int in range(randomizer.streams_count):
+		if randomizer.get_stream(s_idx) == null:
+			printerr("TEST FAILED: Stream at index ", s_idx, " is null in AudioStreamRandomizer.")
+			hit_instance.queue_free()
+			get_tree().quit(1)
+			return
+	if hit_audio.bus != &"SFX":
+		printerr("TEST FAILED: Expected hit_audio bus to be 'SFX', got: ", hit_audio.bus)
+		hit_instance.queue_free()
+		get_tree().quit(1)
+		return
+	print("[OK] LightningHit AudioStreamRandomizer with 5 SFX impact variations verified.")
+	hit_instance.queue_free()
+	await get_tree().process_frame
+
+
 	# ---------------------------------------------------------
 	# PART 8: End-to-End Spell Cast Integration
 	# ---------------------------------------------------------
