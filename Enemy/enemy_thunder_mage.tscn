@@ -1,0 +1,171 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy_base.tscn" id="1_6jo5i"]
+[ext_resource type="Shader" uid="uid://b81ujloplemnj" path="res://Shaders/character_palette.gdshader" id="2_l781q"]
+[ext_resource type="Script" uid="uid://cmqolk21i2p4i" path="res://StateMachine/character_attack.gd" id="2_cnthi"]
+[ext_resource type="Script" uid="uid://0d7edkd4gwy7" path="res://Components/projectile_spawner_component.gd" id="3_proj"]
+[ext_resource type="Texture2D" uid="uid://cg3sv8wggq46e" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/Enemy_Medium_enemy_texture.png" id="3_wglca"]
+[ext_resource type="Script" uid="uid://tkni8sall63a" path="res://StateMachine/AIStates/ai_meander.gd" id="4_meander"]
+[ext_resource type="Script" uid="uid://bhgh7i53ksl7o" path="res://StateMachine/AIStates/ai_attack.gd" id="5_attack"]
+[ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="6_aiwait"]
+[ext_resource type="PackedScene" path="res://Enemy/lightning_bolt_projectile.tscn" id="7_lightning_proj"]
+
+[sub_resource type="Gradient" id="Gradient_m12lo"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_b8i10"]
+gradient = SubResource("Gradient_m12lo")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_gelnj"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ekgtk"]
+gradient = SubResource("Gradient_gelnj")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_dyw43"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_shlee"]
+gradient = SubResource("Gradient_dyw43")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_4ruwi"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_onf4j"]
+gradient = SubResource("Gradient_4ruwi")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_hyaib"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_i0sa7"]
+gradient = SubResource("Gradient_hyaib")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_8o5l0"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_e8nc1"]
+gradient = SubResource("Gradient_8o5l0")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_e8p3h"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_a4d4c"]
+gradient = SubResource("Gradient_e8p3h")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_purple"]
+colors = PackedColorArray(0.71, 0.37, 0.9, 1, 0.24, 0.04, 0.42, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_purple"]
+gradient = SubResource("Gradient_purple")
+width = 64
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_purple"]
+render_priority = 0
+shader = ExtResource("2_l781q")
+shader_parameter/albedo_texture = ExtResource("3_wglca")
+shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_b8i10"), SubResource("GradientTexture1D_ekgtk"), SubResource("GradientTexture1D_shlee"), SubResource("GradientTexture1D_onf4j"), SubResource("GradientTexture1D_i0sa7"), SubResource("GradientTexture1D_e8nc1"), SubResource("GradientTexture1D_a4d4c"), SubResource("GradientTexture1D_purple")])
+shader_parameter/palette_mode = 0
+shader_parameter/enable_palette = true
+shader_parameter/gradient_mask = 255
+shader_parameter/active_gradient_mask = 128
+shader_parameter/global_tint = Color(1, 1, 1, 1)
+shader_parameter/roughness = 0.3
+shader_parameter/metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_orb"]
+shading_mode = 0
+albedo_color = Color(0.75, 0.35, 1, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_orb"]
+radius = 0.16
+height = 0.32
+radial_segments = 16
+rings = 8
+
+[node name="EnemyThunderMage" unique_id=2117139762 instance=ExtResource("1_6jo5i")]
+
+[node name="Enemy_Medium_ArmLeft" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="0" unique_id=117100866]
+material_override = SubResource("ShaderMaterial_purple")
+
+[node name="Enemy_Medium_ArmRight" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="1" unique_id=258279752]
+material_override = SubResource("ShaderMaterial_purple")
+
+[node name="Enemy_Medium_Body" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="2" unique_id=1362487821]
+material_override = SubResource("ShaderMaterial_purple")
+
+[node name="Enemy_Medium_Head" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="3" unique_id=1681711066]
+material_override = SubResource("ShaderMaterial_purple")
+
+[node name="Enemy_Medium_LegLeft" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="4" unique_id=1428134451]
+material_override = SubResource("ShaderMaterial_purple")
+
+[node name="Enemy_Medium_LegRight" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="5" unique_id=491739949]
+material_override = SubResource("ShaderMaterial_purple")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" parent_id_path=PackedInt32Array(1495277970, 211580224) index="0" unique_id=73376948]
+transform = Transform3D(1, 0, 8.526513e-14, 0, 1, 9.256918e-15, 8.526513e-14, -9.322404e-15, 1, -2.1263995e-06, 0.20000017, -8.195639e-08)
+material_override = SubResource("StandardMaterial3D_orb")
+mesh = SubResource("SphereMesh_orb")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/MeshInstance3D" unique_id=1948281052]
+light_color = Color(0.75, 0.35, 1, 1)
+light_energy = 1.5
+omni_range = 2.0
+
+[node name="AnimationTree" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium" parent_id_path=PackedInt32Array(1495277970, 1921158861) index="2" unique_id=1365896023]
+parameters/MeleeAttack/TimeScale/scale = 1.0
+parameters/RangedAttack/TimeScale/scale = 1.0
+
+[node name="HealthComponent" parent="." index="2" unique_id=1014190827]
+max_health = 70.0
+
+[node name="CharacterColorComponent" parent="." index="7" unique_id=1409284102]
+gradients = Array[Gradient]([null, null, null, null, null, null, null, SubResource("Gradient_purple")])
+
+[node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=539557262 node_paths=PackedStringArray("next_states", "character", "fall_state")]
+script = ExtResource("2_cnthi")
+next_states = [NodePath("../EnemyMove")]
+attack_animation_name = "RangedAttack"
+cooldown = 1.5
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="AIStateMachine" parent="." index="9" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
+initial_state = NodePath("AIMeander")
+
+[node name="AIWait" type="Node" parent="AIStateMachine" index="0" unique_id=1748291048 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("6_aiwait")
+next_state = NodePath("../AIAttack")
+wait_duration = 1.5
+ai_state_machine = NodePath("..")
+
+[node name="AIMeander" type="Node" parent="AIStateMachine" index="1" unique_id=856220418 node_paths=PackedStringArray("attack_state", "wait_state", "ai_state_machine")]
+script = ExtResource("4_meander")
+attack_state = NodePath("../AIAttack")
+attack_range = 5.0
+wait_state = NodePath("../AIWait")
+ai_state_machine = NodePath("..")
+
+[node name="AIAttack" type="Node" parent="AIStateMachine" index="2" unique_id=984729104 node_paths=PackedStringArray("next_states", "ai_state_machine")]
+script = ExtResource("5_attack")
+attack_state_name = "EnemyAttack"
+next_states = [NodePath("../AIWait"), NodePath("../AIMeander")]
+ai_state_machine = NodePath("..")
+
+[node name="ProjectileSpawnerComponent" type="Node" parent="." index="10" unique_id=1948271058 node_paths=PackedStringArray("spawn_point", "character")]
+script = ExtResource("3_proj")
+projectile_scene = ExtResource("7_lightning_proj")
+spawn_point = NodePath("../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
+character = NodePath("..")
+
+[connection signal="ranged_attack" from="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="ProjectileSpawnerComponent" method="spawn_projectile"]
+
+[editable path="AnimationAnchor/AnimatedEnemy"]
+[editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]

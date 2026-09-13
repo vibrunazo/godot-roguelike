@@ -789,7 +789,7 @@ func _ready() -> void:
 	print("Enemy instance found in LevelTemplate via WaveObjective: ", level_enemy.name)
 	
 	var level_enemy_health: HealthComponent = level_enemy.get_node_or_null("HealthComponent") as HealthComponent
-	if level_enemy_health == null or not (level_enemy_health.max_health in [40.0, 55.0, 60.0, 100.0]):
+	if level_enemy_health == null or not (level_enemy_health.max_health in [40.0, 55.0, 60.0, 70.0, 100.0]):
 		printerr("TEST FAILED: LevelTemplate Enemy HealthComponent missing or invalid max_health.")
 		level.queue_free()
 		get_tree().quit(1)
