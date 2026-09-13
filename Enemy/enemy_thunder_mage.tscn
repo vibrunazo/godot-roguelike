@@ -119,7 +119,6 @@ radial_segments = 16
 rings = 8
 
 [node name="EnemyThunderMage" unique_id=2117139762 instance=ExtResource("1_6jo5i")]
-difficulty_rating = 4
 
 [node name="Enemy_Medium_ArmLeft" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="0" unique_id=117100866]
 material_override = SubResource("ShaderMaterial_auuu1")

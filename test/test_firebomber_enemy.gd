@@ -9,18 +9,24 @@ func _ready() -> void:
 	# PART 1: GlobalVars Registration & Scene Loading
 	# ---------------------------------------------------------
 	print("\n>>> PART 1: GlobalVars Registration & Scene Loading")
-	if GlobalVars.enemy_firebomber_scene == null:
-		printerr("TEST FAILED: GlobalVars.enemy_firebomber_scene is null.")
-		get_tree().quit(1)
-		return
-	if GlobalVars.firebomb_projectile_scene == null:
-		printerr("TEST FAILED: GlobalVars.firebomb_projectile_scene is null.")
-		get_tree().quit(1)
-		return
-
 	var firebomber_scene: PackedScene = load("res://Enemy/firebomber_enemy.tscn")
 	if firebomber_scene == null:
 		printerr("TEST FAILED: Could not load res://Enemy/firebomber_enemy.tscn")
+		get_tree().quit(1)
+		return
+
+	var bomber_res: EnemyResource = GlobalVars.get_enemy_resource(firebomber_scene)
+	if bomber_res == null:
+		printerr("TEST FAILED: GlobalVars.enemies does not contain firebomber resource.")
+		get_tree().quit(1)
+		return
+	if bomber_res.difficulty_level != 2:
+		printerr("TEST FAILED: Firebomber EnemyResource difficulty expected 2, got: ", bomber_res.difficulty_level)
+		get_tree().quit(1)
+		return
+
+	if GlobalVars.firebomb_projectile_scene == null:
+		printerr("TEST FAILED: GlobalVars.firebomb_projectile_scene is null.")
 		get_tree().quit(1)
 		return
 
@@ -39,16 +45,17 @@ func _ready() -> void:
 	add_child(wave_obj)
 	await get_tree().process_frame
 
-	if not wave_obj.enemy_scenes.has(GlobalVars.enemy_firebomber_scene):
-		printerr("TEST FAILED: WaveObjective.enemy_scenes does not contain GlobalVars.enemy_firebomber_scene.")
+	var pool: Dictionary = wave_obj.build_difficulty_pool(wave_obj._get_default_enemy_resources())
+	if not pool.has(2) or not (pool[2] as Array[EnemyResource]).has(bomber_res):
+		printerr("TEST FAILED: WaveObjective difficulty pool tier 2 does not contain firebomber resource.")
 		wave_obj.queue_free()
 		get_tree().quit(1)
 		return
-	print("WaveObjective includes firebomber in default spawn pool.")
+	print("WaveObjective includes firebomber in default spawn pool tier 2.")
 
-	var instantiated_enemy: Character = GlobalVars.enemy_firebomber_scene.instantiate() as Character
+	var instantiated_enemy: Character = bomber_res.scene.instantiate() as Character
 	if instantiated_enemy == null or not (instantiated_enemy is Character) or not instantiated_enemy.is_in_group("enemy"):
-		printerr("TEST FAILED: enemy_firebomber_scene does not instantiate a Character in group 'enemy'.")
+		printerr("TEST FAILED: Firebomber scene does not instantiate a Character in group 'enemy'.")
 		wave_obj.queue_free()
 		get_tree().quit(1)
 		return

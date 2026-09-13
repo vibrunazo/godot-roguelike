@@ -38,12 +38,16 @@ func _ready() -> void:
 	# -------------------------------------------------------------
 	# PART 1: Scene Loading & GlobalVars Registration
 	# -------------------------------------------------------------
-	print("\n>>> PART 1: GlobalVars Registration & Scene Verification")
-	if GlobalVars.enemy_brute_scene == null:
-		printerr("TEST FAILED: GlobalVars.enemy_brute_scene is null.")
+	var brute_scene: PackedScene = load("res://Enemy/enemy_brute.tscn") as PackedScene
+	if brute_scene == null:
+		printerr("TEST FAILED: Could not load enemy_brute.tscn.")
 		get_tree().quit(1)
 		return
-	var brute_scene: PackedScene = GlobalVars.enemy_brute_scene
+	var brute_res: EnemyResource = GlobalVars.get_enemy_resource(brute_scene)
+	if brute_res == null:
+		printerr("TEST FAILED: GlobalVars.enemies does not contain brute resource.")
+		get_tree().quit(1)
+		return
 	var brute: Character = brute_scene.instantiate() as Character
 	if brute == null:
 		printerr("TEST FAILED: Could not instantiate enemy_brute.tscn as Character.")
@@ -231,30 +235,22 @@ func _ready() -> void:
 	# PART 3: Brute Difficulty Rating & WaveObjective Integration
 	# -------------------------------------------------------------
 	print("\n>>> PART 3: Brute Difficulty Rating & WaveObjective Integration")
-	var p3_brute_scene: PackedScene = GlobalVars.enemy_brute_scene
-	if p3_brute_scene == null:
-		printerr("TEST FAILED: GlobalVars.enemy_brute_scene is null.")
+	var p3_brute_scene: PackedScene = load("res://Enemy/enemy_brute.tscn") as PackedScene
+	var p3_brute_res: EnemyResource = GlobalVars.get_enemy_resource(p3_brute_scene)
+	if p3_brute_res == null:
+		printerr("TEST FAILED: GlobalVars brute EnemyResource is null.")
 		get_tree().quit(1)
 		return
-	var brute_inst: Character = p3_brute_scene.instantiate() as Character
-	if brute_inst.difficulty_rating != 3:
-		printerr("TEST FAILED: enemy_brute difficulty_rating expected 3, got: ", brute_inst.difficulty_rating)
-		brute_inst.free()
+	if p3_brute_res.difficulty_level != 3:
+		printerr("TEST FAILED: enemy_brute difficulty_level expected 3, got: ", p3_brute_res.difficulty_level)
 		get_tree().quit(1)
 		return
-	brute_inst.free()
 
 	var wave_obj := WaveObjective.new()
 	add_child(wave_obj)
-	var scene_diff: int = wave_obj.get_scene_difficulty(p3_brute_scene)
-	if scene_diff != 3:
-		printerr("TEST FAILED: WaveObjective get_scene_difficulty expected 3, got: ", scene_diff)
-		wave_obj.queue_free()
-		get_tree().quit(1)
-		return
 
-	var pool: Dictionary = wave_obj.build_difficulty_pool([p3_brute_scene])
-	if not pool.has(3) or (pool[3] as Array[PackedScene]).is_empty():
+	var pool: Dictionary = wave_obj.build_difficulty_pool([p3_brute_res])
+	if not pool.has(3) or (pool[3] as Array[EnemyResource]).is_empty():
 		printerr("TEST FAILED: WaveObjective build_difficulty_pool did not contain tier 3 for brute.")
 		wave_obj.queue_free()
 		get_tree().quit(1)

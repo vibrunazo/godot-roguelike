@@ -499,7 +499,7 @@ func _ready() -> void:
 	
 	var total_wave_difficulty: int = 0
 	for e: Character in wave_obj.all_enemies:
-		total_wave_difficulty += e.difficulty_rating
+		total_wave_difficulty += wave_obj._enemy_difficulties.get(e, 0)
 	if total_wave_difficulty != ProgressionState.difficulty_level:
 		printerr("TEST FAILED: WaveObjective total difficulty is ", total_wave_difficulty, ", expected ", ProgressionState.difficulty_level)
 		level.queue_free()
@@ -1516,7 +1516,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: GlobalVars.upgrades array missing required upgrade resources.")
 		get_tree().quit(1)
 		return
-	if GlobalVars.difficulty_curve == null or GlobalVars.enemy_melee_scene == null or GlobalVars.enemy_ranged_scene == null or GlobalVars.enemy_projectile_scene == null or GlobalVars.fireball_hit_scene == null or GlobalVars.damage_number_scene == null or GlobalVars.upgrade_shop_scene == null:
+	if GlobalVars.difficulty_curve == null or GlobalVars.enemies.is_empty() or GlobalVars.enemy_projectile_scene == null or GlobalVars.fireball_hit_scene == null or GlobalVars.damage_number_scene == null or GlobalVars.upgrade_shop_scene == null:
 		printerr("TEST FAILED: GlobalVars registry exports missing or null.")
 		get_tree().quit(1)
 		return

@@ -44,3 +44,21 @@ func toggle_fullscreen() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	else:
 		go_fullscreen()
+
+
+const LEVEL_TITLE_OVERLAY_SCENE: PackedScene = preload("res://UserInterface/level_title_overlay.tscn")
+
+var _current_level_overlay: LevelTitleOverlay = null
+
+
+## Displays a text overlay on screen indicating the current level number.
+func show_level_title(level_number: int, duration: float = 2.0) -> LevelTitleOverlay:
+	if _current_level_overlay != null and is_instance_valid(_current_level_overlay):
+		_current_level_overlay.queue_free()
+		_current_level_overlay = null
+
+	var overlay: LevelTitleOverlay = LEVEL_TITLE_OVERLAY_SCENE.instantiate() as LevelTitleOverlay
+	add_child(overlay)
+	_current_level_overlay = overlay
+	overlay.display_level(level_number, duration)
+	return overlay

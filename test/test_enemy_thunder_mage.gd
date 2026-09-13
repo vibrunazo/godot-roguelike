@@ -9,22 +9,28 @@ func _ready() -> void:
 	# PART 1: GlobalVars Registration & Scene Loading
 	# ---------------------------------------------------------
 	print("\n>>> PART 1: GlobalVars Registration & Scene Loading")
-	if GlobalVars.enemy_thunder_mage_scene == null:
-		printerr("TEST FAILED: GlobalVars.enemy_thunder_mage_scene is null.")
+	var mage_scene: PackedScene = load("res://Enemy/enemy_thunder_mage.tscn")
+	if mage_scene == null:
+		printerr("TEST FAILED: Could not load res://Enemy/enemy_thunder_mage.tscn")
 		get_tree().quit(1)
 		return
+
+	var mage_res: EnemyResource = GlobalVars.get_enemy_resource(mage_scene)
+	if mage_res == null:
+		printerr("TEST FAILED: GlobalVars.enemies does not contain thunder mage resource.")
+		get_tree().quit(1)
+		return
+	if mage_res.difficulty_level != 4:
+		printerr("TEST FAILED: Thunder mage EnemyResource difficulty expected 4, got: ", mage_res.difficulty_level)
+		get_tree().quit(1)
+		return
+
 	if GlobalVars.lightning_bolt_scene == null:
 		printerr("TEST FAILED: GlobalVars.lightning_bolt_scene is null.")
 		get_tree().quit(1)
 		return
 	if GlobalVars.lightning_hit_scene == null:
 		printerr("TEST FAILED: GlobalVars.lightning_hit_scene is null.")
-		get_tree().quit(1)
-		return
-
-	var mage_scene: PackedScene = load("res://Enemy/enemy_thunder_mage.tscn")
-	if mage_scene == null:
-		printerr("TEST FAILED: Could not load res://Enemy/enemy_thunder_mage.tscn")
 		get_tree().quit(1)
 		return
 
@@ -49,16 +55,17 @@ func _ready() -> void:
 	add_child(wave_obj)
 	await get_tree().process_frame
 
-	if not wave_obj.enemy_scenes.has(GlobalVars.enemy_thunder_mage_scene):
-		printerr("TEST FAILED: WaveObjective.enemy_scenes does not contain GlobalVars.enemy_thunder_mage_scene.")
+	var pool: Dictionary = wave_obj.build_difficulty_pool(wave_obj._get_default_enemy_resources())
+	if not pool.has(4) or not (pool[4] as Array[EnemyResource]).has(mage_res):
+		printerr("TEST FAILED: WaveObjective difficulty pool tier 4 does not contain thunder mage resource.")
 		wave_obj.queue_free()
 		get_tree().quit(1)
 		return
-	print("[OK] WaveObjective includes enemy_thunder_mage in default spawn pool.")
+	print("[OK] WaveObjective includes enemy_thunder_mage in default spawn pool tier 4.")
 
-	var spawned_mage: Character = GlobalVars.enemy_thunder_mage_scene.instantiate() as Character
+	var spawned_mage: Character = mage_res.scene.instantiate() as Character
 	if spawned_mage == null or not (spawned_mage is Character) or not spawned_mage.is_in_group("enemy"):
-		printerr("TEST FAILED: enemy_thunder_mage_scene does not instantiate a Character in group 'enemy'.")
+		printerr("TEST FAILED: Thunder mage scene does not instantiate a Character in group 'enemy'.")
 		wave_obj.queue_free()
 		get_tree().quit(1)
 		return

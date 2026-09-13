@@ -1,0 +1,45 @@
+[gd_scene format=3 uid="uid://cb5n2k7a6q32y"]
+
+[ext_resource type="Script" uid="uid://b547bdo626obt" path="res://UserInterface/level_title_overlay.gd" id="1_script"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_title"]
+font_size = 52
+font_color = Color(0.95, 0.95, 0.95, 1)
+outline_size = 8
+outline_color = Color(0.08, 0.08, 0.08, 0.9)
+shadow_size = 12
+shadow_color = Color(0, 0, 0, 0.75)
+shadow_offset = Vector2(2, 3)
+
+[node name="LevelTitleOverlay" type="CanvasLayer" unique_id=1725468500]
+layer = 10
+script = ExtResource("1_script")
+
+[node name="Control" type="Control" parent="." unique_id=940340684]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Control" unique_id=145500419]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -86.0
+offset_top = 94.0
+offset_right = 87.0
+offset_bottom = 166.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="LevelLabel" type="Label" parent="Control/VBoxContainer" unique_id=825582511]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Level 1"
+label_settings = SubResource("LabelSettings_title")
+horizontal_alignment = 1
+vertical_alignment = 1

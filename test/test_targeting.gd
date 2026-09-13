@@ -312,7 +312,8 @@ func _ready() -> void:
 ## holds still for deterministic distance checks while staying alive and
 ## damageable.
 func _spawn_enemy(level: Node3D, pos: Vector3) -> Character:
-	var enemy: Character = (GlobalVars.enemy_melee_scene as PackedScene).instantiate() as Character
+	var melee_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
+	var enemy: Character = melee_scene.instantiate() as Character
 	level.add_child(enemy)
 	enemy.global_position = pos
 	if enemy.ai_state_machine != null:

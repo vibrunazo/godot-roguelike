@@ -6,10 +6,11 @@
 [ext_resource type="Resource" path="res://UserInterface/UpgradeResources/upgrade_health.tres" id="4_hp"]
 [ext_resource type="Resource" path="res://UserInterface/UpgradeResources/upgrade_speed.tres" id="5_spd"]
 [ext_resource type="Resource" path="res://UserInterface/UpgradeResources/upgrade_potion.tres" id="12_pot"]
-[ext_resource type="PackedScene" uid="uid://cttwgr00qkjox" path="res://Enemy/melee_enemy.tscn" id="5_melee"]
-[ext_resource type="PackedScene" uid="uid://d0l671aaonnqf" path="res://Enemy/ranged_enemy.tscn" id="6_ranged"]
-[ext_resource type="PackedScene" path="res://Enemy/enemy_brute.tscn" id="13_brute"]
-[ext_resource type="PackedScene" path="res://Enemy/firebomber_enemy.tscn" id="14_firebomber"]
+[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_melee.tres" id="5_melee_res"]
+[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_ranged.tres" id="6_ranged_res"]
+[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_firebomber.tres" id="14_firebomber_res"]
+[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_brute.tres" id="13_brute_res"]
+[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_thunder_mage.tres" id="16_thunder_mage_res"]
 [ext_resource type="PackedScene" path="res://Enemy/firebomb_projectile.tscn" id="15_firebomb_proj"]
 [ext_resource type="PackedScene" uid="uid://0qtans3shtxh" path="res://Enemy/enemy_projectile.tscn" id="7_proj"]
 [ext_resource type="PackedScene" uid="uid://olax7oyumfwu" path="res://Enemy/fireball_hit.tscn" id="8_hit"]
@@ -17,7 +18,6 @@
 [ext_resource type="PackedScene" uid="uid://bdd6qt1dd2vr8" path="res://Singletons/VFX/target_reticle.tscn" id="11_reticle"]
 [ext_resource type="PackedScene" uid="uid://dx5vp0if7ta30" path="res://UserInterface/upgrade_shop.tscn" id="10_shop"]
 [ext_resource type="Curve" uid="uid://cxfev6iu2f3e0" path="res://Singletons/difficulty_curve.tres" id="11_curve"]
-[ext_resource type="PackedScene" path="res://Enemy/enemy_thunder_mage.tscn" id="16_thunder_mage"]
 [ext_resource type="PackedScene" path="res://Enemy/lightning_bolt_projectile.tscn" id="17_lightning_proj"]
 [ext_resource type="PackedScene" path="res://Enemy/lightning_hit.tscn" id="18_lightning_hit"]
 
@@ -29,11 +29,7 @@ upgrade_damage = ExtResource("3_dmg")
 upgrade_health = ExtResource("4_hp")
 upgrade_speed = ExtResource("5_spd")
 upgrade_potion = ExtResource("12_pot")
-enemy_melee_scene = ExtResource("5_melee")
-enemy_ranged_scene = ExtResource("6_ranged")
-enemy_brute_scene = ExtResource("13_brute")
-enemy_firebomber_scene = ExtResource("14_firebomber")
-enemy_thunder_mage_scene = ExtResource("16_thunder_mage")
+enemies = [ExtResource("5_melee_res"), ExtResource("6_ranged_res"), ExtResource("14_firebomber_res"), ExtResource("13_brute_res"), ExtResource("16_thunder_mage_res")]
 enemy_projectile_scene = ExtResource("7_proj")
 firebomb_projectile_scene = ExtResource("15_firebomb_proj")
 lightning_bolt_scene = ExtResource("17_lightning_proj")

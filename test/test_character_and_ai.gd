@@ -714,42 +714,41 @@ func test_part_9_scattered_enemy_spawning() -> void:
 func test_part_10_enemy_difficulty_and_wave_budget_spawning() -> void:
 	print("\n>>> PART 10: Enemy Difficulty Ratings & Budget Wave Spawning")
 
-	# 1. Verify difficulty_rating on all 5 enemy scenes
+	# 1. Verify EnemyResource in GlobalVars.enemies for all 5 archetypes
 	var melee_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
 	var ranged_scene: PackedScene = load("res://Enemy/ranged_enemy.tscn") as PackedScene
 	var bomber_scene: PackedScene = load("res://Enemy/firebomber_enemy.tscn") as PackedScene
 	var brute_scene: PackedScene = load("res://Enemy/enemy_brute.tscn") as PackedScene
 	var mage_scene: PackedScene = load("res://Enemy/enemy_thunder_mage.tscn") as PackedScene
 
-	var melee: Character = melee_scene.instantiate() as Character
-	var ranged: Character = ranged_scene.instantiate() as Character
-	var bomber: Character = bomber_scene.instantiate() as Character
-	var brute: Character = brute_scene.instantiate() as Character
-	var mage: Character = mage_scene.instantiate() as Character
+	var melee_res: EnemyResource = GlobalVars.get_enemy_resource(melee_scene)
+	var ranged_res: EnemyResource = GlobalVars.get_enemy_resource(ranged_scene)
+	var bomber_res: EnemyResource = GlobalVars.get_enemy_resource(bomber_scene)
+	var brute_res: EnemyResource = GlobalVars.get_enemy_resource(brute_scene)
+	var mage_res: EnemyResource = GlobalVars.get_enemy_resource(mage_scene)
 
-	if melee.difficulty_rating != 1 or ranged.difficulty_rating != 1:
-		printerr("TEST FAILED: Melee/Ranged enemy difficulty expected 1, got melee: ", melee.difficulty_rating, ", ranged: ", ranged.difficulty_rating)
-		get_tree().quit(1)
-		return
-	if bomber.difficulty_rating != 2:
-		printerr("TEST FAILED: Firebomber difficulty expected 2, got: ", bomber.difficulty_rating)
-		get_tree().quit(1)
-		return
-	if brute.difficulty_rating != 3:
-		printerr("TEST FAILED: Brute difficulty expected 3, got: ", brute.difficulty_rating)
-		get_tree().quit(1)
-		return
-	if mage.difficulty_rating != 4:
-		printerr("TEST FAILED: Thunder Mage difficulty expected 4, got: ", mage.difficulty_rating)
+	if melee_res == null or ranged_res == null or bomber_res == null or brute_res == null or mage_res == null:
+		printerr("TEST FAILED: One or more EnemyResources missing from GlobalVars.enemies.")
 		get_tree().quit(1)
 		return
 
-	melee.free()
-	ranged.free()
-	bomber.free()
-	brute.free()
-	mage.free()
-	print("All 5 enemy difficulty ratings verified (melee: 1, ranged: 1, bomber: 2, brute: 3, mage: 4).")
+	if melee_res.difficulty_level != 1 or ranged_res.difficulty_level != 1:
+		printerr("TEST FAILED: Melee/Ranged EnemyResource difficulty expected 1, got melee: ", melee_res.difficulty_level, ", ranged: ", ranged_res.difficulty_level)
+		get_tree().quit(1)
+		return
+	if bomber_res.difficulty_level != 2:
+		printerr("TEST FAILED: Firebomber EnemyResource difficulty expected 2, got: ", bomber_res.difficulty_level)
+		get_tree().quit(1)
+		return
+	if brute_res.difficulty_level != 3:
+		printerr("TEST FAILED: Brute EnemyResource difficulty expected 3, got: ", brute_res.difficulty_level)
+		get_tree().quit(1)
+		return
+	if mage_res.difficulty_level != 4:
+		printerr("TEST FAILED: Thunder Mage EnemyResource difficulty expected 4, got: ", mage_res.difficulty_level)
+		get_tree().quit(1)
+		return
+	print("All 5 EnemyResources verified in GlobalVars (melee: 1, ranged: 1, bomber: 2, brute: 3, mage: 4).")
 
 	# 2. Verify ProgressionState level scaling and reset
 	ProgressionState.reset_run()
@@ -788,9 +787,10 @@ func test_part_10_enemy_difficulty_and_wave_budget_spawning() -> void:
 		return
 	var sum_diff3: int = 0
 	for enemy: Character in wave_diff3:
-		sum_diff3 += enemy.difficulty_rating
-		if enemy.difficulty_rating != 1:
-			printerr("TEST FAILED: WaveObjective at difficulty 3 spawned non-level-1 enemy: ", enemy.difficulty_rating)
+		var diff: int = wave_obj._enemy_difficulties.get(enemy, 0)
+		sum_diff3 += diff
+		if diff != 1:
+			printerr("TEST FAILED: WaveObjective at difficulty 3 spawned non-level-1 enemy: ", diff)
 			get_tree().quit(1)
 			return
 		enemy.free()
@@ -809,16 +809,19 @@ func test_part_10_enemy_difficulty_and_wave_budget_spawning() -> void:
 			printerr("TEST FAILED: WaveObjective at difficulty 10 generated fewer than 2 enemies.")
 			get_tree().quit(1)
 			return
+		var d0: int = wave_obj._enemy_difficulties.get(wave_diff10[0], 0)
+		var d1: int = wave_obj._enemy_difficulties.get(wave_diff10[1], 0)
 		# Must always pick 2 level 1 enemies first
-		if wave_diff10[0].difficulty_rating != 1 or wave_diff10[1].difficulty_rating != 1:
-			printerr("TEST FAILED: WaveObjective at difficulty 10 did not pick 2 level-1 enemies first! Got diffs: ", wave_diff10[0].difficulty_rating, ", ", wave_diff10[1].difficulty_rating)
+		if d0 != 1 or d1 != 1:
+			printerr("TEST FAILED: WaveObjective at difficulty 10 did not pick 2 level-1 enemies first! Got diffs: ", d0, ", ", d1)
 			get_tree().quit(1)
 			return
 		# Total sum must equal 10
 		var sum_diff10: int = 0
 		for enemy: Character in wave_diff10:
-			sum_diff10 += enemy.difficulty_rating
-			if enemy.difficulty_rating > 1:
+			var diff: int = wave_obj._enemy_difficulties.get(enemy, 0)
+			sum_diff10 += diff
+			if diff > 1:
 				saw_higher_tier = true
 			enemy.free()
 		if sum_diff10 != 10:
@@ -834,6 +837,20 @@ func test_part_10_enemy_difficulty_and_wave_budget_spawning() -> void:
 
 	wave_obj.queue_free()
 	ProgressionState.reset_run()
+
+	# 5. Verify UI level title text overlay
+	var overlay: LevelTitleOverlay = UI.show_level_title(3, 0.5)
+	if overlay == null:
+		printerr("TEST FAILED: UI.show_level_title returned null overlay.")
+		get_tree().quit(1)
+		return
+	if overlay.label.text != "Level 3":
+		printerr("TEST FAILED: LevelTitleOverlay expected 'Level 3', got: ", overlay.label.text)
+		overlay.queue_free()
+		get_tree().quit(1)
+		return
+	overlay.queue_free()
+	print("UI.show_level_title() text overlay verified.")
 
 
 

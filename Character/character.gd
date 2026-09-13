@@ -56,8 +56,7 @@ signal hit_landed(target: Node, attack_component: AttackComponent)
 ## Minimum interval in seconds between auto-aim target re-evaluations, so the
 ## target does not flicker every tick when candidates sit at similar distances.
 @export var target_retarget_cooldown: float = 0.3
-## Difficulty rating of this character when selected as an enemy spawn in waves.
-@export var difficulty_rating: int = 1
+
 
 ## Desired movement direction vector (normalized), provided by PlayerInputComponent or AIStateMachine.
 var move_direction: Vector3 = Vector3.ZERO

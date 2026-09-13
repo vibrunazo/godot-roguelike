@@ -22,16 +22,8 @@ extends Node
 @export var upgrade_speed: UpgradeResource
 ## Upgrade resource offered by the UpgradeShop.
 @export var upgrade_potion: UpgradeResource
-## Enemy scenes spawned by WaveObjective.
-@export var enemy_melee_scene: PackedScene
-## Enemy scenes spawned by WaveObjective.
-@export var enemy_ranged_scene: PackedScene
-## Heavy enemy scene spawned by WaveObjective.
-@export var enemy_brute_scene: PackedScene
-## Firebomber enemy scene spawned by WaveObjective.
-@export var enemy_firebomber_scene: PackedScene
-## Thunder mage enemy scene spawned by WaveObjective.
-@export var enemy_thunder_mage_scene: PackedScene
+## Enemy resources available for spawning, each defining an enemy scene and difficulty level.
+@export var enemies: Array[EnemyResource] = []
 ## Projectile scene spawned by ProjectileSpawnerComponent.
 @export var enemy_projectile_scene: PackedScene
 ## Firebomb projectile scene spawned by ProjectileSpawnerComponent.
@@ -55,3 +47,11 @@ var upgrades: Array[UpgradeResource] = []
 
 func _ready() -> void:
 	upgrades = [upgrade_damage, upgrade_health, upgrade_speed, upgrade_potion]
+
+
+## Finds the registered EnemyResource for a given PackedScene or null if not registered.
+func get_enemy_resource(scene: PackedScene) -> EnemyResource:
+	for res: EnemyResource in enemies:
+		if res != null and res.scene == scene:
+			return res
+	return null

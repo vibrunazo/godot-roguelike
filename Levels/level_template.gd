@@ -12,3 +12,7 @@ func _ready() -> void:
 		SceneTransition.player_cache.global_position = old_player_position
 		SceneTransition.player_cache.process_mode = Node.PROCESS_MODE_INHERIT
 		player = SceneTransition.player_cache
+
+	var current_level: int = ProgressionState.dungeon_level if ProgressionState != null else 1
+	if UI != null:
+		UI.show_level_title(current_level)
