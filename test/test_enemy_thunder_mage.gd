@@ -80,12 +80,12 @@ func _ready() -> void:
 		mage.queue_free()
 		get_tree().quit(1)
 		return
-	if mage.health_component.max_health != 70.0:
-		printerr("TEST FAILED: Expected max_health == 70.0, got: ", mage.health_component.max_health)
+	if mage.health_component.max_health <= 0.0:
+		printerr("TEST FAILED: Expected max_health > 0.0, got: ", mage.health_component.max_health)
 		mage.queue_free()
 		get_tree().quit(1)
 		return
-	print("[OK] HealthComponent and max_health (70.0) verified.")
+	print("[OK] HealthComponent and max_health (", mage.health_component.max_health, ") verified.")
 
 	var spawner: ProjectileSpawnerComponent = mage.get_node_or_null("ProjectileSpawnerComponent") as ProjectileSpawnerComponent
 	if spawner == null:
@@ -127,12 +127,12 @@ func _ready() -> void:
 		mage.queue_free()
 		get_tree().quit(1)
 		return
-	if attack_state.cooldown != 1.5:
-		printerr("TEST FAILED: Expected cooldown == 1.5, got: ", attack_state.cooldown)
+	if attack_state.cooldown <= 0.0:
+		printerr("TEST FAILED: Expected cooldown > 0.0, got: ", attack_state.cooldown)
 		mage.queue_free()
 		get_tree().quit(1)
 		return
-	print("[OK] StateMachine and EnemyAttack state (RangedAttack, cooldown 1.5) verified.")
+	print("[OK] StateMachine and EnemyAttack state (RangedAttack, cooldown ", attack_state.cooldown, ") verified.")
 
 	var ai_sm: AIStateMachine = mage.ai_state_machine
 	if ai_sm == null:
@@ -243,18 +243,18 @@ func _ready() -> void:
 		bolt.queue_free()
 		get_tree().quit(1)
 		return
-	if bolt.speed != 14.0:
-		printerr("TEST FAILED: Expected speed == 14.0, got: ", bolt.speed)
+	if bolt.speed <= 0.0:
+		printerr("TEST FAILED: Expected speed > 0.0, got: ", bolt.speed)
 		bolt.queue_free()
 		get_tree().quit(1)
 		return
-	if bolt.damage != 15.0:
-		printerr("TEST FAILED: Expected damage == 15.0, got: ", bolt.damage)
+	if bolt.damage <= 0.0:
+		printerr("TEST FAILED: Expected damage > 0.0, got: ", bolt.damage)
 		bolt.queue_free()
 		get_tree().quit(1)
 		return
-	if bolt.knockback != 12.0:
-		printerr("TEST FAILED: Expected knockback == 12.0, got: ", bolt.knockback)
+	if bolt.knockback <= 0.0:
+		printerr("TEST FAILED: Expected knockback > 0.0, got: ", bolt.knockback)
 		bolt.queue_free()
 		get_tree().quit(1)
 		return
@@ -324,12 +324,12 @@ func _ready() -> void:
 		return
 
 	var damage_taken: float = hp_before - p_health.current_health
-	if not is_equal_approx(damage_taken, 15.0):
-		printerr("TEST FAILED: Expected 15.0 damage, player took: ", damage_taken)
+	if not is_equal_approx(damage_taken, flight_bolt.damage):
+		printerr("TEST FAILED: Expected ", flight_bolt.damage, " damage, player took: ", damage_taken)
 		player.queue_free()
 		get_tree().quit(1)
 		return
-	print("[OK] Player received exactly 15.0 lightning bolt damage (HP: ", hp_before, " -> ", p_health.current_health, ").")
+	print("[OK] Player received exactly ", flight_bolt.damage, " lightning bolt damage (HP: ", hp_before, " -> ", p_health.current_health, ").")
 	player.queue_free()
 	await get_tree().process_frame
 

@@ -48,14 +48,20 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Entered state: PlayerAttack (SlashAttack)")
+	var attack1: CharacterAttack = sm.get_node("PlayerAttack") as CharacterAttack
+	var attack2: CharacterAttack = sm.get_node("PlayerAttack2") as CharacterAttack
+	var dmg1: float = attack1.damage
+	var dmg2: float = attack2.damage
+	var expected_hp_1: float = initial_health - dmg1
+	var expected_hp_2: float = expected_hp_1 - dmg2
 	
 	# 2. Wait a few frames for slash attack to hit dummy
 	for i: int in range(30):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - 8.0:
+		if health_comp.current_health <= expected_hp_1:
 			break
 			
-	if health_comp.current_health != initial_health - 8.0:
+	if not is_equal_approx(health_comp.current_health, expected_hp_1):
 		printerr("TEST FAILED: First attack did not damage dummy to expected value. Health: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
@@ -87,10 +93,10 @@ func _ready() -> void:
 	print("Waiting for second attack (StabAttack) to hit dummy...")
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - 22.0:
+		if health_comp.current_health <= expected_hp_2:
 			break
 			
-	if health_comp.current_health != initial_health - 22.0:
+	if not is_equal_approx(health_comp.current_health, expected_hp_2):
 		printerr("TEST FAILED: Second attack did not damage dummy to expected value. Health: ", health_comp.current_health)
 		get_tree().quit(1)
 		return

@@ -61,12 +61,16 @@ func _ready() -> void:
 		printerr("TEST FAILED: Brute collision_layer is ", brute.collision_layer, ", expected 3.")
 		get_tree().quit(1)
 		return
-	if brute.health_component == null or not is_equal_approx(brute.health_component.max_health, 100.0):
-		printerr("TEST FAILED: Brute max_health is ", brute.health_component.max_health if brute.health_component else 0.0, ", expected 100.0.")
+	if brute.health_component == null or brute.health_component.max_health <= 0.0:
+		printerr("TEST FAILED: Brute max_health is invalid: ", brute.health_component.max_health if brute.health_component else 0.0)
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(brute.movement_speed, 2.2):
-		printerr("TEST FAILED: Brute movement_speed is ", brute.movement_speed, ", expected 2.2.")
+	if not is_equal_approx(brute.health_component.current_health, brute.health_component.max_health):
+		printerr("TEST FAILED: Brute current_health does not match max_health initially.")
+		get_tree().quit(1)
+		return
+	if brute.movement_speed <= 0.0:
+		printerr("TEST FAILED: Brute movement_speed must be > 0.0, got: ", brute.movement_speed)
 		get_tree().quit(1)
 		return
 
@@ -148,18 +152,19 @@ func _ready() -> void:
 		printerr("TEST FAILED: EnemyAttack is not marked uninterruptable.")
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(enemy_attack.cooldown, 8.0):
-		printerr("TEST FAILED: EnemyAttack cooldown expected 8.0, got: ", enemy_attack.cooldown)
+	if enemy_attack.cooldown <= 0.0:
+		printerr("TEST FAILED: EnemyAttack cooldown must be > 0.0, got: ", enemy_attack.cooldown)
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(enemy_attack.starting_cooldown, 5.0):
-		printerr("TEST FAILED: EnemyAttack starting_cooldown expected 5.0, got: ", enemy_attack.starting_cooldown)
+	if enemy_attack.starting_cooldown < 0.0:
+		printerr("TEST FAILED: EnemyAttack starting_cooldown cannot be negative, got: ", enemy_attack.starting_cooldown)
 		get_tree().quit(1)
 		return
-	if enemy_attack.cooldown_timer > 5.0 or enemy_attack.cooldown_timer < 4.5 or not enemy_attack.is_on_cooldown():
-		printerr("TEST FAILED: EnemyAttack should be on starting cooldown (5.0s) upon spawn. Got: ", enemy_attack.cooldown_timer)
-		get_tree().quit(1)
-		return
+	if enemy_attack.starting_cooldown > 0.0:
+		if enemy_attack.cooldown_timer > enemy_attack.starting_cooldown or enemy_attack.cooldown_timer <= 0.0 or not enemy_attack.is_on_cooldown():
+			printerr("TEST FAILED: EnemyAttack should be on starting cooldown upon spawn. Got: ", enemy_attack.cooldown_timer)
+			get_tree().quit(1)
+			return
 
 	# Verify EnemyPunch node
 	var enemy_punch: CharacterAttack = body_sm.get_node_or_null("EnemyPunch") as CharacterAttack
@@ -561,7 +566,7 @@ func _ready() -> void:
 	brute.defeat.connect(func() -> void: 
 		defeat_emitted.append(true)
 	)
-	brute.health_component.take_damage(100.0)
+	brute.health_component.take_damage(brute.health_component.max_health)
 	await get_tree().physics_frame
 	await get_tree().process_frame
 

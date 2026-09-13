@@ -51,16 +51,16 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	if trap.attack_component.damage != 5.0:
-		printerr("TEST FAILED: Expected AttackComponent.damage == 5.0, got: ", trap.attack_component.damage)
+	if not is_equal_approx(trap.attack_component.damage, trap.damage):
+		printerr("TEST FAILED: Expected AttackComponent.damage == trap.damage (", trap.damage, "), got: ", trap.attack_component.damage)
 		get_tree().quit(1)
 		return
 
-	if trap.attack_component.rehit_interval != 2.0:
-		printerr("TEST FAILED: Expected AttackComponent.rehit_interval == 2.0, got: ", trap.attack_component.rehit_interval)
+	if not is_equal_approx(trap.attack_component.rehit_interval, trap.damage_interval):
+		printerr("TEST FAILED: Expected AttackComponent.rehit_interval == trap.damage_interval (", trap.damage_interval, "), got: ", trap.attack_component.rehit_interval)
 		get_tree().quit(1)
 		return
-	print("AttackComponent damage (5.0) and rehit_interval (2.0s) verified.")
+	print("AttackComponent damage (", trap.damage, ") and rehit_interval (", trap.damage_interval, "s) verified.")
 
 	# ---------------------------------------------------------
 	# PART 2: Dynamic Sizing Checks

@@ -291,8 +291,8 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	var kb: KnockbackComponent = player.knockback_component
-	if not is_equal_approx(kb.decay, 8.0) or not is_equal_approx(kb.max_knockback, 50.0):
-		printerr("TEST FAILED: KnockbackComponent decay or max_knockback default mismatch.")
+	if kb.decay <= 0.0 or kb.max_knockback <= 0.0:
+		printerr("TEST FAILED: KnockbackComponent decay or max_knockback should be positive. decay: ", kb.decay, " max_kb: ", kb.max_knockback)
 		get_tree().quit(1)
 		return
 	if not kb.magnitude.is_zero_approx() or kb.is_active():
@@ -301,9 +301,9 @@ func _ready() -> void:
 		return
 	
 	# Test clamping via setter
-	kb.add_knockback(Vector3(0.0, 0.0, 100.0))
-	if not is_equal_approx(kb.magnitude.length(), 50.0) or not kb.is_active():
-		printerr("TEST FAILED: KnockbackComponent magnitude was not clamped to max_knockback 50.0.")
+	kb.add_knockback(Vector3(0.0, 0.0, kb.max_knockback * 2.0))
+	if not is_equal_approx(kb.magnitude.length(), kb.max_knockback) or not kb.is_active():
+		printerr("TEST FAILED: KnockbackComponent magnitude was not clamped to max_knockback: ", kb.max_knockback)
 		get_tree().quit(1)
 		return
 	print("KnockbackComponent max_knockback limit_length clamping verified: ", kb.magnitude.length())

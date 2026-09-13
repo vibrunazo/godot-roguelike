@@ -129,23 +129,24 @@ func _ready() -> void:
 	# PART 3: Health Damage Animation & Tween Synchronization
 	# ---------------------------------------------------------
 	print("\n>>> PART 3: Testing Health Damage Animation & Tweening")
-	# Player max_health is 60.0
-	# Deal 15 damage -> current 45.0 (75%)
-	player.health_component.take_damage(15.0)
+	# Deal 25% max_health damage -> current health 75%
+	var dmg_step: float = player.health_component.max_health * 0.25
+	player.health_component.take_damage(dmg_step)
 	await get_tree().process_frame
 	
-	# Front bar should snap immediately to 75%
-	print("Front bar value immediately after 15 damage: ", front_bar.value)
-	if not is_equal_approx(front_bar.value, 75.0):
-		printerr("TEST FAILED: FrontProgressBar should snap immediately to 75.0. Got: ", front_bar.value)
+	var expected_pct_1: float = (player.health_component.current_health / player.health_component.max_health) * 100.0
+	# Front bar should snap immediately to expected percentage
+	print("Front bar value immediately after damage: ", front_bar.value)
+	if not is_equal_approx(front_bar.value, expected_pct_1):
+		printerr("TEST FAILED: FrontProgressBar should snap immediately to ", expected_pct_1, ". Got: ", front_bar.value)
 		player.queue_free()
 		get_tree().quit(1)
 		return
-	print("FrontProgressBar snapped immediately to 75%!")
+	print("FrontProgressBar snapped immediately to ", expected_pct_1, "%!")
 	
-	# Health (background) bar should lag behind / be mid-tween (> 75%)
+	# Health (background) bar should lag behind / be mid-tween (> expected_pct_1)
 	print("Health bar value during tween: ", health_bar_bg.value)
-	if health_bar_bg.value <= 75.0:
+	if health_bar_bg.value <= expected_pct_1:
 		printerr("TEST FAILED: HealthProgressBar should animate/lag behind FrontProgressBar. Got: ", health_bar_bg.value)
 		player.queue_free()
 		get_tree().quit(1)
@@ -156,30 +157,31 @@ func _ready() -> void:
 	await get_tree().create_timer(0.25).timeout
 	await get_tree().process_frame
 	print("Health bar value after tween completed: ", health_bar_bg.value)
-	if not is_equal_approx(health_bar_bg.value, 75.0):
-		printerr("TEST FAILED: HealthProgressBar did not reach target 75.0 after tween. Got: ", health_bar_bg.value)
+	if not is_equal_approx(health_bar_bg.value, expected_pct_1):
+		printerr("TEST FAILED: HealthProgressBar did not reach target ", expected_pct_1, " after tween. Got: ", health_bar_bg.value)
 		player.queue_free()
 		get_tree().quit(1)
 		return
-	print("HealthProgressBar smoothly completed animation to 75%!")
+	print("HealthProgressBar smoothly completed animation to ", expected_pct_1, "%!")
 	
-	# Deal another 15 damage -> current 30.0 (50%)
-	player.health_component.take_damage(15.0)
+	# Deal another 25% damage -> current health 50%
+	player.health_component.take_damage(dmg_step)
 	await get_tree().process_frame
-	if not is_equal_approx(front_bar.value, 50.0):
-		printerr("TEST FAILED: FrontProgressBar did not snap to 50.0. Got: ", front_bar.value)
+	var expected_pct_2: float = (player.health_component.current_health / player.health_component.max_health) * 100.0
+	if not is_equal_approx(front_bar.value, expected_pct_2):
+		printerr("TEST FAILED: FrontProgressBar did not snap to ", expected_pct_2, ". Got: ", front_bar.value)
 		player.queue_free()
 		get_tree().quit(1)
 		return
 	
 	await get_tree().create_timer(0.25).timeout
 	await get_tree().process_frame
-	if not is_equal_approx(health_bar_bg.value, 50.0):
-		printerr("TEST FAILED: HealthProgressBar did not reach 50.0. Got: ", health_bar_bg.value)
+	if not is_equal_approx(health_bar_bg.value, expected_pct_2):
+		printerr("TEST FAILED: HealthProgressBar did not reach ", expected_pct_2, ". Got: ", health_bar_bg.value)
 		player.queue_free()
 		get_tree().quit(1)
 		return
-	print("Second damage tween (75% -> 50%) completed successfully!")
+	print("Second damage tween completed successfully! (", expected_pct_1, "% -> ", expected_pct_2, "%)")
 	player.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame

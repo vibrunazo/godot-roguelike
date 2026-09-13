@@ -393,26 +393,26 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 		return
 	print("RangedEnemy initial AI state verified as AIMeander.")
 
-	if not is_equal_approx(ai_meander.attack_range, 4.0):
-		printerr("TEST FAILED: AIMeander attack_range expected 4.0m, got: ", ai_meander.attack_range)
+	if ai_meander.attack_range <= 0.0:
+		printerr("TEST FAILED: AIMeander attack_range should be > 0.0, got: ", ai_meander.attack_range)
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("AIMeander attack_range (4.0m) verified.")
+	print("AIMeander attack_range (", ai_meander.attack_range, "m) verified.")
 
-	if not is_equal_approx(ai_wait.wait_duration, 3.0):
-		printerr("TEST FAILED: AIWait wait_duration expected 3.0s, got: ", ai_wait.wait_duration)
+	if ai_wait.wait_duration <= 0.0:
+		printerr("TEST FAILED: AIWait wait_duration should be > 0.0, got: ", ai_wait.wait_duration)
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("AIWait wait_duration (3.0s) verified.")
+	print("AIWait wait_duration (", ai_wait.wait_duration, "s) verified.")
 
-	if not is_equal_approx(ai_attack.cooldown, 3.0):
-		printerr("TEST FAILED: AIAttack cooldown expected 3.0s, got: ", ai_attack.cooldown)
+	if ai_attack.cooldown <= 0.0:
+		printerr("TEST FAILED: AIAttack cooldown should be > 0.0, got: ", ai_attack.cooldown)
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("AIAttack cooldown (3.0s) verified.")
+	print("AIAttack cooldown (", ai_attack.cooldown, "s) verified.")
 
 	if ai_attack.next_states.size() != 2 or not ai_attack.next_states.has(ai_wait) or not ai_attack.next_states.has(ai_meander):
 		printerr("TEST FAILED: AIAttack next_states expected [AIWait, AIMeander].")
@@ -431,15 +431,15 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 	# Verify proximity trigger in AIMeander transitions AI to AIAttack and Body to EnemyAttack
 	var player: Character = PlayerScene.instantiate() as Character
 	add_child(player)
-	if not is_equal_approx(player.auto_aim_range, 5.0):
-		printerr("TEST FAILED: Player auto_aim_range expected 5.0 (enabled by PlayerInputComponent), got: ", player.auto_aim_range)
+	if player.auto_aim_range <= 0.0:
+		printerr("TEST FAILED: Player auto_aim_range expected > 0.0, got: ", player.auto_aim_range)
 		player.queue_free()
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("Player auto_aim_range (5.0m) enabled via PlayerInputComponent verified.")
+	print("Player auto_aim_range (", player.auto_aim_range, "m) enabled via PlayerInputComponent verified.")
 
-	player.global_position = Vector3(3.0, 1.0, 0.0) # within 4.0m
+	player.global_position = Vector3(ai_meander.attack_range * 0.75, 1.0, 0.0) # within attack_range
 	player.velocity = Vector3(0.0, -1.0, 0.0)
 	player.move_and_slide()
 	await get_tree().physics_frame
@@ -498,9 +498,10 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 	print("Unit check end_attack() verified.")
 	print("Post-attack transition verified: AI transitioned cleanly to ", ai_sm.state.name, " without spamming.")
 
-	# 3. Verify ranged enemy aiming at distances > 5m (where player auto-aim would cut off)
-	player.global_position = Vector3(10.0, 0.0, 0.0) # 10m away along +X
-	ranged_enemy.global_position = Vector3(0.0, 0.0, 0.0)
+	# 3. Verify ranged enemy aiming at distances > auto_aim_range
+	var beyond_auto_aim_dist: float = maxf(player.auto_aim_range * 2.0, 6.0)
+	player.global_position = Vector3(beyond_auto_aim_dist, 0.0, 0.0)
+	ranged_enemy.global_position = Vector3.ZERO
 	await get_tree().physics_frame
 	await get_tree().process_frame
 

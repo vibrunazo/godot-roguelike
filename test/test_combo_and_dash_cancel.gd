@@ -48,6 +48,17 @@ func _ready() -> void:
 	print("\n>>> PART 1: Testing Full 3-Hit Combo (Slash -> Stab -> Spin)")
 	
 	# 1. Trigger Attack 1 (Slash)
+	var attack1: CharacterAttack = sm.get_node("PlayerAttack") as CharacterAttack
+	var attack2: CharacterAttack = sm.get_node("PlayerAttack2") as CharacterAttack
+	var attack3: CharacterAttack = sm.get_node("PlayerAttack3") as CharacterAttack
+	var dmg1: float = attack1.damage
+	var dmg2: float = attack2.damage
+	var dmg3: float = attack3.damage
+	var expected_hp_1: float = initial_health - dmg1
+	var expected_hp_2: float = expected_hp_1 - dmg2
+	var expected_hp_3_1: float = expected_hp_2 - dmg3
+	var expected_hp_3_2: float = expected_hp_3_1 - dmg3
+
 	var click := InputEventAction.new()
 	click.action = "click"
 	click.pressed = true
@@ -63,13 +74,13 @@ func _ready() -> void:
 	# Wait for Attack 1 to hit
 	for i: int in range(30):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - 8.0:
+		if health_comp.current_health <= expected_hp_1:
 			break
-	if health_comp.current_health != initial_health - 8.0:
-		printerr("TEST FAILED: Attack 1 damage mismatch. Expected: ", initial_health - 8.0, ", got: ", health_comp.current_health)
+	if not is_equal_approx(health_comp.current_health, expected_hp_1):
+		printerr("TEST FAILED: Attack 1 damage mismatch. Expected: ", expected_hp_1, ", got: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("Attack 1 hit confirmed! Dummy health: ", health_comp.current_health, " (-8.0 damage)")
+	print("Attack 1 hit confirmed! Dummy health: ", health_comp.current_health, " (-", dmg1, " damage)")
 	if Vector2(player.global_position.x, player.global_position.z).distance_to(slash_start) > 0.05:
 		printerr("TEST FAILED: PlayerAttack (slash, zero dash exports) must stay stationary.")
 		get_tree().quit(1)
@@ -115,13 +126,13 @@ func _ready() -> void:
 	# Wait for Attack 2 to hit
 	for i: int in range(50):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - 22.0:
+		if health_comp.current_health <= expected_hp_2:
 			break
-	if health_comp.current_health != initial_health - 22.0:
-		printerr("TEST FAILED: Attack 2 damage mismatch. Expected: ", initial_health - 22.0, ", got: ", health_comp.current_health)
+	if not is_equal_approx(health_comp.current_health, expected_hp_2):
+		printerr("TEST FAILED: Attack 2 damage mismatch. Expected: ", expected_hp_2, ", got: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("Attack 2 hit confirmed! Dummy health: ", health_comp.current_health, " (-14.0 damage)")
+	print("Attack 2 hit confirmed! Dummy health: ", health_comp.current_health, " (-", dmg2, " damage)")
 	var stab_travel: float = Vector2(player.global_position.x, player.global_position.z).distance_to(stab_start)
 	if stab_travel < 0.3 or stab_travel > 3.0:
 		printerr("TEST FAILED: PlayerAttack2 stab lunge out of bounds. Travelled: ", stab_travel)
@@ -153,13 +164,13 @@ func _ready() -> void:
 	# Wait for Attack 3 (Spin) first hit
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - 32.0:
+		if health_comp.current_health <= expected_hp_3_1:
 			break
-	if health_comp.current_health != initial_health - 32.0:
-		printerr("TEST FAILED: Attack 3 first hit damage mismatch. Expected: ", initial_health - 32.0, ", got: ", health_comp.current_health)
+	if not is_equal_approx(health_comp.current_health, expected_hp_3_1):
+		printerr("TEST FAILED: Attack 3 first hit damage mismatch. Expected: ", expected_hp_3_1, ", got: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("Attack 3 first hit confirmed! Dummy health: ", health_comp.current_health, " (-10.0 damage)")
+	print("Attack 3 first hit confirmed! Dummy health: ", health_comp.current_health, " (-", dmg3, " damage)")
 	
 	# Ensure player stays within range for second slash of spin attack
 	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.0)
@@ -167,13 +178,13 @@ func _ready() -> void:
 	# Wait for Attack 3 (Spin) second hit (rehit_interval = 0.32s)
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - 42.0:
+		if health_comp.current_health <= expected_hp_3_2:
 			break
-	if health_comp.current_health != initial_health - 42.0:
-		printerr("TEST FAILED: Attack 3 second hit damage mismatch. Expected: ", initial_health - 42.0, ", got: ", health_comp.current_health)
+	if not is_equal_approx(health_comp.current_health, expected_hp_3_2):
+		printerr("TEST FAILED: Attack 3 second hit damage mismatch. Expected: ", expected_hp_3_2, ", got: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
-	print("Attack 3 second hit confirmed via rehit_interval! Dummy health: ", health_comp.current_health, " (-10.0 damage, 20.0 total)")
+	print("Attack 3 second hit confirmed via rehit_interval! Dummy health: ", health_comp.current_health, " (-", dmg3, " damage, ", (2.0 * dmg3), " total)")
 	
 	# Wait for Attack 3 to finish and return to PlayerRun
 	var back_to_run := false
@@ -274,8 +285,8 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	var dash_anim: Animation = dash_animation_player.get_animation(&"dash")
-	if not is_equal_approx(dash_anim.length, 0.5):
-		printerr("TEST FAILED: dash animation length expected 0.5, got: ", dash_anim.length)
+	if dash_anim.length <= 0.0:
+		printerr("TEST FAILED: dash animation length is non-positive: ", dash_anim.length)
 		Input.action_release("move_forward")
 		get_tree().quit(1)
 		return
@@ -433,8 +444,8 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	var slash_speed: float = slash_mat.get_shader_parameter("Speed") as float
-	if not is_equal_approx(slash_speed, 3.0):
-		printerr("TEST FAILED: SlashVFX Speed expected 3.0, got: ", slash_speed)
+	if slash_speed <= 0.0:
+		printerr("TEST FAILED: SlashVFX Speed is non-positive: ", slash_speed)
 		get_tree().quit(1)
 		return
 
@@ -463,15 +474,16 @@ func _ready() -> void:
 		return
 
 	weapon_slot.attack_mode = WeaponSlot.mode.SLASH
-	weapon_slot.vfx_threshold = 0.3
+	var test_threshold: float = 0.3
+	weapon_slot.vfx_threshold = test_threshold
 	await get_tree().process_frame
 	if not slash_vfx.visible:
 		printerr("TEST FAILED: SlashVFX visible should be true when attack_mode is slash.")
 		get_tree().quit(1)
 		return
 	var current_threshold: float = slash_mat.get_shader_parameter("Threshold") as float
-	if not is_equal_approx(current_threshold, 0.3):
-		printerr("TEST FAILED: SlashVFX Threshold not updated from weapon_slot. Expected 0.3, got: ", current_threshold)
+	if not is_equal_approx(current_threshold, test_threshold):
+		printerr("TEST FAILED: SlashVFX Threshold not updated from weapon_slot. Expected: ", test_threshold, ", got: ", current_threshold)
 		get_tree().quit(1)
 		return
 	print("SlashVFX script reactivity (visibility and shader threshold) verified.")

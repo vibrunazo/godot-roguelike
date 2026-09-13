@@ -47,6 +47,7 @@ func _ready() -> void:
 	print("State after click: ", sm.state.name)
 	
 	# Wait for animation and hitbox to hit dummy
+	var attack_damage: float = (sm.get_node("PlayerAttack") as CharacterAttack).damage
 	var hit := false
 	for i: int in range(80):
 		await get_tree().physics_frame
@@ -56,7 +57,7 @@ func _ready() -> void:
 			break
 			
 	print("Final Health: ", health_comp.current_health)
-	if hit and health_comp.current_health == initial_health - 8.0:
+	if hit and is_equal_approx(health_comp.current_health, initial_health - attack_damage):
 		print("================================")
 		print("  ALL TESTS PASSED (100% OK)    ")
 		print("================================")

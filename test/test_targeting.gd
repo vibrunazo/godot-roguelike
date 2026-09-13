@@ -85,8 +85,9 @@ func _ready() -> void:
 	# PART 3: Out-of-range targets clear immediately (no cooldown)
 	# =====================================================================
 	print("\n>>> PART 3: Range gating")
-	enemy_a.global_position = home + Vector3(10.0, 0.0, 0.0)
-	enemy_b.global_position = home + Vector3(-10.0, 0.0, 0.0)
+	var out_of_range_dist: float = maxf(player.auto_aim_range + 5.0, 10.0)
+	enemy_a.global_position = home + Vector3(out_of_range_dist, 0.0, 0.0)
+	enemy_b.global_position = home + Vector3(-out_of_range_dist, 0.0, 0.0)
 	await _wait_frames(5)
 	if player.current_target != null:
 		await _fail(level, "Out-of-range targets were not cleared.")

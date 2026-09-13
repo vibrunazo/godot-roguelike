@@ -158,16 +158,19 @@ func _ready() -> void:
 		return
 	print("Player successfully reoriented towards mouse aim!")
 	
+	var attack_state: CharacterAttack = sm.get_node("PlayerAttack") as CharacterAttack
+	var expected_damage: float = attack_state.damage
+
 	# Wait for attack to connect and damage dummy
 	var hit_confirmed := false
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - 8.0:
+		if health_comp.current_health <= initial_health - expected_damage:
 			hit_confirmed = true
 			print("HIT CONFIRMED via mouse aim on frame ", i, "! Dummy health: ", health_comp.current_health)
 			break
 			
-	if not hit_confirmed or health_comp.current_health != initial_health - 8.0:
+	if not hit_confirmed or not is_equal_approx(health_comp.current_health, initial_health - expected_damage):
 		printerr("TEST FAILED: Aimed attack did not hit dummy. Health: ", health_comp.current_health)
 		level.queue_free()
 		await get_tree().physics_frame
@@ -184,7 +187,7 @@ func _ready() -> void:
 	print("  MOUSE AIMING ATTACK TEST PASSED!                                  ")
 	print("  1. 2D unprojected coordinates & 3D camera-rotated aim verified     ")
 	print("  2. Player dynamically turned 90° to attack dummy based on mouse   ")
-	print("  3. Attack hit confirmed via mouse aim! (100.0 -> 92.0)            ")
+	print("  3. Attack hit confirmed via mouse aim! (%s -> %s)                 " % [initial_health, health_comp.current_health])
 	print("  4. Returned cleanly to PlayerRun state                             ")
 	print("====================================================================")
 	level.queue_free()

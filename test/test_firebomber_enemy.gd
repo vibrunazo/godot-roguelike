@@ -269,13 +269,13 @@ func _ready() -> void:
 	fast_proj.speed = 12.0
 	fast_proj.initialize_trajectory(Vector3(0.0, 0.0, 6.0))
 	var fast_vxz: float = Vector2(fast_proj.velocity.x, fast_proj.velocity.z).length()
-	if not is_equal_approx(fast_vxz, 12.0):
-		printerr("TEST FAILED: Modifying speed to 12.0 did not update horizontal speed. Got: ", fast_vxz)
+	if not is_equal_approx(fast_vxz, fast_proj.speed):
+		printerr("TEST FAILED: Modifying speed to ", fast_proj.speed, " did not update horizontal speed. Got: ", fast_vxz)
 		fast_proj.queue_free()
 		traj_proj.queue_free()
 		get_tree().quit(1)
 		return
-	print("Adjusting projectile speed to 12.0 verified: horizontal speed = ", fast_vxz)
+	print("Adjusting projectile speed to ", fast_proj.speed, " verified: horizontal speed = ", fast_vxz)
 	fast_proj.queue_free()
 
 	# Test explicit origin targeting (0, 0, 0)

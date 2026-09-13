@@ -71,11 +71,11 @@ func _ready() -> void:
 		printerr("TEST FAILED: AttackComponent not found on DamageHitbox.")
 		get_tree().quit(1)
 		return
-	if hazard.attack_component.damage != 5.0:
-		printerr("TEST FAILED: Expected AttackComponent.damage == 5.0, got: ", hazard.attack_component.damage)
+	if not is_equal_approx(hazard.attack_component.damage, hazard.damage):
+		printerr("TEST FAILED: Expected AttackComponent.damage == hazard.damage (", hazard.damage, "), got: ", hazard.attack_component.damage)
 		get_tree().quit(1)
 		return
-	print("AttackComponent synced damage verified.")
+	print("AttackComponent synced damage verified (", hazard.damage, ").")
 	
 	var spikes_root: Node3D = hazard.get_node_or_null("SpikesRoot") as Node3D
 	if spikes_root == null:

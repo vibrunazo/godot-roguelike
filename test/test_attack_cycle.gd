@@ -49,14 +49,16 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Entered state: PlayerAttack (Attack 1)")
+	var attack_state: CharacterAttack = sm.get_node("PlayerAttack") as CharacterAttack
+	var attack_damage: float = attack_state.damage
 	
 	# Wait for first hit
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - 8.0:
+		if health_comp.current_health <= initial_health - attack_damage:
 			break
 			
-	if health_comp.current_health != initial_health - 8.0:
+	if not is_equal_approx(health_comp.current_health, initial_health - attack_damage):
 		printerr("TEST FAILED: First attack did not reduce health to expected value. Health: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
@@ -100,10 +102,10 @@ func _ready() -> void:
 	# Wait for second hit
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - 16.0:
+		if health_comp.current_health <= initial_health - (2.0 * attack_damage):
 			break
 			
-	if health_comp.current_health != initial_health - 16.0:
+	if not is_equal_approx(health_comp.current_health, initial_health - (2.0 * attack_damage)):
 		printerr("TEST FAILED: Second attack did not reduce health to expected value. Health: ", health_comp.current_health)
 		get_tree().quit(1)
 		return
@@ -125,7 +127,7 @@ func _ready() -> void:
 		
 	print("\n========================================================")
 	print("  ATTACK CYCLE TEST PASSED: State exits and re-enters! ")
-	print("  Final Dummy Health: ", health_comp.current_health, " (Started at 100.0)      ")
+	print("  Final Dummy Health: ", health_comp.current_health, " (Started at ", initial_health, ")      ")
 	print("========================================================")
 	level.queue_free()
 	await get_tree().process_frame
