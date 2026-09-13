@@ -17,6 +17,9 @@
 [ext_resource type="PackedScene" uid="uid://bdd6qt1dd2vr8" path="res://Singletons/VFX/target_reticle.tscn" id="11_reticle"]
 [ext_resource type="PackedScene" uid="uid://dx5vp0if7ta30" path="res://UserInterface/upgrade_shop.tscn" id="10_shop"]
 [ext_resource type="Curve" uid="uid://cxfev6iu2f3e0" path="res://Singletons/difficulty_curve.tres" id="11_curve"]
+[ext_resource type="PackedScene" path="res://Enemy/enemy_thunder_mage.tscn" id="16_thunder_mage"]
+[ext_resource type="PackedScene" path="res://Enemy/lightning_bolt_projectile.tscn" id="17_lightning_proj"]
+[ext_resource type="PackedScene" path="res://Enemy/lightning_hit.tscn" id="18_lightning_hit"]
 
 [node name="GlobalVars" type="Node"]
 script = ExtResource("1_vars")
@@ -30,9 +33,12 @@ enemy_melee_scene = ExtResource("5_melee")
 enemy_ranged_scene = ExtResource("6_ranged")
 enemy_brute_scene = ExtResource("13_brute")
 enemy_firebomber_scene = ExtResource("14_firebomber")
+enemy_thunder_mage_scene = ExtResource("16_thunder_mage")
 enemy_projectile_scene = ExtResource("7_proj")
 firebomb_projectile_scene = ExtResource("15_firebomb_proj")
+lightning_bolt_scene = ExtResource("17_lightning_proj")
 fireball_hit_scene = ExtResource("8_hit")
+lightning_hit_scene = ExtResource("18_lightning_hit")
 damage_number_scene = ExtResource("9_dmgnum")
 target_reticle_scene = ExtResource("11_reticle")
 upgrade_shop_scene = ExtResource("10_shop")

@@ -30,12 +30,18 @@ extends Node
 @export var enemy_brute_scene: PackedScene
 ## Firebomber enemy scene spawned by WaveObjective.
 @export var enemy_firebomber_scene: PackedScene
+## Thunder mage enemy scene spawned by WaveObjective.
+@export var enemy_thunder_mage_scene: PackedScene
 ## Projectile scene spawned by ProjectileSpawnerComponent.
 @export var enemy_projectile_scene: PackedScene
 ## Firebomb projectile scene spawned by ProjectileSpawnerComponent.
 @export var firebomb_projectile_scene: PackedScene
+## Lightning bolt projectile scene spawned by ProjectileSpawnerComponent.
+@export var lightning_bolt_scene: PackedScene
 ## Impact effect spawned by EnemyProjectile on collision.
 @export var fireball_hit_scene: PackedScene
+## Impact effect spawned by LightningBoltProjectile on collision.
+@export var lightning_hit_scene: PackedScene
 ## Floating combat text spawned by VfxManager on damage.
 @export var damage_number_scene: PackedScene
 ## Player-only target reticle spawned once by VfxManager. Enemies never spawn it.

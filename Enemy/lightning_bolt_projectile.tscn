@@ -1,0 +1,99 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Enemy/lightning_bolt_projectile.gd" id="1_bolt_script"]
+[ext_resource type="AudioStream" uid="uid://jwfwyx386ple" path="res://Assets/Audio/charge.ogg" id="2_audio"]
+[ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="3_attack_comp"]
+[ext_resource type="PackedScene" path="res://Enemy/lightning_hit.tscn" id="4_hit_scene"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_bolt"]
+radius = 0.25
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_core"]
+shading_mode = 0
+albedo_color = Color(0.88, 0.75, 1, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_core"]
+radius = 0.07
+height = 0.75
+radial_segments = 8
+rings = 4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_sparks"]
+shading_mode = 0
+vertex_color_use_as_albedo = true
+
+[sub_resource type="Gradient" id="Gradient_sparks"]
+offsets = PackedFloat32Array(0, 0.4, 0.8, 1)
+colors = PackedColorArray(1, 1, 1, 1, 0.6, 0.85, 1, 1, 0.78, 0.35, 1, 1, 0.35, 0.05, 0.75, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_sparks"]
+gradient = SubResource("Gradient_sparks")
+
+[sub_resource type="Curve" id="Curve_sparks"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), -1.5, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_sparks"]
+curve = SubResource("Curve_sparks")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_sparks"]
+emission_shape = 1
+emission_sphere_radius = 0.15
+gravity = Vector3(0, 0, 0)
+scale_min = 0.15
+scale_max = 0.35
+scale_curve = SubResource("CurveTexture_sparks")
+color_ramp = SubResource("GradientTexture1D_sparks")
+
+[sub_resource type="SphereMesh" id="SphereMesh_particle"]
+radius = 0.05
+height = 0.1
+radial_segments = 8
+rings = 4
+
+[node name="LightningBoltProjectile" type="Area3D" unique_id=935244502]
+physics_interpolation_mode = 1
+top_level = true
+collision_layer = 0
+collision_mask = 193
+script = ExtResource("1_bolt_script")
+hit_effect_scene = ExtResource("4_hit_scene")
+speed = 14.0
+damage = 15.0
+knockback = 12.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=418290374]
+shape = SubResource("SphereShape3D_bolt")
+
+[node name="CoreMesh" type="MeshInstance3D" parent="." unique_id=741852963]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0)
+material_override = SubResource("StandardMaterial3D_core")
+mesh = SubResource("CapsuleMesh_core")
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=588356880]
+stream = ExtResource("2_audio")
+pitch_scale = 1.6
+autoplay = true
+bus = &"SFX"
+
+[node name="Timer" type="Timer" parent="." unique_id=904970777]
+wait_time = 10.0
+autostart = true
+
+[node name="AttackComponent" type="Node" parent="." unique_id=321443246]
+script = ExtResource("3_attack_comp")
+damage = 15.0
+
+[node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=341094992]
+material_override = SubResource("StandardMaterial3D_sparks")
+amount = 20
+lifetime = 0.25
+process_material = SubResource("ParticleProcessMaterial_sparks")
+draw_pass_1 = SubResource("SphereMesh_particle")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=1840291752]
+light_color = Color(0.75, 0.45, 1, 1)
+light_energy = 2.5
+omni_range = 3.5
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
