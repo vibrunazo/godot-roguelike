@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" uid="uid://cg3sv8wggq46e" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/Enemy_Medium_enemy_texture.png" id="3_18msn"]
 [ext_resource type="Script" uid="uid://0n22etq4hpy8" path="res://StateMachine/AIStates/ai_pursue.gd" id="4_pursue"]
 [ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="5_aiwait"]
+[ext_resource type="AudioStream" uid="uid://mgv1fbcndh5a" path="res://Assets/Audio/weapon-swing.ogg" id="6_swing"]
 
 [sub_resource type="Gradient" id="Gradient_2d2of"]
 colors = PackedColorArray(0.3019608, 0.3019608, 0.3019608, 1, 0.101960786, 0.101960786, 0.101960786, 1)
@@ -132,6 +133,10 @@ mesh = SubResource("CylinderMesh_skqvj")
 [node name="AttackComponent" type="Node" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="2" unique_id=1866258911]
 script = ExtResource("2_7p80c")
 
+[node name="AttackAudio" type="AudioStreamPlayer3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1"]
+stream = ExtResource("6_swing")
+bus = &"SFX"
+
 [node name="AnimationTree" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium" parent_id_path=PackedInt32Array(1495277970, 1921158861) index="2" unique_id=1365896023]
 parameters/MeleeAttack/TimeScale/scale = 1.0
 parameters/RangedAttack/TimeScale/scale = 1.0
@@ -166,6 +171,8 @@ script = ExtResource("4_pursue")
 attack_range = 2.0
 lost_target_state = NodePath("../AIWait")
 ai_state_machine = NodePath("..")
+
+[connection signal="slash" from="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
 
 [editable path="AnimationAnchor/AnimatedEnemy"]
 [editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]

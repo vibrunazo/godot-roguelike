@@ -99,6 +99,43 @@ func _ready() -> void:
 		return
 	print("WeaponSlot 'slash' signal connection to AttackAudio.play verified.")
 	
+	# Check MeleeEnemy Attack Audio & WeaponSlot connection
+	var melee_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
+	if melee_scene == null:
+		printerr("TEST FAILED: Could not load res://Enemy/melee_enemy.tscn")
+		get_tree().quit(1)
+		return
+	var melee_enemy: Node3D = melee_scene.instantiate() as Node3D
+	add_child(melee_enemy)
+	var melee_weapon_slot: BoneAttachment3D = melee_enemy.get_node_or_null("AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot") as BoneAttachment3D
+	if melee_weapon_slot == null:
+		printerr("TEST FAILED: WeaponSlot not found on MeleeEnemy.")
+		get_tree().quit(1)
+		return
+	var melee_attack_audio: AudioStreamPlayer3D = melee_weapon_slot.get_node_or_null("AttackAudio") as AudioStreamPlayer3D
+	if melee_attack_audio == null:
+		printerr("TEST FAILED: AttackAudio node not found under MeleeEnemy WeaponSlot.")
+		get_tree().quit(1)
+		return
+	if melee_attack_audio.stream == null:
+		printerr("TEST FAILED: MeleeEnemy AttackAudio stream is null.")
+		get_tree().quit(1)
+		return
+	if melee_attack_audio.stream.resource_path != "res://Assets/Audio/weapon-swing.ogg":
+		printerr("TEST FAILED: Expected MeleeEnemy AttackAudio stream to be 'res://Assets/Audio/weapon-swing.ogg', got: ", melee_attack_audio.stream.resource_path)
+		get_tree().quit(1)
+		return
+	if melee_attack_audio.bus != &"SFX":
+		printerr("TEST FAILED: Expected MeleeEnemy AttackAudio bus to be 'SFX', got: ", melee_attack_audio.bus)
+		get_tree().quit(1)
+		return
+	var is_melee_slash_connected: bool = melee_weapon_slot.is_connected("slash", melee_attack_audio.play)
+	if not is_melee_slash_connected:
+		printerr("TEST FAILED: MeleeEnemy WeaponSlot 'slash' signal is not connected to AttackAudio.play.")
+		get_tree().quit(1)
+		return
+	print("MeleeEnemy AttackAudio verified: found under WeaponSlot, weapon-swing.ogg assigned, SFX bus assigned, slash connected to play.")
+	
 	# ---------------------------------------------------------
 	# PART 3: Audio Playback Triggers
 	# ---------------------------------------------------------
@@ -138,6 +175,16 @@ func _ready() -> void:
 		return
 	print("Attack audio playback confirmed on WeaponSlot 'slash' signal emit.")
 	attack_audio.stop()
+
+	# 4. Melee enemy slash audio plays when WeaponSlot emits slash signal
+	melee_weapon_slot.emit_signal("slash")
+	await get_tree().process_frame
+	if not melee_attack_audio.playing:
+		printerr("TEST FAILED: melee_attack_audio is not playing after MeleeEnemy WeaponSlot emits slash.")
+		get_tree().quit(1)
+		return
+	print("Melee enemy attack audio playback confirmed on WeaponSlot 'slash' signal emit.")
+	melee_attack_audio.stop()
 	
 	print("\n====================================================================")
 	print("  ALL AUDIO & SOUND EFFECTS TESTS PASSED!                           ")
@@ -145,8 +192,10 @@ func _ready() -> void:
 	print("  2. Player dash_audio assigned, configured to SFX, plays on dash   ")
 	print("  3. HealthComponent hit_audio configured to SFX, plays on damage   ")
 	print("  4. AttackAudio on WeaponSlot configured to SFX, plays on slash    ")
+	print("  5. MeleeEnemy AttackAudio configured to SFX weapon-swing.ogg      ")
 	print("====================================================================")
 	
 	player.queue_free()
+	melee_enemy.queue_free()
 	await get_tree().process_frame
 	get_tree().quit(0)
