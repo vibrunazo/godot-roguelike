@@ -106,11 +106,6 @@ func deal_damage_to(hurtbox: Hurtbox, dmg: float = -1.0, kb: Vector3 = Vector3.Z
 			hit_timestamps[hurtbox as CollisionObject3D] = current_time
 		hit_landed.emit(hurtbox)
 
-	if shake_on_damage and has_hit:
-		var camera := get_viewport().get_camera_3d() as ShakeCamera3D
-		if camera != null:
-			camera.quick_shake(0.75)
-
 	return has_hit
 
 

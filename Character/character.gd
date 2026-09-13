@@ -12,6 +12,9 @@ signal health_changed(value: float)
 ## Emitted when the auto-aim target changes (including clearing to null).
 signal target_changed(new_target: Node3D)
 
+## Emitted when an attack belonging to this character lands a hit on a target.
+signal hit_landed(target: Node, attack_component: AttackComponent)
+
 ## Base movement speed in meters per second.
 @export var movement_speed: float = 8.0
 ## Exponential decay rate for orientation smoothing.
@@ -120,8 +123,12 @@ func _ready() -> void:
 		var att_comp: AttackComponent = weapon_hitbox.get_node_or_null("AttackComponent") as AttackComponent
 		if att_comp != null:
 			att_comp.add_exception(self)
+			if not att_comp.hit_landed.is_connected(_on_attack_component_hit_landed):
+				att_comp.hit_landed.connect(_on_attack_component_hit_landed.bind(att_comp))
 	for ac: AttackComponent in find_children("*", "AttackComponent"):
 		ac.add_exception(self)
+		if not ac.hit_landed.is_connected(_on_attack_component_hit_landed):
+			ac.hit_landed.connect(_on_attack_component_hit_landed.bind(ac))
 
 
 func _physics_process(delta: float) -> void:
@@ -322,8 +329,6 @@ func is_uninterruptable() -> bool:
 
 func _on_health_component_health_changed(value: float) -> void:
 	health_changed.emit(value)
-	if is_player():
-		reset_game_camera_shake()
 	if is_uninterruptable():
 		return
 	if stun_state != null and state_machine != null and state_machine.state != null:
@@ -365,9 +370,5 @@ func _on_health_component_defeat() -> void:
 	on_defeat()
 
 
-func reset_game_camera_shake() -> void:
-	if not is_inside_tree():
-		return
-	var camera: ShakeCamera3D = get_viewport().get_camera_3d() as ShakeCamera3D
-	if camera != null:
-		camera.quick_shake(1.0)
+func _on_attack_component_hit_landed(target: Node, attack_comp: AttackComponent) -> void:
+	hit_landed.emit(target, attack_comp)
