@@ -168,7 +168,7 @@ shape = SubResource("SphereShape3D_aoe")
 script = ExtResource("4_attack_comp")
 damage = 25.0
 knockback = Vector3(0, 5, 35)
-shake_on_damage = true
+shake_on_damage = false
 
 [node name="PunchSlot" type="BoneAttachment3D" parent="Enemy_Large/Rig_Large/Skeleton3D" node_paths=PackedStringArray("hitbox")]
 bone_name = "handslot.r"

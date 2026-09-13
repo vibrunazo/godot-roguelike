@@ -25,6 +25,7 @@
 [ext_resource type="Script" uid="uid://bmbhix5t0xhx4" path="res://Components/knockback_component.gd" id="22_knockback"]
 [ext_resource type="Script" uid="uid://c2y6regew58y" path="res://Components/hurtbox.gd" id="23_hurtbox"]
 [ext_resource type="Script" uid="uid://c8j4cclflxm5n" path="res://Components/character_color_component.gd" id="24_color"]
+[ext_resource type="Script" path="res://Components/screen_shake_component.gd" id="25_shake"]
 
 [sub_resource type="Gradient" id="Gradient_vtle1"]
 offsets = PackedFloat32Array(0, 0.25247526, 0.7574257)
@@ -302,6 +303,11 @@ character = NodePath("..")
 dash_cooldown = NodePath("../DashCooldown")
 dash_audio = NodePath("../DashAudio")
 damage_tint = NodePath("../DamageTint")
+
+[node name="ScreenShakeComponent" type="Node" parent="." unique_id=1982736411 node_paths=PackedStringArray("character", "camera")]
+script = ExtResource("25_shake")
+character = NodePath("..")
+camera = NodePath("CameraRoot/ShakeCamera3D")
 
 [node name="DashCooldown" type="Timer" parent="." unique_id=27957904]
 wait_time = 0.3
