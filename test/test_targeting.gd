@@ -257,6 +257,39 @@ func _ready() -> void:
 		return
 	print("Kill cleared instantly and switched to the living enemy.")
 
+	# =====================================================================
+	# PART 8: Acquisition on tick when no target is held (even with high cooldown)
+	# =====================================================================
+	print("\n>>> PART 8: Immediate on-tick acquisition when no target held")
+	enemy_b2.global_position = home + Vector3(0.0, 0.0, out_of_range_dist)
+	enemy_e.global_position = home + Vector3(out_of_range_dist, 0.0, 0.0)
+	await _wait_frames(5)
+	if player.current_target != null:
+		await _fail(level, "Target did not clear after moving all enemies out of range.")
+		return
+	player.target_retarget_cooldown = 10.0
+	await _wait_frames(10)
+	if player.current_target != null:
+		await _fail(level, "Player acquired target when none in range.")
+		return
+	enemy_e.global_position = home + Vector3(2.5, 0.0, 0.0)
+	await _wait_frames(3)
+	if player.current_target != enemy_e:
+		await _fail(level, "Player did not immediately acquire enemy on tick when no target was held.")
+		return
+	var enemy_f: Character = await _spawn_enemy(level, home + Vector3(1.5, 0.0, 0.0))
+	await _wait_frames(15)
+	if player.current_target != enemy_e:
+		await _fail(level, "Target switched despite active retarget cooldown.")
+		return
+	player.force_retarget()
+	await _wait_frames(3)
+	if player.current_target != enemy_f:
+		await _fail(level, "Target did not switch to closer enemy after force_retarget.")
+		return
+	player.target_retarget_cooldown = 0.3
+	print("Immediate on-tick acquisition without target and cooldown anti-flicker with target verified.")
+
 	print("\n====================================================================")
 	print("  TARGETING TEST PASSED!                                             ")
 	print("  1. Nearest-in-range acquisition (+enemy-side auto-aim)             ")
@@ -267,6 +300,7 @@ func _ready() -> void:
 	print("  6. Freeze holds living target; death clears; no mid-attack switch ")
 	print("  7. Kill clears at once and switches to living B2                 ")
 	print("  8. Kill switches instantly; dead enemies never targeted again     ")
+	print("  9. Immediate on-tick acquisition when no target held              ")
 	print("====================================================================")
 	level.queue_free()
 	await get_tree().physics_frame

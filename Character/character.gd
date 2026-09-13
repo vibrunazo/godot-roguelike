@@ -136,11 +136,12 @@ func _physics_process(delta: float) -> void:
 		_update_auto_aim(delta)
 
 
-## Advances auto-aim: drops invalid targets, then re-evaluates the nearest
-## opposing character within auto_aim_range at most every
-## target_retarget_cooldown seconds. Never changes the target while an attack
-## is running (covers combo chains, which stay inside attack states), except
-## clearing a freed node to avoid holding a dangling reference.
+## Advances auto-aim: drops invalid targets. If no target is currently held,
+## checks for a new target every tick to ensure immediate acquisition. Once a
+## target is acquired, enforces target_retarget_cooldown before switching targets
+## to prevent flicker between candidates at similar distances. Never changes the
+## target while an attack is running (covers combo chains, which stay inside attack
+## states), except clearing a freed node to avoid holding a dangling reference.
 func _update_auto_aim(delta: float) -> void:
 	if auto_aim_range <= 0.0 or not is_inside_tree() or not is_alive():
 		return
@@ -150,6 +151,14 @@ func _update_auto_aim(delta: float) -> void:
 		return
 	if not _is_current_target_valid():
 		_set_current_target(null)
+
+	if current_target == null:
+		var nearest: Character = get_nearest_target()
+		if nearest != null and global_position.distance_to(nearest.global_position) <= auto_aim_range:
+			_set_current_target(nearest)
+			_retarget_timer = target_retarget_cooldown
+		return
+
 	_retarget_timer -= delta
 	if _retarget_timer > 0.0:
 		return
@@ -186,6 +195,8 @@ func _set_current_target(new_target: Node3D) -> void:
 	_disconnect_target_death()
 	current_target = new_target
 	_connect_target_death()
+	if new_target == null:
+		_retarget_timer = 0.0
 	target_changed.emit(new_target)
 
 
