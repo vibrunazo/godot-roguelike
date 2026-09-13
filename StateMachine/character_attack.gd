@@ -44,7 +44,6 @@ extends CharacterState
 
 ## Remaining cooldown time in seconds before this attack can be executed again.
 var cooldown_timer: float = 0.0
-var _last_tick_frame: int = -1
 var queued_attack: bool = false
 var attack_timer: SceneTreeTimer
 var aim_direction: Vector3 = Vector3.ZERO

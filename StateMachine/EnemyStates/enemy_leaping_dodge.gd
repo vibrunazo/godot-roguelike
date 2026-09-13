@@ -38,7 +38,6 @@ var gravity_accel: float = 0.0
 var is_leaping: bool = false
 ## Remaining cooldown time in seconds before this ability can be executed again.
 var cooldown_timer: float = 0.0
-var _last_tick_frame: int = -1
 
 
 func _ready() -> void:

@@ -163,9 +163,9 @@ func _update_auto_aim(delta: float) -> void:
 	if _retarget_timer > 0.0:
 		return
 	_retarget_timer = target_retarget_cooldown
-	var nearest: Character = get_nearest_target()
-	if nearest != null and global_position.distance_to(nearest.global_position) <= auto_aim_range:
-		_set_current_target(nearest)
+	var candidate: Character = get_nearest_target()
+	if candidate != null and global_position.distance_to(candidate.global_position) <= auto_aim_range:
+		_set_current_target(candidate)
 
 
 ## Returns true when the current target is still a usable aim point: a live
