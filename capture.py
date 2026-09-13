@@ -192,6 +192,10 @@ def handle_map(args: argparse.Namespace) -> int:
         user_args.append("--debug-collisions")
     if args.freeze:
         user_args.append("--freeze")
+    if getattr(args, "show_ui", False):
+        user_args.append("--show-ui")
+    else:
+        user_args.append("--hide-ui")
 
     level_name = os.path.splitext(os.path.basename(level_path))[0]
     timeout = DEFAULT_TIMEOUT_SCREENSHOT
@@ -255,6 +259,10 @@ def handle_anim(args: argparse.Namespace) -> int:
         user_args.append("--dummy")
     if args.debug_collisions:
         user_args.append("--debug-collisions")
+    if getattr(args, "show_ui", False):
+        user_args.append("--show-ui")
+    else:
+        user_args.append("--hide-ui")
 
     base_name = os.path.splitext(os.path.basename(target_path))[0]
     tag = args.anim or args.state or "preview"
@@ -312,6 +320,10 @@ def handle_combat(args: argparse.Namespace) -> int:
             user_args.append(f"--action={act}")
     if args.no_debug_collisions:
         user_args.append("--no-debug-collisions")
+    if getattr(args, "show_ui", False):
+        user_args.append("--show-ui")
+    else:
+        user_args.append("--hide-ui")
 
     tag = args.enemy or "combat"
     if is_video:
@@ -358,6 +370,10 @@ def handle_test(args: argparse.Namespace) -> int:
 
     if args.no_debug_collisions:
         user_args.append("--no-debug-collisions")
+    if getattr(args, "show_ui", False):
+        user_args.append("--show-ui")
+    else:
+        user_args.append("--hide-ui")
 
     timeout = DEFAULT_TIMEOUT_VIDEO
     duration = args.duration if args.duration else 5.0
@@ -403,6 +419,7 @@ def main() -> int:
     p_map.add_argument("--ortho", action="store_true", help="Use orthographic camera projection")
     p_map.add_argument("--debug-collisions", action="store_true", help="Render collision shapes and hitboxes")
     p_map.add_argument("--freeze", action="store_true", help="Freeze AI and character physics")
+    p_map.add_argument("--show-ui", action="store_true", help="Keep UI overlays and banners visible (suppressed by default)")
     p_map.add_argument("--video", action="store_true", help="Record video instead of screenshot")
     p_map.add_argument("--duration", type=float, help="Video duration in seconds")
     p_map.add_argument("--output", help="Output file path in movies/")
@@ -420,6 +437,7 @@ def main() -> int:
     p_anim.add_argument("--speed", type=float, default=1.0, help="Playback speed scale (e.g. 0.5 for slow-mo)")
     p_anim.add_argument("--time", type=float, help="Screenshot timestamp in seconds")
     p_anim.add_argument("--debug-collisions", action="store_true", help="Render collision shapes and hitboxes")
+    p_anim.add_argument("--show-ui", action="store_true", help="Keep UI overlays and banners visible (suppressed by default)")
     p_anim.add_argument("--video", action="store_true", help="Record video instead of screenshot")
     p_anim.add_argument("--duration", type=float, help="Video duration in seconds")
     p_anim.add_argument("--output", help="Output file path in movies/")
@@ -433,6 +451,7 @@ def main() -> int:
     p_combat.add_argument("--enemy", choices=["brute", "melee", "ranged", "firebomber", "thunder_mage"], help="Spawn enemy character")
     p_combat.add_argument("--action", action="append", help="Scheduled action: target:type:param@frame")
     p_combat.add_argument("--no-debug-collisions", action="store_true", help="Disable collision debug shapes")
+    p_combat.add_argument("--show-ui", action="store_true", help="Keep UI overlays and banners visible (suppressed by default)")
     p_combat.add_argument("--frames", type=int, help="Frames to run before screenshot")
     p_combat.add_argument("--video", action="store_true", help="Record video")
     p_combat.add_argument("--duration", type=float, help="Video duration in seconds")
@@ -446,6 +465,7 @@ def main() -> int:
     p_test.add_argument("--video", action="store_true", default=True, help="Record test as video")
     p_test.add_argument("--duration", type=float, default=5.0, help="Max test duration in seconds")
     p_test.add_argument("--no-debug-collisions", action="store_true", help="Disable collision debug shapes")
+    p_test.add_argument("--show-ui", action="store_true", help="Keep UI overlays and banners visible (suppressed by default)")
     p_test.add_argument("--output", help="Output file path in movies/")
     p_test.add_argument("--keep-avi", action="store_true", help="Do not delete intermediate AVI file")
     p_test.add_argument("--gif", action="store_true", help="Also generate an animated GIF")

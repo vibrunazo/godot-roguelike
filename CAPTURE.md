@@ -57,6 +57,7 @@ python capture.py map <level_path> [options]
 | :--- | :--- | :--- |
 | `--debug-collisions` | Renders physics shapes, hurtboxes, and navigation barriers | `--debug-collisions` |
 | `--freeze` | Freezes all AI state machines and physics actors (for clean static scenery shots) | `--freeze` |
+| `--show-ui` | Keeps UI overlays and banners visible (automatically suppressed by default for clean captures) | `--show-ui` |
 | `--video` | Records video instead of a static screenshot | `--video` |
 | `--duration <sec>` | Video duration in seconds (defaults to 3.0) | `--duration 4.0` |
 | `--output <path>` | Custom output destination path in `movies/` | `--output movies/mylevel.png` |

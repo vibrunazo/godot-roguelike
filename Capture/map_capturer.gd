@@ -33,6 +33,7 @@ var ortho_size: float = 30.0
 var debug_collisions: bool = false
 var freeze_actors: bool = false
 var is_video: bool = false
+var hide_ui: bool = true
 var max_frames: int = 20
 var frame_count: int = 0
 
@@ -55,8 +56,8 @@ func _ready() -> void:
 func _physics_process(_delta: float) -> void:
 	frame_count += 1
 
-	# Keep SceneTransition hidden
-	_hide_transition_overlay()
+	# Keep UI and SceneTransition hidden
+	_disable_all_ui()
 
 	if is_video:
 		if frame_count >= max_frames:
@@ -128,6 +129,10 @@ func _parse_arguments() -> void:
 			freeze_actors = true
 		elif arg == "--video":
 			is_video = true
+		elif arg == "--show-ui":
+			hide_ui = false
+		elif arg == "--hide-ui":
+			hide_ui = true
 		elif arg.begins_with("--frames="):
 			max_frames = arg.trim_prefix("--frames=").to_int()
 		elif arg.begins_with("--duration="):
@@ -143,10 +148,19 @@ func _configure_environment() -> void:
 	if debug_collisions:
 		get_tree().debug_collisions_hint = true
 
-	_hide_transition_overlay()
+	_disable_all_ui()
 
 
-func _hide_transition_overlay() -> void:
+func _disable_all_ui() -> void:
+	if hide_ui:
+		var ui_node: Node = get_node_or_null("/root/UI")
+		if ui_node != null and ui_node.has_method("set_overlays_visible"):
+			ui_node.set_overlays_visible(false)
+		# Clear any LevelTitleOverlay instances that might already have been created
+		var overlays: Array[Node] = get_tree().root.find_children("*", "LevelTitleOverlay", true, false)
+		for ov: Node in overlays:
+			ov.queue_free()
+
 	var st: CanvasLayer = get_node_or_null("/root/SceneTransition") as CanvasLayer
 	if st != null:
 		st.visible = false

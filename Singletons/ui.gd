@@ -11,8 +11,17 @@
 extends Node
 
 
+## Whether UI overlays (e.g. level title banners, HUD overlays) are allowed to display.
+var overlays_enabled: bool = true
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# Auto-detect CLI capture or no-ui flags
+	for arg: String in OS.get_cmdline_user_args():
+		if arg == "--hide-ui" or arg == "--no-ui":
+			overlays_enabled = false
+			break
 	go_fullscreen()
 
 
@@ -51,8 +60,19 @@ const LEVEL_TITLE_OVERLAY_SCENE: PackedScene = preload("res://UserInterface/leve
 var _current_level_overlay: LevelTitleOverlay = null
 
 
+## Globally enables or disables UI overlays. When set to false, existing overlays are freed immediately.
+func set_overlays_visible(p_visible: bool) -> void:
+	overlays_enabled = p_visible
+	if not overlays_enabled and _current_level_overlay != null and is_instance_valid(_current_level_overlay):
+		_current_level_overlay.queue_free()
+		_current_level_overlay = null
+
+
 ## Displays a text overlay on screen indicating the current level number.
 func show_level_title(level_number: int, duration: float = 2.0) -> LevelTitleOverlay:
+	if not overlays_enabled:
+		return null
+
 	if _current_level_overlay != null and is_instance_valid(_current_level_overlay):
 		_current_level_overlay.queue_free()
 		_current_level_overlay = null

@@ -41,6 +41,7 @@ var scheduled_actions: Array[ScheduledAction] = []
 var frame_count: int = 0
 var finish_frame: int = 180
 var is_video: bool = false
+var hide_ui: bool = true
 var debug_collisions: bool = true
 var output_path: String = ""
 
@@ -60,7 +61,7 @@ func _ready() -> void:
 
 func _physics_process(_delta: float) -> void:
 	frame_count += 1
-	_hide_transition_overlay()
+	_disable_all_ui()
 
 	# Process scheduled actions for current frame
 	for action: ScheduledAction in scheduled_actions:
@@ -206,7 +207,7 @@ func _setup_environment() -> void:
 	if debug_collisions:
 		get_tree().debug_collisions_hint = true
 
-	_hide_transition_overlay()
+	_disable_all_ui()
 
 	# Key light
 	var key_light: DirectionalLight3D = DirectionalLight3D.new()
@@ -274,6 +275,10 @@ func _parse_arguments() -> void:
 			is_video = true
 		elif arg == "--no-debug-collisions":
 			debug_collisions = false
+		elif arg == "--show-ui":
+			hide_ui = false
+		elif arg == "--hide-ui":
+			hide_ui = true
 
 
 func _apply_cli_scenario() -> void:
@@ -334,7 +339,15 @@ func _apply_cli_scenario() -> void:
 		order_screenshot(output_path, maxi(finish_frame - 5, 20))
 
 
-func _hide_transition_overlay() -> void:
+func _disable_all_ui() -> void:
+	if hide_ui:
+		var ui_node: Node = get_node_or_null("/root/UI")
+		if ui_node != null and ui_node.has_method("set_overlays_visible"):
+			ui_node.set_overlays_visible(false)
+		var overlays: Array[Node] = get_tree().root.find_children("*", "LevelTitleOverlay", true, false)
+		for ov: Node in overlays:
+			ov.queue_free()
+
 	var st: CanvasLayer = get_node_or_null("/root/SceneTransition") as CanvasLayer
 	if st != null:
 		st.visible = false

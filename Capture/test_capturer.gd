@@ -8,6 +8,7 @@ extends Node3D
 
 var test_scene_path: String = ""
 var is_video: bool = false
+var hide_ui: bool = true
 var debug_collisions: bool = true
 var max_frames: int = 300
 var frame_count: int = 0
@@ -25,7 +26,7 @@ func _ready() -> void:
 
 func _physics_process(_delta: float) -> void:
 	frame_count += 1
-	_hide_transition_overlay()
+	_disable_all_ui()
 
 	# Dynamically frame characters if found in the test
 	_track_characters()
@@ -49,6 +50,10 @@ func _parse_arguments() -> void:
 			is_video = true
 		elif arg == "--no-debug-collisions":
 			debug_collisions = false
+		elif arg == "--show-ui":
+			hide_ui = false
+		elif arg == "--hide-ui":
+			hide_ui = true
 
 	if not test_scene_path.is_empty():
 		if not test_scene_path.begins_with("res://") and not test_scene_path.begins_with("user://"):
@@ -59,7 +64,7 @@ func _configure_environment() -> void:
 	if debug_collisions:
 		get_tree().debug_collisions_hint = true
 
-	_hide_transition_overlay()
+	_disable_all_ui()
 
 	# Ensure lighting in case test doesn't supply any
 	var light: DirectionalLight3D = DirectionalLight3D.new()
@@ -135,7 +140,15 @@ func _track_characters() -> void:
 		camera.look_at(target, Vector3.UP)
 
 
-func _hide_transition_overlay() -> void:
+func _disable_all_ui() -> void:
+	if hide_ui:
+		var ui_node: Node = get_node_or_null("/root/UI")
+		if ui_node != null and ui_node.has_method("set_overlays_visible"):
+			ui_node.set_overlays_visible(false)
+		var overlays: Array[Node] = get_tree().root.find_children("*", "LevelTitleOverlay", true, false)
+		for ov: Node in overlays:
+			ov.queue_free()
+
 	var st: CanvasLayer = get_node_or_null("/root/SceneTransition") as CanvasLayer
 	if st != null:
 		st.visible = false

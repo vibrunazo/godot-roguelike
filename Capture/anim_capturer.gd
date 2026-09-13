@@ -20,6 +20,7 @@ var screenshot_time: float = -1.0 # -1 means auto (apex or mid-point)
 var is_video: bool = false
 var has_dummy: bool = false
 var debug_collisions: bool = false
+var hide_ui: bool = true
 var duration_sec: float = 0.0
 
 var frame_count: int = 0
@@ -44,7 +45,7 @@ func _ready() -> void:
 
 func _physics_process(_delta: float) -> void:
 	frame_count += 1
-	_hide_transition_overlay()
+	_disable_all_ui()
 
 	if is_video:
 		var target_frames: int = int(total_anim_length * 60.0) + 10
@@ -94,6 +95,10 @@ func _parse_arguments() -> void:
 			has_dummy = true
 		elif arg == "--debug-collisions":
 			debug_collisions = true
+		elif arg == "--show-ui":
+			hide_ui = false
+		elif arg == "--hide-ui":
+			hide_ui = true
 
 	if not target_path.begins_with("res://") and not target_path.begins_with("user://"):
 		target_path = "res://" + target_path.trim_prefix("./").trim_prefix("/")
@@ -103,7 +108,7 @@ func _setup_studio() -> void:
 	if debug_collisions:
 		get_tree().debug_collisions_hint = true
 
-	_hide_transition_overlay()
+	_disable_all_ui()
 
 	# Key light with soft shadow
 	var key_light: DirectionalLight3D = DirectionalLight3D.new()
@@ -374,7 +379,15 @@ func _generate_default_screenshot_path() -> String:
 	return "movies/%s_%s_%s.png" % [base, tag, cam_angle]
 
 
-func _hide_transition_overlay() -> void:
+func _disable_all_ui() -> void:
+	if hide_ui:
+		var ui_node: Node = get_node_or_null("/root/UI")
+		if ui_node != null and ui_node.has_method("set_overlays_visible"):
+			ui_node.set_overlays_visible(false)
+		var overlays: Array[Node] = get_tree().root.find_children("*", "LevelTitleOverlay", true, false)
+		for ov: Node in overlays:
+			ov.queue_free()
+
 	var st: CanvasLayer = get_node_or_null("/root/SceneTransition") as CanvasLayer
 	if st != null:
 		st.visible = false
