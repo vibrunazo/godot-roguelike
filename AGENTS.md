@@ -16,6 +16,10 @@
 3. **Git Commits**:
    - The user manages git commits. **Never run `git commit` or `git push` unless explicitly told so by the user**.
 
+### Worktree Rules
+- Always create feature worktrees under `.worktrees/<branch-name>` inside the project root.
+- Never create worktrees outside the repository tree.
+
 ---
 
 ## 3. Testing & CLI Execution Policy (CRITICAL TIMEOUT RULES)
@@ -44,6 +48,14 @@ Godot does not exit on GDScript compilation errors, cyclic preloads, or unhandle
   ```bash
   python -c "import subprocess; subprocess.run(['godot', '--headless', '--path', '.', '--quit-after', '60', '-s', 'scratch/my_script.gd'], timeout=10)"
   ```
+
+### Testing Philosophy & Invariants
+- **Never assert balance values or tuning constants:** Do not test for hardcoded damage numbers, cooldown lengths, movement speeds, or specific keyboard scancodes.
+- **Test behavioral contracts and state transitions:** 
+  - Test that entering cooldown prevents reactivation until elapsed, using the node's own exported variable (e.g., `simulate_time(node.cooldown_time)`).
+  - Test relative damage application (`target.health == previous_health - attack.damage`), not arbitrary final integers.
+  - Test actions via `InputMap` action names (e.g., `"toggle_fullscreen"`), never physical key constants (`KEY_F`).
+- **If a test fails due to intentional balance changes, the test design was flawed.** Fix the test to evaluate the mechanic dynamically, never hardcode the new value.
 
 ---
 
@@ -177,6 +189,3 @@ except subprocess.TimeoutExpired:
 
 
 
-### Worktree Rules
-- Always create feature worktrees under `.worktrees/<branch-name>` inside the project root.
-- Never create worktrees outside the repository tree.
