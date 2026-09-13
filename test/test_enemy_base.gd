@@ -497,12 +497,15 @@ func _ready() -> void:
 		return
 	print("WaveObjective finished signal verified.")
 	
-	if wave_obj.all_enemies.size() != ProgressionState.get_enemy_count():
-		printerr("TEST FAILED: WaveObjective all_enemies size is ", wave_obj.all_enemies.size(), ", expected ", ProgressionState.get_enemy_count())
+	var total_wave_difficulty: int = 0
+	for e: Character in wave_obj.all_enemies:
+		total_wave_difficulty += e.difficulty_rating
+	if total_wave_difficulty != ProgressionState.difficulty_level:
+		printerr("TEST FAILED: WaveObjective total difficulty is ", total_wave_difficulty, ", expected ", ProgressionState.difficulty_level)
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("WaveObjective all_enemies size (", wave_obj.all_enemies.size(), ") matches ProgressionState.get_enemy_count() verified.")
+	print("WaveObjective total difficulty (", total_wave_difficulty, ") matches ProgressionState.difficulty_level verified.")
 
 	# Verify ExitPoint
 	var exit_point: ExitPoint = level.get_node_or_null("ExitPoint") as ExitPoint
@@ -531,19 +534,13 @@ func _ready() -> void:
 		return
 	print("ExitPoint initially invisible, locked, and next_scene_path export var verified.")
 
-	# Verify difficulty curve and ProgressionState enemy count
-	var curve_res: Curve = load("res://Singletons/difficulty_curve.tres") as Curve
-	if curve_res == null or curve_res.point_count < 2:
-		printerr("TEST FAILED: difficulty_curve.tres missing or invalid point count.")
+	# Verify ProgressionState difficulty level at starting level
+	if ProgressionState.difficulty_level < 3:
+		printerr("TEST FAILED: ProgressionState.difficulty_level at level 1 is ", ProgressionState.difficulty_level, ", expected >= 3.")
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	if ProgressionState.get_enemy_count() < 3:
-		printerr("TEST FAILED: ProgressionState.get_enemy_count() at level 1 is ", ProgressionState.get_enemy_count(), ", expected >= 3.")
-		level.queue_free()
-		get_tree().quit(1)
-		return
-	print("Difficulty curve and ProgressionState.get_enemy_count() (level 1: ", ProgressionState.get_enemy_count(), ") verified.")
+	print("ProgressionState difficulty level (level 1: ", ProgressionState.difficulty_level, ") verified.")
 
 	# Verify ExitPoint Area3D & CollisionShape3D
 	var exit_area: Area3D = exit_point.get_node_or_null("Area3D") as Area3D
@@ -2791,18 +2788,19 @@ func _ready() -> void:
 	print("take_upgrade call_group disable verified.")
 	upgrade_inst_p33.queue_free()
 	
-	# Verify Player.reset_game_state() resets ProgressionState.difficulty_level = 1
+	# Verify Player.reset_game_state() resets ProgressionState.difficulty_level = 3 and dungeon_level = 1
 	var player_scene_p33: PackedScene = load("res://Player/player.tscn")
 	var player_inst_p33: Character = player_scene_p33.instantiate() as Character
-	ProgressionState.difficulty_level = 5
+	ProgressionState.difficulty_level = 9
+	ProgressionState.dungeon_level = 5
 	player_inst_p33.reset_game_state()
-	if ProgressionState.difficulty_level != 1:
-		printerr("TEST FAILED: reset_game_state did not reset difficulty_level to 1. Got: ", ProgressionState.difficulty_level)
+	if ProgressionState.difficulty_level != 3 or ProgressionState.dungeon_level != 1:
+		printerr("TEST FAILED: reset_game_state did not reset progression to level 1 / diff 3. Got diff: ", ProgressionState.difficulty_level, ", level: ", ProgressionState.dungeon_level)
 		player_inst_p33.queue_free()
 		base_enemy_inst_p33.queue_free()
 		get_tree().quit(1)
 		return
-	print("Player.reset_game_state resetting difficulty_level = 1 verified.")
+	print("Player.reset_game_state resetting difficulty_level = 3 and dungeon_level = 1 verified.")
 	player_inst_p33.queue_free()
 	base_enemy_inst_p33.queue_free()
 

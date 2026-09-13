@@ -10,7 +10,7 @@
 ## `VfxManager`, `SceneTransition`), never here.
 extends Node
 
-## Difficulty scaling curve sampled by ProgressionState.get_enemy_count().
+## Legacy difficulty scaling curve.
 @export var difficulty_curve: Curve
 ## Base upgrade icon scene used to display upgrade cards in the UpgradeShop.
 @export var upgrade_icon_scene: PackedScene

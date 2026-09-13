@@ -8,6 +8,7 @@
 [ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="6_aiwait"]
 
 [node name="RangedEnemy" unique_id=2117139762 instance=ExtResource("1_6jo5i")]
+difficulty_rating = 1
 
 [node name="ProjectileSpawnerComponent" type="Node" parent="." unique_id=1948271058 node_paths=PackedStringArray("spawn_point", "character")]
 script = ExtResource("3_proj")

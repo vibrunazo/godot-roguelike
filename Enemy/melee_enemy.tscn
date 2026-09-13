@@ -89,6 +89,7 @@ top_radius = 0.1
 bottom_radius = 0.1
 
 [node name="MeleeEnemy" unique_id=2117139762 node_paths=PackedStringArray("weapon_hitbox") instance=ExtResource("1_cu01m")]
+difficulty_rating = 1
 weapon_hitbox = NodePath("AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea")
 
 [node name="Enemy_Medium_ArmLeft" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="0" unique_id=117100866]

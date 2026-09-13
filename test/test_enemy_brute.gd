@@ -228,53 +228,40 @@ func _ready() -> void:
 	passed_steps += 1
 
 	# -------------------------------------------------------------
-	# PART 3: WaveObjective Spawning Difficulty Formula
+	# PART 3: Brute Difficulty Rating & WaveObjective Integration
 	# -------------------------------------------------------------
-	print("\n>>> PART 3: WaveObjective Difficulty Progression Spawning")
+	print("\n>>> PART 3: Brute Difficulty Rating & WaveObjective Integration")
+	var p3_brute_scene: PackedScene = GlobalVars.enemy_brute_scene
+	if p3_brute_scene == null:
+		printerr("TEST FAILED: GlobalVars.enemy_brute_scene is null.")
+		get_tree().quit(1)
+		return
+	var brute_inst: Character = p3_brute_scene.instantiate() as Character
+	if brute_inst.difficulty_rating != 3:
+		printerr("TEST FAILED: enemy_brute difficulty_rating expected 3, got: ", brute_inst.difficulty_rating)
+		brute_inst.free()
+		get_tree().quit(1)
+		return
+	brute_inst.free()
+
 	var wave_obj := WaveObjective.new()
 	add_child(wave_obj)
-
-	# Test get_brute_count() for different progression levels:
-	# Verifies non-negative count and non-decreasing monotonic scaling with difficulty.
-	ProgressionState.difficulty_level = 1
-	var c1: int = wave_obj.get_brute_count()
-	if c1 < 0:
-		printerr("TEST FAILED: get_brute_count() at diff 1 returned negative count: ", c1)
+	var scene_diff: int = wave_obj.get_scene_difficulty(p3_brute_scene)
+	if scene_diff != 3:
+		printerr("TEST FAILED: WaveObjective get_scene_difficulty expected 3, got: ", scene_diff)
+		wave_obj.queue_free()
 		get_tree().quit(1)
 		return
 
-	ProgressionState.difficulty_level = 2
-	var c2: int = wave_obj.get_brute_count()
-	if c2 < c1:
-		printerr("TEST FAILED: get_brute_count() at diff 2 returned ", c2, " which is less than diff 1 (", c1, ").")
+	var pool: Dictionary = wave_obj.build_difficulty_pool([p3_brute_scene])
+	if not pool.has(3) or (pool[3] as Array[PackedScene]).is_empty():
+		printerr("TEST FAILED: WaveObjective build_difficulty_pool did not contain tier 3 for brute.")
+		wave_obj.queue_free()
 		get_tree().quit(1)
 		return
 
-	ProgressionState.difficulty_level = 3
-	var c3: int = wave_obj.get_brute_count()
-	if c3 < c2:
-		printerr("TEST FAILED: get_brute_count() at diff 3 returned ", c3, " which is less than diff 2 (", c2, ").")
-		get_tree().quit(1)
-		return
-
-	ProgressionState.difficulty_level = 4
-	var c4: int = wave_obj.get_brute_count()
-	if c4 < c3:
-		printerr("TEST FAILED: get_brute_count() at diff 4 returned ", c4, " which is less than diff 3 (", c3, ").")
-		get_tree().quit(1)
-		return
-
-	ProgressionState.difficulty_level = 5
-	var c5: int = wave_obj.get_brute_count()
-	if c5 < c4 or c5 <= c1:
-		printerr("TEST FAILED: get_brute_count() at diff 5 returned ", c5, " which did not scale above diff 1 (", c1, ").")
-		get_tree().quit(1)
-		return
-
-	# Reset progression
-	ProgressionState.difficulty_level = 1
 	wave_obj.queue_free()
-	print("WaveObjective brute spawning progression formula verified.")
+	print("Brute difficulty rating and WaveObjective pool integration verified.")
 	passed_steps += 1
 
 	# -------------------------------------------------------------

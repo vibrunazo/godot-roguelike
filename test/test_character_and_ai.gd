@@ -34,6 +34,7 @@ func _ready() -> void:
 	await test_part_7_ranged_enemy_ai_attack_timing()
 	await test_part_8_defeat_inactivity_and_rotation_lock()
 	await test_part_9_scattered_enemy_spawning()
+	test_part_10_enemy_difficulty_and_wave_budget_spawning()
 
 	print("\n====================================================================")
 	print("  ALL CHARACTER & AI STATE MACHINE TESTS PASSED!                    ")
@@ -46,6 +47,7 @@ func _ready() -> void:
 	print("  7. RangedEnemy attack timing & real polling path verified        ")
 	print("  8. Defeat inactivity & rotation lock on corpses verified        ")
 	print("  9. Scattered enemy spawning on navmesh verified                  ")
+	print(" 10. Enemy difficulty ratings & budget wave spawning verified      ")
 	print("====================================================================")
 	get_tree().quit(0)
 
@@ -707,6 +709,131 @@ func test_part_9_scattered_enemy_spawning() -> void:
 
 	level.queue_free()
 	await get_tree().process_frame
+
+
+func test_part_10_enemy_difficulty_and_wave_budget_spawning() -> void:
+	print("\n>>> PART 10: Enemy Difficulty Ratings & Budget Wave Spawning")
+
+	# 1. Verify difficulty_rating on all 5 enemy scenes
+	var melee_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
+	var ranged_scene: PackedScene = load("res://Enemy/ranged_enemy.tscn") as PackedScene
+	var bomber_scene: PackedScene = load("res://Enemy/firebomber_enemy.tscn") as PackedScene
+	var brute_scene: PackedScene = load("res://Enemy/enemy_brute.tscn") as PackedScene
+	var mage_scene: PackedScene = load("res://Enemy/enemy_thunder_mage.tscn") as PackedScene
+
+	var melee: Character = melee_scene.instantiate() as Character
+	var ranged: Character = ranged_scene.instantiate() as Character
+	var bomber: Character = bomber_scene.instantiate() as Character
+	var brute: Character = brute_scene.instantiate() as Character
+	var mage: Character = mage_scene.instantiate() as Character
+
+	if melee.difficulty_rating != 1 or ranged.difficulty_rating != 1:
+		printerr("TEST FAILED: Melee/Ranged enemy difficulty expected 1, got melee: ", melee.difficulty_rating, ", ranged: ", ranged.difficulty_rating)
+		get_tree().quit(1)
+		return
+	if bomber.difficulty_rating != 2:
+		printerr("TEST FAILED: Firebomber difficulty expected 2, got: ", bomber.difficulty_rating)
+		get_tree().quit(1)
+		return
+	if brute.difficulty_rating != 3:
+		printerr("TEST FAILED: Brute difficulty expected 3, got: ", brute.difficulty_rating)
+		get_tree().quit(1)
+		return
+	if mage.difficulty_rating != 4:
+		printerr("TEST FAILED: Thunder Mage difficulty expected 4, got: ", mage.difficulty_rating)
+		get_tree().quit(1)
+		return
+
+	melee.free()
+	ranged.free()
+	bomber.free()
+	brute.free()
+	mage.free()
+	print("All 5 enemy difficulty ratings verified (melee: 1, ranged: 1, bomber: 2, brute: 3, mage: 4).")
+
+	# 2. Verify ProgressionState level scaling and reset
+	ProgressionState.reset_run()
+	if ProgressionState.dungeon_level != 1 or ProgressionState.difficulty_level != 3:
+		printerr("TEST FAILED: Initial ProgressionState expected dungeon_level 1 and difficulty 3. Got: ", ProgressionState.dungeon_level, ", ", ProgressionState.difficulty_level)
+		get_tree().quit(1)
+		return
+
+	# Test scaling progression: 3 -> 4 -> 5 -> 7 -> 8 -> 9 -> 11
+	var expected_diffs: Array[int] = [4, 5, 7, 8, 9, 11]
+	for i: int in range(expected_diffs.size()):
+		ProgressionState.advance_level()
+		var expected_dungeon: int = i + 2
+		var expected_diff: int = expected_diffs[i]
+		if ProgressionState.dungeon_level != expected_dungeon or ProgressionState.difficulty_level != expected_diff:
+			printerr("TEST FAILED: ProgressionState level ", expected_dungeon, " expected difficulty ", expected_diff, ", got ", ProgressionState.difficulty_level)
+			get_tree().quit(1)
+			return
+
+	ProgressionState.reset_run()
+	if ProgressionState.dungeon_level != 1 or ProgressionState.difficulty_level != 3:
+		printerr("TEST FAILED: reset_run failed to restore dungeon_level 1 and difficulty 3.")
+		get_tree().quit(1)
+		return
+	print("ProgressionState dungeon_level & floored difficulty_level progression verified.")
+
+	# 3. Verify WaveObjective wave generation at difficulty 3
+	var wave_obj := WaveObjective.new()
+	add_child(wave_obj)
+
+	ProgressionState.difficulty_level = 3
+	var wave_diff3: Array[Character] = wave_obj.generate_wave_enemies()
+	if wave_diff3.size() != 3:
+		printerr("TEST FAILED: WaveObjective at difficulty 3 expected exactly 3 enemies, got: ", wave_diff3.size())
+		get_tree().quit(1)
+		return
+	var sum_diff3: int = 0
+	for enemy: Character in wave_diff3:
+		sum_diff3 += enemy.difficulty_rating
+		if enemy.difficulty_rating != 1:
+			printerr("TEST FAILED: WaveObjective at difficulty 3 spawned non-level-1 enemy: ", enemy.difficulty_rating)
+			get_tree().quit(1)
+			return
+		enemy.free()
+	if sum_diff3 != 3:
+		printerr("TEST FAILED: WaveObjective at difficulty 3 sum expected 3, got: ", sum_diff3)
+		get_tree().quit(1)
+		return
+	print("WaveObjective level 1 difficulty 3 generation (3 level-1 enemies, sum = 3) verified.")
+
+	# 4. Verify WaveObjective wave generation at difficulty 10 across multiple seeds
+	ProgressionState.difficulty_level = 10
+	var saw_higher_tier: bool = false
+	for iteration: int in range(25):
+		var wave_diff10: Array[Character] = wave_obj.generate_wave_enemies()
+		if wave_diff10.size() < 2:
+			printerr("TEST FAILED: WaveObjective at difficulty 10 generated fewer than 2 enemies.")
+			get_tree().quit(1)
+			return
+		# Must always pick 2 level 1 enemies first
+		if wave_diff10[0].difficulty_rating != 1 or wave_diff10[1].difficulty_rating != 1:
+			printerr("TEST FAILED: WaveObjective at difficulty 10 did not pick 2 level-1 enemies first! Got diffs: ", wave_diff10[0].difficulty_rating, ", ", wave_diff10[1].difficulty_rating)
+			get_tree().quit(1)
+			return
+		# Total sum must equal 10
+		var sum_diff10: int = 0
+		for enemy: Character in wave_diff10:
+			sum_diff10 += enemy.difficulty_rating
+			if enemy.difficulty_rating > 1:
+				saw_higher_tier = true
+			enemy.free()
+		if sum_diff10 != 10:
+			printerr("TEST FAILED: WaveObjective at difficulty 10 sum expected 10, got: ", sum_diff10)
+			get_tree().quit(1)
+			return
+
+	if not saw_higher_tier:
+		printerr("TEST FAILED: WaveObjective across 25 iterations at difficulty 10 never spawned enemies with difficulty > 1.")
+		get_tree().quit(1)
+		return
+	print("WaveObjective difficulty 10 budget matching, 2 level-1 first, and tier variety verified.")
+
+	wave_obj.queue_free()
+	ProgressionState.reset_run()
 
 
 
