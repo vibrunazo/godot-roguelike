@@ -51,7 +51,14 @@ def rect(x0: int, x1: int, z0: int, z1: int) -> set[tuple[int, int]]:
 
 
 def _boundary(tiles: set[tuple[int, int]], side: str) -> set[tuple[int, int]]:
-    """Tiles on the extreme row/column of a tile set for one side."""
+    """Tiles on the extreme row/column of a tile set for one side.
+
+    Letters follow generate_walls.generate(), which is Godot-conventional:
+    "n" is min-z (engine-north, -z side), "s" is max-z, "w" is min-x,
+    "e" is max-x. room(edge=) keys MUST use these same letters — they are
+    looked up verbatim during derivation, so any other convention silently
+    misses (tall defaults leak onto supposedly open sides).
+    """
     if side == "n":
         m = min(z for _, z in tiles)
         return {(x, z) for x, z in tiles if z == m}
@@ -89,17 +96,24 @@ def room(x0: int, x1: int, z0: int, z1: int, *,
 
 
 def bridge(x0: int, x1: int, z0: int, z1: int, *,
-           rails: str = "low") -> Part:
+           rails: str = "low",
+           sides: tuple[str, ...] | None = None) -> Part:
     """A narrow strip whose LONG sides carry rails; ends stay default.
 
     rails "low" (flush rims enemies can be knocked over), "open" (no walls
     at all) or "tall" (full-height blockers). The strip direction follows the
-    longer axis (ties run along X). Mouth tiles where the bridge meets other
-    parts stay wall-free via the interior-junction rule.
+    longer axis (ties run along X) unless sides names the railed sides
+    explicitly — needed for single-row gap spans, whose void-facing sides
+    are the SHORT ones. Mouth tiles where the bridge meets other parts stay
+    wall-free via the interior-junction rule.
     """
     assert rails in RAIL_TIERS, f"unknown rails {rails!r}"
+    if sides is not None:
+        assert set(sides) <= {"n", "s", "w", "e"}, f"bad sides {sides!r}"
+        long_sides = tuple(sides)
+    else:
+        long_sides = ("n", "s") if x1 - x0 >= z1 - z0 else ("w", "e")
     tiles = rect(x0, x1, z0, z1)
-    long_sides = ("n", "s") if x1 - x0 >= z1 - z0 else ("w", "e")
     edges: dict[tuple[int, int, str], int | None] = {}
     for side in long_sides:
         for fx, fz in _boundary(tiles, side):
