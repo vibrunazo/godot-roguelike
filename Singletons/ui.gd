@@ -26,7 +26,8 @@ func _ready() -> void:
 		if arg == "--hide-ui" or arg == "--no-ui":
 			overlays_enabled = false
 			break
-	go_fullscreen()
+	if overlays_enabled:
+		go_fullscreen()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
