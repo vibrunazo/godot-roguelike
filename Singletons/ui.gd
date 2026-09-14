@@ -11,6 +11,10 @@
 extends Node
 
 
+## Emitted when the game pause state changes.
+signal pause_state_changed(is_paused: bool)
+
+
 ## Whether UI overlays (e.g. level title banners, HUD overlays) are allowed to display.
 var overlays_enabled: bool = true
 
@@ -28,6 +32,9 @@ func _ready() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_toggle_fullscreen"):
 		toggle_fullscreen()
+	elif event.is_action_pressed("ui_pause"):
+		toggle_pause()
+		get_viewport().set_input_as_handled()
 
 
 ## Returns true when the window is currently in any fullscreen mode.
@@ -56,8 +63,13 @@ func toggle_fullscreen() -> void:
 
 
 const LEVEL_TITLE_OVERLAY_SCENE: PackedScene = preload("res://UserInterface/level_title_overlay.tscn")
+const DEFAULT_PAUSE_MENU_SCENE: PackedScene = preload("res://UserInterface/pause_menu.tscn")
 
 var _current_level_overlay: LevelTitleOverlay = null
+var _current_pause_menu: PauseMenu = null
+
+## Pause menu scene override. When null, uses GlobalVars.pause_menu_scene or DEFAULT_PAUSE_MENU_SCENE.
+@export var pause_menu_scene: PackedScene = null
 
 
 ## Globally enables or disables UI overlays. When set to false, existing overlays are freed immediately.
@@ -82,3 +94,46 @@ func show_level_title(level_number: int, duration: float = 2.0) -> LevelTitleOve
 	_current_level_overlay = overlay
 	overlay.display_level(level_number, duration)
 	return overlay
+
+
+## Returns true if the scene tree is currently paused.
+func is_paused() -> bool:
+	return get_tree().paused
+
+
+## Pauses the game tree and displays the pause menu overlay.
+func pause_game() -> void:
+	if is_paused():
+		return
+	get_tree().paused = true
+	if _current_pause_menu != null and is_instance_valid(_current_pause_menu):
+		_current_pause_menu.queue_free()
+		_current_pause_menu = null
+
+	var scene: PackedScene = pause_menu_scene
+	if scene == null and GlobalVars != null and GlobalVars.pause_menu_scene != null:
+		scene = GlobalVars.pause_menu_scene
+	if scene == null:
+		scene = DEFAULT_PAUSE_MENU_SCENE
+
+	var menu: PauseMenu = scene.instantiate() as PauseMenu
+	add_child(menu)
+	_current_pause_menu = menu
+	pause_state_changed.emit(true)
+
+
+## Unpauses the game tree and removes the pause menu overlay.
+func resume_game() -> void:
+	get_tree().paused = false
+	if _current_pause_menu != null and is_instance_valid(_current_pause_menu):
+		_current_pause_menu.queue_free()
+		_current_pause_menu = null
+	pause_state_changed.emit(false)
+
+
+## Toggles pause state between paused and unpaused.
+func toggle_pause() -> void:
+	if is_paused():
+		resume_game()
+	else:
+		pause_game()
