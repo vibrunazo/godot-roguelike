@@ -87,6 +87,9 @@ python capture.py anim <target_path> [options]
 | `--speed <scale>` | Adjusts playback speed (e.g. `0.5` for slow-motion hitbox inspection) | `--speed 0.5` |
 | `--time <sec>` | Exact timestamp at which to snap the screenshot (defaults to strike apex) | `--time 0.35` |
 | `--cam-angle <angle>`| Studio camera angle: `three_quarters` (default), `front`, `side`, `top_down` | `--cam-angle front` |
+| `--cam-dist <float>` | Distance multiplier relative to default studio camera distance (e.g. `2.5` for wide leaps/dashes) | `--cam-dist 2.5` |
+| `--cam-height <float>`| Additional elevation offset added to studio camera | `--cam-height 2.0` |
+| `--cam-fov <float>` | Camera Field of View in degrees | `--cam-fov 50.0` |
 | `--video` | Records full animation to MP4 | `--video` |
 | `--duration <sec>` | Custom video duration | `--duration 2.5` |
 | `--rig <path>` | Custom base model GLB for raw `.res` animations | `--rig res://.../Enemy_Large.glb` |
@@ -109,6 +112,15 @@ Actions can be scheduled using `--action "<target>:<type>:<param>@<frame>"`.
   - `attack`: triggers Player combo strike 1, 2, or 3 (`"player:attack:1@20"`)
   - `damage`: deals direct health damage (`"enemy:damage:25@35"`)
   - `screenshot`: saves screenshot at frame (`"screenshot:movies/impact.png@28"`)
+
+#### Staging & Positioning Options
+- `--player-pos <X,Y,Z>`: Custom player spawn position (e.g. `0.0,1.0,4.0`)
+- `--enemy-pos <X,Y,Z>`: Custom enemy spawn position (e.g. `0.0,1.0,0.0`)
+- `--cam-pos <X,Y,Z>`: Custom studio camera position (e.g. `15.0,5.0,7.5`)
+- `--cam-target <X,Y,Z>`: Custom camera look-at target (e.g. `0.0,3.5,7.5`)
+- `--cam-fov <float>`: Camera field of view in degrees (e.g. `50.0`)
+- `--enable-ai`: Keeps enemy autonomous AI active (disabled by default for scripted choreography)
+- `--debug-collisions`: Renders physics colliders and hurtboxes
 
 #### Example CLI Combat Invocations
 ```bash
@@ -174,3 +186,17 @@ Godot's headless mode (`godot --headless`) uses the dummy display server, which 
 
 ### 3. Strict GDScript Typing
 All scripts under `res://Capture/` (`map_capturer.gd`, `anim_capturer.gd`, `combat_scenario_template.gd`, `test_capturer.gd`) enforce full static typing (`warnings/untyped_declaration=1`).
+
+---
+
+## 4. Troubleshooting & Visual Diagnostics
+
+### Internal Actor Cameras & Viewport Overrides
+Certain character scenes (notably `Player.tscn`) have built-in `Camera3D` nodes (e.g. `CameraRoot/ShakeCamera3D`) initialized with `current = true`. When instantiated into a scene tree, their internal camera can hijack Godot's viewport and cause captures to render black or from unexpected angles.
+- **Automatic Suppression**: Both `anim_capturer.gd` and `combat_scenario_template.gd` automatically scan spawned actors, set internal cameras to `current = false`, remove `CameraRoot` nodes, and re-assert the studio camera every physics frame.
+- **Custom Scenarios**: When staging custom scenes or actors from scratch, check whether spawned actors contain active `Camera3D` nodes and suppress them so the studio camera remains dominant.
+
+### Choosing Between `anim` and `combat`
+- **Solo Abilities / Leaps / Attacks**: Prefer `capture.py anim <scene> --state <StateName> --video`. It runs in an isolated neutral studio with standard lighting. For abilities that cover ground (e.g. `EnemyLeapingDodge`), use `--cam-dist 2.5` to frame the full movement arc.
+- **Two-Entity Interactions**: Use `capture.py combat` when testing damage numbers, knockback application, hit reactions, or combo exchanges.
+

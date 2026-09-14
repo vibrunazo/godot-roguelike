@@ -22,6 +22,9 @@ var has_dummy: bool = false
 var debug_collisions: bool = false
 var hide_ui: bool = true
 var duration_sec: float = 0.0
+var cam_dist: float = 1.0
+var cam_height: float = 0.0
+var cam_fov: float = 42.0
 
 var frame_count: int = 0
 var anim_player: AnimationPlayer
@@ -34,6 +37,7 @@ var target_screenshot_frame: int = 20
 
 
 func _ready() -> void:
+	print("[Capture Tip] If output appears black or from an unintended perspective, check if an actor scene contains an active internal Camera3D.")
 	_parse_arguments()
 	_setup_studio()
 	_setup_camera()
@@ -46,6 +50,10 @@ func _ready() -> void:
 func _physics_process(_delta: float) -> void:
 	frame_count += 1
 	_disable_all_ui()
+
+	if camera != null and not camera.is_current():
+		camera.make_current()
+		print("[AnimCapturer] Note: Re-asserted StudioCamera as active viewport camera.")
 
 	if is_video:
 		var target_frames: int = int(total_anim_length * 60.0) + 10
@@ -83,6 +91,12 @@ func _parse_arguments() -> void:
 			output_path = arg.trim_prefix("--output=").strip_edges()
 		elif arg.begins_with("--cam-angle="):
 			cam_angle = arg.trim_prefix("--cam-angle=").strip_edges().to_lower()
+		elif arg.begins_with("--cam-dist="):
+			cam_dist = arg.trim_prefix("--cam-dist=").to_float()
+		elif arg.begins_with("--cam-height="):
+			cam_height = arg.trim_prefix("--cam-height=").to_float()
+		elif arg.begins_with("--cam-fov="):
+			cam_fov = arg.trim_prefix("--cam-fov=").to_float()
 		elif arg.begins_with("--speed="):
 			speed_scale = arg.trim_prefix("--speed=").to_float()
 		elif arg.begins_with("--time="):
@@ -150,23 +164,33 @@ func _setup_camera() -> void:
 	camera = Camera3D.new()
 	camera.name = "StudioCamera"
 	camera.current = true
-	camera.fov = 42.0
+	camera.fov = cam_fov
 	add_child(camera)
 
 	var look_target: Vector3 = Vector3(0.0, 1.1, 0.0)
+	var base_cam_pos: Vector3 = Vector3(3.2, 2.0, 3.6)
 	match cam_angle:
 		"front":
-			camera.position = Vector3(0.0, 1.4, 4.2)
+			base_cam_pos = Vector3(0.0, 1.4, 4.2)
 		"side":
-			camera.position = Vector3(4.2, 1.4, 0.0)
+			base_cam_pos = Vector3(4.2, 1.4, 0.0)
 		"top_down":
-			camera.position = Vector3(0.0, 5.0, 0.001)
+			base_cam_pos = Vector3(0.0, 5.0, 0.001)
 			look_target = Vector3(0.0, 0.0, 0.0)
+			var td_scale: float = cam_dist if cam_dist > 0.0 else 1.0
+			camera.position = Vector3(0.0, (base_cam_pos.y + cam_height) * td_scale, 0.001)
 			camera.look_at(look_target, Vector3(0.0, 0.0, -1.0))
 			return
 		"three_quarters", _:
-			camera.position = Vector3(3.2, 2.0, 3.6)
+			base_cam_pos = Vector3(3.2, 2.0, 3.6)
 
+	var offset: Vector3 = base_cam_pos - look_target
+	var dist_scale: float = cam_dist if cam_dist > 0.0 else 1.0
+	offset.x *= dist_scale
+	offset.z *= dist_scale
+	offset.y = offset.y * dist_scale + cam_height
+
+	camera.position = look_target + offset
 	camera.look_at(look_target, Vector3.UP)
 
 
@@ -206,6 +230,8 @@ func _load_tscn_target(path: String) -> void:
 		var c: Character = character_instance as Character
 		if c.ai_state_machine != null:
 			c.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+
+	_suppress_actor_cameras(character_instance)
 
 
 func _load_glb_target(path: String) -> void:
@@ -277,6 +303,8 @@ func _spawn_dummy() -> void:
 			var tint: CanvasItem = dc.find_child("DamageTint", true, false) as CanvasItem
 			if tint != null:
 				tint.visible = false
+
+		_suppress_actor_cameras(dummy_instance)
 
 
 func _start_playback() -> void:
@@ -416,3 +444,22 @@ func _save_screenshot(file_path: String) -> void:
 		print("[AnimCapturer] Screenshot saved successfully: ", file_path, " (", img.get_width(), "x", img.get_height(), ")")
 	else:
 		printerr("[AnimCapturer] Failed to save screenshot: ", file_path, " error: ", err)
+
+
+## Recursively suppresses any active Camera3D nodes inside spawned targets/dummies to avoid viewport conflicts.
+func _suppress_actor_cameras(actor: Node) -> void:
+	if actor == null:
+		return
+	var actor_cams: Array[Node] = actor.find_children("*", "Camera3D", true, false)
+	for cam_node: Node in actor_cams:
+		var c: Camera3D = cam_node as Camera3D
+		if c != null:
+			if c.current:
+				print("[AnimCapturer] Note: Suppressed active actor camera '%s' on %s to preserve studio camera." % [c.name, actor.name])
+			c.current = false
+	var cam_root: Node = actor.find_child("CameraRoot", true, false)
+	if cam_root != null:
+		cam_root.queue_free()
+	if camera != null and not camera.is_current():
+		camera.make_current()
+

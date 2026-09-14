@@ -252,6 +252,12 @@ def handle_anim(args: argparse.Namespace) -> int:
         user_args.append(f"--rig={args.rig}")
     if args.cam_angle:
         user_args.append(f"--cam-angle={args.cam_angle}")
+    if getattr(args, "cam_dist", None):
+        user_args.append(f"--cam-dist={args.cam_dist}")
+    if getattr(args, "cam_height", None):
+        user_args.append(f"--cam-height={args.cam_height}")
+    if getattr(args, "cam_fov", None):
+        user_args.append(f"--cam-fov={args.cam_fov}")
     if args.speed:
         user_args.append(f"--speed={args.speed}")
     if args.time is not None:
@@ -325,6 +331,10 @@ def handle_combat(args: argparse.Namespace) -> int:
         user_args.append("--debug-collisions")
     if getattr(args, "enable_ai", False):
         user_args.append("--enable-ai")
+    if getattr(args, "player_pos", None):
+        user_args.append(f"--player-pos={args.player_pos}")
+    if getattr(args, "enemy_pos", None):
+        user_args.append(f"--enemy-pos={args.enemy_pos}")
     if getattr(args, "cam_pos", None):
         user_args.append(f"--cam-pos={args.cam_pos}")
     if getattr(args, "cam_target", None):
@@ -444,6 +454,9 @@ def main() -> int:
     p_anim.add_argument("--state", help="StateMachine state to request (e.g. EnemyPunch, AISlam)")
     p_anim.add_argument("--rig", help="Base model GLB for raw .res animations")
     p_anim.add_argument("--cam-angle", choices=["three_quarters", "front", "side", "top_down"], default="three_quarters", help="Camera angle")
+    p_anim.add_argument("--cam-dist", type=float, help="Camera distance multiplier relative to default")
+    p_anim.add_argument("--cam-height", type=float, help="Camera height offset")
+    p_anim.add_argument("--cam-fov", type=float, help="Camera field of view in degrees")
     p_anim.add_argument("--dummy", action="store_true", help="Spawn target dummy in attack strike zone")
     p_anim.add_argument("--speed", type=float, default=1.0, help="Playback speed scale (e.g. 0.5 for slow-mo)")
     p_anim.add_argument("--time", type=float, help="Screenshot timestamp in seconds")
@@ -464,6 +477,8 @@ def main() -> int:
     p_combat.add_argument("--no-debug-collisions", action="store_true", help="Disable collision debug shapes")
     p_combat.add_argument("--debug-collisions", action="store_true", help="Enable collision debug shapes")
     p_combat.add_argument("--enable-ai", action="store_true", help="Enable autonomous AI processing")
+    p_combat.add_argument("--player-pos", help="Player spawn position X,Y,Z (e.g. 0.0,1.0,4.0)")
+    p_combat.add_argument("--enemy-pos", help="Enemy spawn position X,Y,Z (e.g. 0.0,1.0,0.0)")
     p_combat.add_argument("--cam-pos", help="Camera position X,Y,Z (e.g. 5.5,2.2,0.5)")
     p_combat.add_argument("--cam-target", help="Camera look-at target X,Y,Z (e.g. 0.0,1.0,0.5)")
     p_combat.add_argument("--cam-fov", type=float, help="Camera field of view")

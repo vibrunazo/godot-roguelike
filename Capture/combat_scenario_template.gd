@@ -64,6 +64,7 @@ var cli_actions: PackedStringArray = []
 
 
 func _ready() -> void:
+	print("[Capture Tip] If output appears black or from an unintended perspective, check if an actor scene contains an active internal Camera3D.")
 	_parse_arguments()
 	_setup_environment()
 	_setup_camera()
@@ -74,6 +75,10 @@ func _ready() -> void:
 func _physics_process(_delta: float) -> void:
 	frame_count += 1
 	_disable_all_ui()
+
+	if camera != null and not camera.is_current():
+		camera.make_current()
+		print("[CombatScenario] Note: Re-asserted ArenaCamera as active viewport camera.")
 
 	# Process scheduled actions for current frame
 	for action: ScheduledAction in scheduled_actions:
@@ -108,6 +113,8 @@ func spawn_player(pos: Vector3 = Vector3(0.0, 1.0, 1.0), facing_dir: Vector3 = V
 	if facing_dir.length_squared() > 0.001:
 		player.look_at(player.global_position + facing_dir, Vector3.UP)
 
+	_suppress_actor_cameras(player)
+
 	player_instance = player
 	all_combatants.append(player)
 	print("[CombatScenario] Spawned Player at: ", pos)
@@ -136,6 +143,8 @@ func spawn_enemy(enemy_identifier: String = "brute", pos: Vector3 = Vector3(0.0,
 
 	if not cli_enable_ai and enemy.ai_state_machine != null:
 		enemy.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+
+	_suppress_actor_cameras(enemy)
 
 	enemy_instance = enemy
 	all_combatants.append(enemy)
@@ -398,7 +407,7 @@ func _apply_cli_scenario() -> void:
 
 	if not output_path.is_empty() and not is_video:
 		# Schedule final screenshot before exit
-		order_screenshot(output_path, maxi(finish_frame - 5, 20))
+		order_screenshot(output_path, maxi(finish_frame - 2, 1))
 
 
 func _disable_all_ui() -> void:
@@ -444,3 +453,21 @@ func _save_screenshot(file_path: String) -> void:
 		print("[CombatScenario] Screenshot saved successfully: ", file_path, " (", img.get_width(), "x", img.get_height(), ")")
 	else:
 		printerr("[CombatScenario] Failed to save screenshot: ", file_path, " error: ", err)
+
+
+## Recursively suppresses any active Camera3D nodes inside spawned actors to avoid viewport conflicts.
+func _suppress_actor_cameras(actor: Node) -> void:
+	if actor == null:
+		return
+	var actor_cams: Array[Node] = actor.find_children("*", "Camera3D", true, false)
+	for cam_node: Node in actor_cams:
+		var c: Camera3D = cam_node as Camera3D
+		if c != null:
+			if c.current:
+				print("[Capture] Note: Suppressed active actor camera '%s' on %s to preserve studio camera." % [c.name, actor.name])
+			c.current = false
+	var cam_root: Node = actor.find_child("CameraRoot", true, false)
+	if cam_root != null:
+		cam_root.queue_free()
+	if camera != null and not camera.is_current():
+		camera.make_current()

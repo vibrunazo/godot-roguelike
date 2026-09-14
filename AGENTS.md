@@ -183,19 +183,19 @@ To ensure scripts run reliably without hangs, pipe deadlocks, or process leaks a
    - **Test Suites**: `python run_tests.py [path]`
    - **Scratch / Diagnostic Scripts**: `python run_scratch.py <path> [--timeout N]`
    - **Visual Media Capture & Scenarios**: `python capture.py <subcommand>`
-   - *Custom Scripts & Commands*: If your task requires custom scripts or commands not covered by the above, you are encouraged to write and run them following the guidelines below.
+   - *Custom Scripts & Commands*: If a task requires custom scripts or commands not covered by the above, agents can write and run them following the guidelines below.
 
-2. **Always Resolve Binaries via `shutil.which`**:
+2. **Resolve Binaries via `shutil.which`**:
    - When calling external commands (`godot`, `ffmpeg`) from Python, resolve the executable via `shutil.which("godot") or "godot"`.
    - This cleanly and portably resolves binary locations, wrapper scripts (e.g. bash scripts on Linux/WSL), or shims without hardcoded paths or OS-specific branching.
 
-3. **Always Use `shell=False` with Argument Lists**:
-   - `shell=True` spawns an intermediate shell process. On timeout, Python terminates the shell while the child engine process remains orphaned, holding standard I/O pipes open and freezing Python indefinitely.
+3. **Use `shell=False` with Argument Lists**:
+   - `shell=True` spawns an intermediate shell process. On timeout, Python terminates the shell while the child engine process may remain orphaned, holding standard I/O pipes open and stalling execution.
    - `shell=False` connects Python directly to the process, ensuring timeout termination forcefully kills the engine immediately.
 
-4. **Always Enforce Hard OS Watchdog Timeouts**:
-   - Never run unbounded processes; always pass `timeout=<seconds>`.
-   - Always catch `subprocess.TimeoutExpired` explicitly.
+4. **Enforce Hard OS Watchdog Timeouts**:
+   - Avoid running unbounded processes; pass `timeout=<seconds>`.
+   - Catch `subprocess.TimeoutExpired` explicitly to handle timeouts gracefully.
 
 #### Portable Subprocess Pattern:
 ```python
@@ -220,6 +220,25 @@ try:
 except subprocess.TimeoutExpired:
     print("ERROR: Godot process timed out and was forcefully terminated.")
 ```
+
+---
+
+## 8. Visual Media Capture & Staging Guidelines
+
+Practical suggestions for capturing animations, combat scenarios, and level layouts efficiently:
+
+1. **Start with the Simplest Capture Tool**:
+   - For solo abilities, leap animations, attacks, or inspectable states, `python capture.py anim <scene> --state <StateName> --video` is typically the fastest approach. It provides an isolated studio, key lights, and a neutral backdrop.
+   - Staging multi-entity scenarios via `python capture.py combat` is best suited for interactions that specifically require two or more characters (such as testing hit reactions, damage counters, or combo timings).
+
+2. **Framing High-Mobility Abilities**:
+   - Abilities that cover significant distance (e.g. `EnemyLeapingDodge`, dashes, leap slams) can travel outside the default camera frame.
+   - Use `--cam-dist` (e.g. `--cam-dist 2.5`) and `--cam-height` to comfortably widen the framing rather than hand-crafting custom camera trajectories.
+
+3. **Mind Internal Actor Cameras**:
+   - Some character scenes (e.g. `Player.tscn`) contain built-in `Camera3D` components (`CameraRoot/ShakeCamera3D`). When these scenes enter the scene tree, their internal cameras may attempt to claim active viewport status.
+   - The built-in capture runners automatically suppress actor cameras, but when writing custom staging scripts, remember to check spawned scenes to ensure actor cameras do not override the studio camera.
+
 
 
 
