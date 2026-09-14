@@ -62,7 +62,12 @@ python tools/levels/assemble_level.py --spec tools/levels/out/l4proof/spec.json 
 python run_scratch.py tools/levels/bake_navmesh.gd -- --level=Levels/level_5.tscn \
     --out=tools/levels/out/l5proof/navmesh_baked.txt
 # then replace the scaffold NavigationMesh block in Levels/level_5.tscn with the
-# baked snippet (Level 5's proof run did this with a small splice script)
+# baked snippet (Level 5's proof run did this with a small splice script).
+# Caution: re-running the design script (step 2) rewrites spec.json with the
+# scaffold snippet and gi_data null, so a re-assemble after that silently
+# ships the scaffold and drops the GI reference. After any redesign, repeat
+# the spec patch (baked snippet + gi_data path) before the final assemble —
+# the rotation test fails on scaffold meshes, which is how this was caught.
 
 # 6. Bake VoxelGI with the display server + hard watchdog (edit paths first)
 python -c "
@@ -182,6 +187,25 @@ python capture.py map Levels/level_5.tscn --preset all
     Characters/weapons/props must have `gi_mode = 0` or they bake permanent
     shadow artifacts into the GI data.
 
+## Wall geometry and tiling (read before emitting wall cells)
+
+Wall cells are 2 m, but each wall mesh is 4 m wide and centered on its
+cell's grid point (`wall_map.tres` AABB `x -2..2`), so one mesh covers two
+cells. An X-running wall at cell `(wx, wz)` spans world `x wx*2-2..wx*2+2`
+and only `z wz*2±0.5`; Z-running walls (orient 16/22) are transposed.
+
+Cells placed on every slot of a straight run therefore overlap their
+neighbours by 2 m of coplanar faces, which shimmers in game. Shipped runs
+avoid this by occupying every other slot so panels tile edge-to-edge: an
+8 m edge at world `x -12..-4` takes cells `wx=-5` and `wx=-3` (spans
+`-12..-8`, `-8..-4`). `generate_walls.generate()` and `pit_lining()` both
+encode this spacing; hand-placed runs (pillars, dividers) need the same
+treatment. Perpendicular crossings read as normal corners and stacked
+tiers share no visible faces, so only same-axis, same-tier overlap counts
+— which is exactly what `validate_layout.check_no_wall_overlap()` tests.
+Run it on every new wall file, and confirm runs visually with a low
+grazing-angle capture along the wall (top-down views hide the shimmer).
+
 ## Wall orientation rule (read before placing walls by hand)
 
 GridMap orientation decides which way a wall piece runs. Shipped-Level-2
@@ -196,8 +220,21 @@ conventions, all verified visually on Levels 4–5:
   prefer it over hand-placing rings.
 - A single row of cross-oriented pieces reads as fins/comb teeth, **not** a
   divider — Level 2 builds X-running dividers as *double rows* of Z-pieces.
-- Shipped `y=-1` perimeters are all solid item 0 (no windows); windows appear
-  only in `y=0` walls. `generate_walls.py` encodes all of this.
+- Shipped solid walls carry no windows; windows appear only in `y=0` walls.
+  `generate_walls.py` encodes all of this.
+
+## Wall height tiers (read before placing walls at any y)
+
+Raycast-measured on shipped levels (floor top ~0.0): a `y=-1` wall spans
+`y -4..0` and tops out flush with the floor, so it reads as a rim or floor
+inlay. Full-height architecture (tops ~4.1) lives at `y=0`. Shipped Level 2
+mixes both — tall `y=0` west/south perimeters, low `y=-1` north/east rims,
+`y=-1` pit lining throughout — while Level 1 is rims only.
+A past Level 5 design emitted freestanding colonnades at `y=-1` and they
+rendered as invisible floor decoration; the rotation test now fails any
+`y=-1` cell fully covered by solid floor (rings no edge). Top-down and
+isometric captures hide tier mistakes — checking new architecture calls for
+a low, near-walk-height camera angle.
 
 ## Floor art without hand-painting
 

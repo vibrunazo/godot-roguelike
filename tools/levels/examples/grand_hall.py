@@ -24,6 +24,7 @@ from generate_navmesh import generate, render_snippet  # noqa: E402
 from generate_walls import generate as gen_walls  # noqa: E402
 from generate_walls import pit_lining  # noqa: E402
 from validate_layout import check_connectivity, check_dressing  # noqa: E402
+from validate_layout import check_no_wall_overlap  # noqa: E402
 from validate_layout import check_pit_coverage, check_walls_touch_floor  # noqa: E402
 from validate_layout import load_cells  # noqa: E402
 
@@ -40,18 +41,23 @@ LAKE_B = [(x, z) for x in (1, 2) for z in (-8, -7, -6)]
 # Pit quads: 8x8 visuals at y=-2, given as world (x, z) centers.
 PITS = [(-8, -44), (-8, -52), (8, -28), (8, -20)]
 
-# Freestanding interior walls: (x, y, z, item, orient).
+# Freestanding interior walls: (x, y, z, item, orient). These stand TALL at
+# y=0; y=-1 would bury them flush with the floor (verified by raycast
+# heightmap: floor top ~0.0, y=-1 tops ~0.0, y=0 tops ~4.1).
+# Cells tile the run every OTHER slot (4m meshes on a 2m grid): consecutive
+# cells overlap coplanar faces and shimmer. Spans below cover the intended
+# extents exactly (west colonnade z -32..-24, east z -12..-4, north cross x
+# -8..4, south segments with the central gap kept open).
 # Orientation rule (learned the hard way): pieces running along X use orient
 # 10 (north-ring style), pieces running along Z use 16/22. A single row of
-# Z-pieces reads as fins, not a divider. All solid: shipped y=-1 walls carry
+# Z-pieces reads as fins, not a divider. All solid: shipped solid walls carry
 # no windows.
 PILLARS = [
-    (-6, -1, -16, 0, 16), (-6, -1, -15, 0, 16), (-6, -1, -14, 0, 16),  # west colonnade
-    (2, -1, -6, 0, 16), (2, -1, -5, 0, 16), (2, -1, -4, 0, 16),        # east colonnade
-    (-3, -1, -30, 0, 10), (-2, -1, -30, 0, 10),                        # north cross-wall
-    (-1, -1, -30, 0, 10), (0, -1, -30, 0, 10), (1, -1, -30, 0, 10),
-    (-4, -1, -6, 0, 10), (-3, -1, -6, 0, 10),                          # south cross-wall
-    (1, -1, -6, 0, 10),                                                # (central gap kept open)
+    (-6, 0, -15, 0, 16), (-6, 0, -13, 0, 16),  # west colonnade
+    (2, 0, -5, 0, 16), (2, 0, -3, 0, 16),        # east colonnade
+    (-3, 0, -30, 0, 10), (-1, 0, -30, 0, 10),    # north cross-wall
+    (1, 0, -30, 0, 10),
+    (-3, 0, -6, 0, 10), (1, 0, -6, 0, 10),       # south cross-wall, gap kept
 ]
 
 PLAYER = [0, 1, 8]
@@ -117,7 +123,11 @@ def main() -> int:
     floor -= set(LAKE_A) | set(LAKE_B)
     print(f"design: {len(floor)} floor tiles")
 
-    wall = gen_walls(floor, window_stride=0)
+    # Perimeter follows the shipped Level 2 pattern (tall west/south blockers,
+    # low east/north rims): the low rims keep room to knock enemies out of
+    # the level, which a full tall enclosure would remove as a design choice.
+    # Windows every 3rd tall cell (shipped convention; rims stay solid).
+    wall = gen_walls(floor, window_stride=3)
     seen: set[tuple[int, int, int]] = set()
     for wx, wy, wz, item, orient in PILLARS:
         assert (wx, wy, wz) not in wall, f"pillar overlaps perimeter: {(wx, wy, wz)}"
@@ -141,6 +151,7 @@ def main() -> int:
     ok = check_connectivity(set(floor), START_TILE, EXIT_TILE)
     ok = check_pit_coverage(set(floor), [(float(x), float(z)) for x, z in PITS]) and ok
     ok = check_walls_touch_floor(set(floor), wall) and ok
+    ok = check_no_wall_overlap(wall) and ok
     ok = check_dressing(set(floor), dressing) and ok
     from validate_layout import suggest_voxelgi
     suggest_voxelgi(set(floor))

@@ -2,12 +2,40 @@
 """Generates perimeter wall cells around a floor footprint, plus shaft-wall
 pit lining copied from shipped Level 2.
 
-Perimeter: for every floor tile side facing the OUTER void, emits the wall
-cells covering that side (two 2m wall cells per 4m tile side) at ground level
-(y=-1, item 0). Sides facing interior holes (pits) are deliberately left open:
-pits get lining instead (see below). Orientations follow shipped-Level-2
-conventions per side: north/south edges use orientation 10 (north-ring style),
-west edges 16 (west-wall style), east edges 22 (east-wall style).
+Grid geometry model (read this before emitting wall cells by hand):
+- Floormap tiles are 4m x 4m; Wallmap cells are 2m x 2m x 4m.
+- Each wall MESH is 4m wide and 1m thick (wall_map.tres AABB x -2..2,
+  z -0.5..0.5), centered on its cell's grid point: an X-running wall at
+  cell (wx, wz) covers world x wx*2-2..wx*2+2 (two cells wide) but only
+  z wz*2-0.5..wz*2+0.5. Z-running walls (orient 16/22) are transposed.
+- Consequence: cells on EVERY slot of a straight run overlap their
+  neighbours by 2m of coplanar faces, which shimmers (z-fighting) in game.
+  Shipped runs occupy every OTHER slot so 4m panels tile edge-to-edge with
+  zero overlap area. Worked example: an 8m hole edge along X at world x
+  -12..-4 is lined by cells wx=-5 and wx=-3, with mesh spans -12..-8 and
+  -8..-4.
+- Perpendicular crossings read as normal corners and stacked tiers share no
+  visible faces, so only same-axis, same-tier area overlap counts.
+  validate_layout.check_no_wall_overlap() encodes exactly this rule — run
+  it on every new wall file.
+
+Perimeter: for every floor tile side facing the OUTER void, emits ONE wall
+cell at the odd offset (each 4m-wide mesh then spans exactly that tile side;
+emitting every cell overlaps neighbours and z-fights). Sides facing interior
+holes (pits) are deliberately left open: pits get lining instead (see
+below). Orientations follow shipped-Level-2 conventions per side:
+north/south edges use orientation 10 (north-ring style), west edges 16
+(west-wall style), east edges 22 (east-wall style). Height tiers default to
+the Level 2 pattern (tall west/max-z blockers, low east/min-z rims that keep
+room for knock-outs); pass tiers to change them per side.
+
+Height tiers (measured by raycast: floor top ~0.0): a y=-1 wall spans y
+-4..0 and tops out flush with the floor, reading as a rim or inlay, so
+freestanding architecture generally belongs at y=0 (span y 0..4, tops ~4.1).
+Shipped Level 2 mixes both: tall y=0 walls on its west/south perimeters,
+low y=-1 rims on north/east, and y=-1 pit lining everywhere. Top-down and
+isometric captures hide the difference; verifying new architecture with a
+low, near-walk-height camera angle catches tier mistakes.
 With --windows N, every Nth cell of each straight run becomes a window
 (item 1), keeping corners solid (default 0: solid, matching shipped y=-1
 perimeters, which carry no windows).
@@ -62,21 +90,31 @@ def _interior_holes(floor: set[tuple[int, int]]) -> set[tuple[int, int]]:
 
 
 def generate(floor: set[tuple[int, int]],
-             window_stride: int = 0) -> dict[tuple[int, int, int], tuple[int, int]]:
+             window_stride: int = 0,
+             tiers: dict[str, int] | None = None) -> dict[tuple[int, int, int], tuple[int, int]]:
     """Builds {(x, y, z): (item, orient)} perimeter walls for floor tiles."""
-    # Runs keyed by (side): cells along one straight edge.
+    # Runs keyed by (side): cells along one straight edge. One cell per tile
+    # side at the ODD offset: each 4m-wide wall mesh then spans exactly one
+    # tile side, so consecutive tiles tile seamlessly with no coplanar
+    # overlap (emitting every cell overlaps neighbours by 2m and shimmers
+    # with z-fighting; shipped long runs all use this spacing).
+    # tiers maps side ("n"/"s"/"w"/"e") to wall height tier. The default
+    # copies shipped Level 2: tall blockers on west/max-z, low flush rims on
+    # east/min-z — the low rims keep room to knock enemies out of the level.
+    if tiers is None:
+        tiers = {"n": -1, "s": 0, "w": 0, "e": -1}
     holes = _interior_holes(floor)
     runs: dict[tuple[str, int], list[tuple[int, int, int, int]]] = {}
     for (fx, fz) in floor:
         sides = [
             # (side key, orient, cells if the neighbour is outer void)
-            (("n", 2 * fz), 10, [(2 * fx, -1, 2 * fz), (2 * fx + 1, -1, 2 * fz)]
+            (("n", 2 * fz), 10, [(2 * fx + 1, tiers["n"], 2 * fz)]
              if (fx, fz - 1) not in floor and (fx, fz - 1) not in holes else []),
-            (("s", 2 * fz + 2), 10, [(2 * fx, -1, 2 * fz + 2), (2 * fx + 1, -1, 2 * fz + 2)]
+            (("s", 2 * fz + 2), 10, [(2 * fx + 1, tiers["s"], 2 * fz + 2)]
              if (fx, fz + 1) not in floor and (fx, fz + 1) not in holes else []),
-            (("w", 2 * fx), 16, [(2 * fx, -1, 2 * fz), (2 * fx, -1, 2 * fz + 1)]
+            (("w", 2 * fx), 16, [(2 * fx, tiers["w"], 2 * fz + 1)]
              if (fx - 1, fz) not in floor and (fx - 1, fz) not in holes else []),
-            (("e", 2 * fx + 2), 22, [(2 * fx + 2, -1, 2 * fz), (2 * fx + 2, -1, 2 * fz + 1)]
+            (("e", 2 * fx + 2), 22, [(2 * fx + 2, tiers["e"], 2 * fz + 1)]
              if (fx + 1, fz) not in floor and (fx + 1, fz) not in holes else []),
         ]
         for key, orient, cells in sides:
@@ -86,7 +124,8 @@ def generate(floor: set[tuple[int, int]],
     for cells in runs.values():
         cells = sorted(set(cells))
         for i, (x, y, z, orient) in enumerate(cells):
-            item = 1 if window_stride > 0 and i % window_stride == 2 else 0
+            # Windows only in full-height runs: shipped low rims are solid.
+            item = 1 if window_stride > 0 and y == 0 and i % window_stride == 2 else 0
             wall[(x, y, z)] = (item, orient)
     return wall
 

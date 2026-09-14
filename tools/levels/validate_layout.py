@@ -148,6 +148,65 @@ def check_walls_touch_floor(floor: set[tuple[int, int]],
     return True
 
 
+# Wall mesh extents (wall_map.tres: 4m wide, 1m thick, centered on the cell
+# grid point). X-running pieces (orient 0/10) span x +-2m, z +-0.5m;
+# Z-running pieces (16/22) span x +-0.5m, z +-2m.
+_X_RUN_ORIENTS = (0, 10)
+_Z_RUN_ORIENTS = (16, 22)
+
+
+def _mesh_rect(cell: tuple[int, int, int], orient: int) -> tuple[float, float, float, float]:
+    """World-space mesh footprint for a wall cell (see extents above)."""
+    x, _y, z = cell
+    cx, cz = x * WALL_CELL, z * WALL_CELL
+    if orient in _X_RUN_ORIENTS:
+        return (cx - 2.0, cz - 0.5, cx + 2.0, cz + 0.5)
+    if orient in _Z_RUN_ORIENTS:
+        return (cx - 0.5, cz - 2.0, cx + 0.5, cz + 2.0)
+    return (cx, cz, cx + WALL_CELL, cz + WALL_CELL)
+
+
+def _mesh_axis(orient: int) -> str | None:
+    if orient in _X_RUN_ORIENTS:
+        return "x"
+    if orient in _Z_RUN_ORIENTS:
+        return "z"
+    return None
+
+
+def check_no_wall_overlap(wall: dict[tuple[int, int, int], tuple[int, int]]) -> bool:
+    """Fails on coplanar mesh overlaps that shimmer with z-fighting.
+
+    Only same-tier, same-axis pairs count: perpendicular crossings are normal
+    corners, stacked tiers share no visible faces, and edge-touching runs
+    (the shipped tiling) have zero overlap area.
+    """
+    cells = sorted(wall)
+    bad: list[tuple[tuple[int, int, int], tuple[int, int, int]]] = []
+    for i in range(len(cells)):
+        a = cells[i]
+        axisa = _mesh_axis(wall[a][1])
+        if axisa is None:
+            continue
+        ax0, az0, ax1, az1 = _mesh_rect(a, wall[a][1])
+        for j in range(i + 1, len(cells)):
+            b = cells[j]
+            if b[1] != a[1] or _mesh_axis(wall[b][1]) != axisa:
+                continue
+            bx0, bz0, bx1, bz1 = _mesh_rect(b, wall[b][1])
+            if min(ax1, bx1) - max(ax0, bx0) > 0.01 and min(az1, bz1) - max(az0, bz0) > 0.01:
+                bad.append((a, b))
+    for a, b in bad[:10]:
+        print(f"FAIL: coplanar wall overlap {a} x {b}", file=sys.stderr)
+    if len(bad) > 10:
+        print(f"FAIL: ... plus {len(bad) - 10} more overlaps", file=sys.stderr)
+    if bad:
+        print("overlap: INVALID (tile runs every other cell; see the grid model in generate_walls.py)")
+    else:
+        print(f"overlap: {len(cells)} walls tile cleanly")
+    return not bad
+
+
 def check_dressing(floor: set[tuple[int, int]],
                    points: list[tuple[str, float, float]]) -> bool:
     """Every placed thing (spawn, exit, hazards, props) must stand on floor.
@@ -205,6 +264,7 @@ def main() -> int:
     ok = check_connectivity(set(floor), _parse_pair(args.start), goal)
     ok = check_pit_coverage(set(floor), pits_f) and ok
     ok = check_walls_touch_floor(set(floor), wall) and ok
+    ok = check_no_wall_overlap(wall) and ok
     if args.dressing:
         points: list[tuple[str, float, float]] = []
         for entry in args.dressing.split(";"):

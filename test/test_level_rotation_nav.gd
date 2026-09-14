@@ -113,6 +113,8 @@ func _verify_level(level_path: String) -> bool:
 			ok = false
 		if not _verify_no_stray_islands(level, level_path):
 			ok = false
+		if not _verify_low_walls_ring_edges(level, level_path):
+			ok = false
 		if not _verify_pit_lining(level, level_path):
 			ok = false
 		if not _verify_path(player.global_position, exit_point.global_position, level_path):
@@ -193,6 +195,55 @@ func _verify_navmesh_is_baked(level: Node3D, level_path: String) -> bool:
 			print("navmesh shows bake erosion in ", level_path)
 			return true
 	printerr("TEST FAILED: navmesh is an unbaked integer lattice (scaffold, not a bake) in ", level_path)
+	return false
+
+
+## Low-tier (y=-1) walls top out flush with the floor, so they only read as
+## architecture when they ring a hole or void edge. A y=-1 cell whose
+## footprint (plus a 2 m margin) is fully covered by solid floor tiles is a
+## buried freestanding stub — past mistake: whole colonnades emitted at y=-1
+## that rendered as floor inlay. Cells stacked under a y=0 wall are exempt
+## (foundations).
+func _verify_low_walls_ring_edges(level: Node3D, level_path: String) -> bool:
+	var floor: Dictionary = {}
+	var tall: Dictionary = {}
+	var low: Array[Vector2i] = []
+	for gm_node: Node in level.find_children("*", "GridMap", true, false):
+		var gm: GridMap = gm_node as GridMap
+		if gm.name == "Floormap":
+			for cell: Vector3i in gm.get_used_cells():
+				floor[Vector2i(cell.x, cell.z)] = true
+		elif gm.name == "Wallmap":
+			for cell: Vector3i in gm.get_used_cells():
+				if cell.y == 0:
+					tall[Vector2i(cell.x, cell.z)] = true
+				elif cell.y == -1:
+					low.append(Vector2i(cell.x, cell.z))
+	var ok: bool = true
+	for w: Vector2i in low:
+		if tall.has(w):
+			continue
+		var buried: bool = true
+		for sx: int in range(w.x * 2 - 2, w.x * 2 + 5):
+			for sz: int in range(w.y * 2 - 2, w.y * 2 + 5):
+				if not _point_on_floor(sx, sz, floor):
+					buried = false
+					break
+			if not buried:
+				break
+		if buried:
+			printerr("TEST FAILED: buried y=-1 wall (fully floor-covered, rings no edge) at ", w, " in ", level_path)
+			ok = false
+	if ok:
+		print("low-tier walls ring edges in ", level_path)
+	return ok
+
+
+## True when the world point (sx, sz) lies on a solid floor tile.
+func _point_on_floor(sx: int, sz: int, floor: Dictionary) -> bool:
+	for key: Vector2i in floor:
+		if key.x * 4 <= sx and sx <= key.x * 4 + 4 and key.y * 4 <= sz and sz <= key.y * 4 + 4:
+			return true
 	return false
 
 
