@@ -1,7 +1,9 @@
 ## Rotation integrity test: every level in `SceneTransition.levels` must load,
 ## expose its core nodes (Player, ExitPoint, WaveObjective, VoxelGI with baked
 ## data), and provide a valid navigation path from player spawn to the exit
-## with a VoxelGI volume that covers the floor footprint.
+## with a VoxelGI volume that covers the floor footprint. Every interior floor
+## hole (pit) must also be ringed with shaft walls below the rim so pits read
+## as deep shafts instead of flat black stickers floating in the air.
 extends Node3D
 
 
@@ -105,6 +107,8 @@ func _verify_level(level_path: String) -> bool:
 	if ok:
 		if not _verify_navmesh_covers_level(level, level_path):
 			ok = false
+		if not _verify_pit_lining(level, level_path):
+			ok = false
 		if not _verify_path(player.global_position, exit_point.global_position, level_path):
 			ok = false
 
@@ -167,6 +171,95 @@ func _verify_navmesh_covers_level(level: Node3D, level_path: String) -> bool:
 		return false
 	print("navmesh + VoxelGI cover floor footprint in ", level_path)
 	return true
+
+
+## Checks every interior floor hole is ringed with shaft walls. Each wall mesh
+## spans a full 4m tile side from a single 2m cell, so every hole-tile side
+## facing a floor tile needs at least one of its two straddling y=-1 wall
+## cells present (orientations are cosmetic here, presence is the contract).
+func _verify_pit_lining(level: Node3D, level_path: String) -> bool:
+	var floor_gm: GridMap = null
+	var wall_gm: GridMap = null
+	for gm_node: Node in level.find_children("*", "GridMap", true, false):
+		var gm: GridMap = gm_node as GridMap
+		if gm.name == "Floormap":
+			floor_gm = gm
+		elif gm.name == "Wallmap":
+			wall_gm = gm
+	if floor_gm == null or wall_gm == null:
+		printerr("TEST FAILED: Floormap/Wallmap missing in ", level_path)
+		return false
+	var floor: Dictionary = {}
+	for cell: Vector3i in floor_gm.get_used_cells():
+		floor[Vector2i(cell.x, cell.z)] = true
+	var lined_below: Dictionary = {}
+	for cell: Vector3i in wall_gm.get_used_cells():
+		if cell.y == -1:
+			lined_below[Vector2i(cell.x, cell.z)] = true
+	var bad_sides: int = 0
+	var checked_sides: int = 0
+	for h: Vector2i in _interior_holes(floor):
+		var sides: Array = [
+			[Vector2i(h.x, h.y - 1), Vector2i(2 * h.x, 2 * h.y), Vector2i(2 * h.x + 1, 2 * h.y)],
+			[Vector2i(h.x, h.y + 1), Vector2i(2 * h.x, 2 * h.y + 2), Vector2i(2 * h.x + 1, 2 * h.y + 2)],
+			[Vector2i(h.x - 1, h.y), Vector2i(2 * h.x, 2 * h.y), Vector2i(2 * h.x, 2 * h.y + 1)],
+			[Vector2i(h.x + 1, h.y), Vector2i(2 * h.x + 2, 2 * h.y), Vector2i(2 * h.x + 2, 2 * h.y + 1)],
+		]
+		for side: Array in sides:
+			if not floor.has(side[0]):
+				continue
+			checked_sides += 1
+			if not lined_below.has(side[1]) and not lined_below.has(side[2]):
+				bad_sides += 1
+				printerr("TEST FAILED: unlined pit side: hole tile ", h, " toward ", side[0], " in ", level_path)
+	if bad_sides > 0:
+		return false
+	print("pit lining OK (", checked_sides, " hole-tile sides) in ", level_path)
+	return true
+
+
+## Floor-grid gaps NOT connected to the outer void (i.e. pits).
+func _interior_holes(floor: Dictionary) -> Array[Vector2i]:
+	var keys: Array = floor.keys()
+	var x0: int = keys[0].x - 1
+	var x1: int = keys[0].x + 1
+	var z0: int = keys[0].y - 1
+	var z1: int = keys[0].y + 1
+	for k: Vector2i in keys:
+		x0 = mini(x0, k.x - 1)
+		x1 = maxi(x1, k.x + 1)
+		z0 = mini(z0, k.y - 1)
+		z1 = maxi(z1, k.y + 1)
+	var seen: Dictionary = {}
+	var queue: Array[Vector2i] = []
+	for x: int in [x0, x1]:
+		for z: int in range(z0, z1 + 1):
+			var edge := Vector2i(x, z)
+			if not floor.has(edge) and not seen.has(edge):
+				seen[edge] = true
+				queue.append(edge)
+	for z: int in [z0, z1]:
+		for x: int in range(x0, x1 + 1):
+			var edge := Vector2i(x, z)
+			if not floor.has(edge) and not seen.has(edge):
+				seen[edge] = true
+				queue.append(edge)
+	while not queue.is_empty():
+		var c: Vector2i = queue.pop_back()
+		for n: Vector2i in [Vector2i(c.x + 1, c.y), Vector2i(c.x - 1, c.y), Vector2i(c.x, c.y + 1), Vector2i(c.x, c.y - 1)]:
+			if n.x < x0 or n.x > x1 or n.y < z0 or n.y > z1:
+				continue
+			if floor.has(n) or seen.has(n):
+				continue
+			seen[n] = true
+			queue.append(n)
+	var holes: Array[Vector2i] = []
+	for x: int in range(x0 + 1, x1):
+		for z: int in range(z0 + 1, z1):
+			var p := Vector2i(x, z)
+			if not floor.has(p) and not seen.has(p):
+				holes.append(p)
+	return holes
 
 
 ## Checks a navigation path exists between two points on the level.

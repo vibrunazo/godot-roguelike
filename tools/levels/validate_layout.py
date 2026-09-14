@@ -148,6 +148,26 @@ def check_walls_touch_floor(floor: set[tuple[int, int]],
     return True
 
 
+def check_dressing(floor: set[tuple[int, int]],
+                   points: list[tuple[str, float, float]]) -> bool:
+    """Every placed thing (spawn, exit, hazards, props) must stand on floor.
+
+    Points are world (x, z); each must fall inside a floor tile expanded by a
+    0.5m prop-radius tolerance. This is the one placement class the other
+    checks do not cover.
+    """
+    ok = True
+    for name, px, pz in points:
+        inside = any(fx * FLOOR_TILE - 0.5 <= px <= fx * FLOOR_TILE + FLOOR_TILE + 0.5
+                     and fz * FLOOR_TILE - 0.5 <= pz <= fz * FLOOR_TILE + FLOOR_TILE + 0.5
+                     for fx, fz in floor)
+        if not inside:
+            print(f"FAIL: {name} at ({px:g}, {pz:g}) stands outside the floor", file=sys.stderr)
+            ok = False
+    print(f"dressing: {len(points)} placements on floor" if ok else "dressing: INVALID")
+    return ok
+
+
 def suggest_voxelgi(floor: set[tuple[int, int]], margin: float = 4.0) -> None:
     """Prints a VoxelGI center/size enclosing the footprint plus margin."""
     xs = [x for x, _ in floor]
@@ -170,6 +190,8 @@ def main() -> int:
     ap.add_argument("--pits", default="", help='Pit quad centers "x,z;x,z" (world meters)')
     ap.add_argument("--start", default="0,0", help="Player start tile x,z")
     ap.add_argument("--goal", default="", help="Exit tile x,z")
+    ap.add_argument("--dressing", default="",
+                    help='Placements "name,x,z;..." (world meters) that must stand on floor')
     args = ap.parse_args()
 
     floor = load_cells(args.floor, "FLOOR")
@@ -183,6 +205,14 @@ def main() -> int:
     ok = check_connectivity(set(floor), _parse_pair(args.start), goal)
     ok = check_pit_coverage(set(floor), pits_f) and ok
     ok = check_walls_touch_floor(set(floor), wall) and ok
+    if args.dressing:
+        points: list[tuple[str, float, float]] = []
+        for entry in args.dressing.split(";"):
+            if not entry.strip():
+                continue
+            name, sx, sz = entry.split(",")
+            points.append((name.strip(), float(sx), float(sz)))
+        ok = check_dressing(set(floor), points) and ok
     suggest_voxelgi(set(floor))
     print("VALID" if ok else "INVALID")
     return 0 if ok else 1

@@ -22,12 +22,15 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 | Tool | Purpose |
 | :--- | :--- |
 | `dump_cells.gd` | Dumps a level's Floormap/Wallmap cells to text (`--level= --out=`). Starting point for editing any existing level. |
-| `validate_layout.py` | Design-time checks on cell files: floor connectivity (BFS), pit-quad coverage, wall sanity, VoxelGI suggestion. No engine needed. |
-| `generate_navmesh.py` | Builds a `NavigationMesh` snippet (shared-corner lattice) from floor cells. **Scaffold only** — the real bake happens in the editor (tip 1). |
+| `validate_layout.py` | Design-time checks on cell files: floor connectivity (BFS), pit-quad coverage, wall sanity, dressing-on-floor (`--dressing`), VoxelGI suggestion. No engine needed. |
+| `generate_walls.py` | Perimeter walls from floor cells (outer-void sides only, per-side orientations, optional windows) plus `pit_lining()`: shaft walls ringing interior holes, copied from shipped Level 2. Interior pillars stay hand-designed. |
+| `generate_navmesh.py` | Builds a `NavigationMesh` snippet (shared-corner lattice) from floor cells. **Scaffold only** — ship only real bakes (tip 1). |
 | `pack_cells.gd` | Serializes cell files through the engine into a temp scene. GridMap `data` arrays use an internal packed encoding: never hand-write them. |
-| `assemble_level.py` | Builds an inherited level `.tscn` from a JSON spec (template + cells + pits + exit + hazards + litter + VoxelGI). Recomputes root `index` attributes automatically. |
+| `assemble_level.py` | Builds an inherited level `.tscn` from a JSON spec (template + cells + pits + exit + hazards + litter + VoxelGI). Supports `strip_*` dressing removal, `litter_placed`, hazard kinds. Recomputes root `index` attributes automatically. |
+| `bake_navmesh.gd` | Headless navmesh bake via `NavigationMeshGenerator` (`--level= --out=`). Output proved byte-equivalent (modulo float formatting) to the editor's Bake button on Level 4. |
 | `bake_level_gi.gd` / `.tscn` | Nav pre-check + VoxelGI bake (`--level= --gi-out=`). Must run **with** the display server (see command below). |
 | `examples/double_level.py` | Worked example: the Level 4 mirror recipe. Reads a dump, writes cells + navmesh + spec. Copy and adapt for new designs. |
+| `examples/grand_hall.py` | Worked example: the original Level 5 design (vestibule + hall + pit lakes + colonnades). Shows perimeter generation, floor art variants, explicit dressing. |
 
 The gate for every level is the committed test `test/test_level_rotation_nav.tscn`:
 it loads each `SceneTransition.levels` entry and checks core nodes, baked
@@ -52,7 +55,11 @@ python run_scratch.py tools/levels/pack_cells.gd -- --floor=tools/levels/out/l4p
     --wall=tools/levels/out/l4proof/wall.txt --out=tools/levels/out/l4proof/packed_cells.tscn
 python tools/levels/assemble_level.py --spec tools/levels/out/l4proof/spec.json --out Levels/level_5.tscn
 
-# 5. BAKE THE NAVMESH IN THE EDITOR (NavigationRegion3D > Bake). Non-negotiable (tip 1).
+# 5. Bake the navmesh headlessly, splice it into the level (tip 1)
+python run_scratch.py tools/levels/bake_navmesh.gd -- --level=Levels/level_5.tscn \
+    --out=tools/levels/out/l5proof/navmesh_baked.txt
+# then replace the scaffold NavigationMesh block in Levels/level_5.tscn with the
+# baked snippet (Level 5's proof run did this with a small splice script)
 
 # 6. Bake VoxelGI with the display server + hard watchdog (edit paths first)
 python -c "
@@ -106,12 +113,15 @@ python capture.py map Levels/level_5.tscn --preset all
 
 ## Tips learned building Level 4
 
-1. **The navmesh must be baked in the editor. Period.** A hand-generated
+1. **Ship only real bakes, never hand-made meshes.** A hand-generated
    polygon lattice can be fully walkable (ours passed path queries) and still
    not be a bake: no agent-radius erosion around walls/pits, no recast
-   partitioning. The committed rotation test guards the *outcome* either way,
-   but ship only editor-baked meshes. (`generate_navmesh.py` output is a
-   scaffold that unblocks assembly/testing before the bake.)
+   partitioning. `bake_navmesh.gd` runs the engine's own
+   `NavigationMeshGenerator.bake()` headlessly — its output matched the
+   editor's Bake button exactly on Level 4 (same verts/polys, modulo float
+   formatting). (`generate_navmesh.py` output is only a scaffold that
+   unblocks assembly/testing before the bake.) The committed rotation test
+   guards the *outcome* either way.
 2. **Never hand-write GridMap `data` arrays.** The `PackedInt32Array` encoding
    is engine-internal (3 ints/cell, position-packed). Always round-trip through
    `pack_cells.gd` — it is byte-deterministic across runs (proven by diff).
@@ -150,19 +160,51 @@ python capture.py map Levels/level_5.tscn --preset all
 11. **Pit quads cover interior gaps; notches stay open.** Gaps connected to the
     outer void are boundary notches and need no quad (Level 2 leaves its notch
     unwalled — follow that precedent rather than bridging voids with walls).
-12. **Size VoxelGI with margin and keep dynamics out of the bake.**
+12. **Every pit needs a shaft-wall ring, not just a quad.** A black pit quad
+   over a bare hole reads as a flat sticker floating in the air. Shipped
+   levels ring each interior hole with `y=-1` shaft walls whose inner faces
+   drop from the rim to the quad at `y=-2` (see `pit_lining()` in
+   `generate_walls.py`: cells on every other slot along each hole edge,
+   straddling the hole/floor boundary — possible because each 4 m-wide wall
+   mesh spans two 2 m grid cells). The committed rotation test enforces this:
+   every hole-tile side facing floor must touch a `y=-1` wall cell.
+13. **Size VoxelGI with margin and keep dynamics out of the bake.**
     `validate_layout.py` prints a suggested center/size (footprint + 4 m).
     Characters/weapons/props must have `gi_mode = 0` or they bake permanent
     shadow artifacts into the GI data.
+
+## Wall orientation rule (read before placing walls by hand)
+
+GridMap orientation decides which way a wall piece runs. Shipped-Level-2
+conventions, all verified visually on Levels 4–5:
+
+- Pieces running along **X**: orient **10** (north-ring style).
+- Pieces running along **Z** on the **west** side: orient **16**.
+- Pieces running along **Z** on the **east** side: orient **22**.
+- Pit-lining orients differ from perimeter ones: hole **north** edges use
+  orient **0**, south **10**, west **16**, east **22** (the lining mesh hugs
+  the opposite face of the boundary plane). `pit_lining()` encodes this —
+  prefer it over hand-placing rings.
+- A single row of cross-oriented pieces reads as fins/comb teeth, **not** a
+  divider — Level 2 builds X-running dividers as *double rows* of Z-pieces.
+- Shipped `y=-1` perimeters are all solid item 0 (no windows); windows appear
+  only in `y=0` walls. `generate_walls.py` encodes all of this.
+
+## Floor art without hand-painting
+
+Level 2's blue/grey mix follows no parity rule (checked), so
+`examples/grand_hall.py` assigns variants from Level 2's measured
+distribution (`(0,10):17, (1,10):15, (1,0):8, (0,0):6`) by stable per-tile
+hash. Position-stable regardless of iteration order, reads as shipped.
 
 ## Future tool ideas (not yet built)
 
 - **`new_level.py` scaffolder**: mint an empty inherited level (template nodes,
   empty GridMaps, placeholder navmesh/GI, spawn + exit) from a name + bounds,
   so new levels start assemblable instead of hand-copied.
-- **Dressing validator**: check each `Litter` prop and hazard sits on (not
-  beside) a floor tile — the one placement class `validate_layout.py` does
-  not cover yet.
+- **Navmesh splice tool**: fold the baked-snippet splice (currently an inline
+  proof script) into a maintained `splice_navmesh.py`, and likewise a
+  `set_gi_data.py` for the post-bake GI reference.
 - **Contact-sheet capture**: one command producing iso/top/side + a low orbit
   video for a level, for quick visual review without hand-posing cameras.
 - **Playthrough smoke test**: extend the rotation test to walk the player

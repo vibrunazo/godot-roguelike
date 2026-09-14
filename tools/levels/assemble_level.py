@@ -38,11 +38,13 @@ def parse_nodes(text: str) -> list[dict]:
         header = m.group(0)
         pm = re.search(r'parent="([^"]*)"', header)
         im = re.search(r'index="(\d+)"', header)
+        tm = re.search(r'type="([^"]*)"', header)
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         # Trim trailing blank lines but keep one newline.
         block = text[m.start():end].rstrip("\n") + "\n"
         nodes.append({"name": m.group(1), "parent": pm.group(1) if pm else "",
                       "index": int(im.group(1)) if im else None,
+                      "type": tm.group(1) if tm else "",
                       "text": block})
     return nodes
 
@@ -124,6 +126,25 @@ def main() -> int:
     base_text = open(spec["template"]).read()
     out = base_text
 
+    # --- strip template dressing the new layout does not reuse ---
+    drop: set[str] = set()
+    if spec.get("strip_litter"):
+        drop |= {n["name"] for n in parse_nodes(base_text)
+                 if n["parent"] == "NavigationRegion3D/Litter"}
+    if spec.get("strip_hazards"):
+        drop |= {n["name"] for n in parse_nodes(base_text)
+                 if n["parent"] == "." and (n["name"].startswith("SpikesHazard")
+                                           or n["name"].startswith("FireTrap"))}
+    if spec.get("strip_pits"):
+        drop |= {n["name"] for n in parse_nodes(base_text)
+                 if n["parent"] == "." and n["name"].startswith("Pit")
+                 and n["type"] == "MeshInstance3D"}
+    for n in parse_nodes(base_text):
+        if n["name"] in drop:
+            out = out.replace(n["text"], "")
+    if drop:
+        print(f"stripped template nodes: {sorted(drop)}")
+
     # --- scene uid + root name ---
     new_uid = spec.get("uid") or random_uid(rng)
     out = re.sub(r'\[gd_scene format=3 uid="[^"]+"\]',
@@ -143,7 +164,9 @@ def main() -> int:
     assert old_nav, "no navigation_mesh reference in template"
     old_nav_id = old_nav.group(1)
     snippet = open(spec["navmesh_snippet"]).read()
-    m = re.search(r"(vertices = PackedVector3Array\(.*?\))\n(polygons = \[.*?\])(\n.*)?$",
+    # Greedy polygons match: the snippet ends with the closing "]", so this
+    # spans every polygon (polygons themselves contain "]" characters).
+    m = re.search(r"(vertices = PackedVector3Array\(.*?\))\n(polygons = \[.*\])(\n.*)?$",
                   snippet.strip(), re.S)
     assert m, "navmesh snippet parse failed"
     tail = m.group(3) or "\ngeometry_parsed_geometry_type = 1\nregion_min_size = 6.0"
@@ -158,7 +181,8 @@ def main() -> int:
     # --- node bookkeeping: full root order, then reindex ---
     template_text = open(TEMPLATE_SCENE).read()
     order = root_order(template_text)
-    base_nodes = [n for n in parse_nodes(base_text) if n["parent"] == "."]
+    base_nodes = [n for n in parse_nodes(base_text)
+                  if n["parent"] == "." and n["name"] not in drop]
     for n in base_nodes:  # replay base overrides at their stated positions
         if n["name"] in order:
             order.remove(n["name"])
@@ -195,24 +219,37 @@ def main() -> int:
         blocks[pit["name"]] = clone_pattern(spec.get("pit_pattern_from", "Pit2"),
                                             pit["name"], float(pit["x"]), py, float(pit["z"]))
 
-    # --- extra hazards (clone the template's hazard pattern) ---
-    haz_pattern_name = spec.get("hazard_pattern_from", "SpikesHazard2")
-    haz_pattern = next(n for n in parse_nodes(base_text) if n["name"] == haz_pattern_name)
-    _hx, hy, _hz = transform_origin(haz_pattern["text"])
-    haz_ext = re.search(r'instance=ExtResource\("([^"]+)"\)', haz_pattern["text"])
-    assert haz_ext
+    # --- extra hazards (clone the template's hazard pattern per kind) ---
+    haz_patterns: dict[str, str] = {"spikes": spec.get("hazard_pattern_from", "SpikesHazard2")}
+    haz_patterns.update(spec.get("hazard_patterns", {}))
+    kind_to_scene = {"spikes": "spikes_hazard", "fire": "fire_trap"}
+    haz_anchors: dict[str, list[str]] = {}
     for haz in spec.get("extra_hazards", []):
-        block = clone_pattern(haz_pattern_name, haz["name"], float(haz["x"]), hy,
+        kind = haz.get("kind", "spikes")
+        assert kind in haz_patterns, f"no hazard pattern for kind {kind!r}"
+        pattern_name = haz_patterns[kind]
+        pattern = next(n for n in parse_nodes(base_text) if n["name"] == pattern_name)
+        _hx, hy, _hz = transform_origin(pattern["text"])
+        if "ext_id" in haz:
+            ext_id = haz["ext_id"]
+        else:
+            assert kind in kind_to_scene, f"no scene known for kind {kind!r}"
+            ext_id = _ext_id_for(out, kind_to_scene[kind])
+        block = clone_pattern(pattern_name, haz["name"], float(haz["x"]), hy,
                               float(haz["z"]))
-        block = block.replace(f'instance=ExtResource("{haz_ext.group(1)}")',
-                              f'instance=ExtResource("{haz.get("ext_id", haz_ext.group(1))}")')
+        old_ext = re.search(r'instance=ExtResource\("([^"]+)"\)', block)
+        assert old_ext
+        block = block.replace(f'instance=ExtResource("{old_ext.group(1)}")',
+                              f'instance=ExtResource("{ext_id}")')
         blocks[haz["name"]] = block
+        haz_anchors.setdefault(pattern_name, []).append(haz["name"])
 
     # --- litter copies (clone a template prop, shifted) ---
     litter_nodes = [n for n in parse_nodes(base_text)
                     if n["parent"] == "NavigationRegion3D/Litter"]
     litter_by_name = {n["name"]: n for n in litter_nodes}
     for copy in spec.get("litter_copies", []):
+        assert litter_by_name, "litter_copies needs template litter (or drop strip_litter)"
         src = litter_by_name[copy["from"]]
         block = src["text"]
         block = re.sub(r'\[node name="[^"]+"', f'[node name="{copy["name"]}"', block, count=1)
@@ -223,18 +260,53 @@ def main() -> int:
                                      oz + float(copy.get("dz", 0)))
         blocks[copy["name"]] = block
 
+    # --- litter placed explicitly ({name, scene, pos, rot_y}) ---
+    scene_nicknames = {"couch": "Couch", "barrel": "Barrel", "flag": "Flag"}
+    for placed in spec.get("litter_placed", []):
+        nick = placed["scene"]
+        assert nick in scene_nicknames, f"unknown litter scene {nick!r}"
+        ext_id = _ext_id_for(out, scene_nicknames[nick])
+        px, py, pz = placed["pos"]
+        block = (f'[node name="{placed["name"]}" parent="NavigationRegion3D/Litter" index="0" '
+                 f'unique_id={fresh_node_id(used_ids, rng)} instance=ExtResource("{ext_id}")]\n'
+                 f'transform = Transform3D({_yaw_basis(float(placed.get("rot_y", 0)))}, '
+                 f'{px:g}, {py:g}, {pz:g})\n')
+        blocks[placed["name"]] = block
+
     # --- splice new blocks into the file text ---
-    # Litter copies go right after the last litter child (before Pit).
-    out = _insert_after_pattern(out, litter_nodes[-1]["text"].rstrip("\n"),
-                                "\n".join(blocks[c["name"]] for c in spec.get("litter_copies", [])))
-    # Extra pits go right after the pattern pit (e.g. after Pit2).
+    # Litter goes right after the last litter child (or the Litter container
+    # when the template's dressing was stripped).
+    litter_add = [blocks[c["name"]] for c in spec.get("litter_copies", [])]
+    litter_add += [blocks[p["name"]] for p in spec.get("litter_placed", [])]
+    if litter_add:
+        remaining_litter = [n for n in parse_nodes(out)
+                            if n["parent"] == "NavigationRegion3D/Litter"]
+        if remaining_litter:
+            out = _insert_after_pattern(out, remaining_litter[-1]["text"].rstrip("\n"),
+                                        "\n".join(litter_add))
+        else:
+            out = _insert_after_node(out, "Litter", "\n".join(litter_add))
+    # Extra pits go right after the pattern pit; when the template's pits
+    # were stripped, after the last remaining Pit node (else ExitPoint).
     if spec.get("extra_pits"):
-        out = _insert_after_node(out, spec.get("pit_pattern_from", "Pit2"),
+        present = {n["name"] for n in parse_nodes(out)}
+        pattern = spec.get("pit_pattern_from", "Pit2")
+        if pattern in present:
+            pit_anchor = pattern
+        else:
+            pits_left = [n["name"] for n in parse_nodes(out) if n["name"].startswith("Pit")]
+            pit_anchor = pits_left[-1] if pits_left else "ExitPoint"
+        out = _insert_after_node(out, pit_anchor,
                                  "\n".join(blocks[p["name"]] for p in spec["extra_pits"]))
-    # Extra hazards go right after the pattern hazard.
-    if spec.get("extra_hazards"):
-        out = _insert_after_node(out, haz_pattern_name,
-                                 "\n".join(blocks[h["name"]] for h in spec["extra_hazards"]))
+    # Extra hazards go right after their own pattern node, or chained after
+    # the pits when the template's hazards were stripped.
+    present = {n["name"] for n in parse_nodes(out)}
+    pit_names = [p["name"] for p in spec.get("extra_pits", [])]
+    fallback = pit_names[-1] if pit_names else "ExitPoint"
+    for pattern_name, names in haz_anchors.items():
+        anchor = pattern_name if pattern_name in present else fallback
+        out = _insert_after_node(out, anchor, "\n".join(blocks[n] for n in names))
+        fallback = names[-1]
 
     # --- exit / player overrides ---
     ex, ey, ez = spec["exit"]
@@ -282,14 +354,21 @@ def main() -> int:
 
     # --- reindex every root override to its recomputed position ---
     for n in parse_nodes(out):
-        if n["parent"] == "." and n["name"] in index_of and n["index"] is not None:
-            out = out.replace(n["text"],
-                              re.sub(r' index="\d+"', f' index="{index_of[n["name"]]}"',
-                                     n["text"], count=1))
-    for copy in spec.get("litter_copies", []):
-        n = next(x for x in parse_nodes(out) if x["name"] == copy["name"])
-        base_idx = max(x["index"] for x in litter_nodes if x["index"] is not None)
-        pos = base_idx + 1 + spec["litter_copies"].index(copy)
+        if n["parent"] == "." and n["name"] in index_of:
+            if n["index"] is not None:
+                new_block = re.sub(r' index="\d+"', f' index="{index_of[n["name"]]}"',
+                                   n["text"], count=1)
+            else:
+                new_block = set_attr(n["text"], "index", str(index_of[n["name"]]))
+            out = out.replace(n["text"], new_block)
+    litter_new = [c["name"] for c in spec.get("litter_copies", [])]
+    litter_new += [p["name"] for p in spec.get("litter_placed", [])]
+    remaining_idx = [x["index"] for x in parse_nodes(out)
+                     if x["parent"] == "NavigationRegion3D/Litter" and x["index"] is not None
+                     and x["name"] not in litter_new]
+    base_idx = max(remaining_idx) if remaining_idx else -1
+    for pos, name in enumerate(litter_new, start=base_idx + 1):
+        n = next(x for x in parse_nodes(out) if x["name"] == name)
         out = out.replace(n["text"], re.sub(r' index="\d+"', f' index="{pos}"',
                                             n["text"], count=1))
 
@@ -300,6 +379,32 @@ def main() -> int:
           f"floor+pits+hazards+litter: +{len(spec.get('extra_pits', []))}/"
           f"+{len(spec.get('extra_hazards', []))}/+{len(spec.get('litter_copies', []))}")
     return 0
+
+
+def _ext_id_for(text: str, scene_substring: str) -> str:
+    """Finds an ExtResource id by filename substring (e.g. "Couch" -> "3_abc")."""
+    for m in re.finditer(r'\[ext_resource[^]]*path="([^"]+)"[^]]*id="([^"]+)"\]', text):
+        if scene_substring.lower() in m.group(1).lower():
+            return m.group(2)
+    raise AssertionError(f"no ExtResource matching {scene_substring!r} (pick a template containing it)")
+
+
+def _snap_g(v: float) -> str:
+    """Snaps near-integers/zeros so generated transforms print cleanly."""
+    if abs(v) < 0.0000005:
+        return "0"
+    if abs(v - round(v)) < 0.0000005:
+        return str(int(round(v)))
+    return "%g" % v
+
+
+def _yaw_basis(rot_y_deg: float) -> str:
+    """Builds a Transform3D basis triple for a yaw rotation (degrees)."""
+    import math
+    r = math.radians(rot_y_deg)
+    c = math.cos(r)
+    s = math.sin(r)
+    return "%s, 0, %s, 0, 1, 0, %s, 0, %s" % (_snap_g(c), _snap_g(-s), _snap_g(s), _snap_g(c))
 
 
 def _insert_after_pattern(text: str, pattern: str, addition: str) -> str:
