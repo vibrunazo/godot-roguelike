@@ -349,10 +349,12 @@ func _on_health_component_health_changed(value: float) -> void:
 
 ## Cancels all transient movement and ability state: motion vectors, pending
 ## intents, knockback momentum, the auto-aim lock, the attacking flag, live
-## weapon hitboxes, and any active dash/attack/fall body state (returned to the
+## weapon hitboxes, any active dash/attack/fall body state (returned to the
 ## machine's home state via its normal exit path, so attack timers, lunges, and
-## hitstop are cleaned up). Called when this character is carried into a new
-## level so a dash or attack never leaks across the transition.
+## hitstop are cleaned up), all in-flight character SFX (dash, damage, attack,
+## footsteps), and the damage vignette flash. Called when this character is
+## carried into a new level so a dash, attack, sound, or red flash never leaks
+## across the transition.
 func cancel_movement_and_abilities() -> void:
 	move_direction = Vector3.ZERO
 	aim_direction = Vector3.ZERO
@@ -373,6 +375,17 @@ func cancel_movement_and_abilities() -> void:
 	for slot: Node in find_children("*", "WeaponSlot"):
 		if slot is WeaponSlot:
 			(slot as WeaponSlot).enabled = false
+	for audio_3d: Node in find_children("*", "AudioStreamPlayer3D"):
+		(audio_3d as AudioStreamPlayer3D).stop()
+	for audio_2d: Node in find_children("*", "AudioStreamPlayer"):
+		(audio_2d as AudioStreamPlayer).stop()
+	var input_comp: PlayerInputComponent = get_node_or_null("PlayerInputComponent") as PlayerInputComponent
+	if input_comp != null:
+		input_comp.cancel_damage_tint()
+	else:
+		var tint: ColorRect = get_node_or_null("DamageTint") as ColorRect
+		if tint != null:
+			tint.color = Color(Color.RED, 0.0)
 
 
 ## Centralized idempotent defeat handler that halts motion, disables AI & input, and enters defeat state.

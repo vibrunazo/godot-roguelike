@@ -14,8 +14,17 @@ enum mode {NONE, SLASH, STAB}
 			slash.emit()
 		enabled = value
 		if hitbox:
-			hitbox.monitoring = enabled
-			hitbox.monitorable = enabled
+			# Direct writes keep animation-driven hit windows frame-accurate,
+			# but Area3D properties are locked during the physics step (e.g.
+			# cancel_movement_and_abilities running from an exit portal
+			# body_entered during a scene transition): defer there, as the
+			# engine error suggests.
+			if Engine.is_in_physics_frame():
+				hitbox.set_deferred("monitoring", enabled)
+				hitbox.set_deferred("monitorable", enabled)
+			else:
+				hitbox.monitoring = enabled
+				hitbox.monitorable = enabled
 
 ## Backward-compatible alias for hitbox
 var shapecast: Area3D:

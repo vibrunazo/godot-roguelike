@@ -13,6 +13,10 @@ extends Node
 ## Range in meters for auto-aim target acquisition (<= 0.0 disables auto-aim).
 @export var auto_aim_range: float = 5.0
 
+## Active damage vignette tween, tracked so a scene transition (or any other
+## cancel source) can kill a mid-flash tween instead of letting it resume later.
+var _damage_tint_tween: Tween = null
+
 
 func _ready() -> void:
 	# Input translates intents before physical StateMachine ticks (priority -1 vs 0).
@@ -124,5 +128,19 @@ func order_dash() -> bool:
 ## Flashes the red damage vignette when the character takes damage.
 func _on_character_health_changed(_value: float) -> void:
 	if damage_tint != null and is_inside_tree():
-		var tween: Tween = create_tween()
-		tween.tween_property(damage_tint, "color", Color(Color.RED, 0.0), 0.2).from(Color(Color.RED, 0.5))
+		if _damage_tint_tween != null and _damage_tint_tween.is_valid():
+			_damage_tint_tween.kill()
+		_damage_tint_tween = create_tween()
+		_damage_tint_tween.tween_property(damage_tint, "color", Color(Color.RED, 0.0), 0.2).from(Color(Color.RED, 0.5))
+
+
+## Cancels any in-flight damage vignette flash and resets the tint to fully
+## transparent. Called on scene transitions so a red flash never bleeds into
+## the next level (a tween bound to this node would otherwise pause while the
+## player is process-disabled and resume red in the new level).
+func cancel_damage_tint() -> void:
+	if _damage_tint_tween != null and _damage_tint_tween.is_valid():
+		_damage_tint_tween.kill()
+	_damage_tint_tween = null
+	if damage_tint != null and is_instance_valid(damage_tint):
+		damage_tint.color = Color(Color.RED, 0.0)
