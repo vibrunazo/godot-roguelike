@@ -58,3 +58,9 @@ func physics_update(_delta: float) -> void:
 	if dash_duration.is_stopped() and running_state != null:
 		finished.emit(running_state.name)
 	character.move_and_slide()
+
+
+## Stops the dash timer so a forced exit (stun, defeat, level transition) never
+## leaves a stale running timer behind on the state.
+func exit() -> void:
+	dash_duration.stop()

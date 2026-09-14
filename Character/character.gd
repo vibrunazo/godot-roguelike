@@ -347,6 +347,34 @@ func _on_health_component_health_changed(value: float) -> void:
 		state_machine.state.finished.emit(stun_state.name)
 
 
+## Cancels all transient movement and ability state: motion vectors, pending
+## intents, knockback momentum, the auto-aim lock, the attacking flag, live
+## weapon hitboxes, and any active dash/attack/fall body state (returned to the
+## machine's home state via its normal exit path, so attack timers, lunges, and
+## hitstop are cleaned up). Called when this character is carried into a new
+## level so a dash or attack never leaks across the transition.
+func cancel_movement_and_abilities() -> void:
+	move_direction = Vector3.ZERO
+	aim_direction = Vector3.ZERO
+	face_target = Vector3.ZERO
+	attack_requested = false
+	dash_requested = false
+	is_attacking = false
+	_set_current_target(null)
+	velocity = Vector3.ZERO
+	if knockback_component != null:
+		knockback_component.magnitude = Vector3.ZERO
+	if state_machine != null and state_machine.state != null:
+		var home: State = state_machine.initial_state
+		if home == null and state_machine.get_child_count() > 0:
+			home = state_machine.get_child(0) as State
+		if home != null and state_machine.state != home:
+			state_machine.request_state(home.name)
+	for slot: Node in find_children("*", "WeaponSlot"):
+		if slot is WeaponSlot:
+			(slot as WeaponSlot).enabled = false
+
+
 ## Centralized idempotent defeat handler that halts motion, disables AI & input, and enters defeat state.
 func on_defeat() -> void:
 	if _is_defeated:

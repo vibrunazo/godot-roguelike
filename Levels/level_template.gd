@@ -10,6 +10,7 @@ func _ready() -> void:
 		player.queue_free()
 		SceneTransition.player_cache.reparent(self)
 		SceneTransition.player_cache.global_position = old_player_position
+		SceneTransition.player_cache.cancel_movement_and_abilities()
 		SceneTransition.player_cache.process_mode = Node.PROCESS_MODE_INHERIT
 		player = SceneTransition.player_cache
 
