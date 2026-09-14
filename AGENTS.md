@@ -24,21 +24,24 @@
 
 ## 3. Testing & CLI Execution Policy (CRITICAL TIMEOUT RULES)
 
-### Why Bare Commands Are Forbidden
+### The Godot Hang Problem & Watchdog Requirement
 Godot does not exit on GDScript compilation errors, cyclic preloads, or unhandled runtime exceptions. If an error occurs, Godot prints the error to the console, skips the rest of the function, and idles indefinitely. Because `--quit-after` only counts process frames after the engine initializes, scripts that fail to compile or hit missing autoloads will hang the terminal forever.
 
-> **NEVER execute bare `godot --headless` commands directly under any circumstances.**
+> **When launching Godot, never execute bare `godot` commands without an external OS timeout.**
 >
-> All headless commands must run through an external OS watchdog that forcefully terminates the process after a hard timeout (60 seconds max).
+> All Godot invocations must run through an external OS watchdog that forcefully terminates the process after a hard timeout (e.g. Python `timeout=N`).
+>
+> *Note*: Agents are encouraged to run whatever standard CLI commands they need (`git status`, `git diff`, Python scripts, filesystem inspection, etc.). The timeout rule applies specifically when invoking the Godot engine process.
 
-### Approved Execution Commands
+### Built-in Project Runners & Shortcuts
+Agents can write and execute whatever custom scripts or commands their task requires. For common Godot workflows, prefer using these built-in runners because they already implement watchdog timeouts, portable executable resolution, and engine validation:
 
 - **Run Full Test Suite (Preferred):**
   ```bash
   python run_tests.py
   ```
 
-- **Run a Single Test Suite via Python Runner:**
+- **Run a Single Test Suite:**
   ```bash
   python run_tests.py test/test_combo_and_dash_cancel.tscn
   ```
@@ -176,10 +179,11 @@ These are practical conventions and lessons learned from the course lectures rat
 
 To ensure scripts run reliably without hangs, pipe deadlocks, or process leaks across any operating system (Linux, WSL, macOS, Windows):
 
-1. **Prefer Dedicated Project Runners**:
+1. **Prefer Dedicated Project Runners When Applicable**:
    - **Test Suites**: `python run_tests.py [path]`
    - **Scratch / Diagnostic Scripts**: `python run_scratch.py <path> [--timeout N]`
    - **Visual Media Capture & Scenarios**: `python capture.py <subcommand>`
+   - *Custom Scripts & Commands*: If your task requires custom scripts or commands not covered by the above, you are encouraged to write and run them following the guidelines below.
 
 2. **Always Resolve Binaries via `shutil.which`**:
    - When calling external commands (`godot`, `ffmpeg`) from Python, resolve the executable via `shutil.which("godot") or "godot"`.
