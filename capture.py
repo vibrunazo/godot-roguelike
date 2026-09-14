@@ -57,8 +57,9 @@ def run_godot_command(
     timeout: int = DEFAULT_TIMEOUT_SCREENSHOT,
 ) -> subprocess.CompletedProcess:
     """Runs a Godot scene with the specified engine flags and user arguments using a timeout watchdog."""
-    # Use global godot command directly (resolved through shell/PATH)
-    cmd: List[str] = ["godot", "--path", "."]
+    # OS-agnostic godot resolution (works on Linux, WSL, macOS, and Windows)
+    godot_bin = shutil.which("godot") or "godot"
+    cmd: List[str] = [godot_bin, "--path", "."]
     cmd.extend(godot_flags)
     cmd.append(scene_path)
     if user_args:
@@ -70,7 +71,7 @@ def run_godot_command(
     try:
         res = subprocess.run(
             cmd,
-            shell=True,
+            shell=False,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -108,14 +109,14 @@ def convert_avi_to_mp4(avi_path: str, mp4_path: str, keep_avi: bool = False, gen
     avi_size_mb = os.path.getsize(avi_path) / (1024 * 1024)
     print(f"[capture.py] Converting raw AVI ({avi_size_mb:.1f} MB) -> MP4: {mp4_path}")
 
-    # Check ffmpeg availability
-    if not shutil.which("ffmpeg"):
+    ffmpeg_bin = shutil.which("ffmpeg")
+    if not ffmpeg_bin:
         print("[capture.py] Warning: ffmpeg not found on PATH. Raw AVI kept at: " + avi_path)
         return avi_path
 
     # FFmpeg command: H.264 video, yuv420p pixel format for universal compatibility
     cmd = [
-        "ffmpeg",
+        ffmpeg_bin,
         "-y",
         "-i", avi_path,
         "-c:v", "libx264",
@@ -125,7 +126,7 @@ def convert_avi_to_mp4(avi_path: str, mp4_path: str, keep_avi: bool = False, gen
         mp4_path,
     ]
 
-    res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    res = subprocess.run(cmd, shell=False, capture_output=True, text=True)
     if res.returncode != 0:
         print(f"[capture.py] FFmpeg conversion failed: {res.stderr}")
         return avi_path
@@ -144,13 +145,13 @@ def convert_avi_to_mp4(avi_path: str, mp4_path: str, keep_avi: bool = False, gen
         gif_path = os.path.splitext(mp4_path)[0] + ".gif"
         print(f"[capture.py] Generating high-quality GIF: {gif_path}")
         gif_cmd = [
-            "ffmpeg",
+            ffmpeg_bin,
             "-y",
             "-i", mp4_path,
             "-vf", "fps=15,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
             gif_path,
         ]
-        gif_res = subprocess.run(gif_cmd, shell=True, capture_output=True, text=True)
+        gif_res = subprocess.run(gif_cmd, shell=False, capture_output=True, text=True)
         if gif_res.returncode == 0:
             print(f"[capture.py] GIF created: {gif_path}")
 
@@ -320,6 +321,16 @@ def handle_combat(args: argparse.Namespace) -> int:
             user_args.append(f"--action={act}")
     if args.no_debug_collisions:
         user_args.append("--no-debug-collisions")
+    if getattr(args, "debug_collisions", False):
+        user_args.append("--debug-collisions")
+    if getattr(args, "enable_ai", False):
+        user_args.append("--enable-ai")
+    if getattr(args, "cam_pos", None):
+        user_args.append(f"--cam-pos={args.cam_pos}")
+    if getattr(args, "cam_target", None):
+        user_args.append(f"--cam-target={args.cam_target}")
+    if getattr(args, "cam_fov", None):
+        user_args.append(f"--cam-fov={args.cam_fov}")
     if getattr(args, "show_ui", False):
         user_args.append("--show-ui")
     else:
@@ -451,6 +462,11 @@ def main() -> int:
     p_combat.add_argument("--enemy", choices=["brute", "melee", "ranged", "firebomber", "thunder_mage"], help="Spawn enemy character")
     p_combat.add_argument("--action", action="append", help="Scheduled action: target:type:param@frame")
     p_combat.add_argument("--no-debug-collisions", action="store_true", help="Disable collision debug shapes")
+    p_combat.add_argument("--debug-collisions", action="store_true", help="Enable collision debug shapes")
+    p_combat.add_argument("--enable-ai", action="store_true", help="Enable autonomous AI processing")
+    p_combat.add_argument("--cam-pos", help="Camera position X,Y,Z (e.g. 5.5,2.2,0.5)")
+    p_combat.add_argument("--cam-target", help="Camera look-at target X,Y,Z (e.g. 0.0,1.0,0.5)")
+    p_combat.add_argument("--cam-fov", type=float, help="Camera field of view")
     p_combat.add_argument("--show-ui", action="store_true", help="Keep UI overlays and banners visible (suppressed by default)")
     p_combat.add_argument("--frames", type=int, help="Frames to run before screenshot")
     p_combat.add_argument("--video", action="store_true", help="Record video")

@@ -31,7 +31,7 @@ Godot does not exit on GDScript compilation errors, cyclic preloads, or unhandle
 >
 > All headless commands must run through an external OS watchdog that forcefully terminates the process after a hard timeout (60 seconds max).
 
-### Approved Test Execution Commands
+### Approved Execution Commands
 
 - **Run Full Test Suite (Preferred):**
   ```bash
@@ -43,11 +43,27 @@ Godot does not exit on GDScript compilation errors, cyclic preloads, or unhandle
   python run_tests.py test/test_combo_and_dash_cancel.tscn
   ```
 
-
-- **Running Scratch / Diagnostic Scripts via Python One-Liner:**
+- **Run Scratch / Diagnostic Scripts via Watchdog Runner:**
   ```bash
-  python -c "import subprocess; subprocess.run(['godot', '--headless', '--path', '.', '--quit-after', '60', '-s', 'scratch/my_script.gd'], timeout=10)"
+  python run_scratch.py scratch/my_script.gd
+  python run_scratch.py scratch/my_script.gd --timeout 15
   ```
+
+- **Visual Media Capture & Recording:**
+  ```bash
+  python capture.py map Levels/level_1.tscn --preset isometric
+  python capture.py anim Enemy/enemy_brute.tscn --state EnemyPunch --video
+  python capture.py combat --player --enemy brute --action "enemy:state:EnemyPunch@15" --video
+  python capture.py test test/test_combo_and_dash_cancel.tscn --video
+  ```
+  *(See `CAPTURE.md` for full command line options and syntax).*
+
+### Critical Engine Invariants for Standalone GDScripts (`-s`)
+Scripts executed standalone via Godot's `-s` flag **strictly require** two rules:
+1. **The script MUST inherit `SceneTree` (or `MainLoop`)**: e.g. `extends SceneTree`.
+   - Standalone execution bypasses the scene tree root. If the script extends `Node` or `Node3D`, Godot fails to start the main loop, `--quit-after` will never count process frames, and Godot idles indefinitely.
+2. **The script MUST explicitly call `quit(code)`** when done (e.g. `quit(0)`).
+3. **Always use `run_scratch.py`**: It automatically validates these invariants before launching Godot and enforces an external OS watchdog timeout.
 
 ### Testing Philosophy & Invariants
 - **Never assert balance values or tuning constants:** Do not test for hardcoded damage numbers, cooldown lengths, movement speeds, or specific keyboard scancodes.
@@ -83,26 +99,24 @@ Godot does not exit on GDScript compilation errors, cyclic preloads, or unhandle
 - **Extracted `.res` Destination**: `Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/<AnimationName>.res`.
 
 ### Headless Animation Extraction Recipe
-Godot's GUI "Save to File" import option is unavailable to headless CLI agents. Instead, load the source GLB scene in a temporary GDScript, duplicate the target animation, and save it via `ResourceSaver` (wrapped in a Python OS watchdog):
+Godot's GUI "Save to File" import option is unavailable to headless CLI agents. Instead, create a temporary script extending `SceneTree` and execute it via `run_scratch.py`:
 
-```python
-python -c "
-import subprocess
-script = '''
+```gdscript
+# scratch/extract_anim.gd
 extends SceneTree
+
 func _init() -> void:
-    var glb: Node3D = load(\"res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Rig_Medium_CombatMelee.glb\").instantiate() as Node3D
-    var ap: AnimationPlayer = glb.find_child(\"AnimationPlayer\", true, false) as AnimationPlayer
-    var anim: Animation = ap.get_animation(\"Melee_2H_Attack_Chop\").duplicate() as Animation
-    ResourceSaver.save(anim, \"res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_2H_Attack_Chop.res\")
+    var glb: Node3D = load("res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Rig_Medium_CombatMelee.glb").instantiate() as Node3D
+    var ap: AnimationPlayer = glb.find_child("AnimationPlayer", true, false) as AnimationPlayer
+    var anim: Animation = ap.get_animation("Melee_2H_Attack_Chop").duplicate() as Animation
+    ResourceSaver.save(anim, "res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_2H_Attack_Chop.res")
     glb.queue_free()
     quit(0)
-'''
-with open('scratch_extract.gd', 'w') as f: f.write(script.strip())
-subprocess.run(['godot', '--headless', '--path', '.', '-s', 'scratch_extract.gd'], timeout=10)
-import os; os.remove('scratch_extract.gd')
-print('Extracted successfully!')
-"
+```
+
+Run via the scratch runner:
+```bash
+python run_scratch.py scratch/extract_anim.gd
 ```
 
 ### The 3 Mandatory Combat Animation Tracks
@@ -156,36 +170,52 @@ These are practical conventions and lessons learned from the course lectures rat
 
 
 
-### Subprocess & Pipe Deadlock Prevention (Python)
+---
 
-When invoking Godot or scratch scripts via Python `subprocess`:
+## 7. Universal Subprocess & Execution Policy (All Platforms)
 
-1. **NEVER use `shell=True` with `capture_output=True`:**
-   Spawning commands through a shell (`cmd.exe` on Windows or `/bin/sh` on POSIX/WSL) causes child process orphaning on timeouts. The orphaned process holds standard I/O pipes open, causing Python to hang indefinitely waiting for EOF and ignoring the timeout.
-2. **Always pass commands as an argument list (`shell=False`):**
-   Passing an explicit list ensures Python's runner directly monitors and terminates the `godot` executable on timeout across Windows, Linux, and macOS.
-3. **Always handle `subprocess.TimeoutExpired`:**
-   Catch the timeout exception explicitly so execution terminates cleanly with an exit code instead of an unhandled Python trace.
+To ensure scripts run reliably without hangs, pipe deadlocks, or process leaks across any operating system (Linux, WSL, macOS, Windows):
 
-#### Required Pattern (All Platforms):
+1. **Prefer Dedicated Project Runners**:
+   - **Test Suites**: `python run_tests.py [path]`
+   - **Scratch / Diagnostic Scripts**: `python run_scratch.py <path> [--timeout N]`
+   - **Visual Media Capture & Scenarios**: `python capture.py <subcommand>`
+
+2. **Always Resolve Binaries via `shutil.which`**:
+   - When calling external commands (`godot`, `ffmpeg`) from Python, resolve the executable via `shutil.which("godot") or "godot"`.
+   - This cleanly and portably resolves binary locations, wrapper scripts (e.g. bash scripts on Linux/WSL), or shims without hardcoded paths or OS-specific branching.
+
+3. **Always Use `shell=False` with Argument Lists**:
+   - `shell=True` spawns an intermediate shell process. On timeout, Python terminates the shell while the child engine process remains orphaned, holding standard I/O pipes open and freezing Python indefinitely.
+   - `shell=False` connects Python directly to the process, ensuring timeout termination forcefully kills the engine immediately.
+
+4. **Always Enforce Hard OS Watchdog Timeouts**:
+   - Never run unbounded processes; always pass `timeout=<seconds>`.
+   - Always catch `subprocess.TimeoutExpired` explicitly.
+
+#### Portable Subprocess Pattern:
 ```python
+import shutil
 import subprocess
 
+godot_bin = shutil.which("godot") or "godot"
 cmd = [
-    "godot",
+    godot_bin,
     "--headless",
     "--path", ".",
     "--quit-after", "60",
-    "-s", "scratch/my_script.gd"
+    "-s", "scratch/my_script.gd",
 ]
 
 try:
-    res = subprocess.run(cmd, shell=False, capture_output=True, text=True, timeout=10)
-    print("STDOUT:\n", res.stdout)
+    res = subprocess.run(cmd, shell=False, capture_output=True, text=True, timeout=15)
+    if res.stdout:
+        print(res.stdout)
     if res.returncode != 0:
-        print("STDERR:\n", res.stderr)
+        print(f"Process failed (exit code {res.returncode}):\n{res.stderr}")
 except subprocess.TimeoutExpired:
-    print("ERROR: Godot process timed out after 10 seconds and was killed.")
+    print("ERROR: Godot process timed out and was forcefully terminated.")
+```
 
 
 

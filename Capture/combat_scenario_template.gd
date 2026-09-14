@@ -42,8 +42,20 @@ var frame_count: int = 0
 var finish_frame: int = 180
 var is_video: bool = false
 var hide_ui: bool = true
-var debug_collisions: bool = true
+var debug_collisions: bool = false
 var output_path: String = ""
+
+var custom_cam_pos: Vector3 = Vector3.ZERO
+var custom_cam_target: Vector3 = Vector3.ZERO
+var has_custom_cam_pos: bool = false
+var has_custom_cam_target: bool = false
+var cam_fov: float = 50.0
+var cli_enable_ai: bool = false
+
+var custom_player_pos: Vector3 = Vector3.ZERO
+var custom_enemy_pos: Vector3 = Vector3.ZERO
+var has_custom_player_pos: bool = false
+var has_custom_enemy_pos: bool = false
 
 # CLI arguments
 var cli_spawn_player: bool = false
@@ -68,8 +80,9 @@ func _physics_process(_delta: float) -> void:
 		if action.frame == frame_count:
 			_execute_action(action)
 
-	# Auto camera tracking if enabled
-	_update_camera_tracking()
+	# Auto camera tracking if not using custom camera
+	if not has_custom_cam_pos and not has_custom_cam_target:
+		_update_camera_tracking()
 
 	if frame_count >= finish_frame:
 		print("[CombatScenario] Scenario reached finish frame (%d). Quitting." % frame_count)
@@ -82,7 +95,7 @@ func _setup_scenario() -> void:
 
 
 ## Spawns the Player character at the specified position facing a direction.
-func spawn_player(pos: Vector3 = Vector3(0.0, 0.0, 2.0), facing_dir: Vector3 = Vector3(0.0, 0.0, -1.0)) -> Character:
+func spawn_player(pos: Vector3 = Vector3(0.0, 1.0, 1.0), facing_dir: Vector3 = Vector3(0.0, 0.0, -1.0)) -> Character:
 	var scn: PackedScene = load("res://Player/player.tscn") as PackedScene
 	var player: Character = scn.instantiate() as Character
 	player.position = pos
@@ -102,7 +115,7 @@ func spawn_player(pos: Vector3 = Vector3(0.0, 0.0, 2.0), facing_dir: Vector3 = V
 
 
 ## Spawns an enemy by friendly name ("brute", "melee", "firebomber", etc.) or scene path.
-func spawn_enemy(enemy_identifier: String = "brute", pos: Vector3 = Vector3(0.0, 0.0, 0.0), facing_dir: Vector3 = Vector3(0.0, 0.0, 1.0)) -> Character:
+func spawn_enemy(enemy_identifier: String = "brute", pos: Vector3 = Vector3(0.0, 1.0, -1.5), facing_dir: Vector3 = Vector3(0.0, 0.0, 1.0)) -> Character:
 	var path: String = enemy_identifier
 	if ENEMY_REGISTRY.has(enemy_identifier.to_lower()):
 		path = ENEMY_REGISTRY[enemy_identifier.to_lower()] as String
@@ -121,6 +134,9 @@ func spawn_enemy(enemy_identifier: String = "brute", pos: Vector3 = Vector3(0.0,
 	if facing_dir.length_squared() > 0.001:
 		enemy.look_at(enemy.global_position + facing_dir, Vector3.UP)
 
+	if not cli_enable_ai and enemy.ai_state_machine != null:
+		enemy.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+
 	enemy_instance = enemy
 	all_combatants.append(enemy)
 	print("[CombatScenario] Spawned Enemy (%s) at: %s" % [enemy_identifier, pos])
@@ -128,8 +144,8 @@ func spawn_enemy(enemy_identifier: String = "brute", pos: Vector3 = Vector3(0.0,
 
 
 ## Spawns an inert target dummy (melee enemy with AI disabled) at the given position.
-func spawn_dummy(pos: Vector3 = Vector3(0.0, 0.0, 0.0)) -> Character:
-	var dummy: Character = spawn_enemy("melee", pos, Vector3(0.0, 0.0, 1.0))
+func spawn_dummy(pos: Vector3 = Vector3(0.0, 1.0, 1.0)) -> Character:
+	var dummy: Character = spawn_enemy("melee", pos, Vector3(0.0, 0.0, -1.0))
 	if dummy != null and dummy.ai_state_machine != null:
 		dummy.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
 	return dummy
@@ -171,6 +187,10 @@ func _execute_action(action: ScheduledAction) -> void:
 			var c: Character = action.target as Character
 			if c != null and c.state_machine != null:
 				var s_name: String = str(action.param_value)
+				if c == enemy_instance and player_instance != null:
+					c.current_target = player_instance
+					c.look_at_target(player_instance.global_position)
+					c.aim_direction = (player_instance.global_position - c.global_position).normalized()
 				c.state_machine.request_state(s_name)
 				print("[CombatScenario @ frame %d] Requested state '%s' on %s" % [frame_count, s_name, c.name])
 		"damage":
@@ -249,10 +269,18 @@ func _setup_camera() -> void:
 	camera = Camera3D.new()
 	camera.name = "ArenaCamera"
 	camera.current = true
-	camera.fov = 45.0
+	camera.fov = cam_fov
 	add_child(camera)
-	camera.position = Vector3(4.5, 3.2, 5.8)
-	camera.look_at(Vector3(0.0, 1.0, 0.8), Vector3.UP)
+	if has_custom_cam_pos:
+		camera.position = custom_cam_pos
+	else:
+		# Side 3/4 angle framing combatants at Z=-1.5 and Z=+1.0
+		camera.position = Vector3(5.8, 2.0, -0.25)
+
+	if has_custom_cam_target:
+		camera.look_at(custom_cam_target, Vector3.UP)
+	else:
+		camera.look_at(Vector3(0.0, 1.0, -0.25), Vector3.UP)
 
 
 func _parse_arguments() -> void:
@@ -271,10 +299,36 @@ func _parse_arguments() -> void:
 		elif arg.begins_with("--duration="):
 			var dur: float = arg.trim_prefix("--duration=").to_float()
 			finish_frame = int(dur * 60.0)
+		elif arg.begins_with("--player-pos="):
+			var parts: PackedStringArray = arg.trim_prefix("--player-pos=").split(",")
+			if parts.size() == 3:
+				custom_player_pos = Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
+				has_custom_player_pos = true
+		elif arg.begins_with("--enemy-pos="):
+			var parts: PackedStringArray = arg.trim_prefix("--enemy-pos=").split(",")
+			if parts.size() == 3:
+				custom_enemy_pos = Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
+				has_custom_enemy_pos = true
+		elif arg.begins_with("--cam-pos="):
+			var parts: PackedStringArray = arg.trim_prefix("--cam-pos=").split(",")
+			if parts.size() == 3:
+				custom_cam_pos = Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
+				has_custom_cam_pos = true
+		elif arg.begins_with("--cam-target="):
+			var parts: PackedStringArray = arg.trim_prefix("--cam-target=").split(",")
+			if parts.size() == 3:
+				custom_cam_target = Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
+				has_custom_cam_target = true
+		elif arg.begins_with("--cam-fov="):
+			cam_fov = arg.trim_prefix("--cam-fov=").to_float()
 		elif arg == "--video":
 			is_video = true
+		elif arg == "--debug-collisions":
+			debug_collisions = true
 		elif arg == "--no-debug-collisions":
 			debug_collisions = false
+		elif arg == "--enable-ai":
+			cli_enable_ai = true
 		elif arg == "--show-ui":
 			hide_ui = false
 		elif arg == "--hide-ui":
@@ -283,10 +337,18 @@ func _parse_arguments() -> void:
 
 func _apply_cli_scenario() -> void:
 	if cli_spawn_player and player_instance == null:
-		spawn_player(Vector3(0.0, 0.0, 2.0))
+		var p_pos: Vector3 = custom_player_pos if has_custom_player_pos else Vector3(0.0, 1.0, 1.0)
+		spawn_player(p_pos)
 
 	if not cli_enemy_type.is_empty() and enemy_instance == null:
-		spawn_enemy(cli_enemy_type, Vector3(0.0, 0.0, 0.0))
+		var e_pos: Vector3 = custom_enemy_pos if has_custom_enemy_pos else Vector3(0.0, 1.0, -1.5)
+		spawn_enemy(cli_enemy_type, e_pos)
+
+	if player_instance != null and enemy_instance != null:
+		enemy_instance.current_target = player_instance
+		enemy_instance.look_at_target(player_instance.global_position)
+		enemy_instance.aim_direction = (player_instance.global_position - enemy_instance.global_position).normalized()
+		player_instance.look_at_target(enemy_instance.global_position)
 
 	for action_str: String in cli_actions:
 		# Format: target:type:param@frame (e.g. "enemy:state:EnemyPunch@15", "player:attack:1@20", "snap:movies/test.png@30")
@@ -347,6 +409,12 @@ func _disable_all_ui() -> void:
 		var overlays: Array[Node] = get_tree().root.find_children("*", "LevelTitleOverlay", true, false)
 		for ov: Node in overlays:
 			ov.queue_free()
+		var health_bars: Array[Node] = get_tree().root.find_children("*", "HealthBar", true, false)
+		for hb: Node in health_bars:
+			if hb is CanvasItem:
+				(hb as CanvasItem).visible = false
+			elif hb is Node3D:
+				(hb as Node3D).visible = false
 
 	var st: CanvasLayer = get_node_or_null("/root/SceneTransition") as CanvasLayer
 	if st != null:

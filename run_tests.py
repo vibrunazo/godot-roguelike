@@ -9,6 +9,7 @@ Usage:
 
 import glob
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -38,10 +39,11 @@ def main() -> int:
         test_display = os.path.basename(test)
         print(f"\n>>> [{idx}/{total}] Running {test_display}...")
         t0 = time.time()
+        godot_bin = shutil.which("godot") or "godot"
         try:
             res = subprocess.run(
-                f"godot --headless --path . {test}",
-                shell=True,
+                [godot_bin, "--headless", "--path", ".", test],
+                shell=False,
                 check=False,
                 timeout=DEFAULT_TIMEOUT,
             )
