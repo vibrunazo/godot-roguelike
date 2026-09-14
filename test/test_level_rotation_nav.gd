@@ -3,7 +3,9 @@
 ## data), and provide a valid navigation path from player spawn to the exit
 ## with a VoxelGI volume that covers the floor footprint. Every interior floor
 ## hole (pit) must also be ringed with shaft walls below the rim so pits read
-## as deep shafts instead of flat black stickers floating in the air.
+## as deep shafts instead of flat black stickers floating in the air. The
+## navmesh must be a real bake (erosion detail), not the generator scaffold,
+## with no walkable islands above the floor (wrong min-region-size symptom).
 extends Node3D
 
 
@@ -107,6 +109,10 @@ func _verify_level(level_path: String) -> bool:
 	if ok:
 		if not _verify_navmesh_covers_level(level, level_path):
 			ok = false
+		if not _verify_navmesh_is_baked(level, level_path):
+			ok = false
+		if not _verify_no_stray_islands(level, level_path):
+			ok = false
 		if not _verify_pit_lining(level, level_path):
 			ok = false
 		if not _verify_path(player.global_position, exit_point.global_position, level_path):
@@ -170,6 +176,41 @@ func _verify_navmesh_covers_level(level: Node3D, level_path: String) -> bool:
 		printerr("TEST FAILED: VoxelGI Z span misses floor in ", level_path)
 		return false
 	print("navmesh + VoxelGI cover floor footprint in ", level_path)
+	return true
+
+
+## Rejects unbaked scaffold meshes passed off as bakes. A real recast bake
+## erodes the walkable area around walls/pits by the agent radius, which
+## always leaves fractional-coordinate verts; the generator scaffold is an
+## all-integer x/z tile-corner lattice and fails this check.
+func _verify_navmesh_is_baked(level: Node3D, level_path: String) -> bool:
+	var region: NavigationRegion3D = level.find_child("NavigationRegion3D", true, false) as NavigationRegion3D
+	if region == null or region.navigation_mesh == null:
+		printerr("TEST FAILED: NavigationRegion3D/mesh missing in ", level_path)
+		return false
+	for v: Vector3 in region.navigation_mesh.get_vertices():
+		if absf(v.x - roundf(v.x)) > 0.0001 or absf(v.z - roundf(v.z)) > 0.0001:
+			print("navmesh shows bake erosion in ", level_path)
+			return true
+	printerr("TEST FAILED: navmesh is an unbaked integer lattice (scaffold, not a bake) in ", level_path)
+	return false
+
+
+## Rejects walkable islands above the floor, such as sofa tops kept by a
+## wrong min-region-size setting. All rotation levels are single-story slabs
+## (floor top ~0.6); shipped meshes never exceed y 0.6 while furniture
+## islands sat at 1.35+, so 1.0 separates them with margin. Revisit this
+## bound if multi-story levels ever arrive.
+func _verify_no_stray_islands(level: Node3D, level_path: String) -> bool:
+	var region: NavigationRegion3D = level.find_child("NavigationRegion3D", true, false) as NavigationRegion3D
+	if region == null or region.navigation_mesh == null:
+		printerr("TEST FAILED: NavigationRegion3D/mesh missing in ", level_path)
+		return false
+	for v: Vector3 in region.navigation_mesh.get_vertices():
+		if v.y > 1.0:
+			printerr("TEST FAILED: nav vertex above walkable height ", v, " (stray island?) in ", level_path)
+			return false
+	print("no stray nav islands in ", level_path)
 	return true
 
 

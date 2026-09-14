@@ -25,7 +25,7 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 | `validate_layout.py` | Design-time checks on cell files: floor connectivity (BFS), pit-quad coverage, wall sanity, dressing-on-floor (`--dressing`), VoxelGI suggestion. No engine needed. |
 | `generate_walls.py` | Perimeter walls from floor cells (outer-void sides only, per-side orientations, optional windows) plus `pit_lining()`: shaft walls ringing interior holes, copied from shipped Level 2. Interior pillars stay hand-designed. |
 | `generate_navmesh.py` | Builds a `NavigationMesh` snippet (shared-corner lattice) from floor cells. **Scaffold only** — ship only real bakes (tip 1). |
-| `pack_cells.gd` | Serializes cell files through the engine into a temp scene. GridMap `data` arrays use an internal packed encoding: never hand-write them. |
+| `pack_cells.gd` | Serializes cell files through the engine into a temp scene. GridMap `data` arrays use an internal packed encoding, so hand-writing them tends to corrupt the scene — round-trip through this tool instead. |
 | `assemble_level.py` | Builds an inherited level `.tscn` from a JSON spec (template + cells + pits + exit + hazards + litter + VoxelGI). Supports `strip_*` dressing removal, `litter_placed`, hazard kinds. Recomputes root `index` attributes automatically. |
 | `bake_navmesh.gd` | Headless navmesh bake via `NavigationMeshGenerator` (`--level= --out=`). Output proved byte-equivalent (modulo float formatting) to the editor's Bake button on Level 4. |
 | `bake_level_gi.gd` / `.tscn` | Nav pre-check + VoxelGI bake (`--level= --gi-out=`). Must run **with** the display server (see command below). |
@@ -34,7 +34,10 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 
 The gate for every level is the committed test `test/test_level_rotation_nav.tscn`:
 it loads each `SceneTransition.levels` entry and checks core nodes, baked
-VoxelGI data, navmesh/GI footprint coverage, and a spawn→exit nav path.
+VoxelGI data, navmesh/GI footprint coverage, a spawn→exit nav path, pit
+shaft-wall lining, and navmesh bake authenticity (recast erosion around
+walls normally leaves fractional-coordinate verts, so an all-integer x/z
+lattice is treated as an unbaked scaffold and fails).
 
 ## End-to-end: designing a new level
 
@@ -113,18 +116,24 @@ python capture.py map Levels/level_5.tscn --preset all
 
 ## Tips learned building Level 4
 
-1. **Ship only real bakes, never hand-made meshes.** A hand-generated
+1. **Ship real bakes rather than hand-made meshes.** A hand-generated
    polygon lattice can be fully walkable (ours passed path queries) and still
    not be a bake: no agent-radius erosion around walls/pits, no recast
-   partitioning. `bake_navmesh.gd` runs the engine's own
-   `NavigationMeshGenerator.bake()` headlessly — its output matched the
-   editor's Bake button exactly on Level 4 (same verts/polys, modulo float
-   formatting). (`generate_navmesh.py` output is only a scaffold that
-   unblocks assembly/testing before the bake.) The committed rotation test
-   guards the *outcome* either way.
-2. **Never hand-write GridMap `data` arrays.** The `PackedInt32Array` encoding
-   is engine-internal (3 ints/cell, position-packed). Always round-trip through
-   `pack_cells.gd` — it is byte-deterministic across runs (proven by diff).
+   partitioning, no obstacle carving. (`generate_navmesh.py` output is only
+   a scaffold that unblocks assembly/testing before the bake.)
+   **Prefer the two-step bake API headlessly over one-step `bake()`.**
+   `bake_navmesh.gd` parses with `parse_source_geometry_data()` (which
+   exposes `has_data()`) then `bake_from_source_geometry_data()` — verified
+   working headlessly (Level 5: 115 polys with wall erosion and cleared
+   props). In our checks the one-step `bake()` returned an *empty* mesh in
+   `-s` runs (including a fresh-mesh control on shipped Level 2), so the
+   script refuses empty/unchanged results loudly rather than passing the
+   scaffold off as baked. The rotation test additionally trips on
+   integer-lattice meshes (below).
+2. **Avoid hand-writing GridMap `data` arrays.** The `PackedInt32Array` encoding
+   is engine-internal (3 ints/cell, position-packed); round-tripping through
+   `pack_cells.gd` is the reliable path — it is byte-deterministic across runs
+   (proven by diff).
 3. **`ext_resource` must point at an existing file.** A level referencing a
    not-yet-baked `.res` fails to *parse* (engine error at load, then a hang).
    Assemble with `gi_data: null` first, bake, then set the reference.
@@ -148,9 +157,9 @@ python capture.py map Levels/level_5.tscn --preset all
 9. **After moving/renaming `class_name` scripts, rescan.** A stale
    `.godot/global_script_class_cache.cfg` produces `hides a global script
    class` parse errors (then hangs). Regenerate headless with
-   `godot --headless --path . --editor --quit` — never hand-edit the cache,
-   and never `.gdignore` a folder that owns global classes (it would hide them
-   from the scan). Headless *game* runs do not rebuild it.
+   `godot --headless --path . --editor --quit` — hand-editing the cache tends
+   to corrupt it, and `.gdignore`ing a folder that owns global classes hides
+   them from the scan. Headless *game* runs do not rebuild it.
 10. **Validate before you assemble, capture after.** `validate_layout.py`
     catches disconnected tiles, uncovered pits, and floating walls in
     milliseconds — including one real wart it found in Level 4 (two wall

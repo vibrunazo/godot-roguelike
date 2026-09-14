@@ -2,9 +2,12 @@
 ## exports the baked mesh as a snippet file, ready to splice into the level
 ## .tscn (same format as generate_navmesh.py output).
 ##
-## This replaces the manual editor bake step: the bake parses the instanced
-## level's static colliders with the mesh's agent settings, exactly like the
-## editor's NavigationRegion3D > Bake button.
+## Headless replacement for the editor's NavigationRegion3D > Bake step:
+## parses the instanced level's source geometry with the mesh's agent
+## settings and bakes it. Uses the two-step parse + bake_from API because
+## the one-step bake() returns an empty mesh in headless (-s) runs
+## (verified); the parse stage's has_data() keeps any future empty result
+## a loud failure instead of a scaffold passed off as baked.
 ##
 ## Usage:
 ##   python run_scratch.py tools/levels/bake_navmesh.gd -- --level=Levels/level_5.tscn --out=tools/levels/out/l5/navmesh_baked.txt
@@ -42,7 +45,44 @@ func _init() -> void:
 		quit(1)
 		return
 	var mesh: NavigationMesh = region.navigation_mesh
-	NavigationMeshGenerator.bake(mesh, level)
+	# Bake into a FRESH mesh first so an empty/unchanged result is detectable
+	# (baking over the region mesh in place would silently keep the scaffold
+	# and report success). The fresh mesh duplicates the region mesh's full
+	# settings: baking with defaults instead (e.g. a different
+	# region_min_size) silently changes the result, such as keeping walkable
+	# islands on top of furniture that the configured min region size removes.
+	var pre: PackedVector3Array = mesh.get_vertices().duplicate()
+	# Duplicate keeps the region mesh's full bake settings (verified: baking
+	# with defaults instead silently changes the result). No clearing needed:
+	# bake_from_source_geometry_data() replaces the mesh contents, like the
+	# editor Bake button does (verified: baking over uncleared data yields
+	# the same clean result, nothing appended).
+	var fresh: NavigationMesh = mesh.duplicate() as NavigationMesh
+	# Two-step bake: the one-step bake() returns an empty mesh in headless
+	# (-s) runs (verified), while parse + bake_from works. The parse stage
+	# makes the failure visible through has_data() instead of silent empties.
+	var data := NavigationMeshSourceGeometryData3D.new()
+	NavigationMeshGenerator.parse_source_geometry_data(fresh, data, level)
+	if not data.has_data():
+		printerr("[bake_navmesh] ERROR: parse found no geometry; ",
+			"the editor Bake button is required for this level")
+		quit(1)
+		return
+	NavigationMeshGenerator.bake_from_source_geometry_data(fresh, data)
+	if fresh.get_vertices().is_empty():
+		printerr("[bake_navmesh] ERROR: bake parsed no geometry (empty mesh); ",
+			"the editor Bake button is required for this level")
+		quit(1)
+		return
+	if _same_verts(pre, fresh.get_vertices()):
+		printerr("[bake_navmesh] ERROR: bake returned the input unchanged; ",
+			"mesh was NOT baked (scaffold passthrough refused)")
+		quit(1)
+		return
+	mesh.clear_polygons()
+	mesh.set_vertices(fresh.get_vertices())
+	for i: int in range(fresh.get_polygon_count()):
+		mesh.add_polygon(fresh.get_polygon(i))
 	print("[bake_navmesh] baked: ", mesh.get_polygon_count(), " polygons, ",
 		mesh.get_vertices().size(), " vertices")
 
@@ -70,6 +110,16 @@ func _init() -> void:
 	out.close()
 	print("[bake_navmesh] wrote ", out_path)
 	quit(0)
+
+
+## True when two vertex arrays match exactly (bake changed nothing).
+func _same_verts(a: PackedVector3Array, b: PackedVector3Array) -> bool:
+	if a.size() != b.size():
+		return false
+	for i: int in a.size():
+		if a[i] != b[i]:
+			return false
+	return true
 
 
 ## Snaps floats to micrometers and trims noise so baked files stay readable
