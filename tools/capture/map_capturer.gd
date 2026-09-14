@@ -54,6 +54,14 @@ func _ready() -> void:
 
 
 func _physics_process(_delta: float) -> void:
+	# Keep UI and SceneTransition hidden
+	_disable_all_ui()
+
+
+func _process(_delta: float) -> void:
+	# Capture sequencing runs on idle (render) frames, not physics frames:
+	# a slow 1440p render can span several physics ticks, so physics
+	# counting saved viewports that had not re-rendered yet.
 	frame_count += 1
 
 	# Keep UI and SceneTransition hidden
@@ -67,16 +75,21 @@ func _physics_process(_delta: float) -> void:
 
 	# Screenshot mode
 	if preset_name == "all":
-		# Capture each preset sequentially every 5 frames
-		var trigger_frame: int = 15 + (all_preset_index * 5)
-		if frame_count == trigger_frame and all_preset_index < all_presets.size():
-			var current_preset: String = all_presets[all_preset_index]
-			_apply_preset(current_preset)
-			var preset_file: String = _get_preset_output_path(current_preset)
-			_save_screenshot(preset_file)
-			all_preset_index += 1
-
-		if all_preset_index >= all_presets.size() and frame_count >= trigger_frame + 2:
+		# Capture each preset sequentially every 5 frames. The camera move
+		# and the screenshot MUST land on different frames: get_image()
+		# returns the last rendered frame, so saving in the same frame as
+		# _apply_preset captures the previous preset's view instead (every
+		# file lagged one preset behind: top_down.png showed isometric,
+		# front.png showed top-down, and so on).
+		if all_preset_index < all_presets.size():
+			var apply_frame: int = 15 + (all_preset_index * 5)
+			if frame_count == apply_frame:
+				_apply_preset(all_presets[all_preset_index])
+			elif frame_count == apply_frame + 2:
+				var preset_file: String = _get_preset_output_path(all_presets[all_preset_index])
+				_save_screenshot(preset_file)
+				all_preset_index += 1
+		else:
 			print("[MapCapturer] All presets captured successfully.")
 			get_tree().quit(0)
 	else:

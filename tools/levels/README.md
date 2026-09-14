@@ -26,11 +26,13 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 | `generate_walls.py` | Perimeter walls from floor cells (outer-void sides only, per-side orientations, optional windows) plus `pit_lining()`: shaft walls ringing interior holes, copied from shipped Level 2. Interior pillars stay hand-designed. |
 | `generate_navmesh.py` | Builds a `NavigationMesh` snippet (shared-corner lattice) from floor cells. **Scaffold only** — ship only real bakes (tip 1). |
 | `pack_cells.gd` | Serializes cell files through the engine into a temp scene. GridMap `data` arrays use an internal packed encoding, so hand-writing them tends to corrupt the scene — round-trip through this tool instead. |
-| `assemble_level.py` | Builds an inherited level `.tscn` from a JSON spec (template + cells + pits + exit + hazards + litter + VoxelGI). Supports `strip_*` dressing removal, `litter_placed`, hazard kinds. Recomputes root `index` attributes automatically. |
+| `assemble_level.py` | Builds an inherited level `.tscn` from a JSON spec (template + cells + pits + exit + hazards + litter + VoxelGI). Supports `strip_*` dressing removal, `litter_placed`, hazard kinds, `hide_nodes` (pins `visible = false` on inherited nodes such as the template `Pit` quad on pit-less levels). Recomputes root `index` attributes automatically. |
 | `bake_navmesh.gd` | Headless navmesh bake via `NavigationMeshGenerator` (`--level= --out=`). Output proved byte-equivalent (modulo float formatting) to the editor's Bake button on Level 4. |
 | `bake_level_gi.gd` / `.tscn` | Nav pre-check + VoxelGI bake (`--level= --gi-out=`). Must run **with** the display server (see command below). |
 | `examples/double_level.py` | Worked example: the Level 4 mirror recipe. Reads a dump, writes cells + navmesh + spec. Copy and adapt for new designs. |
 | `examples/grand_hall.py` | Worked example: the original Level 5 design (vestibule + hall + pit lakes + colonnades). Shows perimeter generation, floor art variants, explicit dressing. |
+| `examples/two_rooms.py` | Worked example: the Level 6 design (two rooms + railed bridge, no pits). Composes `layout.py` primitives (`room`/`bridge`/`compose`), the pattern to copy for future multi-part levels. |
+| `layout.py` | Composable floor-plan primitives: `room()` (solid block, optional holes and per-side tiers), `bridge()` (railed strip: `low`/`open`/`tall`), `corridor()` (tall-railed bridge), `touches()`/`compose()` junction checks, `paint()` floor-art variants. Overrides apply only where derivation would already emit a wall, so part junctions (bridge mouths) stay wall-free automatically. |
 
 The gate for every level is the committed test `test/test_level_rotation_nav.tscn`:
 it loads each `SceneTransition.levels` entry and checks core nodes, baked
@@ -97,6 +99,7 @@ python capture.py map Levels/level_5.tscn --preset all
   "navmesh_id": "NavigationMesh_level5",
   "pit_pattern_from": "Pit2",
   "extra_pits": [{"name": "Pit3", "x": -8, "z": -20}],
+  "hide_nodes": ["Pit"],
   "exit": [-12, 0, -68],
   "hazard_pattern_from": "SpikesHazard2",
   "extra_hazards": [{"name": "SpikesHazard3", "ext_id": "5_spikes", "x": 5, "z": -59}],
@@ -112,6 +115,14 @@ python capture.py map Levels/level_5.tscn --preset all
 
 - `template` should be a level with a pit-quad pattern (`Pit2`) and a hazard
   pattern to clone; Level 2 or 3 both qualify.
+- `hide_nodes` pins `visible = false` on inherited root nodes the layout
+  must not show. Needed for `"Pit"` on pit-less levels: `strip_pits` only
+  removes `Pit*` blocks that declare `type="MeshInstance3D"`, but the
+  template chain's own `Pit` override is typeless (its type comes from
+  `level_template.tscn`), so it survives stripping. A child scene cannot
+  delete an inherited node — removing its override just reverts to the
+  template version — hence hiding. (Level 5 skips this: its inherited quad
+  sits under a real floor tile, buried and invisible.)
 - `uid: null` generates a fresh scene uid; pin one to reproduce a file exactly.
 - `player: null` keeps the template spawn; otherwise `[x, y, z]`.
 - `gi_data: null` assembles the pre-bake state (no data reference — required,

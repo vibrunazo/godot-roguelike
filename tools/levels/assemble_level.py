@@ -321,6 +321,21 @@ def main() -> int:
             pit_block = next(n for n in parse_nodes(out) if n["name"].startswith("Pit"))
             out = out.replace(pit_block["text"], player_block + "\n" + pit_block["text"])
 
+    # --- hide inherited nodes a pit-less layout must not show ---
+    # Child scenes cannot delete nodes inherited from the template chain —
+    # dropping an override block only reverts to the template's version. The
+    # template's "Pit" quad (MeshInstance3D) is typeless in level_2/3
+    # overrides, so strip_pits leaves it behind: harmless when buried under
+    # floor (Level 5), but a floating black quad over any void gap. Levels
+    # with no pits set "hide_nodes": ["Pit"] to pin visible=false instead.
+    for hidden in spec.get("hide_nodes", []):
+        blk = next((n for n in parse_nodes(out)
+                    if n["name"] == hidden and n["parent"] == "."), None)
+        assert blk is not None, f"hide_nodes: no root override for {hidden!r}"
+        if not re.search(r"(?m)^visible =", blk["text"]):
+            out = out.replace(blk["text"], blk["text"].rstrip("\n")
+                              + "\nvisible = false\n")
+
     # --- VoxelGI volume (+ optional baked data reference) ---
     gx, gy, gz = spec["voxelgi"]["pos"]
     gsx, gsy, gsz = spec["voxelgi"]["size"]

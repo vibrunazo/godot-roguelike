@@ -91,8 +91,17 @@ def _interior_holes(floor: set[tuple[int, int]]) -> set[tuple[int, int]]:
 
 def generate(floor: set[tuple[int, int]],
              window_stride: int = 0,
-             tiers: dict[str, int] | None = None) -> dict[tuple[int, int, int], tuple[int, int]]:
-    """Builds {(x, y, z): (item, orient)} perimeter walls for floor tiles."""
+             tiers: dict[str, int] | None = None,
+             side_tiers: dict[tuple[int, int, str], int | None] | None = None
+             ) -> dict[tuple[int, int, int], tuple[int, int]]:
+    """Builds {(x, y, z): (item, orient)} perimeter walls for floor tiles.
+
+    side_tiers overrides individual tile sides {(fx, fz, side): tier} for
+    local control (e.g. a bridge's flank rails); None suppresses the wall
+    there. Overrides apply only where derivation would already emit (sides
+    facing outer void) — interior junctions and pit-hole sides are owned by
+    the floor union and pit_lining() respectively and stay untouched.
+    """
     # Runs keyed by (side): cells along one straight edge. One cell per tile
     # side at the ODD offset: each 4m-wide wall mesh then spans exactly one
     # tile side, so consecutive tiles tile seamlessly with no coplanar
@@ -118,6 +127,11 @@ def generate(floor: set[tuple[int, int]],
              if (fx + 1, fz) not in floor and (fx + 1, fz) not in holes else []),
         ]
         for key, orient, cells in sides:
+            if cells and side_tiers is not None and (fx, fz, key[0]) in side_tiers:
+                # Non-empty means void-facing (interior/hole sides stay empty
+                # and are never overridden). Keep the odd cell, swap the tier.
+                v = side_tiers[(fx, fz, key[0])]
+                cells = [] if v is None else [(cells[0][0], v, cells[0][2])]
             for c in cells:
                 runs.setdefault(key, []).append((c[0], c[1], c[2], orient))
     wall: dict[tuple[int, int, int], tuple[int, int]] = {}
