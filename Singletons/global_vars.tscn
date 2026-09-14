@@ -20,6 +20,7 @@
 [ext_resource type="Curve" uid="uid://cxfev6iu2f3e0" path="res://Singletons/difficulty_curve.tres" id="11_curve"]
 [ext_resource type="PackedScene" path="res://Enemy/lightning_bolt_projectile.tscn" id="17_lightning_proj"]
 [ext_resource type="PackedScene" path="res://Enemy/lightning_hit.tscn" id="18_lightning_hit"]
+[ext_resource type="PackedScene" path="res://UserInterface/pause_menu.tscn" id="19_pause_menu"]
 
 [node name="GlobalVars" type="Node"]
 script = ExtResource("1_vars")
@@ -38,3 +39,4 @@ lightning_hit_scene = ExtResource("18_lightning_hit")
 damage_number_scene = ExtResource("9_dmgnum")
 target_reticle_scene = ExtResource("11_reticle")
 upgrade_shop_scene = ExtResource("10_shop")
+pause_menu_scene = ExtResource("19_pause_menu")

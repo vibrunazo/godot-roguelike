@@ -40,6 +40,8 @@ extends Node
 @export var target_reticle_scene: PackedScene
 ## Shop scene opened by ExitPoint when no explicit next scene is set.
 @export var upgrade_shop_scene: PackedScene
+## Pause menu overlay scene displayed when the game is paused.
+@export var pause_menu_scene: PackedScene
 
 ## Upgrade resources offered by the UpgradeShop, built from the exported upgrade resources.
 var upgrades: Array[UpgradeResource] = []
