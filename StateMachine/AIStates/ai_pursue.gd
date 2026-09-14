@@ -43,7 +43,16 @@ func physics_update(delta: float) -> void:
 	var dist_sq: float = character.global_position.distance_squared_to(target.global_position)
 	if dist_sq < (attack_range * attack_range):
 		ai_state_machine.command_stop()
-		character.look_at_target(target.global_position)
+		# Only face the target when the body is not executing an attack. Once
+		# the attack starts the enemy commits to its initial facing direction and
+		# should not track the player mid-swing.
+		var is_attacking: bool = (
+			character.state_machine != null
+			and character.state_machine.state != null
+			and character.state_machine.state.name == attack_state_name
+		)
+		if not is_attacking:
+			character.look_at_target(target.global_position)
 		if cooldown_timer <= 0.0:
 			if ai_state_machine.order_attack(attack_state_name):
 				cooldown_timer = attack_cooldown
