@@ -6,6 +6,9 @@
 ## as deep shafts instead of flat black stickers floating in the air. The
 ## template's giant abyss plane must be present and visible so every hole and
 ## cliff edge bottoms out into darkness (per-level pit quads are obsolete).
+## Freestanding tall cover must also keep 3 m of clear floor (rect-to-rect)
+## to every interior pit edge: tighter slots bake into sub-meter navmesh
+## slivers that wedge enemies (Level 10's old pillar ring).
 ## The navmesh must be a real bake (erosion detail), not the generator
 ## scaffold, with no walkable islands above the floor (wrong min-region-size
 ## symptom).
@@ -119,6 +122,8 @@ func _verify_level(level_path: String) -> bool:
 		if not _verify_low_walls_ring_edges(level, level_path):
 			ok = false
 		if not _verify_pit_lining(level, level_path):
+			ok = false
+		if not _verify_cover_clearances(level, level_path):
 			ok = false
 		if not _verify_abyss_plane(level, level_path):
 			ok = false
@@ -313,6 +318,110 @@ func _verify_pit_lining(level: Node3D, level_path: String) -> bool:
 		return false
 	print("pit lining OK (", checked_sides, " hole-tile sides) in ", level_path)
 	return true
+
+
+## Freestanding tall (y=0) cover must keep COVER_CLEARANCE of clear floor to
+## every interior pit edge, measured rect-to-rect between the wall mesh and
+## the pit tile. Tighter slots bake into sub-meter navmesh slivers that wedge
+## enemies (Level 10's old pillar ring left 1.5 m corner gaps). Cells whose
+## meshes share an edge segment are one bonded mass (tiling runs, colonnades,
+## blocks) and are exempt; only lone cells are measured, using mesh footprints
+## (4 m x 1 m runs centered on the cell grid point, matching
+## generate_walls.py). Pure corner proximity with 4 m+ diagonal clearance
+## (Level 8's arena pillar) passes.
+const COVER_CLEARANCE: float = 3.0
+
+
+## World-space mesh footprint for a y=0 wall cell (see extents above).
+func _cover_mesh_rect(cell: Vector2i, orient: int) -> Array[float]:
+	var cx: float = float(cell.x) * 2.0
+	var cz: float = float(cell.y) * 2.0
+	if orient == 0 or orient == 10:
+		return [cx - 2.0, cz - 0.5, cx + 2.0, cz + 0.5]
+	if orient == 16 or orient == 22:
+		return [cx - 0.5, cz - 2.0, cx + 0.5, cz + 2.0]
+	return [cx, cz, cx + 2.0, cz + 2.0]
+
+
+func _rects_share_edge(a: Array[float], b: Array[float]) -> bool:
+	var ox: float = minf(a[2], b[2]) - maxf(a[0], b[0])
+	var oz: float = minf(a[3], b[3]) - maxf(a[1], b[1])
+	return (ox > 0.01 and oz > -0.01) or (oz > 0.01 and ox > -0.01)
+
+
+func _verify_cover_clearances(level: Node3D, level_path: String) -> bool:
+	var floor: Dictionary = {}
+	var tall: Array[Vector2i] = []
+	var orients: Dictionary = {}
+	var floor_gm: GridMap = null
+	var wall_gm: GridMap = null
+	for gm_node: Node in level.find_children("*", "GridMap", true, false):
+		var gm: GridMap = gm_node as GridMap
+		if gm == null:
+			continue
+		if gm.name == "Floormap":
+			floor_gm = gm
+			for cell: Vector3i in gm.get_used_cells():
+				floor[Vector2i(cell.x, cell.z)] = true
+		elif gm.name == "Wallmap":
+			wall_gm = gm
+	if floor_gm == null or wall_gm == null:
+		printerr("TEST FAILED: Floormap/Wallmap missing in ", level_path)
+		return false
+	for cell: Vector3i in wall_gm.get_used_cells():
+		if cell.y == 0:
+			var w := Vector2i(cell.x, cell.z)
+			tall.append(w)
+			orients[w] = wall_gm.get_cell_item_orientation(cell)
+	var bonded_root: Dictionary = {}
+	for w: Vector2i in tall:
+		bonded_root[w] = w
+	for i: int in range(tall.size()):
+		var ra: Array[float] = _cover_mesh_rect(tall[i], int(orients[tall[i]]))
+		for j: int in range(i + 1, tall.size()):
+			var rb: Array[float] = _cover_mesh_rect(tall[j], int(orients[tall[j]]))
+			if _rects_share_edge(ra, rb):
+				bonded_root[tall[j]] = tall[i]
+	var lone: Array[Vector2i] = []
+	for w: Vector2i in tall:
+		var members: int = 0
+		for v: Vector2i in tall:
+			if _bonded_find(bonded_root, v) == _bonded_find(bonded_root, w):
+				members += 1
+		if members == 1:
+			lone.append(w)
+	var holes: Array[Vector2i] = _interior_holes(floor)
+	var ok: bool = true
+	for w: Vector2i in lone:
+		var r: Array[float] = _cover_mesh_rect(w, int(orients[w]))
+		for h: Vector2i in holes:
+			var hx0: float = float(h.x) * 4.0
+			var hx1: float = hx0 + 4.0
+			var hz0: float = float(h.y) * 4.0
+			var hz1: float = hz0 + 4.0
+			var dx: float = 0.0
+			if hx1 < r[0]:
+				dx = r[0] - hx1
+			elif r[2] < hx0:
+				dx = hx0 - r[2]
+			var dz: float = 0.0
+			if hz1 < r[1]:
+				dz = r[1] - hz1
+			elif r[3] < hz0:
+				dz = hz0 - r[3]
+			if sqrt(dx * dx + dz * dz) < COVER_CLEARANCE:
+				printerr("TEST FAILED: freestanding cover at ", w, " pinches pit tile ", h, " in ", level_path)
+				ok = false
+	if ok:
+		print("cover clearances OK (", lone.size(), " lone walls) in ", level_path)
+	return ok
+
+
+func _bonded_find(roots: Dictionary, w: Vector2i) -> Vector2i:
+	var r: Vector2i = roots[w] as Vector2i
+	while r != (roots[r] as Vector2i):
+		r = roots[r] as Vector2i
+	return r
 
 
 ## The template's giant abyss plane must be present, visible and large: it

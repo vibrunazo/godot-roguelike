@@ -21,7 +21,9 @@ var player_cache: Character
 	"res://Levels/level_5.tscn",
 	"res://Levels/level_6.tscn",
 	"res://Levels/level_7.tscn",
-	"res://Levels/level_8.tscn"
+	"res://Levels/level_8.tscn",
+	"res://Levels/level_9.tscn",
+	"res://Levels/level_10.tscn"
 ]
 
 

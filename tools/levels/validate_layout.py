@@ -8,7 +8,10 @@ Checks, for any floor/wall/pit design:
      boundary gaps connected to the outer void need none.
   3. Wall sanity: every wall footprint touches or overlaps the floor area
      (catches typos that fling walls into the void).
-  4. VoxelGI suggestion: prints a center/size that encloses the footprint.
+  4. Cover clearances: lone y=0 cover keeps min_gap of clear floor
+     (rect-to-rect) to every interior pit tile, so no sub-meter navmesh
+     sliver wedges enemies (Level 10 lesson).
+  5. VoxelGI suggestion: prints a center/size that encloses the footprint.
 
 Cell files use the dump_cells.gd format ("x,y,z,item,orientation" lines;
 FLOOR/WALL headers accepted and ignored). Coordinates are grid cells:
@@ -163,6 +166,54 @@ def check_no_wall_overlap(wall: dict[tuple[int, int, int], tuple[int, int]]) -> 
     else:
         print(f"overlap: {len(cells)} walls tile cleanly")
     return not bad
+
+
+def check_cover_clearances(floor: set[tuple[int, int]],
+                           holes: set[tuple[int, int]],
+                           wall: dict[tuple[int, int, int], tuple[int, int]],
+                           min_gap: float = 3.0) -> bool:
+    """Fails on lone y=0 cover pinching interior pit tiles.
+
+    Cells whose mesh rects share an edge segment bond into one mass (tiling
+    runs, colonnades, blocks) and are exempt; only lone cells are measured,
+    rect-to-rect between the wall mesh footprint and the pit tile. Mirrors
+    the rotation test's cover-clearance check so designs fail fast here
+    instead of after the navmesh/GI bakes.
+    """
+    import math
+    cells = sorted(c for c in wall if c[1] == 0)
+    rects = {c: _mesh_rect(c, wall[c][1]) for c in cells}
+    parent = {c: c for c in cells}
+
+    def find(a: tuple[int, int, int]) -> tuple[int, int, int]:
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    for i, a in enumerate(cells):
+        ax0, az0, ax1, az1 = rects[a]
+        for b in cells[i + 1:]:
+            bx0, bz0, bx1, bz1 = rects[b]
+            ox = min(ax1, bx1) - max(ax0, bx0)
+            oz = min(az1, bz1) - max(az0, bz0)
+            if (ox > 0.01 and oz > -0.01) or (oz > 0.01 and ox > -0.01):
+                parent[find(a)] = find(b)
+    lone = [c for c in cells if sum(1 for v in cells if find(v) == find(c)) == 1]
+    ok = True
+    for c in lone:
+        x0, z0, x1, z1 = rects[c]
+        for hx, hz in holes:
+            hx0, hz0 = hx * FLOOR_TILE, hz * FLOOR_TILE
+            hx1, hz1 = hx0 + FLOOR_TILE, hz0 + FLOOR_TILE
+            dx = x0 - hx1 if hx1 < x0 else (hx0 - x1 if x1 < hx0 else 0.0)
+            dz = z0 - hz1 if hz1 < z0 else (hz0 - z1 if z1 < hz0 else 0.0)
+            if math.hypot(dx, dz) < min_gap:
+                print(f"FAIL: freestanding cover {c} pinches pit tile {(hx, hz)}",
+                      file=sys.stderr)
+                ok = False
+    print(f"cover clearances: {'OK' if ok else 'INVALID'} ({len(lone)} lone walls)")
+    return ok
 
 
 def check_dressing(floor: set[tuple[int, int]],
