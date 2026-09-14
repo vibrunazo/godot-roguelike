@@ -48,8 +48,8 @@ Agents can write and execute whatever custom scripts or commands their task requ
 
 - **Run Scratch / Diagnostic Scripts via Watchdog Runner:**
   ```bash
-  python run_scratch.py scratch/my_script.gd
-  python run_scratch.py scratch/my_script.gd --timeout 15
+  python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
+  python run_scratch.py tools/levels/dump_cells.gd --timeout 15 -- --level=Levels/level_2.tscn
   ```
 
 - **Visual Media Capture & Recording:**
@@ -102,10 +102,10 @@ Scripts executed standalone via Godot's `-s` flag **strictly require** two rules
 - **Extracted `.res` Destination**: `Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/<AnimationName>.res`.
 
 ### Headless Animation Extraction Recipe
-Godot's GUI "Save to File" import option is unavailable to headless CLI agents. Instead, create a temporary script extending `SceneTree` and execute it via `run_scratch.py`:
+Godot's GUI "Save to File" import option is unavailable to headless CLI agents. Instead, create a temporary script extending `SceneTree` under `tools/levels/out/` (git-ignored and importer-ignored) and execute it via `run_scratch.py`:
 
 ```gdscript
-# scratch/extract_anim.gd
+# tools/levels/out/extract_anim.gd
 extends SceneTree
 
 func _init() -> void:
@@ -117,9 +117,9 @@ func _init() -> void:
     quit(0)
 ```
 
-Run via the scratch runner:
+Run via the runner:
 ```bash
-python run_scratch.py scratch/extract_anim.gd
+python run_scratch.py tools/levels/out/extract_anim.gd
 ```
 
 ### The 3 Mandatory Combat Animation Tracks
@@ -150,6 +150,7 @@ These are practical conventions and lessons learned from the course lectures rat
 ### 1. Level Inheritance & Template Structure
 - Create new levels as inherited scenes from `res://Levels/level_template.tscn` (`Levels/level_template.tscn`).
 - The template already provides the standard lighting (`DirectionalLight3D`), sky environment (`WorldEnvironment`), wave spawner (`WaveObjective`), fall-kill plane (`WorldBoundary`), and exit portal (`ExitPoint`).
+- Prefer the scripted pipeline in `tools/levels/` over hand-editing scenes: dump/validate/pack GridMap data, assemble from a JSON spec, bake navmesh + VoxelGI. Full guide, per-tool usage, and lessons learned: `tools/levels/README.md`. Every level must pass `test/test_level_rotation_nav.tscn` (load, baked GI, navmesh coverage, spawn→exit path).
 
 ### 2. GridMaps & Metrics
 - **Floormap**: Uses `res://Levels/Gridmap/floormap.tres` with `cell_size = Vector3(4, 0.5, 4)`.
@@ -208,7 +209,7 @@ cmd = [
     "--headless",
     "--path", ".",
     "--quit-after", "60",
-    "-s", "scratch/my_script.gd",
+    "-s", "tools/levels/dump_cells.gd",
 ]
 
 try:

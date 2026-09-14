@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bmvhp5jh0653"]
 
-[ext_resource type="Script" path="res://Capture/anim_capturer.gd" id="1_animcap"]
+[ext_resource type="Script" path="res://tools/capture/anim_capturer.gd" id="1_animcap"]
 
 [node name="AnimCapturer" type="Node3D"]
 script = ExtResource("1_animcap")

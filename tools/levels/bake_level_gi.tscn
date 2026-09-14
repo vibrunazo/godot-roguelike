@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tools/levels/bake_level_gi.gd" id="1_bakegi"]
+
+[node name="BakeLevelGI" type="Node3D"]
+script = ExtResource("1_bakegi")

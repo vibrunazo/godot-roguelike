@@ -214,7 +214,7 @@ def handle_map(args: argparse.Namespace) -> int:
         if not out_mp4.endswith(".mp4"):
             out_mp4 += ".mp4"
 
-        res = run_godot_command(godot_flags, user_args, "Capture/map_capturer.tscn", timeout=timeout)
+        res = run_godot_command(godot_flags, user_args, "tools/capture/map_capturer.tscn", timeout=timeout)
         if res.returncode == 0:
             final_media = convert_avi_to_mp4(temp_avi, out_mp4, keep_avi=args.keep_avi, generate_gif=args.gif)
             print(f"\n[SUCCESS] Level video saved: {final_media}")
@@ -224,7 +224,7 @@ def handle_map(args: argparse.Namespace) -> int:
         out_png = args.output
         if out_png:
             user_args.append(f"--output={out_png}")
-        res = run_godot_command(godot_flags, user_args, "Capture/map_capturer.tscn", timeout=timeout)
+        res = run_godot_command(godot_flags, user_args, "tools/capture/map_capturer.tscn", timeout=timeout)
         if res.returncode == 0:
             if args.preset == "all":
                 print(f"\n[SUCCESS] All preset angles saved to {OUTPUT_DIR}/")
@@ -288,7 +288,7 @@ def handle_anim(args: argparse.Namespace) -> int:
         if not out_mp4.endswith(".mp4"):
             out_mp4 += ".mp4"
 
-        res = run_godot_command(godot_flags, user_args, "Capture/anim_capturer.tscn", timeout=timeout)
+        res = run_godot_command(godot_flags, user_args, "tools/capture/anim_capturer.tscn", timeout=timeout)
         if res.returncode == 0:
             final_media = convert_avi_to_mp4(temp_avi, out_mp4, keep_avi=args.keep_avi, generate_gif=args.gif)
             print(f"\n[SUCCESS] Animation video saved: {final_media}")
@@ -302,7 +302,7 @@ def handle_anim(args: argparse.Namespace) -> int:
             out_png = os.path.join(OUTPUT_DIR, f"{base_name}_{tag}_{args.cam_angle or 'three_quarters'}.png")
             user_args.append(f"--output={out_png}")
 
-        res = run_godot_command(godot_flags, user_args, "Capture/anim_capturer.tscn", timeout=DEFAULT_TIMEOUT_SCREENSHOT)
+        res = run_godot_command(godot_flags, user_args, "tools/capture/anim_capturer.tscn", timeout=DEFAULT_TIMEOUT_SCREENSHOT)
         if res.returncode == 0:
             print(f"\n[SUCCESS] Animation screenshot saved: {out_png}")
             return 0
@@ -312,7 +312,7 @@ def handle_anim(args: argparse.Namespace) -> int:
 def handle_combat(args: argparse.Namespace) -> int:
     """Handles combat scenario testbed staging and recording."""
     ensure_output_dir()
-    scene_file = args.scenario if args.scenario else "Capture/combat_scenario_template.tscn"
+    scene_file = args.scenario if args.scenario else "tools/capture/combat_scenario_template.tscn"
     is_video = args.video
 
     godot_flags: List[str] = []
@@ -408,7 +408,7 @@ def handle_test(args: argparse.Namespace) -> int:
     if not out_mp4.endswith(".mp4"):
         out_mp4 += ".mp4"
 
-    res = run_godot_command(godot_flags, user_args, "Capture/test_capturer.tscn", timeout=timeout)
+    res = run_godot_command(godot_flags, user_args, "tools/capture/test_capturer.tscn", timeout=timeout)
     if res.returncode == 0:
         final_media = convert_avi_to_mp4(temp_avi, out_mp4, keep_avi=args.keep_avi, generate_gif=args.gif)
         print(f"\n[SUCCESS] Test execution video saved: {final_media}")

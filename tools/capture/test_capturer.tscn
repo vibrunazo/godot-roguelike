@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cnfsildcvk2ie"]
 
-[ext_resource type="Script" path="res://Capture/test_capturer.gd" id="1_testcap"]
+[ext_resource type="Script" path="res://tools/capture/test_capturer.gd" id="1_testcap"]
 
 [node name="TestCapturer" type="Node3D"]
 script = ExtResource("1_testcap")

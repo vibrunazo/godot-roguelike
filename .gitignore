@@ -4,3 +4,7 @@
 movies/
 .agents/
 .worktrees/
+# Generated level-pipeline intermediates (see tools/levels/README.md)
+tools/levels/out/
+# Python bytecode from tool scripts
+__pycache__/

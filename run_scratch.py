@@ -4,10 +4,13 @@
 Runs standalone GDScript files headlessly with an external OS-level watchdog timeout.
 Enforces the universal Godot engine requirement: scripts executed via -s must extend SceneTree
 and call quit() to prevent indefinite hangs.
+Extra arguments after the script path are forwarded to the running script as
+Godot user args (readable via OS.get_cmdline_user_args()).
 
 Usage:
-    python run_scratch.py scratch/my_script.gd
-    python run_scratch.py scratch/my_script.gd --timeout 15
+    python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_1.tscn
+    python run_scratch.py tools/levels/dump_cells.gd --timeout 15 -- --level=Levels/level_1.tscn
+
 """
 
 import argparse
@@ -21,9 +24,11 @@ DEFAULT_TIMEOUT = 15  # seconds
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run a scratch GDScript headlessly with an OS watchdog timeout.")
-    parser.add_argument("script", help="Path to GDScript file (e.g. scratch/my_script.gd)")
+    parser.add_argument("script", help="Path to GDScript file (e.g. tools/levels/dump_cells.gd)")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help=f"Timeout in seconds (default: {DEFAULT_TIMEOUT})")
-    args = parser.parse_args()
+    args, extra_args = parser.parse_known_args()
+    # Allow `--` as an explicit separator: everything after it is forwarded.
+    extra_args = [a for a in extra_args if a != "--"]
 
     script_path = args.script
     if not os.path.exists(script_path):
@@ -61,6 +66,9 @@ def main() -> int:
         "--quit-after", "60",
         "-s", script_path,
     ]
+    if extra_args:
+        cmd.append("--")
+        cmd.extend(extra_args)
 
     try:
         res = subprocess.run(

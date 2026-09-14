@@ -135,7 +135,7 @@ python capture.py combat --player --enemy melee --action "player:attack:1@10" --
 You can create a reusable scenario script by extending `CombatScenarioTemplate`:
 
 ```gdscript
-# res://Capture/my_test_scenario.gd
+# res://tools/capture/my_test_scenario.gd
 extends CombatScenarioTemplate
 
 func _setup_scenario() -> void:
@@ -152,7 +152,7 @@ func _setup_scenario() -> void:
 
 Run your custom script with:
 ```bash
-python capture.py combat --scenario Capture/my_test_scenario.tscn --video
+python capture.py combat --scenario tools/capture/my_test_scenario.tscn --video
 ```
 
 ---
@@ -185,7 +185,7 @@ Godot's headless mode (`godot --headless`) uses the dummy display server, which 
 3. The raw AVI is cleaned up automatically, leaving only the compact `.mp4` (and optional `.gif`).
 
 ### 3. Strict GDScript Typing
-All scripts under `res://Capture/` (`map_capturer.gd`, `anim_capturer.gd`, `combat_scenario_template.gd`, `test_capturer.gd`) enforce full static typing (`warnings/untyped_declaration=1`).
+All scripts under `res://tools/capture/` (`map_capturer.gd`, `anim_capturer.gd`, `combat_scenario_template.gd`, `test_capturer.gd`) enforce full static typing (`warnings/untyped_declaration=1`).
 
 ---
 
@@ -199,4 +199,15 @@ Certain character scenes (notably `Player.tscn`) have built-in `Camera3D` nodes 
 ### Choosing Between `anim` and `combat`
 - **Solo Abilities / Leaps / Attacks**: Prefer `capture.py anim <scene> --state <StateName> --video`. It runs in an isolated neutral studio with standard lighting. For abilities that cover ground (e.g. `EnemyLeapingDodge`), use `--cam-dist 2.5` to frame the full movement arc.
 - **Two-Entity Interactions**: Use `capture.py combat` when testing damage numbers, knockback application, hit reactions, or combo exchanges.
+
+### Moving / Renaming Capturer Files
+The capturer scripts own global classes (`MapCapturer`, `CombatScenarioTemplate`, …).
+After moving or renaming them, Godot's stale `.godot/global_script_class_cache.cfg`
+makes every capture fail with `hides a global script class` (then hang). Regenerate
+headless before capturing again:
+```bash
+godot --headless --path . --editor --quit
+```
+Headless *game* runs do not rebuild this cache. Never `.gdignore` a folder that
+owns global classes — the editor scan must see them.
 

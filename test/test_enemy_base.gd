@@ -722,12 +722,19 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	if not ("levels" in scene_trans) or (scene_trans.get("levels") as Array).size() != 3:
-		printerr("TEST FAILED: SceneTransition levels array missing or size != 3.")
+	var rotation_levels: Array = scene_trans.get("levels") as Array
+	if not ("levels" in scene_trans) or rotation_levels.is_empty():
+		printerr("TEST FAILED: SceneTransition levels array missing or empty.")
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("SceneTransition autoload, ColorRect, levels array (size 3) & load_next_level verified.")
+	for rotation_path: Variant in rotation_levels:
+		if not ResourceLoader.exists(str(rotation_path)):
+			printerr("TEST FAILED: SceneTransition level missing: ", rotation_path)
+			level.queue_free()
+			get_tree().quit(1)
+			return
+	print("SceneTransition autoload, ColorRect, levels array (size %d) & load_next_level verified." % rotation_levels.size())
 
 	# Verify SceneTransition.player_cache property
 	if not ("player_cache" in scene_trans):
