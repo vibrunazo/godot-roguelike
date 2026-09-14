@@ -32,7 +32,7 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 | `examples/double_level.py` | Worked example: the Level 4 mirror recipe. Reads a dump, writes cells + navmesh + spec. Copy and adapt for new designs. |
 | `examples/grand_hall.py` | Worked example: the original Level 5 design (vestibule + hall + pit lakes + colonnades). Shows perimeter generation, floor art variants, explicit dressing. |
 | `examples/two_rooms.py` | Worked example: the Level 6 design (two rooms + railed bridge, no per-level pit quads). Composes `layout.py` primitives (`room`/`bridge`/`compose`), the pattern to copy for future multi-part levels. |
-| `examples/four_rooms.py` | Worked example: the Level 7 design (four-room ring with 1-tile dash-jump gaps + railed gap bridges). Shows `bridge(sides=...)` for single-row spans and gap-band jump assertions. |
+| `examples/four_rooms.py` | Worked example: the Level 7 design (four-room ring with 1-tile dash-jump gaps, 1-wide outer bridges, spike-gauntlet bridge, tall stub segments on gap fronts). Shows `bridge(sides=...)` for single-row spans and stub-aware gap-band jump assertions. |
 | `layout.py` | Composable floor-plan primitives: `room()` (solid block, optional holes and per-side tiers), `bridge()` (railed strip: `low`/`open`/`tall`, optional explicit `sides`), `corridor()` (tall-railed bridge), `touches()`/`compose()` junction checks, `paint()` floor-art variants. Edge letters are the generator's (`n`=min-z, `s`=max-z, `w`=min-x, `e`=max-x). Overrides apply only where derivation would already emit a wall, so part junctions (bridge mouths) stay wall-free automatically. |
 
 The gate for every level is the committed test `test/test_level_rotation_nav.tscn`:

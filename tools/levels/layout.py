@@ -54,10 +54,12 @@ def _boundary(tiles: set[tuple[int, int]], side: str) -> set[tuple[int, int]]:
     """Tiles on the extreme row/column of a tile set for one side.
 
     Letters follow generate_walls.generate(), which is Godot-conventional:
-    "n" is min-z (engine-north, -z side), "s" is max-z, "w" is min-x,
-    "e" is max-x. room(edge=) keys MUST use these same letters — they are
-    looked up verbatim during derivation, so any other convention silently
-    misses (tall defaults leak onto supposedly open sides).
+    "n" is min-z (Godot north, -Z), "s" is max-z (Godot south, +Z),
+    "w" is min-x (Godot west, -X), "e" is max-x (Godot east, +X).
+    room(edge=) keys MUST use these same letters — they are looked up
+    verbatim during derivation, so any other convention silently misses
+    (tall defaults leak onto supposedly open sides). All policies, scripts
+    and docs in this pipeline use this same Godot axis convention.
     """
     if side == "n":
         m = min(z for _, z in tiles)

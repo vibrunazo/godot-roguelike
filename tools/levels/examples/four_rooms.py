@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Worked example #4: a four-room ring level (Level 7) with dash-jump gaps.
 
-Rooms snake R1 (0,0) -> R2 (+z) -> R3 (-x) -> R4 (-z), each pair separated
-by exactly one floor tile (4 m) so a dash (>4 m) clears the gap. Bridges
-span R1<->R2, R2<->R3 and R3<->R4 (enemy pathing); R1<->R4 are adjacent with
-no bridge (jump shortcut). Inner gap-facing edges stay fully OPEN (no walls
-at all, not even low rims) so every adjacent pair is jumpable; outer edges
-carry walls (north/east low cliff rims, west/south tall blockers).
+Rooms snake R1 (tile 0,0) -> R2 south (+Z, Godot south) -> R3 west (-X) ->
+R4 north (-Z), each pair separated by exactly one floor tile (4 m) so a
+dash (>4 m) clears the gap. Bridges span R1<->R2, R2<->R3 and R3<->R4
+(enemy pathing); R1<->R4 are adjacent with no bridge (jump shortcut).
+Gap-facing edges stay OPEN (no walls at all, not even low rims) except a
+few tall stub segments, so every adjacent pair stays jumpable; outer edges
+carry walls (derivation defaults: tall on west/south, low rims east/north).
+All directions below use the Godot axis convention (north = -Z).
 
 Pipeline (mirrors the README):
     python tools/levels/examples/four_rooms.py --out-dir tools/levels/out/l7proof
@@ -40,9 +42,20 @@ ROOM3 = room(-8, -2, 8, 14, edge={"e": None, "n": None})
 ROOM4 = room(-8, -2, 0, 6, edge={"s": None, "e": None})
 # Gap-spanning bridges: single-row decks whose void-facing SHORT sides need
 # explicit rails (the auto long-side pick would rail the room junctions).
-BR12 = bridge(2, 4, 7, 7, rails="low", sides=("w", "e"))
+# Outer bridges are 1 tile wide (single file); the middle stays 3 wide.
+BR12 = bridge(3, 3, 7, 7, rails="low", sides=("w", "e"))
 BR23 = bridge(-1, -1, 10, 12, rails="low", sides=("n", "s"))
-BR34 = bridge(-6, -4, 7, 7, rails="low", sides=("w", "e"))
+BR34 = bridge(-5, -5, 7, 7, rails="low", sides=("w", "e"))
+
+# Tall stub segments on gap fronts (very few: one 2-tile stub per front, so
+# every adjacent pair keeps a wide jump opening). Keys are (floor tile,
+# generator side); sides use the Godot convention (n=-Z, s=+Z, w=-X, e=+X).
+STUBS: dict[tuple[int, int, str], int] = {
+    (0, 6, "s"): 0, (1, 6, "s"): 0,      # R1 south front, west end
+    (-2, 8, "e"): 0, (-2, 9, "e"): 0,    # R3 east front, south end
+    (-8, 6, "s"): 0, (-7, 6, "s"): 0,    # R4 south front, west end
+    (0, 0, "w"): 0, (0, 1, "w"): 0,      # R1 west front, south end
+}
 
 PLAYER = [10, 1, 14]
 EXIT = [-18, 0, 10]
@@ -55,6 +68,11 @@ HAZARDS = [
     ("FireR3", "fire", -18, 48),
     ("SpikesR4", "spikes", -26, 16),
     ("FireR4", "fire", -28, 12),
+    # Spike gauntlet on the narrow south bridge deck (tile -5,7).
+    ("SpikesB1", "spikes", -19, 29),
+    ("SpikesB2", "spikes", -17, 29),
+    ("SpikesB3", "spikes", -19, 31),
+    ("SpikesB4", "spikes", -17, 31),
 ]
 
 LITTER = [
@@ -94,18 +112,33 @@ def main() -> int:
     floor, side_tiers = compose(ROOM1, ROOM2, ROOM3, ROOM4, BR12, BR23, BR34)
     print(f"design: {len(floor)} floor tiles")
 
+    # Stub walls land on open gap edges, so apply them after compose (every
+    # stub tile must currently be open — anything else is a design clash).
+    assert all(side_tiers[k] is None for k in STUBS)
+    side_tiers.update(STUBS)
     wall = gen_walls(floor, window_stride=3, side_tiers=side_tiers)
-    # Jump lines must be wall-free mid-front: no tall cell may stand on the
-    # gap bands except at the outer corners, where perpendicular tall runs
-    # end in single-cell caps (2 m nubs at the extreme ends of 28 m fronts).
-    # Gap row z=7 -> wall rows 14,15; gap col x=-1 -> wall cols -2,-1.
+    # Jump lines must stay open mid-front: no tall cell may stand on the gap
+    # bands except the explicit STUBS and outer corner caps (single-cell ends
+    # of perpendicular tall runs). Gap row z=7 -> wall rows 14,15; gap col
+    # x=-1 -> wall cols -2,-1. Both candidate cells per stub side are allowed
+    # (the generator tiles one of the pair).
+    allowed: set[tuple[int, int]] = set()
+    for tx, tz, side in STUBS:
+        if side == "s":
+            allowed.update({(2 * tx, 2 * tz + 2), (2 * tx + 1, 2 * tz + 2)})
+        elif side == "n":
+            allowed.update({(2 * tx, 2 * tz), (2 * tx + 1, 2 * tz)})
+        elif side == "w":
+            allowed.update({(2 * tx, 2 * tz), (2 * tx, 2 * tz + 1)})
+        else:
+            allowed.update({(2 * tx + 2, 2 * tz), (2 * tx + 2, 2 * tz + 1)})
     for wx, wy, wz in wall:
-        if wy != 0:
+        if wy != 0 or (wx, wz) in allowed:
             continue
         mid_row = wz in (14, 15) and -14 <= wx <= 11
         mid_col = wx in (-2, -1) and 2 <= wz <= 27
         assert not (mid_row or mid_col), f"tall wall blocks jump gap: {(wx, wy, wz)}"
-    print(f"design: {len(wall)} walls, jump fronts tall-free")
+    print(f"design: {len(wall)} walls, jump fronts open")
 
     # No interior holes by construction (every gap reaches the outer void).
     lining = pit_lining(set(floor), set())
