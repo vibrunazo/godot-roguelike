@@ -156,7 +156,7 @@ These are practical conventions and lessons learned from the course lectures rat
 - **Floormap**: Uses `res://Levels/Gridmap/floormap.tres` with `cell_size = Vector3(4, 0.5, 4)`.
 - **Wallmap**: Uses `res://Levels/Gridmap/wall_map.tres` with `cell_size = Vector3(2, 4, 2)`.
 - Decorative litter / props can be grouped under a dedicated `Litter` (Node3D) container to keep the scene tree clean.
-- Gaps in the floor serve as pits; place a `Pit` visual quad beneath gaps, and rely on `WorldBoundary` (at `y = -4`) to detect and eliminate fallen entities.
+- Gaps in the floor serve as pits; the template's giant unshaded `Pit` abyss plane bottoms every hole and cliff edge, so levels never add their own pit quads (ring interior holes with `y=-1` shaft walls via `pit_lining()`). Rely on `WorldBoundary` (at `y = -4`) to detect and eliminate fallen entities.
 
 ### 3. VoxelGI Baking & Coverage (Crucial)
 - Every level must have its own baked `VoxelGI` data saved to `res://Levels/GlobalIlluminationData/<level_name>_voxel_gi_data.res`.

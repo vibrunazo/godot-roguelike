@@ -1,5 +1,5 @@
 ## Automated navigation verification for Enemy Brute on Level 2.
-## Verifies that the Brute navigates through the narrow corridor between Pit2 and the barrels
+## Verifies that the Brute navigates through the narrow corridor between the pit and the barrels
 ## without getting stuck or oscillating, and saves debug collision screenshots to movies/.
 extends Node3D
 
@@ -99,7 +99,7 @@ func _ready() -> void:
 
 		if z > -20.5 and z < -18.0 and not corridor_captured:
 			corridor_captured = true
-			print("Brute entering narrow corridor between Pit2 and Barrels at frame %d (Z = %.2f)" % [frame, z])
+			print("Brute entering narrow corridor between pit and Barrels at frame %d (Z = %.2f)" % [frame, z])
 			_save_screenshot("movies/brute_level2_corridor.png")
 
 		if d < 3.5:

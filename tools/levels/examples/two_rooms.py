@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Worked example #3: a two-room bridge level (Level 6), the first with no
-black pits. Two large rooms joined by a railed bridge over the void; the
-outer north/east edges are low cliff rims so knocked-back enemies (and the
-careless) fall out of the level, while west/south carry tall blockers.
+per-level pit quads. Two large rooms joined by a railed bridge over the
+void (bottomed by the template's giant abyss plane); the outer north/east
+edges are low cliff rims so knocked-back enemies (and the careless) fall
+out of the level, while west/south carry tall blockers.
 
 Built from tools/levels/layout.py primitives (room/bridge/compose) so the
 pattern is reusable: future levels compose the same parts differently.
@@ -26,7 +27,7 @@ from generate_walls import pit_lining  # noqa: E402
 from layout import bridge, compose, paint, room, touches  # noqa: E402
 from validate_layout import check_connectivity, check_dressing  # noqa: E402
 from validate_layout import check_no_wall_overlap  # noqa: E402
-from validate_layout import check_pit_coverage, check_walls_touch_floor  # noqa: E402
+from validate_layout import check_walls_touch_floor  # noqa: E402
 from validate_layout import suggest_voxelgi  # noqa: E402
 
 # --- footprint: two 7x7 rooms joined by a 3x2 bridge (tile coords) ---
@@ -41,9 +42,6 @@ PILLARS = [
     (-7, 0, -1, 0, 10), (-5, 0, -1, 0, 10),  # west room stub (x -16..-8)
     (3, 0, 1, 0, 10), (5, 0, 1, 0, 10),        # east room stub (x 4..12)
 ]
-
-# No pit quads on this level: the void gaps and cliff rims are the hazards.
-PITS: list[tuple[float, float]] = []
 
 PLAYER = [-22, 1, 6]
 EXIT = [22, 0, -2]
@@ -88,8 +86,8 @@ def main() -> int:
         assert (wx, wy, wz) not in seen, f"pillar listed twice: {(wx, wy, wz)}"
         seen.add((wx, wy, wz))
         wall[(wx, wy, wz)] = (item, orient)
-    # No holes by construction; the lining call documents the pit-less path
-    # while pit coverage below proves no accidental interior gap went unquadded.
+    # No holes by construction, so no lining (holes elsewhere would be lined
+    # with shaft walls and bottomed by the template abyss — no quads needed).
     lining = pit_lining(set(floor), set())
     assert not lining
     print(f"design: {len(wall)} walls ({len(PILLARS)} pillars, no lining)")
@@ -100,7 +98,6 @@ def main() -> int:
     dressing += [(n, float(p[0]), float(p[2])) for n, _s, p, _r in LITTER]
 
     ok = check_connectivity(set(floor), START_TILE, EXIT_TILE)
-    ok = check_pit_coverage(set(floor), [(float(x), float(z)) for x, z in PITS]) and ok
     ok = check_walls_touch_floor(set(floor), wall) and ok
     ok = check_no_wall_overlap(wall) and ok
     ok = check_dressing(set(floor), dressing) and ok
@@ -135,9 +132,6 @@ def main() -> int:
         "strip_litter": True,
         "strip_hazards": True,
         "strip_pits": True,
-        "hide_nodes": ["Pit"],
-        "pit_pattern_from": "Pit2",
-        "extra_pits": [],
         "exit": EXIT,
         "hazard_patterns": {"spikes": "SpikesHazard2", "fire": "FireTrap1"},
         "extra_hazards": [{"name": n, "kind": k, "x": x, "z": z} for n, k, x, z in HAZARDS],

@@ -886,9 +886,18 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	var l2_pit2: Node3D = l2.get_node_or_null("Pit2") as Node3D
-	if l2_pit2 == null:
-		printerr("TEST FAILED: Level 2 Pit2 mesh missing.")
+	# Per-level pit quads are obsolete: the template's giant abyss plane
+	# bottoms every hole. Assert the inherited abyss instead of Pit2.
+	var l2_pit: MeshInstance3D = l2.get_node_or_null("Pit") as MeshInstance3D
+	if l2_pit == null or not l2_pit.visible:
+		printerr("TEST FAILED: Level 2 abyss Pit quad missing or hidden.")
+		l2.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l2_pit_mesh: PlaneMesh = l2_pit.mesh as PlaneMesh
+	if l2_pit_mesh == null or minf(l2_pit_mesh.size.x, l2_pit_mesh.size.y) < 500.0:
+		printerr("TEST FAILED: Level 2 abyss Pit quad too small.")
 		l2.queue_free()
 		level.queue_free()
 		get_tree().quit(1)
@@ -914,7 +923,7 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("Level 2 scene (Litter, Pit2, NavMesh, VoxelGI, ExitPoint) verified.")
+	print("Level 2 scene (Litter, abyss Pit, NavMesh, VoxelGI, ExitPoint) verified.")
 	l2.queue_free()
 
 	# Verify Level 3 scene
@@ -945,11 +954,18 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	var l3_pit2: Node3D = l3.get_node_or_null("Pit2") as Node3D
-	var l3_pit3: Node3D = l3.get_node_or_null("Pit3") as Node3D
-	var l3_pit4: Node3D = l3.get_node_or_null("Pit4") as Node3D
-	if l3_pit2 == null or l3_pit3 == null or l3_pit4 == null:
-		printerr("TEST FAILED: Level 3 pits (Pit2, Pit3, Pit4) missing.")
+	# Per-level pit quads are obsolete: the template's giant abyss plane
+	# bottoms every hole. Assert the inherited abyss instead of Pit2-4.
+	var l3_pit: MeshInstance3D = l3.get_node_or_null("Pit") as MeshInstance3D
+	if l3_pit == null or not l3_pit.visible:
+		printerr("TEST FAILED: Level 3 abyss Pit quad missing or hidden.")
+		l3.queue_free()
+		level.queue_free()
+		get_tree().quit(1)
+		return
+	var l3_pit_mesh: PlaneMesh = l3_pit.mesh as PlaneMesh
+	if l3_pit_mesh == null or minf(l3_pit_mesh.size.x, l3_pit_mesh.size.y) < 500.0:
+		printerr("TEST FAILED: Level 3 abyss Pit quad too small.")
 		l3.queue_free()
 		level.queue_free()
 		get_tree().quit(1)
@@ -986,7 +1002,7 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("Level 3 scene (Litter with Flags, Pit2-4, NavMesh, VoxelGI, Player, ExitPoint) verified.")
+	print("Level 3 scene (Litter with Flags, abyss Pit, NavMesh, VoxelGI, Player, ExitPoint) verified.")
 	l3.queue_free()
 
 	level.queue_free()

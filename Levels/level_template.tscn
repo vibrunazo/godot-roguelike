@@ -1,9 +1,10 @@
 [gd_scene format=3 uid="uid://dyj3auoai18wd"]
-[ext_resource type="Script" path="res://Levels/level_template.gd" id="1_g8k58"]
+
+[ext_resource type="Script" uid="uid://dohgx7mdm7oy6" path="res://Levels/level_template.gd" id="1_g8k58"]
+[ext_resource type="Script" uid="uid://bhuut1jd5jyt7" path="res://Levels/wave_objective.gd" id="1_vjhoh"]
 [ext_resource type="PackedScene" uid="uid://dveet4y3bg7gi" path="res://Player/player.tscn" id="2_ersrp"]
 [ext_resource type="Script" uid="uid://chwdk8gtnnide" path="res://Levels/world_boundary.gd" id="5_kv2lc"]
 [ext_resource type="VoxelGIData" path="res://Levels/GlobalIlluminationData/level_template_voxel_gi_data.tres" id="6_voxel_gi"]
-[ext_resource type="Script" path="res://Levels/wave_objective.gd" id="1_vjhoh"]
 [ext_resource type="MeshLibrary" uid="uid://cbw5qq7imfwn5" path="res://Levels/Gridmap/floormap.tres" id="7_vjhoh"]
 [ext_resource type="MeshLibrary" uid="uid://10ib4mm1ty30" path="res://Levels/Gridmap/wall_map.tres" id="8_g8k58"]
 [ext_resource type="PackedScene" uid="uid://dfx801p3nbkl3" path="res://Levels/exit_point.tscn" id="9_exit_point"]
@@ -39,13 +40,12 @@ albedo_color = Color(0, 0, 0, 1)
 proximity_fade_enabled = true
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_r82ii"]
-size = Vector2(8, 8)
+size = Vector2(8000, 8000)
 
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_6ghb1"]
 
 [node name="Level" type="Node3D" unique_id=1079320019]
 script = ExtResource("1_g8k58")
-
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1391866235]
 transform = Transform3D(0.7826083, 0.5391134, -0.3112572, 0, 0.49999997, 0.86602545, 0.6225145, -0.6777587, 0.3913041, 0, 0, 0)
@@ -86,9 +86,10 @@ metadata/_editor_floor_ = Vector3(0, -1, 0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1, 0)
 
 [node name="Pit" type="MeshInstance3D" parent="." unique_id=915475260]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, -16)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, 0)
 material_override = SubResource("StandardMaterial3D_ersrp")
 mesh = SubResource("PlaneMesh_r82ii")
+cast_shadow = 0
 
 [node name="WorldBoundary" type="Area3D" parent="." unique_id=245228793]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -4, 0)
@@ -106,4 +107,3 @@ data = ExtResource("6_voxel_gi")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -30)
 
 [connection signal="finished" from="WaveObjective" to="ExitPoint" method="unlock"]
-

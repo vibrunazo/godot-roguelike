@@ -83,95 +83,67 @@ transform = Transform3D(-0.8706478, 0, -0.491907, 0, 1, 0, 0.491907, 0, -0.87064
 [node name="Barrel_A13" parent="NavigationRegion3D/Litter" index="14" unique_id=1032176950 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(0.70639086, 0, -0.7078224, 0, 1, 0, 0.7078224, 0, 0.70639086, -6.2799425, 0, 5.463232)
 
-[node name="Couch2N" parent="NavigationRegion3D/Litter" index="15" unique_id=828356683 instance=ExtResource("2_dgq3b")]
+[node name="Couch2N" parent="NavigationRegion3D/Litter" index="15" unique_id=1435163847 instance=ExtResource("2_dgq3b")]
 transform = Transform3D(0.0761273, 0, 0.997098, 0, 1, 0, -0.997098, 0, 0.0761273, -14.601, 0, -53.657)
 
-[node name="Couch3N" parent="NavigationRegion3D/Litter" index="16" unique_id=585600636 instance=ExtResource("2_dgq3b")]
+[node name="Couch3N" parent="NavigationRegion3D/Litter" index="16" unique_id=1106474757 instance=ExtResource("2_dgq3b")]
 transform = Transform3D(-0.181463, 0, 0.983398, 0, 1, 0, -0.983398, 0, -0.181463, -14.601, 0, -57.1274)
 
-[node name="Couch4N" parent="NavigationRegion3D/Litter" index="17" unique_id=326808814 instance=ExtResource("2_dgq3b")]
+[node name="Couch4N" parent="NavigationRegion3D/Litter" index="17" unique_id=1532496552 instance=ExtResource("2_dgq3b")]
 transform = Transform3D(-0.995021, 0, 0.099667, 0, 1, 0, -0.099667, 0, -0.995021, 1.30469, 0, -33.3627)
 
-[node name="Barrel_A2N" parent="NavigationRegion3D/Litter" index="18" unique_id=1788426491 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A2N" parent="NavigationRegion3D/Litter" index="18" unique_id=840239221 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.76841, 0, -57.783)
 
-[node name="Barrel_A3N" parent="NavigationRegion3D/Litter" index="19" unique_id=1752961826 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A3N" parent="NavigationRegion3D/Litter" index="19" unique_id=1327444119 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(0.420798, 0, 0.907154, 0, 1, 0, -0.907154, 0, 0.420798, 1.76841, 0, -59.0992)
 
-[node name="Barrel_A4N" parent="NavigationRegion3D/Litter" index="20" unique_id=304792177 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A4N" parent="NavigationRegion3D/Litter" index="20" unique_id=1700546788 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(-0.986547, 0, 0.163481, 0, 1, 0, -0.163481, 0, -0.986547, 2.81904, 0, -58.4246)
 
-[node name="Barrel_A5N" parent="NavigationRegion3D/Litter" index="21" unique_id=1177088924 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A5N" parent="NavigationRegion3D/Litter" index="21" unique_id=1885022699 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(0.118855, 0, 0.992912, 0, 1, 0, -0.992912, 0, 0.118855, 6.96508, 0, -69.1551)
 
-[node name="Barrel_A6N" parent="NavigationRegion3D/Litter" index="22" unique_id=844698994 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A6N" parent="NavigationRegion3D/Litter" index="22" unique_id=103268017 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(-0.85071, 0, 0.525635, 0, 1, 0, -0.525635, 0, -0.85071, 5.65826, 0, -69.3115)
 
-[node name="Barrel_A7N" parent="NavigationRegion3D/Litter" index="23" unique_id=1932779318 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A7N" parent="NavigationRegion3D/Litter" index="23" unique_id=1693795559 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(-0.279578, 0, -0.960123, 0, 1, 0, 0.960123, 0, -0.279578, 6.45293, 0, -70.2745)
 
-[node name="Barrel_A8N" parent="NavigationRegion3D/Litter" index="24" unique_id=1907235090 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A8N" parent="NavigationRegion3D/Litter" index="24" unique_id=851541577 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(-0.812603, 0, 0.582818, 0, 1, 0, -0.582818, 0, -0.812603, -5.05228, 0, -69.9066)
 
-[node name="Barrel_A9N" parent="NavigationRegion3D/Litter" index="25" unique_id=661242062 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A9N" parent="NavigationRegion3D/Litter" index="25" unique_id=1702645925 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(-0.870648, 0, -0.491907, 0, 1, 0, 0.491907, 0, -0.870648, -5.81936, 0, -68.8371)
 
-[node name="Barrel_A10N" parent="NavigationRegion3D/Litter" index="26" unique_id=1114541778 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A10N" parent="NavigationRegion3D/Litter" index="26" unique_id=1687585442 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(0.706391, 0, -0.707822, 0, 1, 0, 0.707822, 0, 0.706391, -6.27994, 0, -69.9976)
 
-[node name="Barrel_A11N" parent="NavigationRegion3D/Litter" index="27" unique_id=2013242187 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A11N" parent="NavigationRegion3D/Litter" index="27" unique_id=1456141901 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(-0.812603, 0, 0.582818, 0, 1, 0, -0.582818, 0, -0.812603, -5.05228, 0, -34.4458)
 
-[node name="Barrel_A12N" parent="NavigationRegion3D/Litter" index="28" unique_id=1055277246 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A12N" parent="NavigationRegion3D/Litter" index="28" unique_id=718150669 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(-0.870648, 0, -0.491907, 0, 1, 0, 0.491907, 0, -0.870648, -5.81936, 0, -33.3763)
 
-[node name="Barrel_A13N" parent="NavigationRegion3D/Litter" index="29" unique_id=179612203 instance=ExtResource("3_bcgyv")]
+[node name="Barrel_A13N" parent="NavigationRegion3D/Litter" index="29" unique_id=1857347238 instance=ExtResource("3_bcgyv")]
 transform = Transform3D(0.706391, 0, -0.707822, 0, 1, 0, 0.707822, 0, 0.706391, -6.27994, 0, -34.5368)
 
-[node name="Pit" parent="." index="5" unique_id=915475260]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, -8)
-
-[node name="Pit2" type="MeshInstance3D" parent="." index="6" unique_id=1394420926]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, -2, -20)
-material_override = SubResource("StandardMaterial3D_ersrp")
-mesh = SubResource("PlaneMesh_kv2lc")
-
-[node name="Pit3" type="MeshInstance3D" parent="." index="7" unique_id=1095227028]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, -2, -20)
-material_override = SubResource("StandardMaterial3D_ersrp")
-mesh = SubResource("PlaneMesh_kv2lc")
-
-[node name="Pit4" type="MeshInstance3D" parent="." index="8" unique_id=1967452153]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, -48)
-material_override = SubResource("StandardMaterial3D_ersrp")
-mesh = SubResource("PlaneMesh_kv2lc")
-
-[node name="Pit5" type="MeshInstance3D" parent="." index="9" unique_id=1783305643]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, -2, -60)
-material_override = SubResource("StandardMaterial3D_ersrp")
-mesh = SubResource("PlaneMesh_kv2lc")
-
-[node name="Pit6" type="MeshInstance3D" parent="." index="10" unique_id=1658365471]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, -2, -60)
-material_override = SubResource("StandardMaterial3D_ersrp")
-mesh = SubResource("PlaneMesh_kv2lc")
-
-[node name="VoxelGI" parent="." index="12" unique_id=1824942255]
+[node name="VoxelGI" parent="." index="7" unique_id=1824942255]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -32)
 size = Vector3(32, 20, 88)
 data = ExtResource("4_level4")
 
-[node name="ExitPoint" parent="." index="13" unique_id=71757807]
+[node name="ExitPoint" parent="." index="8" unique_id=71757807]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, -68)
 
-[node name="SpikesHazard1" parent="." index="14" unique_id=534021016 instance=ExtResource("5_spikes")]
+[node name="SpikesHazard1" parent="." index="9" unique_id=534021016 instance=ExtResource("5_spikes")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -19)
 
-[node name="SpikesHazard2" parent="." index="15" unique_id=178761576 instance=ExtResource("5_spikes")]
+[node name="SpikesHazard2" parent="." index="10" unique_id=178761576 instance=ExtResource("5_spikes")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -25)
 
-[node name="SpikesHazard3" parent="." index="16" unique_id=293285594 instance=ExtResource("5_spikes")]
+[node name="SpikesHazard3" parent="." index="11" unique_id=984206836 instance=ExtResource("5_spikes")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -59)
 
-[node name="SpikesHazard4" parent="." index="17" unique_id=533000911 instance=ExtResource("5_spikes")]
+[node name="SpikesHazard4" parent="." index="12" unique_id=1684135599 instance=ExtResource("5_spikes")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -65)

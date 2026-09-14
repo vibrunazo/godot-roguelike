@@ -22,24 +22,25 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 | Tool | Purpose |
 | :--- | :--- |
 | `dump_cells.gd` | Dumps a level's Floormap/Wallmap cells to text (`--level= --out=`). Starting point for editing any existing level. |
-| `validate_layout.py` | Design-time checks on cell files: floor connectivity (BFS), pit-quad coverage, wall sanity, dressing-on-floor (`--dressing`), VoxelGI suggestion. No engine needed. |
+| `validate_layout.py` | Design-time checks on cell files: floor connectivity (BFS), wall sanity, no wall overlaps, dressing-on-floor (`--dressing`), VoxelGI suggestion. No engine needed. (Pit-quad coverage is retired: the template abyss bottoms every hole.) |
 | `generate_walls.py` | Perimeter walls from floor cells (outer-void sides only, per-side orientations, optional windows) plus `pit_lining()`: shaft walls ringing interior holes, copied from shipped Level 2. Interior pillars stay hand-designed. |
 | `generate_navmesh.py` | Builds a `NavigationMesh` snippet (shared-corner lattice) from floor cells. **Scaffold only** — ship only real bakes (tip 1). |
 | `pack_cells.gd` | Serializes cell files through the engine into a temp scene. GridMap `data` arrays use an internal packed encoding, so hand-writing them tends to corrupt the scene — round-trip through this tool instead. |
-| `assemble_level.py` | Builds an inherited level `.tscn` from a JSON spec (template + cells + pits + exit + hazards + litter + VoxelGI). Supports `strip_*` dressing removal, `litter_placed`, hazard kinds, `hide_nodes` (pins `visible = false` on inherited nodes such as the template `Pit` quad on pit-less levels). Recomputes root `index` attributes automatically. |
+| `assemble_level.py` | Builds an inherited level `.tscn` from a JSON spec (template + cells + exit + hazards + litter + VoxelGI). Supports `strip_*` dressing removal, `litter_placed`, hazard kinds, `hide_nodes` (pins `visible = false` on inherited nodes; never use on `Pit` — the template abyss must stay visible). `extra_pits` is honored for legacy specs only. Recomputes root `index` attributes automatically. |
 | `bake_navmesh.gd` | Headless navmesh bake via `NavigationMeshGenerator` (`--level= --out=`). Output proved byte-equivalent (modulo float formatting) to the editor's Bake button on Level 4. |
 | `bake_level_gi.gd` / `.tscn` | Nav pre-check + VoxelGI bake (`--level= --gi-out=`). Must run **with** the display server (see command below). |
 | `examples/double_level.py` | Worked example: the Level 4 mirror recipe. Reads a dump, writes cells + navmesh + spec. Copy and adapt for new designs. |
 | `examples/grand_hall.py` | Worked example: the original Level 5 design (vestibule + hall + pit lakes + colonnades). Shows perimeter generation, floor art variants, explicit dressing. |
-| `examples/two_rooms.py` | Worked example: the Level 6 design (two rooms + railed bridge, no pits). Composes `layout.py` primitives (`room`/`bridge`/`compose`), the pattern to copy for future multi-part levels. |
+| `examples/two_rooms.py` | Worked example: the Level 6 design (two rooms + railed bridge, no per-level pit quads). Composes `layout.py` primitives (`room`/`bridge`/`compose`), the pattern to copy for future multi-part levels. |
 | `layout.py` | Composable floor-plan primitives: `room()` (solid block, optional holes and per-side tiers), `bridge()` (railed strip: `low`/`open`/`tall`), `corridor()` (tall-railed bridge), `touches()`/`compose()` junction checks, `paint()` floor-art variants. Overrides apply only where derivation would already emit a wall, so part junctions (bridge mouths) stay wall-free automatically. |
 
 The gate for every level is the committed test `test/test_level_rotation_nav.tscn`:
 it loads each `SceneTransition.levels` entry and checks core nodes, baked
 VoxelGI data, navmesh/GI footprint coverage, a spawn→exit nav path, pit
-shaft-wall lining, and navmesh bake authenticity (recast erosion around
-walls normally leaves fractional-coordinate verts, so an all-integer x/z
-lattice is treated as an unbaked scaffold and fails).
+shaft-wall lining, abyss-plane presence (the template `Pit` must be visible
+and giant — per-level pit quads are obsolete), and navmesh bake authenticity
+(recast erosion around walls normally leaves fractional-coordinate verts, so
+an all-integer x/z lattice is treated as an unbaked scaffold and fails).
 
 ## End-to-end: designing a new level
 
@@ -53,7 +54,7 @@ python tools/levels/examples/double_level.py --cells tools/levels/out/l2.txt --o
 
 # 3. Validate the layout BEFORE touching the engine (fast iteration here)
 python tools/levels/validate_layout.py --floor tools/levels/out/l4proof/floor.txt \
-    --wall tools/levels/out/l4proof/wall.txt --pits "0,-8;-4,-20" --start 0,0 --goal -3,-17
+    --wall tools/levels/out/l4proof/wall.txt --start 0,0 --goal -3,-17
 
 # 4. Pack cells through the engine, then assemble the scene from your spec JSON
 python run_scratch.py tools/levels/pack_cells.gd -- --floor=tools/levels/out/l4proof/floor.txt \
@@ -97,9 +98,7 @@ python capture.py map Levels/level_5.tscn --preset all
   "packed_cells": "tools/levels/out/l5/packed_cells.tscn",
   "navmesh_snippet": "tools/levels/out/l5/navmesh.txt",
   "navmesh_id": "NavigationMesh_level5",
-  "pit_pattern_from": "Pit2",
-  "extra_pits": [{"name": "Pit3", "x": -8, "z": -20}],
-  "hide_nodes": ["Pit"],
+  "strip_pits": true,
   "exit": [-12, 0, -68],
   "hazard_pattern_from": "SpikesHazard2",
   "extra_hazards": [{"name": "SpikesHazard3", "ext_id": "5_spikes", "x": 5, "z": -59}],
@@ -113,16 +112,15 @@ python capture.py map Levels/level_5.tscn --preset all
 }
 ```
 
-- `template` should be a level with a pit-quad pattern (`Pit2`) and a hazard
-  pattern to clone; Level 2 or 3 both qualify.
+- `template` should be a level with the hazard/litter patterns to clone;
+  Level 2 or 3 both qualify.
+- The template's `Pit` is a giant abyss plane bottoming every hole and cliff
+  edge — per-level pit quads are obsolete, so new specs simply omit
+  `extra_pits` (still honored for legacy specs) and `strip_pits` is a
+  harmless no-op once the base has no `Pit*` blocks left.
 - `hide_nodes` pins `visible = false` on inherited root nodes the layout
-  must not show. Needed for `"Pit"` on pit-less levels: `strip_pits` only
-  removes `Pit*` blocks that declare `type="MeshInstance3D"`, but the
-  template chain's own `Pit` override is typeless (its type comes from
-  `level_template.tscn`), so it survives stripping. A child scene cannot
-  delete an inherited node — removing its override just reverts to the
-  template version — hence hiding. (Level 5 skips this: its inherited quad
-  sits under a real floor tile, buried and invisible.)
+  must not show. Never use it on `Pit`: hiding the abyss breaks the level
+  (the rotation test fails a hidden or undersized `Pit`).
 - `uid: null` generates a fresh scene uid; pin one to reproduce a file exactly.
 - `player: null` keeps the template spawn; otherwise `[x, y, z]`.
 - `gi_data: null` assembles the pre-bake state (no data reference — required,
@@ -158,7 +156,7 @@ python capture.py map Levels/level_5.tscn --preset all
    versa) loads a level with the wrong/empty mesh and nothing errors visibly.
    The assembler updates both; the rotation test catches a mismatch via the
    coverage check.
-5. **Root `index` attributes are positional.** Inserting pit/hazard nodes shifts
+5. **Root `index` attributes are positional.** Inserting hazard/litter nodes shifts
    every later sibling (`VoxelGI`, `ExitPoint`, …). The assembler recomputes
    them from the merged child order — if you hand-edit, recount.
 6. **The nav map needs frames to sync.** After instancing a level, poll
@@ -182,18 +180,26 @@ python capture.py map Levels/level_5.tscn --preset all
     segments over the notch void, since removed). Then capture isometric +
     top-down + a low close-up of any new edge: top-down lies about floating
     walls, low angles do not.
-11. **Pit quads cover interior gaps; notches stay open.** Gaps connected to the
-    outer void are boundary notches and need no quad (Level 2 leaves its notch
-    unwalled — follow that precedent rather than bridging voids with walls).
-12. **Every pit needs a shaft-wall ring, not just a quad.** A black pit quad
-   over a bare hole reads as a flat sticker floating in the air. Shipped
-   levels ring each interior hole with `y=-1` shaft walls whose inner faces
-   drop from the rim to the quad at `y=-2` (see `pit_lining()` in
-   `generate_walls.py`: cells on every other slot along each hole edge,
-   straddling the hole/floor boundary — possible because each 4 m-wide wall
-   mesh spans two 2 m grid cells). The committed rotation test enforces this:
-   every hole-tile side facing floor must touch a `y=-1` wall cell.
-13. **Size VoxelGI with margin and keep dynamics out of the bake.**
+11. **No per-level pit quads; the template abyss bottoms everything.** The
+    template's giant unshaded `Pit` plane covers every interior hole and
+    cliff edge, so specs never add quads and `validate_layout.py` no longer
+    checks coverage. Gaps connected to the outer void are boundary notches
+    (Level 2 leaves its notch unwalled — follow that precedent rather than
+    bridging voids with walls).
+12. **Every pit still needs a shaft-wall ring.** A hole over the abyss with
+   bare tile sides reads unfinished. Shipped levels ring each interior hole
+   with `y=-1` shaft walls whose inner faces drop from the rim toward the
+   abyss at `y=-2` (see `pit_lining()` in `generate_walls.py`: cells on
+   every other slot along each hole edge, straddling the hole/floor
+   boundary — possible because each 4 m-wide wall mesh spans two 2 m grid
+   cells). The committed rotation test enforces this: every hole-tile side
+   facing floor must touch a `y=-1` wall cell.
+13. **Never write `#` comments in `.tscn` files.** The scene text format is
+    INI-style: only `;` starts a comment. A `#` line parses without a load
+    error but silently swallows the node block that follows it (we lost the
+    template's entire abyss plane this way — the rotation test's abyss check
+    is what caught it). Keep `.tscn` hand-edits comment-free.
+14. **Size VoxelGI with margin and keep dynamics out of the bake.**
     `validate_layout.py` prints a suggested center/size (footprint + 4 m).
     Characters/weapons/props must have `gi_mode = 0` or they bake permanent
     shadow artifacts into the GI data.

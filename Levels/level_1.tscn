@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cr64dhtb6fer3"]
 
 [ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/level_template.tscn" id="1_n0qsc"]
-[ext_resource type="VoxelGIData" uid="uid://cawdua4hjiihs" path="res://Levels/GlobalIlluminationData/level_1_voxel_gi_data.res" id="2_dilhk"]
+[ext_resource type="VoxelGIData" path="res://Levels/GlobalIlluminationData/level_1_voxel_gi_data.res" id="2_dilhk"]
 [ext_resource type="PackedScene" uid="uid://c6v2j7y4p1mna" path="res://Hazards/spikes_hazard.tscn" id="3_spikes"]
 [ext_resource type="PackedScene" path="res://Hazards/fire_trap.tscn" id="4_fire_trap"]
 
@@ -28,9 +28,6 @@ data = {
 
 [node name="Player" parent="." index="4" unique_id=602303743]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1, -4)
-
-[node name="Pit" parent="." index="5" unique_id=915475260]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, -8)
 
 [node name="VoxelGI" parent="." index="7" unique_id=1824942255]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.25766, 0, -4.66687)

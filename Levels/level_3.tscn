@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://b8by0o2p8jju0" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Barrel_A.gltf" id="2_padch"]
 [ext_resource type="PackedScene" uid="uid://t4a6aocg2p7h" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Couch.gltf" id="3_uwxw1"]
 [ext_resource type="PackedScene" uid="uid://6txdxj7vtbjk" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Flag.gltf" id="4_ay5qi"]
-[ext_resource type="VoxelGIData" uid="uid://cgfxfbt2ej8rp" path="res://Levels/GlobalIlluminationData/level_3_voxel_gi_data.res" id="5_fa81k"]
+[ext_resource type="VoxelGIData" path="res://Levels/GlobalIlluminationData/level_3_voxel_gi_data.res" id="5_fa81k"]
 [ext_resource type="PackedScene" uid="uid://c6v2j7y4p1mna" path="res://Hazards/spikes_hazard.tscn" id="6_spikes"]
 [ext_resource type="PackedScene" uid="uid://b1lh7k11b7hq8" path="res://Hazards/fire_trap.tscn" id="7_fire_trap"]
 
@@ -104,24 +104,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.012053013, 0, 0.042013645)
 
 [node name="Player" parent="." index="4" unique_id=602303743]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.2296762, 1, -2.4801493)
-
-[node name="Pit" parent="." index="5" unique_id=915475260]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, -8)
-
-[node name="Pit2" type="MeshInstance3D" parent="." index="6" unique_id=1559285809]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, -2, -20)
-material_override = SubResource("StandardMaterial3D_ersrp")
-mesh = SubResource("PlaneMesh_kv2lc")
-
-[node name="Pit3" type="MeshInstance3D" parent="." index="7" unique_id=1767947659]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, -2, -8)
-material_override = SubResource("StandardMaterial3D_ersrp")
-mesh = SubResource("PlaneMesh_kv2lc")
-
-[node name="Pit4" type="MeshInstance3D" parent="." index="8" unique_id=199229259]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, 8)
-material_override = SubResource("StandardMaterial3D_ersrp")
-mesh = SubResource("PlaneMesh_kv2lc")
 
 [node name="VoxelGI" parent="." index="10" unique_id=1824942255]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25309753, 0, -8.373322)

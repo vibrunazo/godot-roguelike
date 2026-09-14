@@ -8,8 +8,10 @@ At ~150 floor tiles it is substantially bigger than Level 4 (92).
 
 Pipeline (mirrors the README):
     python tools/levels/examples/grand_hall.py --out-dir tools/levels/out/l5proof
-    python tools/levels/validate_layout.py --floor ... --wall ... --pits ... --dressing ...
+    python tools/levels/validate_layout.py --floor ... --wall ... --dressing ...
     pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI -> register
+
+Pit lakes need no quads: the template's giant abyss plane bottoms every hole.
 """
 from __future__ import annotations
 
@@ -25,7 +27,7 @@ from generate_walls import generate as gen_walls  # noqa: E402
 from generate_walls import pit_lining  # noqa: E402
 from validate_layout import check_connectivity, check_dressing  # noqa: E402
 from validate_layout import check_no_wall_overlap  # noqa: E402
-from validate_layout import check_pit_coverage, check_walls_touch_floor  # noqa: E402
+from validate_layout import check_walls_touch_floor  # noqa: E402
 from validate_layout import load_cells  # noqa: E402
 
 # --- footprint (floor grid cells, y=0; tiles are 4m) ---
@@ -34,12 +36,10 @@ VESTIBULE_Z = (0, 1, 2)
 HALL_X = (-4, -3, -2, -1, 0, 1, 2, 3)
 HALL_Z = tuple(range(-18, 0))
 
-# Interior holes (removed from the floor; each needs pit-quad coverage).
+# Interior holes (removed from the floor; lined with shaft walls, bottomed by
+# the template's giant abyss plane — no per-level quads needed).
 LAKE_A = [(x, z) for x in (-3, -2) for z in (-13, -12, -11)]
 LAKE_B = [(x, z) for x in (1, 2) for z in (-8, -7, -6)]
-
-# Pit quads: 8x8 visuals at y=-2, given as world (x, z) centers.
-PITS = [(-8, -44), (-8, -52), (8, -28), (8, -20)]
 
 # Freestanding interior walls: (x, y, z, item, orient). These stand TALL at
 # y=0; y=-1 would bury them flush with the floor (verified by raycast
@@ -149,7 +149,6 @@ def main() -> int:
     dressing += [(n, float(p[0]), float(p[2])) for n, _s, p, _r in LITTER]
 
     ok = check_connectivity(set(floor), START_TILE, EXIT_TILE)
-    ok = check_pit_coverage(set(floor), [(float(x), float(z)) for x, z in PITS]) and ok
     ok = check_walls_touch_floor(set(floor), wall) and ok
     ok = check_no_wall_overlap(wall) and ok
     ok = check_dressing(set(floor), dressing) and ok
@@ -174,7 +173,6 @@ def main() -> int:
         f.write(render_snippet(verts, tris))
     print(f"navmesh scaffold: {len(verts)} verts, {len(tris)} tris")
 
-    pits = [{"name": f"Pit{i}", "x": x, "z": z} for i, (x, z) in enumerate(PITS, start=5)]
     spec = {
         "template": "Levels/level_3.tscn",
         "root_name": args.name,
@@ -185,8 +183,6 @@ def main() -> int:
         "strip_litter": True,
         "strip_hazards": True,
         "strip_pits": True,
-        "pit_pattern_from": "Pit2",
-        "extra_pits": pits,
         "exit": EXIT,
         "hazard_patterns": {"spikes": "SpikesHazard2", "fire": "FireTrap1"},
         "extra_hazards": [{"name": n, "kind": k, "x": x, "z": z} for n, k, x, z in HAZARDS],

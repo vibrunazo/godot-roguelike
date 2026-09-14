@@ -4,8 +4,11 @@
 ## with a VoxelGI volume that covers the floor footprint. Every interior floor
 ## hole (pit) must also be ringed with shaft walls below the rim so pits read
 ## as deep shafts instead of flat black stickers floating in the air. The
-## navmesh must be a real bake (erosion detail), not the generator scaffold,
-## with no walkable islands above the floor (wrong min-region-size symptom).
+## template's giant abyss plane must be present and visible so every hole and
+## cliff edge bottoms out into darkness (per-level pit quads are obsolete).
+## The navmesh must be a real bake (erosion detail), not the generator
+## scaffold, with no walkable islands above the floor (wrong min-region-size
+## symptom).
 extends Node3D
 
 
@@ -116,6 +119,8 @@ func _verify_level(level_path: String) -> bool:
 		if not _verify_low_walls_ring_edges(level, level_path):
 			ok = false
 		if not _verify_pit_lining(level, level_path):
+			ok = false
+		if not _verify_abyss_plane(level, level_path):
 			ok = false
 		if not _verify_path(player.global_position, exit_point.global_position, level_path):
 			ok = false
@@ -307,6 +312,25 @@ func _verify_pit_lining(level: Node3D, level_path: String) -> bool:
 	if bad_sides > 0:
 		return false
 	print("pit lining OK (", checked_sides, " hole-tile sides) in ", level_path)
+	return true
+
+
+## The template's giant abyss plane must be present, visible and large: it
+## bottoms every hole and cliff edge, replacing per-level pit quads. A small
+## quad (the old 8m size) or a hidden Pit means some hole shows grey void.
+func _verify_abyss_plane(level: Node3D, level_path: String) -> bool:
+	var pit: MeshInstance3D = level.find_child("Pit", true, false) as MeshInstance3D
+	if pit == null:
+		printerr("TEST FAILED: abyss Pit quad missing in ", level_path)
+		return false
+	if not pit.visible:
+		printerr("TEST FAILED: abyss Pit quad hidden in ", level_path)
+		return false
+	var mesh: PlaneMesh = pit.mesh as PlaneMesh
+	if mesh == null or minf(mesh.size.x, mesh.size.y) < 500.0:
+		printerr("TEST FAILED: abyss Pit quad too small in ", level_path)
+		return false
+	print("abyss plane OK in ", level_path)
 	return true
 
 

@@ -10,7 +10,10 @@ Usage:
     python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn --out=/tmp/l2.txt
     python tools/levels/examples/double_level.py --cells /tmp/l2.txt --out-dir /tmp/l4
     python tools/levels/validate_layout.py --floor /tmp/l4/floor.txt --wall /tmp/l4/wall.txt \\
-        --pits "0,-8;-4,-20;-8,-20;0,-48;-8,-60;-4,-60" --start 0,0 --goal -3,-17
+        --start 0,0 --goal -3,-17
+
+Holes need no quads: the template's giant abyss plane covers every hole and
+cliff edge. Mirrored lining walls come along with the mirrored cells.
 """
 from __future__ import annotations
 
@@ -22,7 +25,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from generate_navmesh import generate, render_snippet  # noqa: E402
-from validate_layout import check_connectivity, check_pit_coverage  # noqa: E402
+from validate_layout import check_connectivity  # noqa: E402
 from validate_layout import check_walls_touch_floor, load_cells, suggest_voxelgi  # noqa: E402
 
 SHIFT_F = 10  # floor cells in -z (40m)
@@ -40,7 +43,6 @@ WEST_FILLS = [(-8, 0, wz, 0, 16) for wz in (-17, -15)]
 # Far-north corner nubs (match the north-ring style).
 CORNER_NUBS = [(-8, -1, -36, 0, 10), (4, -1, -36, 0, 10)]
 
-PITS = [(0, -8), (-4, -20), (-8, -20), (0, -48), (-8, -60), (-4, -60)]
 EXIT = [-12, 0, -68]
 HAZARDS = [(5, -59), (-10, -65)]
 VOXELGI_POS = [-4, 0, -32]
@@ -78,7 +80,6 @@ def main() -> int:
     print(f"design: {len(floor4)} floor, {len(wall4)} wall cells")
 
     ok = check_connectivity(set(floor4), (0, 0), (-3, -17))
-    ok = check_pit_coverage(set(floor4), [(float(x), float(z)) for x, z in PITS]) and ok
     ok = check_walls_touch_floor(set(floor4), wall4) and ok
     suggest_voxelgi(set(floor4))
     if not ok:
@@ -114,9 +115,6 @@ def main() -> int:
         "packed_cells": os.path.join(args.out_dir, "packed_cells.tscn"),
         "navmesh_snippet": nav_path,
         "navmesh_id": "NavigationMesh_level4",
-        "pit_pattern_from": "Pit2",
-        "extra_pits": [{"name": f"Pit{i}", "x": x, "z": z}
-                       for i, (x, z) in enumerate(PITS[2:], start=3)],
         "exit": EXIT,
         "hazard_pattern_from": "SpikesHazard2",
         "extra_hazards": [{"name": f"SpikesHazard{i}", "ext_id": "5_spikes", "x": x, "z": z}
