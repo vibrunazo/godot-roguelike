@@ -352,6 +352,10 @@ func is_uninterruptable() -> bool:
 ## damage-over-time ticks drain the pool silently, so a burn can never
 ## re-stun its victim or pin the damage flash on for its whole duration.
 func _on_hurtbox_struck(_damage: float) -> void:
+	# A lethal hit reports defeat (via damage_pool) before struck reaches here;
+	# the dead must ignore reactions or stun would override the defeat state.
+	if not is_alive():
+		return
 	if attribute_component != null:
 		health_changed.emit(attribute_component.get_current(AttributeComponent.POOL_HEALTH))
 	if is_uninterruptable():
@@ -422,8 +426,9 @@ func on_defeat() -> void:
 		input_comp.set_physics_process(false)
 	if defeat_state != null and state_machine != null and state_machine.state != null:
 		state_machine.state.finished.emit(defeat_state.name)
-	if collision_shape_3d != null:
-		collision_shape_3d.set_deferred("disabled", true)
+	# The body shape stays enabled so the corpse rests on the ground instead
+	# of falling through it. Only the hurtbox below is shut off, so corpses
+	# can never be re-hit.
 	if hurtbox != null:
 		hurtbox.set_deferred("monitoring", false)
 		hurtbox.set_deferred("monitorable", false)

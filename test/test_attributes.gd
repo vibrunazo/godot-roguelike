@@ -55,6 +55,10 @@ func _run_all() -> void:
 		return
 	if not await _part_effect_vfx_lifecycle():
 		return
+	if not await _part_corpse_stays_grounded():
+		return
+	if not await _part_lethal_hit_reaches_defeat():
+		return
 	print("====================================================================")
 	print("  ALL ATTRIBUTE COMPONENT TESTS PASSED!                             ")
 	print("====================================================================")
@@ -747,4 +751,83 @@ func _part_effect_vfx_lifecycle() -> bool:
 	comp.queue_free()
 	await get_tree().process_frame
 	print("Effect visual spawn, refresh reuse, expiry, and removal verified.")
+	return true
+
+
+## PART 14: defeated enemies keep their body collision and rest on the ground
+## instead of falling through the floor.
+func _part_corpse_stays_grounded() -> bool:
+	print("\n>>> PART 14: Corpse grounding")
+	var floor_body: StaticBody3D = StaticBody3D.new()
+	var floor_col: CollisionShape3D = CollisionShape3D.new()
+	var floor_box: BoxShape3D = BoxShape3D.new()
+	floor_box.size = Vector3(20.0, 1.0, 20.0)
+	floor_col.shape = floor_box
+	floor_col.position = Vector3(0.0, -0.5, 0.0)
+	floor_body.add_child(floor_col)
+	add_child(floor_body)
+	var enemy: Character = (load("res://Enemy/melee_enemy.tscn") as PackedScene).instantiate() as Character
+	add_child(enemy)
+	enemy.global_position = Vector3(0.0, 1.0, 0.0)
+	for i: int in range(5):
+		await get_tree().physics_frame
+	var rest_y: float = enemy.global_position.y
+	var enemy_attrs: AttributeComponent = enemy.get_node("AttributeComponent") as AttributeComponent
+	enemy_attrs.damage_pool(AttributeComponent.POOL_HEALTH, enemy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH))
+	for i: int in range(60):
+		await get_tree().physics_frame
+	if enemy.collision_shape_3d == null or enemy.collision_shape_3d.disabled:
+		enemy.queue_free()
+		floor_body.queue_free()
+		return _fail("Defeat must not disable the body collision shape.")
+	if enemy.global_position.y < rest_y - 0.5:
+		enemy.queue_free()
+		floor_body.queue_free()
+		return _fail("Corpse fell through the floor, y %f -> %f." % [rest_y, enemy.global_position.y])
+	enemy.queue_free()
+	floor_body.queue_free()
+	await get_tree().process_frame
+	print("Corpse collision and grounding verified.")
+	return true
+
+
+## PART 15: a lethal hit through the real hit path must settle in the defeat
+## state. Defeat is reported during damage_pool, before struck reactions fire,
+## so the dead must ignore stun or it would override defeat and leave the
+## corpse stuck standing.
+func _part_lethal_hit_reaches_defeat() -> bool:
+	print("\n>>> PART 15: Lethal hit reaches defeat")
+	var floor_body: StaticBody3D = StaticBody3D.new()
+	var floor_col: CollisionShape3D = CollisionShape3D.new()
+	var floor_box: BoxShape3D = BoxShape3D.new()
+	floor_box.size = Vector3(20.0, 1.0, 20.0)
+	floor_col.shape = floor_box
+	floor_col.position = Vector3(0.0, -0.5, 0.0)
+	floor_body.add_child(floor_col)
+	add_child(floor_body)
+	var enemy: Character = (load("res://Enemy/melee_enemy.tscn") as PackedScene).instantiate() as Character
+	add_child(enemy)
+	enemy.global_position = Vector3(0.0, 1.0, 0.0)
+	for i: int in range(5):
+		await get_tree().physics_frame
+	var enemy_hurtbox: Hurtbox = enemy.get_node_or_null("Hurtbox") as Hurtbox
+	if enemy_hurtbox == null:
+		enemy.queue_free()
+		floor_body.queue_free()
+		return _fail("Melee enemy should wire a Hurtbox.")
+	if not enemy_hurtbox.receive_hit(99999.0, Vector3.ZERO):
+		enemy.queue_free()
+		floor_body.queue_free()
+		return _fail("Lethal hit should land.")
+	for i: int in range(30):
+		await get_tree().physics_frame
+	var body_sm: StateMachine = enemy.state_machine
+	if body_sm == null or body_sm.state == null or body_sm.state.name != "EnemyDefeat":
+		enemy.queue_free()
+		floor_body.queue_free()
+		return _fail("Lethal hit should settle in EnemyDefeat.")
+	enemy.queue_free()
+	floor_body.queue_free()
+	await get_tree().process_frame
+	print("Lethal hit defeat verified.")
 	return true
