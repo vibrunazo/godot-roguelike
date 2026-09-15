@@ -56,7 +56,6 @@ var _pools: Dictionary = {POOL_HEALTH: 0.0, POOL_MANA: 0.0}
 ## Stat names whose base was written programmatically before tree entry.
 ## Export seeding skips these so explicit setup is never overwritten.
 var _base_overrides: Dictionary = {}
-var _effect_counter: int = 0
 var _seeded_from_exports: bool = false
 
 
@@ -158,15 +157,18 @@ func remove_modifier(target_stat: StringName, modifier_id: StringName) -> bool:
 	return removed
 
 
-## Applies a GameplayEffect resource to its target stat and returns a unique
-## instance id for later removal. Returns &"" when the target is invalid.
+## Applies a GameplayEffect resource to its target stat and returns its
+## instance id (the effect name) for later removal. Re-applying an effect
+## refreshes its entry instead of stacking it. Returns &"" when the effect or
+## its target is invalid.
 func apply_effect(effect: GameplayEffect) -> StringName:
 	if effect == null or not is_instance_valid(effect):
 		push_error("AttributeComponent: cannot apply a null effect.")
 		return &""
-	_effect_counter += 1
-	var fallback_name: String = "effect" if effect.effect_name.is_empty() else effect.effect_name
-	var instance_id: StringName = StringName("%s_%d" % [fallback_name, _effect_counter])
+	if effect.effect_name.is_empty():
+		push_error("AttributeComponent: effects need an effect_name identity.")
+		return &""
+	var instance_id: StringName = StringName(effect.effect_name)
 	if not apply_modifier(effect.target_attribute, instance_id, effect.operation, effect.magnitude, effect.duration):
 		return &""
 	return instance_id

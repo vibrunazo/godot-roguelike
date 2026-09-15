@@ -8,6 +8,7 @@
 [ext_resource type="Script" uid="uid://0n22etq4hpy8" path="res://StateMachine/AIStates/ai_pursue.gd" id="4_pursue"]
 [ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="5_aiwait"]
 [ext_resource type="AudioStream" uid="uid://mgv1fbcndh5a" path="res://Assets/Audio/weapon-swing.ogg" id="6_swing"]
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="7_effect"]
 
 [sub_resource type="Gradient" id="Gradient_2d2of"]
 colors = PackedColorArray(0.3019608, 0.3019608, 0.3019608, 1, 0.101960786, 0.101960786, 0.101960786, 1)
@@ -88,6 +89,15 @@ albedo_color = Color(1, 0.5058824, 0, 1)
 top_radius = 0.1
 bottom_radius = 0.1
 
+[sub_resource type="Resource" id="GameplayEffect_melee_slow"]
+script = ExtResource("7_effect")
+effect_name = "melee_slow"
+target_attribute = &"speed"
+operation = 1
+magnitude = -0.5
+duration = 5.0
+description = "Melee strikes slow the victim's movement by half for 5 seconds."
+
 [node name="MeleeEnemy" unique_id=2117139762 node_paths=PackedStringArray("weapon_hitbox") instance=ExtResource("1_cu01m")]
 weapon_hitbox = NodePath("AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea")
 
@@ -157,6 +167,7 @@ attack_component = NodePath("../../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Ri
 self_hitstop_duration = 0.2
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
+effects_to_apply = Array[GameplayEffect]([SubResource("GameplayEffect_melee_slow")])
 
 [node name="AIStateMachine" parent="." index="9" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
 initial_state = NodePath("AIPursue")

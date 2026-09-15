@@ -9,7 +9,8 @@
 class_name GameplayEffect
 extends Resource
 
-## Human-readable effect name, used as the modifier instance id prefix.
+## Unique effect identity. Doubles as the modifier instance id, so re-applying
+## an effect refreshes its duration instead of stacking a second copy.
 @export var effect_name: String = ""
 ## Stat on AttributeComponent receiving the modifier (e.g. &"attack").
 @export var target_attribute: StringName = &"attack"

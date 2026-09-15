@@ -44,6 +44,8 @@ func _run_all() -> void:
 		return
 	if not await _part_character_facades():
 		return
+	if not await _part_melee_slow_effect():
+		return
 	if not await _part_scene_parity():
 		return
 	print("====================================================================")
@@ -343,9 +345,61 @@ func _part_character_facades() -> bool:
 	return true
 
 
-## PART 9: every shipped character carries consistent attribute bases.
+## PART 9: melee hits apply the scene-configured slow once (refresh, no stack).
+func _part_melee_slow_effect() -> bool:
+	print("\n>>> PART 9: Melee slow effect end-to-end")
+	var melee_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
+	var player_scene: PackedScene = load("res://Player/player.tscn") as PackedScene
+	var attacker: Character = melee_scene.instantiate() as Character
+	var victim: Character = player_scene.instantiate() as Character
+	add_child(attacker)
+	add_child(victim)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	var enemy_attack: CharacterAttack = attacker.get_node_or_null("StateMachine/EnemyAttack") as CharacterAttack
+	if enemy_attack == null:
+		attacker.queue_free()
+		victim.queue_free()
+		return _fail("Melee enemy has no EnemyAttack state.")
+	if enemy_attack.effects_to_apply.is_empty():
+		attacker.queue_free()
+		victim.queue_free()
+		return _fail("Melee EnemyAttack configures no hit effects.")
+	var slow: GameplayEffect = enemy_attack.effects_to_apply[0]
+	if slow.target_attribute != AttributeComponent.STAT_SPEED or slow.magnitude >= 0.0 or slow.duration <= 0.0:
+		attacker.queue_free()
+		victim.queue_free()
+		return _fail("Melee slow should target speed with a negative timed magnitude.")
+	var victim_attrs: AttributeComponent = victim.attribute_component
+	var base_speed: float = victim_attrs.get_current(AttributeComponent.STAT_SPEED)
+	var victim_hurtbox: Hurtbox = victim.get_node_or_null("Hurtbox") as Hurtbox
+	if victim_hurtbox == null:
+		attacker.queue_free()
+		victim.queue_free()
+		return _fail("Player has no Hurtbox to strike.")
+	enemy_attack._apply_hit_effects(victim_hurtbox)
+	var slowed: float = victim_attrs.get_current(AttributeComponent.STAT_SPEED)
+	var expected_slowed: float = base_speed * (1.0 + slow.magnitude)
+	if not is_equal_approx(slowed, expected_slowed):
+		attacker.queue_free()
+		victim.queue_free()
+		return _fail("Slow should scale speed by its own magnitude.")
+	enemy_attack._apply_hit_effects(victim_hurtbox)
+	if not is_equal_approx(victim_attrs.get_current(AttributeComponent.STAT_SPEED), expected_slowed):
+		attacker.queue_free()
+		victim.queue_free()
+		return _fail("Re-hitting must refresh the slow, not stack a second copy.")
+	print("Melee slow applied and refreshed without stacking: ", base_speed, " -> ", slowed, ".")
+	attacker.queue_free()
+	victim.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return true
+
+
+## PART 10: every shipped character carries consistent attribute bases.
 func _part_scene_parity() -> bool:
-	print("\n>>> PART 9: Per-scene attribute parity")
+	print("\n>>> PART 10: Per-scene attribute parity")
 	for scene_path: String in CHARACTER_SCENES:
 		var packed: PackedScene = load(scene_path) as PackedScene
 		if packed == null:

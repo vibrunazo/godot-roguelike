@@ -29,6 +29,9 @@ extends CharacterState
 @export var dash_speed: float = 0.0
 ## Duration (in seconds) of the forward lunge. Leave at 0.0 to disable the lunge.
 @export var dash_duration: float = 0.0
+## GameplayEffects applied to each victim when a hit lands (slow, burn, ...).
+## Re-hitting a victim refreshes matching effects instead of stacking them.
+@export var effects_to_apply: Array[GameplayEffect] = []
 ## Time scale applied to this character when one of its hits lands (self hitstop).
 ## Values near 0.0 almost freeze the attacker for a sense of impact weight.
 @export var self_hitstop_scale: float = 0.05
@@ -266,8 +269,28 @@ func _get_timescale_param() -> String:
 
 
 ## Hitstop trigger: slows this attacker (not the victim) each time its attack lands.
-func _on_hit_landed(_target: Node) -> void:
+## Also applies effects_to_apply to the victim's AttributeComponent. Fires only
+## for successful hits (AttackComponent emits hit_landed after receive_hit).
+func _on_hit_landed(target: Node) -> void:
 	apply_self_hitstop()
+	_apply_hit_effects(target)
+
+
+## Applies each configured GameplayEffect to the victim. Resolves victims
+## through their Hurtbox (or directly for Character victims).
+func _apply_hit_effects(target: Node) -> void:
+	if effects_to_apply.is_empty():
+		return
+	var victim_attrs: AttributeComponent = null
+	if target is Hurtbox:
+		victim_attrs = (target as Hurtbox).attribute_component
+	elif target is Character:
+		victim_attrs = (target as Character).attribute_component
+	if victim_attrs == null or not is_instance_valid(victim_attrs):
+		return
+	for effect: GameplayEffect in effects_to_apply:
+		if effect != null and is_instance_valid(effect):
+			victim_attrs.apply_effect(effect)
 
 
 ## Dash-cancel gate: only attacks with dash_cancel set can be interrupted.
