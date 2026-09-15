@@ -60,6 +60,12 @@ var _dots: Array[Dictionary] = []
 ## Stat names whose base was written programmatically before tree entry.
 ## Export seeding skips these so explicit setup is never overwritten.
 var _base_overrides: Dictionary = {}
+## Live status visuals: effect instance id (StringName) -> instanced
+## GameplayEffect.vfx_scene node, parented to the nearest Node3D ancestor
+## (the character body) at the effect's vfx_offset. One entry per timed
+## effect instance, so stacked effects show one visual each and refreshes
+## reuse theirs. Freed when the instance expires or is removed.
+var _effect_vfx: Dictionary = {}
 var _stack_counter: int = 0
 var _seeded_from_exports: bool = false
 
@@ -157,6 +163,7 @@ func remove_modifier(target_stat: StringName, modifier_id: StringName) -> bool:
 	var before: float = attr.current_value
 	var removed: bool = attr.remove_modifier(modifier_id)
 	_update_processing()
+	_reap_effect_vfx()
 	if removed and not is_equal_approx(before, attr.current_value):
 		attribute_changed.emit(target_stat, attr.current_value)
 	return removed
@@ -185,6 +192,7 @@ func apply_effect(effect: GameplayEffect) -> StringName:
 		instance_id = StringName("%s_%d" % [effect.effect_name, _stack_counter])
 	if not apply_modifier(effect.target_attribute, instance_id, effect.operation, effect.magnitude, effect.duration):
 		return &""
+	_show_effect_vfx(instance_id, effect)
 	return instance_id
 
 
@@ -199,7 +207,7 @@ func _apply_pool_effect(effect: GameplayEffect) -> StringName:
 	if effect.magnitude != 0.0:
 		push_warning("AttributeComponent: magnitude only applies to stat targets; ignored on '%s'." % effect.target_attribute)
 	if effect.duration > 0.0:
-		_remove_dot(instance_id)
+		_remove_dot(instance_id, true)
 		_dots.append({
 			"id": instance_id,
 			"pool": effect.target_attribute,
@@ -207,6 +215,7 @@ func _apply_pool_effect(effect: GameplayEffect) -> StringName:
 			"remaining": effect.duration,
 		})
 		_update_processing()
+		_show_effect_vfx(instance_id, effect)
 	else:
 		if effect.total_damage >= 0.0:
 			damage_pool(effect.target_attribute, effect.total_damage)
@@ -228,14 +237,71 @@ func remove_effect(instance_id: StringName) -> bool:
 
 
 ## Drops one damage-over-time entry by id. Returns true when one existed.
-func _remove_dot(instance_id: StringName) -> bool:
+## Refresh re-application passes keep_visual to reuse the live status visual.
+func _remove_dot(instance_id: StringName, keep_visual: bool = false) -> bool:
 	for i: int in range(_dots.size()):
 		var entry: Dictionary = _dots[i]
 		if StringName(entry.get("id", &"")) == instance_id:
 			_dots.remove_at(i)
 			_update_processing()
+			if not keep_visual:
+				_reap_effect_vfx()
 			return true
 	return false
+
+
+## Instances the effect's vfx_scene on this component while the timed instance
+## lives. Refreshes reuse the existing node (same instance id); stacked
+## instances each get their own. No scene (or an instant pool effect, which
+## never reaches here) means no visual.
+func _show_effect_vfx(instance_id: StringName, effect: GameplayEffect) -> void:
+	if effect.vfx_scene == null or _effect_vfx.has(instance_id):
+		return
+	var fx: Node = effect.vfx_scene.instantiate()
+	_effect_vfx_parent().add_child(fx)
+	if fx is Node3D:
+		(fx as Node3D).position = effect.vfx_offset
+	_effect_vfx[instance_id] = fx
+
+
+## Status visuals must live under a Node3D to inherit the target's transform:
+## a Node3D parented to this plain-Node component would sit at its local
+## position in world space instead of on the character. Falls back to this
+## component when no Node3D ancestor exists (bare test setups).
+func _effect_vfx_parent() -> Node:
+	var node: Node = get_parent()
+	while node != null:
+		if node is Node3D:
+			return node
+		node = node.get_parent()
+	return self
+
+
+## Returns true while the instance id still owns a stat modifier or a
+## damage-over-time entry.
+func _has_effect_instance(instance_id: StringName) -> bool:
+	for i: int in range(_dots.size()):
+		if StringName((_dots[i] as Dictionary).get("id", &"")) == instance_id:
+			return true
+	for stat_name: StringName in STAT_NAMES:
+		var attr: Attribute = _stats[stat_name] as Attribute
+		if attr != null and attr.has_modifier(instance_id):
+			return true
+	return false
+
+
+## Frees status visuals whose effect instance expired or was removed.
+## Refreshes keep their id alive, so their visual survives untouched.
+func _reap_effect_vfx() -> void:
+	var dead: Array[StringName] = []
+	for instance_id: StringName in _effect_vfx:
+		if not _has_effect_instance(instance_id):
+			dead.append(instance_id)
+	for instance_id: StringName in dead:
+		var fx: Node = _effect_vfx[instance_id] as Node
+		_effect_vfx.erase(instance_id)
+		if fx != null and is_instance_valid(fx):
+			fx.queue_free()
 
 
 ## Subtracts an instant delta from a pool (damage, mana spend), clamped at
@@ -292,6 +358,7 @@ func _process(delta: float) -> void:
 		attribute_changed.emit(stat_name, get_current(stat_name))
 		_clamp_pool_to_max(stat_name)
 	_update_processing()
+	_reap_effect_vfx()
 
 
 ## Advances damage-over-time entries, applying each entry's share of pool

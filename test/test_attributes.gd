@@ -53,6 +53,8 @@ func _run_all() -> void:
 		return
 	if not await _part_dot_suppresses_reactions():
 		return
+	if not await _part_effect_vfx_lifecycle():
+		return
 	print("====================================================================")
 	print("  ALL ATTRIBUTE COMPONENT TESTS PASSED!                             ")
 	print("====================================================================")
@@ -511,6 +513,9 @@ func _part_damage_over_time() -> bool:
 	if burn.target_attribute != AttributeComponent.POOL_HEALTH or burn.total_damage <= 0.0 or burn.duration <= 0.0:
 		projectile.queue_free()
 		return _fail("Fireball burn should target the health pool with a positive timed total.")
+	if burn.vfx_scene == null:
+		projectile.queue_free()
+		return _fail("Fireball burn should link a status visual scene.")
 	projectile.queue_free()
 	await get_tree().process_frame
 	var comp: AttributeComponent = _make_component()
@@ -592,14 +597,30 @@ func _part_dot_suppresses_reactions() -> bool:
 		player.queue_free()
 		return _fail("Direct hit should emit exactly one struck reaction.")
 	var before: float = comp.get_current(AttributeComponent.POOL_HEALTH)
+	var burn_vfx: PackedScene = load("res://Singletons/VFX/status_burning.tscn") as PackedScene
+	if burn_vfx == null:
+		player.queue_free()
+		return _fail("Status burning VFX scene should load.")
 	var burn: GameplayEffect = GameplayEffect.new()
 	burn.effect_name = "test_burn_reaction"
 	burn.target_attribute = AttributeComponent.POOL_HEALTH
 	burn.total_damage = 10.0
 	burn.duration = 0.4
+	burn.vfx_scene = burn_vfx
+	burn.vfx_offset = Vector3(0.0, 0.6, 0.0)
+	player.global_position = Vector3(5.0, 0.0, 7.0)
 	if comp.apply_effect(burn) == &"":
 		player.queue_free()
 		return _fail("Burn application should return a live instance id.")
+	await get_tree().process_frame
+	var burn_fx: Node3D = player.get_node_or_null("StatusBurning") as Node3D
+	if burn_fx == null:
+		player.queue_free()
+		return _fail("Burn visual should attach to the victim's body.")
+	var ride_offset: Vector3 = burn_fx.global_position - player.global_position
+	if absf(ride_offset.x) > 0.05 or absf(ride_offset.z) > 0.05 or absf(ride_offset.y - 0.6) > 0.05:
+		player.queue_free()
+		return _fail("Burn visual should ride the victim at its offset, got %s." % ride_offset)
 	await get_tree().create_timer(0.6).timeout
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -613,4 +634,93 @@ func _part_dot_suppresses_reactions() -> bool:
 	player.queue_free()
 	await get_tree().process_frame
 	print("Struck-gated reactions and silent DoT drain verified.")
+	return true
+
+
+## PART 13: effect status visuals spawn once per timed instance at the
+## configured offset, survive refresh, and free on expiry or removal. Instant
+## effects and null scenes spawn nothing.
+func _part_effect_vfx_lifecycle() -> bool:
+	print("\n>>> PART 13: Effect status visuals")
+	var burn_vfx: PackedScene = load("res://Singletons/VFX/status_burning.tscn") as PackedScene
+	if burn_vfx == null:
+		return _fail("Status burning VFX scene should load.")
+	var comp: AttributeComponent = _make_component()
+	comp.set_base(AttributeComponent.STAT_MAX_HEALTH, 200.0)
+	comp.restore_pool(AttributeComponent.POOL_HEALTH, 200.0)
+	var burn: GameplayEffect = GameplayEffect.new()
+	burn.effect_name = "test_burn_vfx"
+	burn.target_attribute = AttributeComponent.POOL_HEALTH
+	burn.total_damage = 10.0
+	burn.duration = 0.3
+	burn.vfx_scene = burn_vfx
+	burn.vfx_offset = Vector3(0.0, 0.6, 0.0)
+	var burn_id: StringName = comp.apply_effect(burn)
+	if burn_id == &"":
+		comp.queue_free()
+		return _fail("Burn application should return a live instance id.")
+	if comp.get_child_count() != 1:
+		comp.queue_free()
+		return _fail("Timed effect with a scene should spawn exactly one visual.")
+	var fx: Node = comp.get_child(0)
+	if not (fx is Node3D) or not is_equal_approx((fx as Node3D).position.y, 0.6):
+		comp.queue_free()
+		return _fail("Effect visual should sit at the configured offset.")
+	var refresh_id: StringName = comp.apply_effect(burn)
+	if refresh_id != burn_id or comp.get_child_count() != 1 or comp.get_child(0) != fx:
+		comp.queue_free()
+		return _fail("Refresh should reuse the live visual, not spawn a second.")
+	await get_tree().create_timer(0.5).timeout
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(fx) or comp.get_child_count() != 0:
+		comp.queue_free()
+		return _fail("Expired effect should free its visual.")
+	# Instant pool effects never show a visual, even with a scene linked.
+	var instant: GameplayEffect = GameplayEffect.new()
+	instant.effect_name = "test_instant_vfx"
+	instant.target_attribute = AttributeComponent.POOL_HEALTH
+	instant.total_damage = 5.0
+	instant.duration = 0.0
+	instant.vfx_scene = burn_vfx
+	comp.apply_effect(instant)
+	if comp.get_child_count() != 0:
+		comp.queue_free()
+		return _fail("Instant effects must never spawn a visual.")
+	# Timed stat effects show one too, freed on manual removal.
+	var chill: GameplayEffect = GameplayEffect.new()
+	chill.effect_name = "test_chill_vfx"
+	chill.target_attribute = AttributeComponent.STAT_SPEED
+	chill.operation = 1
+	chill.magnitude = -0.5
+	chill.duration = 30.0
+	chill.vfx_scene = burn_vfx
+	var chill_id: StringName = comp.apply_effect(chill)
+	if chill_id == &"" or comp.get_child_count() != 1:
+		comp.queue_free()
+		return _fail("Timed stat effect should spawn its visual.")
+	var chill_fx: Node = comp.get_child(0)
+	if not comp.remove_effect(chill_id):
+		comp.queue_free()
+		return _fail("Stat effect removal should succeed.")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(chill_fx) or comp.get_child_count() != 0:
+		comp.queue_free()
+		return _fail("Removed effect should free its visual.")
+	# Effects without a scene stay invisible.
+	var plain: GameplayEffect = GameplayEffect.new()
+	plain.effect_name = "test_plain_dot"
+	plain.target_attribute = AttributeComponent.POOL_HEALTH
+	plain.total_damage = 5.0
+	plain.duration = 0.3
+	if comp.apply_effect(plain) == &"":
+		comp.queue_free()
+		return _fail("Sceneless DoT should still apply.")
+	if comp.get_child_count() != 0:
+		comp.queue_free()
+		return _fail("Effects without a scene must spawn nothing.")
+	comp.queue_free()
+	await get_tree().process_frame
+	print("Effect visual spawn, refresh reuse, expiry, and removal verified.")
 	return true

@@ -38,6 +38,15 @@ enum Stacking {
 ## On pools, values > 0.0 spread total_damage over time, values <= 0.0 apply
 ## it instantly.
 @export var duration: float = 0.0
+## Optional status visual: a scene instanced on the target while a timed
+## instance of this effect is active (burning flames, frost mist, a shield
+## bubble) and freed automatically on expiry or removal. Instant pool effects
+## never show it since they have no duration. Null means no visual.
+@export var vfx_scene: PackedScene
+## Local offset applied to the instanced visual, relative to the target's
+## body origin (the feet). E.g. raise flames toward the torso with
+## Vector3(0, 0.6, 0).
+@export var vfx_offset: Vector3 = Vector3.ZERO
 ## Optional designer note describing the effect's intent.
 @export var description: String = ""
 
