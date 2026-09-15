@@ -4,6 +4,7 @@
 [ext_resource type="AudioStream" uid="uid://d0fcu71wibih8" path="res://Assets/Audio/fire.ogg" id="2_fire_audio"]
 [ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="3_attack_comp"]
 [ext_resource type="PackedScene" uid="uid://b1lh7k11b7hq8" path="res://Hazards/fire_trap.tscn" id="4_fire_trap"]
+[ext_resource type="Resource" path="res://Components/effect_fire_burn.tres" id="5_fireburn"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_fb"]
 radius = 0.3
@@ -82,6 +83,7 @@ autostart = true
 [node name="AttackComponent" type="Node" parent="." unique_id=321443246]
 script = ExtResource("3_attack_comp")
 damage = 5.0
+effects_to_apply = Array[GameplayEffect]([ExtResource("5_fireburn")])
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=341094992]
 material_override = SubResource("StandardMaterial3D_trail")

@@ -1,5 +1,10 @@
 extends Node3D
 
+var _trap_strikes: int = 0
+
+func _on_trap_test_strike(_value: float) -> void:
+	_trap_strikes += 1
+
 func _ready() -> void:
 	print("\n--- RUNNING FIRE TRAP HAZARD TEST ---")
 
@@ -133,22 +138,26 @@ func _ready() -> void:
 		return
 	print("Instant touch damage confirmed on first contact! HP: ", initial_hp, " -> ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 
-	# Verify enemy is not hit again within 0.5s (EnemyStun completes and enemy is free to move)
-	var hp_after_first_hit: float = enemy_attrs.get_current(AttributeComponent.POOL_HEALTH)
+	# Verify enemy is not hit again within 0.5s (EnemyStun completes and enemy is free to move).
+	# Burn ticks keep draining the pool silently, so count landed hits via
+	# health_changed (struck-gated) instead of comparing pool values.
+	_trap_strikes = 0
+	enemy.health_changed.connect(_on_trap_test_strike)
 	for i: int in range(30): # ~0.5s at 60 FPS
 		await get_tree().physics_frame
-		if enemy_attrs.get_current(AttributeComponent.POOL_HEALTH) < hp_after_first_hit:
-			printerr("TEST FAILED: Enemy took premature lingering damage! Stunlock prevention violated.")
+		if _trap_strikes > 0:
+			printerr("TEST FAILED: Enemy re-hit within 0.5s! Stunlock prevention violated.")
 			get_tree().quit(1)
 			return
-	print("Stunlock prevention verified: No premature damage within 0.5s.")
+	print("Stunlock prevention verified: no re-hit within 0.5s.")
 
 	# Fast-forward / wait for 2.0s damage interval to trigger second tick
 	# 2.0s = ~120 frames. We already waited ~30 frames. Wait another 100 frames (~1.65s).
+	var strikes_before: int = _trap_strikes
 	var second_hit := false
 	for i: int in range(110):
 		await get_tree().physics_frame
-		if enemy_attrs.get_current(AttributeComponent.POOL_HEALTH) < hp_after_first_hit:
+		if _trap_strikes > strikes_before:
 			second_hit = true
 			break
 
@@ -156,7 +165,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Lingering enemy did not receive second damage tick after 2.0s interval! HP: ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("Lingering re-hit tick confirmed after 2.0s interval! HP: ", hp_after_first_hit, " -> ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
+	print("Lingering re-hit tick confirmed after 2.0s interval! HP: ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 
 	# Move enemy away
 	enemy.global_position = Vector3(-20.0, 1.0, -20.0)

@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://cfgi8w6pg64rp" path="res://Hazards/fire_trap.gd" id="1_fire_trap"]
 [ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="2_attack"]
 [ext_resource type="AudioStream" uid="uid://d0fcu71wibih8" path="res://Assets/Audio/fire.ogg" id="3_audio"]
+[ext_resource type="Resource" path="res://Components/effect_fire_burn.tres" id="4_burn"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plate"]
 albedo_color = Color(0.12, 0.11, 0.13, 1)
@@ -68,6 +69,7 @@ shape = SubResource("BoxShape3D_s41no")
 script = ExtResource("2_attack")
 damage = 5.0
 rehit_interval = 2.0
+effects_to_apply = Array[GameplayEffect]([ExtResource("4_burn")])
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=2026722003]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)

@@ -3,21 +3,10 @@
 [ext_resource type="Script" uid="uid://csc1c0lx4t82n" path="res://Enemy/enemy_projectile.gd" id="1_6uikd"]
 [ext_resource type="AudioStream" uid="uid://d0fcu71wibih8" path="res://Assets/Audio/fire.ogg" id="1_qhog7"]
 [ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="3_td6rc"]
-[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="4_burn"]
-[ext_resource type="PackedScene" path="res://Singletons/VFX/status_burning.tscn" id="5_burnvfx"]
+[ext_resource type="Resource" path="res://Components/effect_fire_burn.tres" id="4_fireburn"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_6uikd"]
 radius = 0.25
-
-[sub_resource type="Resource" id="GameplayEffect_fireball_burn"]
-script = ExtResource("4_burn")
-effect_name = "fireball_burn"
-target_attribute = &"health"
-total_damage = 10.0
-duration = 5.0
-vfx_scene = ExtResource("5_burnvfx")
-vfx_offset = Vector3(0, 0.6, 0)
-description = "Fireball impact burns the victim for 10 damage over 5 seconds."
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_td6rc"]
 shading_mode = 0
@@ -71,7 +60,7 @@ autostart = true
 [node name="AttackComponent" type="Node" parent="." unique_id=321443246]
 script = ExtResource("3_td6rc")
 damage = 5.0
-effects_to_apply = Array[GameplayEffect]([SubResource("GameplayEffect_fireball_burn")])
+effects_to_apply = Array[GameplayEffect]([ExtResource("4_fireburn")])
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=341094992]
 material_override = SubResource("StandardMaterial3D_td6rc")

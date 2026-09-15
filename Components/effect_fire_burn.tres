@@ -1,0 +1,14 @@
+[gd_resource type="Resource" format=3]
+
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="1_burn"]
+[ext_resource type="PackedScene" path="res://Singletons/VFX/status_burning.tscn" id="2_burnvfx"]
+
+[resource]
+script = ExtResource("1_burn")
+effect_name = "fire_burn"
+target_attribute = &"health"
+total_damage = 5.0
+duration = 5.0
+vfx_scene = ExtResource("2_burnvfx")
+vfx_offset = Vector3(0, 0.6, 0)
+description = "Shared fire burn: 5 damage over 5 seconds with flames. Applied by fireball hits, fire traps, and firebomb direct hits; re-application refreshes the single instance."

@@ -516,7 +516,31 @@ func _part_damage_over_time() -> bool:
 	if burn.vfx_scene == null:
 		projectile.queue_free()
 		return _fail("Fireball burn should link a status visual scene.")
+	var burn_name: StringName = burn.effect_name
+	var burn_total: float = burn.total_damage
+	var burn_duration: float = burn.duration
 	projectile.queue_free()
+	await get_tree().process_frame
+	# Fire trap and firebomb direct hits share the one burn identity, so any
+	# fire source refreshes the same instance instead of stacking lookalikes.
+	var trap: Node3D = (load("res://Hazards/fire_trap.tscn") as PackedScene).instantiate() as Node3D
+	var firebomb: Area3D = (load("res://Enemy/firebomb_projectile.tscn") as PackedScene).instantiate() as Area3D
+	add_child(trap)
+	add_child(firebomb)
+	await get_tree().process_frame
+	var trap_attack: AttackComponent = trap.get_node_or_null("DamageHitbox/AttackComponent") as AttackComponent
+	var bomb_attack: AttackComponent = firebomb.get_node_or_null("AttackComponent") as AttackComponent
+	if trap_attack == null or bomb_attack == null or trap_attack.effects_to_apply.is_empty() or bomb_attack.effects_to_apply.is_empty():
+		trap.queue_free()
+		firebomb.queue_free()
+		return _fail("Fire trap and firebomb should each configure a hit effect.")
+	for other: GameplayEffect in [trap_attack.effects_to_apply[0], bomb_attack.effects_to_apply[0]]:
+		if other.effect_name != burn_name or not is_equal_approx(other.total_damage, burn_total) or not is_equal_approx(other.duration, burn_duration):
+			trap.queue_free()
+			firebomb.queue_free()
+			return _fail("Fire sources should share one burn identity.")
+	trap.queue_free()
+	firebomb.queue_free()
 	await get_tree().process_frame
 	var comp: AttributeComponent = _make_component()
 	var max_val: float = 200.0
