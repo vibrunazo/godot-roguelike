@@ -53,6 +53,10 @@ const POOL_MAX_LINK: Dictionary = {POOL_HEALTH: STAT_MAX_HEALTH, POOL_MANA: STAT
 var _stats: Dictionary = {}
 ## Pool name -> current float value.
 var _pools: Dictionary = {POOL_HEALTH: 0.0, POOL_MANA: 0.0}
+## Active damage-over-time entries. Each Dictionary holds id (StringName),
+## pool (StringName), rate (float, pool units per second, negative heals), and
+## remaining (float, seconds left).
+var _dots: Array[Dictionary] = []
 ## Stat names whose base was written programmatically before tree entry.
 ## Export seeding skips these so explicit setup is never overwritten.
 var _base_overrides: Dictionary = {}
@@ -158,11 +162,12 @@ func remove_modifier(target_stat: StringName, modifier_id: StringName) -> bool:
 	return removed
 
 
-## Applies a GameplayEffect resource to its target stat and returns an
-## instance id for later removal. REFRESH effects reuse the effect name as
-## their id, so re-applying restarts the duration; STACK effects mint a unique
-## id per application, each removable independently. Returns &"" when the
-## effect or its target is invalid.
+## Applies a GameplayEffect resource and returns an instance id for later
+## removal. Stat targets become modifier entries; pool targets become damage
+## over time (duration > 0.0) or an instant delta. REFRESH effects reuse the
+## effect name as their id, so re-applying restarts the duration; STACK
+## effects mint a unique id per application, each removable independently.
+## Returns &"" when the effect or its target is invalid.
 func apply_effect(effect: GameplayEffect) -> StringName:
 	if effect == null or not is_instance_valid(effect):
 		push_error("AttributeComponent: cannot apply a null effect.")
@@ -170,6 +175,10 @@ func apply_effect(effect: GameplayEffect) -> StringName:
 	if effect.effect_name.is_empty():
 		push_error("AttributeComponent: effects need an effect_name identity.")
 		return &""
+	if _pools.has(effect.target_attribute):
+		return _apply_pool_effect(effect)
+	if effect.total_damage != 0.0:
+		push_warning("AttributeComponent: total_damage only applies to pool targets; ignored on '%s'." % effect.target_attribute)
 	var instance_id: StringName = StringName(effect.effect_name)
 	if effect.stacking == GameplayEffect.Stacking.STACK:
 		_stack_counter += 1
@@ -179,12 +188,53 @@ func apply_effect(effect: GameplayEffect) -> StringName:
 	return instance_id
 
 
-## Removes a previously applied effect instance by id. Returns true when found.
+## Applies a pool-targeted effect: damage (or heal, for negative totals) over
+## time while duration > 0.0, otherwise a single instant delta. Respects the
+## effect stacking policy like stat entries do.
+func _apply_pool_effect(effect: GameplayEffect) -> StringName:
+	var instance_id: StringName = StringName(effect.effect_name)
+	if effect.stacking == GameplayEffect.Stacking.STACK:
+		_stack_counter += 1
+		instance_id = StringName("%s_%d" % [effect.effect_name, _stack_counter])
+	if effect.magnitude != 0.0:
+		push_warning("AttributeComponent: magnitude only applies to stat targets; ignored on '%s'." % effect.target_attribute)
+	if effect.duration > 0.0:
+		_remove_dot(instance_id)
+		_dots.append({
+			"id": instance_id,
+			"pool": effect.target_attribute,
+			"rate": effect.total_damage / effect.duration,
+			"remaining": effect.duration,
+		})
+		_update_processing()
+	else:
+		if effect.total_damage >= 0.0:
+			damage_pool(effect.target_attribute, effect.total_damage)
+		else:
+			restore_pool(effect.target_attribute, -effect.total_damage)
+	return instance_id
+
+
+## Removes a previously applied effect instance by id, from stat entries and
+## damage-over-time entries alike. Returns true when found.
 func remove_effect(instance_id: StringName) -> bool:
 	for stat_name: StringName in STAT_NAMES:
 		var attr: Attribute = _stats[stat_name] as Attribute
 		if attr != null and attr.has_modifier(instance_id):
 			return remove_modifier(stat_name, instance_id)
+	if _remove_dot(instance_id):
+		return true
+	return false
+
+
+## Drops one damage-over-time entry by id. Returns true when one existed.
+func _remove_dot(instance_id: StringName) -> bool:
+	for i: int in range(_dots.size()):
+		var entry: Dictionary = _dots[i]
+		if StringName(entry.get("id", &"")) == instance_id:
+			_dots.remove_at(i)
+			_update_processing()
+			return true
 	return false
 
 
@@ -232,6 +282,7 @@ func is_alive() -> bool:
 
 
 func _process(delta: float) -> void:
+	_tick_dots(delta)
 	var changed_stats: Array[StringName] = []
 	for stat_name: StringName in STAT_NAMES:
 		var attr: Attribute = _stats[stat_name] as Attribute
@@ -241,6 +292,26 @@ func _process(delta: float) -> void:
 		attribute_changed.emit(stat_name, get_current(stat_name))
 		_clamp_pool_to_max(stat_name)
 	_update_processing()
+
+
+## Advances damage-over-time entries, applying each entry's share of pool
+## damage (or healing for negative rates) and dropping expired entries.
+func _tick_dots(delta: float) -> void:
+	for i: int in range(_dots.size() - 1, -1, -1):
+		var entry: Dictionary = _dots[i]
+		var remaining: float = float(entry.get("remaining", 0.0))
+		var step: float = minf(delta, remaining)
+		var tick_amount: float = float(entry.get("rate", 0.0)) * step
+		var pool_name: StringName = StringName(entry.get("pool", POOL_HEALTH))
+		if tick_amount >= 0.0:
+			damage_pool(pool_name, tick_amount)
+		else:
+			restore_pool(pool_name, -tick_amount)
+		if remaining <= delta:
+			_dots.remove_at(i)
+		else:
+			entry["remaining"] = remaining - delta
+			_dots[i] = entry
 
 
 ## Seeds stat bases from the base_* exports on first tree entry and fills
@@ -260,8 +331,11 @@ func _seed_from_exports() -> void:
 		_pools[pool_name] = get_current(max_stat)
 
 
-## Enables ticking only while a timed modifier exists anywhere.
+## Enables ticking only while a timed modifier or damage-over-time entry exists.
 func _update_processing() -> void:
+	if not _dots.is_empty():
+		set_process(true)
+		return
 	for stat_name: StringName in STAT_NAMES:
 		var attr: Attribute = _stats[stat_name] as Attribute
 		if attr != null and attr.has_timed_modifiers():

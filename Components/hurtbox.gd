@@ -12,6 +12,12 @@
 class_name Hurtbox
 extends Area3D
 
+## Emitted once per successful receive_hit(), after damage is applied. Marks a
+## discrete "was struck" event for hit reactions (stun, damage flash, hurt
+## shake). Damage-over-time ticks write to the pool directly and never emit
+## this, so reactions fire once per hit instead of every frame of a burn.
+signal struck(damage: float)
+
 ## Audio player played when damage is taken.
 @export var hit_audio: AudioStreamPlayer3D
 ## AttributeComponent holding the health pool damaged by receive_hit().
@@ -60,6 +66,7 @@ func receive_hit(damage: float, knockback: Vector3) -> bool:
 	if parent is Node3D:
 		VfxManager.spawn_damage_number(parent as Node3D, damage)
 	if hit_audio: hit_audio.play()
+	struck.emit(damage)
 	return true
 
 

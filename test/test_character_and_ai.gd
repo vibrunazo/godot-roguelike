@@ -269,8 +269,14 @@ func test_part_5_stun_independence_and_recovery() -> void:
 	var body_sm: StateMachine = enemy.state_machine
 	var mind_sm: AIStateMachine = enemy.ai_state_machine as AIStateMachine
 	
-	# Verify taking damage enters EnemyStun on Body
-	enemy.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 10.0)
+	# Verify taking a hit enters EnemyStun on Body (struck-gated; silent pool
+	# writes such as DoT ticks must not stun)
+	if not enemy.hurtbox.receive_hit(10.0, Vector3.ZERO):
+		printerr("TEST FAILED: Hurtbox hit should land.")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
 	await get_tree().process_frame
 	if body_sm.state.name != "EnemyStun":
 		printerr("TEST FAILED: Taking damage did not put body into EnemyStun. Got: ", body_sm.state.name)

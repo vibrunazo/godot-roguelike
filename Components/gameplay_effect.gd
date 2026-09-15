@@ -1,11 +1,12 @@
-## Data-only description of one temporary or permanent stat modification (the
-## project's GameplayEffect foundation). Effects never execute themselves;
-## AttributeComponent.apply_effect() translates them into modifier entries and
-## remove_effect() (or expiry) takes them back out.
-## Effects target stats (max_health, attack, speed, ...), never pools: buff
-## max_health rather than health so expiry re-clamps instead of deleting earned
-## health. Instant pool deltas (damage, heal, mana spend) stay direct
-## damage_pool()/restore_pool() calls, not effects.
+## Data-only description of one stat modification or pool effect (the project's
+## GameplayEffect foundation). Effects never execute themselves;
+## AttributeComponent.apply_effect() translates them and remove_effect() (or
+## expiry) takes them back out.
+## Effects targeting stats (max_health, attack, speed, ...) become modifier
+## entries: buff max_health rather than health so expiry re-clamps instead of
+## deleting earned health. Effects targeting pools (health, mana) deal their
+## total_damage instead: spread over time while duration > 0.0 (damage over
+## time, heal over time for negative totals) or all at once when instant.
 class_name GameplayEffect
 extends Resource
 
@@ -27,8 +28,15 @@ enum Stacking {
 ## Stacking operation as an Attribute.Op index (0 = ADD, 1 = MULT_ADD, 2 = MULT_COMP).
 @export_enum("ADD", "MULT_ADD", "MULT_COMP") var operation: int = 1
 ## Modifier magnitude: flat amount for ADD, fraction for percentages (0.5 = +50%).
+## Only meaningful for stat targets; ignored (with a warning) on pool targets.
 @export var magnitude: float = 0.0
-## Lifetime in seconds. Values <= 0.0 mean permanent until explicitly removed.
+## Total pool damage dealt when targeting a pool (positive harms, negative
+## heals over time). Spread evenly across duration; all at once when instant.
+## Only meaningful for pool targets; ignored (with a warning) on stat targets.
+@export var total_damage: float = 0.0
+## Lifetime in seconds. On stats, values <= 0.0 mean permanent until removed.
+## On pools, values > 0.0 spread total_damage over time, values <= 0.0 apply
+## it instantly.
 @export var duration: float = 0.0
 ## Optional designer note describing the effect's intent.
 @export var description: String = ""

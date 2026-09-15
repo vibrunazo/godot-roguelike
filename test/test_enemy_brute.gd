@@ -359,7 +359,10 @@ func _ready() -> void:
 	# Phase 4C: Hyper-Armor & Recovery phase
 	# Brute is still in uninterruptable EnemyAttack. Dealing damage must NOT interrupt into EnemyStun!
 	var hp_before_armor_hit: float = brute.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-	brute.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 10.0)
+	if not brute.hurtbox.receive_hit(10.0, Vector3.ZERO):
+		printerr("TEST FAILED: Hurtbox hit should land during hyper-armor.")
+		get_tree().quit(1)
+		return
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	if body_sm.state.name != "EnemyAttack":
@@ -472,7 +475,10 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	brute.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 10.0)
+	if not brute.hurtbox.receive_hit(10.0, Vector3.ZERO):
+		printerr("TEST FAILED: Hurtbox hit should land for stunlock test.")
+		get_tree().quit(1)
+		return
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	if body_sm.state.name != "EnemyStun":

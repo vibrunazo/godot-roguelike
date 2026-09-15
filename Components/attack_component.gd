@@ -21,6 +21,11 @@ signal hit_landed(target: Node)
 ## If <= 0.0, the target is only hit once per attack cycle until reset_exceptions() is called.
 @export var rehit_interval: float = 0.0
 
+## GameplayEffects applied to each victim on a confirmed hit (slow, burn, ...).
+## Melee states copy their effects_to_apply here on enter; projectiles and
+## hazards configure it directly in their scene.
+@export var effects_to_apply: Array[GameplayEffect] = []
+
 var temporary_exceptions: Array[CollisionObject3D] = []
 var hit_timestamps: Dictionary = {}
 var current_time: float = 0.0
@@ -104,9 +109,23 @@ func deal_damage_to(hurtbox: Hurtbox, dmg: float = -1.0, kb: Vector3 = Vector3.Z
 		temporary_exceptions.append(hurtbox as CollisionObject3D)
 		if interval > 0.0:
 			hit_timestamps[hurtbox as CollisionObject3D] = current_time
+		_apply_hit_effects(hurtbox)
 		hit_landed.emit(hurtbox)
 
 	return has_hit
+
+
+## Applies each configured GameplayEffect to the victim's AttributeComponent.
+## Runs only for confirmed hits, so corpses and exceptions never gain effects.
+func _apply_hit_effects(hurtbox: Hurtbox) -> void:
+	if effects_to_apply.is_empty():
+		return
+	var victim_attrs: AttributeComponent = hurtbox.attribute_component
+	if victim_attrs == null or not is_instance_valid(victim_attrs):
+		return
+	for effect: GameplayEffect in effects_to_apply:
+		if effect != null and is_instance_valid(effect):
+			victim_attrs.apply_effect(effect)
 
 
 func deal_damage(dmg: float = -1.0, kb: Vector3 = Vector3.ZERO, custom_rehit_interval: float = -1.0) -> void:

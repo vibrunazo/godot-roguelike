@@ -116,12 +116,13 @@ func _ready() -> void:
 			push_warning("Character '%s' in 'enemy' group has no defeat_state assigned." % name)
 
 	if attribute_component != null:
-		if not attribute_component.attribute_changed.is_connected(_on_attribute_changed):
-			attribute_component.attribute_changed.connect(_on_attribute_changed)
 		if not attribute_component.defeat.is_connected(_on_attribute_defeat):
 			attribute_component.defeat.connect(_on_attribute_defeat)
 		if is_player() and not attribute_component.defeat.is_connected(reset_game_state):
 			attribute_component.defeat.connect(reset_game_state)
+	if hurtbox != null:
+		if not hurtbox.struck.is_connected(_on_hurtbox_struck):
+			hurtbox.struck.connect(_on_hurtbox_struck)
 
 	if weapon_hitbox != null:
 		var att_comp: AttackComponent = weapon_hitbox.get_node_or_null("AttackComponent") as AttackComponent
@@ -345,12 +346,14 @@ func is_uninterruptable() -> bool:
 	return false
 
 
-## Forwards health pool changes as health_changed and enters the stun state.
-## Non-pool changes (e.g. max_health buffs) are ignored so they never stun.
-func _on_attribute_changed(attribute_name: StringName, value: float) -> void:
-	if attribute_name != AttributeComponent.POOL_HEALTH:
-		return
-	health_changed.emit(value)
+## Reacts to being struck: forwards the current health pool as health_changed
+## (drives the damage flash and hurt shake) and enters the stun state. Fires
+## once per landed hit because only Hurtbox.receive_hit() emits struck;
+## damage-over-time ticks drain the pool silently, so a burn can never
+## re-stun its victim or pin the damage flash on for its whole duration.
+func _on_hurtbox_struck(_damage: float) -> void:
+	if attribute_component != null:
+		health_changed.emit(attribute_component.get_current(AttributeComponent.POOL_HEALTH))
 	if is_uninterruptable():
 		return
 	if stun_state != null and state_machine != null and state_machine.state != null:

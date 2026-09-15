@@ -8,6 +8,7 @@ var _change_count: int = 0
 var _last_change_name: StringName = &""
 var _last_change_value: float = 0.0
 var _defeat_count: int = 0
+var _struck_reactions: int = 0
 
 const CHARACTER_SCENES: Array[String] = [
 	"res://Player/player.tscn",
@@ -48,6 +49,10 @@ func _run_all() -> void:
 		return
 	if not await _part_scene_parity():
 		return
+	if not await _part_damage_over_time():
+		return
+	if not await _part_dot_suppresses_reactions():
+		return
 	print("====================================================================")
 	print("  ALL ATTRIBUTE COMPONENT TESTS PASSED!                             ")
 	print("====================================================================")
@@ -75,6 +80,10 @@ func _on_attr_changed(attribute_name: StringName, current_value: float) -> void:
 
 func _on_attr_defeat() -> void:
 	_defeat_count += 1
+
+
+func _on_test_health_changed(_value: float) -> void:
+	_struck_reactions += 1
 
 
 func _make_component() -> AttributeComponent:
@@ -411,21 +420,37 @@ func _part_melee_slow_effect() -> bool:
 		attacker.queue_free()
 		victim.queue_free()
 		return _fail("Melee slow should target speed with a negative timed magnitude.")
+	var attack_comp: AttackComponent = enemy_attack.attack_component
+	if attack_comp == null:
+		attacker.queue_free()
+		victim.queue_free()
+		return _fail("Melee EnemyAttack wires no AttackComponent.")
+	# Mirror enter(): the state owns the config, the component applies it. (The
+	# live enemy AI may already have entered and copied it during setup.)
+	attack_comp.effects_to_apply = enemy_attack.effects_to_apply
+	attack_comp.reset_exceptions()
 	var victim_attrs: AttributeComponent = victim.attribute_component
-	var base_speed: float = victim_attrs.get_current(AttributeComponent.STAT_SPEED)
+	var base_speed: float = victim_attrs.get_base(AttributeComponent.STAT_SPEED)
 	var victim_hurtbox: Hurtbox = victim.get_node_or_null("Hurtbox") as Hurtbox
 	if victim_hurtbox == null:
 		attacker.queue_free()
 		victim.queue_free()
 		return _fail("Player has no Hurtbox to strike.")
-	enemy_attack._apply_hit_effects(victim_hurtbox)
+	if not attack_comp.deal_damage_to(victim_hurtbox, 0.0, Vector3.ZERO):
+		attacker.queue_free()
+		victim.queue_free()
+		return _fail("Confirmed hits should report success.")
 	var slowed: float = victim_attrs.get_current(AttributeComponent.STAT_SPEED)
 	var expected_slowed: float = base_speed * (1.0 + slow.magnitude)
 	if not is_equal_approx(slowed, expected_slowed):
 		attacker.queue_free()
 		victim.queue_free()
 		return _fail("Slow should scale speed by its own magnitude.")
-	enemy_attack._apply_hit_effects(victim_hurtbox)
+	attack_comp.reset_exceptions()
+	if not attack_comp.deal_damage_to(victim_hurtbox, 0.0, Vector3.ZERO):
+		attacker.queue_free()
+		victim.queue_free()
+		return _fail("Second confirmed hit should report success.")
 	if not is_equal_approx(victim_attrs.get_current(AttributeComponent.STAT_SPEED), expected_slowed):
 		attacker.queue_free()
 		victim.queue_free()
@@ -468,4 +493,124 @@ func _part_scene_parity() -> bool:
 		character.queue_free()
 		await get_tree().process_frame
 		await get_tree().process_frame
+	return true
+
+
+## PART 11: fireball burn data plus damage-over-time drain, refresh, and expiry.
+func _part_damage_over_time() -> bool:
+	print("\n>>> PART 11: Damage over time")
+	var projectile_scene: PackedScene = load("res://Enemy/enemy_projectile.tscn") as PackedScene
+	var projectile: Area3D = projectile_scene.instantiate() as Area3D
+	add_child(projectile)
+	await get_tree().process_frame
+	var proj_attack: AttackComponent = projectile.get_node_or_null("AttackComponent") as AttackComponent
+	if proj_attack == null or proj_attack.effects_to_apply.is_empty():
+		projectile.queue_free()
+		return _fail("Fireball AttackComponent should configure a hit effect.")
+	var burn: GameplayEffect = proj_attack.effects_to_apply[0]
+	if burn.target_attribute != AttributeComponent.POOL_HEALTH or burn.total_damage <= 0.0 or burn.duration <= 0.0:
+		projectile.queue_free()
+		return _fail("Fireball burn should target the health pool with a positive timed total.")
+	projectile.queue_free()
+	await get_tree().process_frame
+	var comp: AttributeComponent = _make_component()
+	var max_val: float = 200.0
+	comp.set_base(AttributeComponent.STAT_MAX_HEALTH, max_val)
+	comp.restore_pool(AttributeComponent.POOL_HEALTH, max_val)
+	var dot: GameplayEffect = GameplayEffect.new()
+	dot.effect_name = "test_burn"
+	dot.target_attribute = AttributeComponent.POOL_HEALTH
+	dot.total_damage = 20.0
+	dot.duration = 0.4
+	if comp.apply_effect(dot) == &"":
+		comp.queue_free()
+		return _fail("DoT application should return a live instance id.")
+	if not comp.is_processing():
+		comp.queue_free()
+		return _fail("Active DoT should enable processing.")
+	await get_tree().create_timer(0.2).timeout
+	await get_tree().process_frame
+	var mid: float = comp.get_current(AttributeComponent.POOL_HEALTH)
+	if not (mid < max_val and mid > max_val - 20.0):
+		comp.queue_free()
+		return _fail("DoT should be partially drained mid-duration.")
+	var refresh_id: StringName = comp.apply_effect(dot)
+	if refresh_id == &"":
+		comp.queue_free()
+		return _fail("DoT re-application should refresh.")
+	await get_tree().create_timer(0.6).timeout
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var drained: float = max_val - comp.get_current(AttributeComponent.POOL_HEALTH)
+	if drained < 25.0 or drained > 35.0:
+		comp.queue_free()
+		return _fail("Refreshed DoT should drain its remainder plus one total, got %f." % drained)
+	if comp.is_processing():
+		comp.queue_free()
+		return _fail("Processing must disable itself once the DoT expires.")
+	if comp.remove_effect(refresh_id):
+		comp.queue_free()
+		return _fail("Expired DoT entries should already be gone.")
+	# Instant pool effects apply their total immediately with no entry.
+	var instant: GameplayEffect = GameplayEffect.new()
+	instant.effect_name = "test_potion"
+	instant.target_attribute = AttributeComponent.POOL_HEALTH
+	instant.total_damage = -30.0
+	instant.duration = 0.0
+	comp.apply_effect(instant)
+	if comp.is_processing():
+		comp.queue_free()
+		return _fail("Instant effects must never enable processing.")
+	comp.queue_free()
+	await get_tree().process_frame
+	print("DoT drain, refresh, expiry, and instant pools verified.")
+	return true
+
+
+## PART 12: struck reactions (health_changed, hence stun, damage flash, and
+## hurt shake) fire once per landed hit; DoT ticks drain the pool silently.
+func _part_dot_suppresses_reactions() -> bool:
+	print("\n>>> PART 12: DoT reaction suppression")
+	var player_scene: PackedScene = load("res://Player/player.tscn") as PackedScene
+	var player: Character = player_scene.instantiate() as Character
+	add_child(player)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if player == null:
+		return _fail("Player scene should instantiate a Character.")
+	var player_hurtbox: Hurtbox = player.get_node_or_null("Hurtbox") as Hurtbox
+	var comp: AttributeComponent = player.get_node_or_null("AttributeComponent") as AttributeComponent
+	if player_hurtbox == null or comp == null:
+		player.queue_free()
+		return _fail("Player should wire a Hurtbox and an AttributeComponent.")
+	_struck_reactions = 0
+	player.health_changed.connect(_on_test_health_changed)
+	if not player_hurtbox.receive_hit(5.0, Vector3.ZERO):
+		player.queue_free()
+		return _fail("Direct hit should land.")
+	if _struck_reactions != 1:
+		player.queue_free()
+		return _fail("Direct hit should emit exactly one struck reaction.")
+	var before: float = comp.get_current(AttributeComponent.POOL_HEALTH)
+	var burn: GameplayEffect = GameplayEffect.new()
+	burn.effect_name = "test_burn_reaction"
+	burn.target_attribute = AttributeComponent.POOL_HEALTH
+	burn.total_damage = 10.0
+	burn.duration = 0.4
+	if comp.apply_effect(burn) == &"":
+		player.queue_free()
+		return _fail("Burn application should return a live instance id.")
+	await get_tree().create_timer(0.6).timeout
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var drained: float = before - comp.get_current(AttributeComponent.POOL_HEALTH)
+	if drained < 8.0 or drained > 12.0:
+		player.queue_free()
+		return _fail("Burn should drain its total over time, got %f." % drained)
+	if _struck_reactions != 1:
+		player.queue_free()
+		return _fail("Burn ticks must not re-emit struck reactions, got %d." % _struck_reactions)
+	player.queue_free()
+	await get_tree().process_frame
+	print("Struck-gated reactions and silent DoT drain verified.")
 	return true

@@ -75,8 +75,12 @@ func _ready() -> void:
 	camera.trauma = 0.0
 	var initial_health: float = player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	
-	# Trigger damage programmatically via the attribute pool
-	player.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 5.0)
+	# Trigger a real landed hit through the hurtbox (hit reactions are
+	# struck-gated; silent pool writes such as DoT ticks must not flash/shake)
+	if not player.hurtbox.receive_hit(5.0, Vector3.ZERO):
+		printerr("TEST FAILED: Hurtbox hit should land.")
+		get_tree().quit(1)
+		return
 	await get_tree().process_frame
 	
 	print("Health after damage: ", player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), " (took 5.0 damage)")
