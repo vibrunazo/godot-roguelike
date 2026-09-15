@@ -56,8 +56,8 @@ func _ready() -> void:
 	var dmg3: float = attack3.damage
 	var expected_hp_1: float = initial_health - dmg1
 	var expected_hp_2: float = expected_hp_1 - dmg2
-	var expected_hp_3_1: float = expected_hp_2 - dmg3
-	var expected_hp_3_2: float = expected_hp_3_1 - dmg3
+	var expected_hp_3_1: float = maxf(0.0, expected_hp_2 - dmg3)
+	var expected_hp_3_2: float = maxf(0.0, expected_hp_3_1 - dmg3)
 
 	var click := InputEventAction.new()
 	click.action = "click"

@@ -181,16 +181,16 @@ func remove_effect(instance_id: StringName) -> bool:
 	return false
 
 
-## Subtracts an instant delta from a pool (damage, mana spend) with exact
-## arithmetic: overkill may drive the pool negative, and callers observe the
-## precise remainder. Always emits attribute_changed, even for zero deltas.
-## Emits defeat exactly when health transitions to zero or below from above.
+## Subtracts an instant delta from a pool (damage, mana spend), clamped at
+## zero: overkill never drives the pool negative. Always emits
+## attribute_changed, even for zero deltas. Emits defeat exactly when health
+## transitions to zero from a positive value.
 func damage_pool(pool_name: StringName, amount: float) -> void:
 	if not _pools.has(pool_name):
 		push_error("AttributeComponent: unknown pool '%s'." % pool_name)
 		return
 	var before: float = float(_pools[pool_name])
-	_pools[pool_name] = before - amount
+	_pools[pool_name] = maxf(0.0, before - amount)
 	attribute_changed.emit(pool_name, float(_pools[pool_name]))
 	if amount > 0.0 and before > 0.0 and float(_pools[pool_name]) <= 0.0 and pool_name == POOL_HEALTH:
 		defeat.emit()
