@@ -185,6 +185,12 @@ func order_screenshot(p_output_path: String, at_frame: int) -> void:
 	scheduled_actions.append(ScheduledAction.new(null, "screenshot", p_output_path, at_frame))
 
 
+## Schedules a zero-argument method call on any node at a given frame
+## (e.g. a boss controller's custom trigger). No-op if the method is missing.
+func order_callback(target: Node, method: StringName, at_frame: int) -> void:
+	scheduled_actions.append(ScheduledAction.new(target, "callback", String(method), at_frame))
+
+
 ## Schedules the scenario to end and Godot to exit at a given frame.
 func order_finish(at_frame: int) -> void:
 	finish_frame = at_frame
@@ -211,6 +217,14 @@ func _execute_action(action: ScheduledAction) -> void:
 		"screenshot":
 			var path_str: String = str(action.param_value)
 			_save_screenshot(path_str)
+		"callback":
+			var target: Node = action.target as Node
+			var method: StringName = StringName(str(action.param_value))
+			if target != null and is_instance_valid(target) and target.has_method(method):
+				target.call(method)
+				print("[CombatScenario @ frame %d] Called %s() on %s" % [frame_count, String(method), target.name])
+			else:
+				printerr("[CombatScenario @ frame %d] Cannot call '%s' (missing node or method)." % [frame_count, String(method)])
 
 
 func _update_camera_tracking() -> void:
@@ -393,6 +407,8 @@ func _apply_cli_scenario() -> void:
 
 			if act_type == "state" and target_node != null:
 				order_state(target_node, param, at_frame)
+			elif act_type == "callback" and target_node != null:
+				order_callback(target_node, StringName(param), at_frame)
 			elif act_type == "damage" and target_node != null:
 				order_damage(target_node, param.to_float(), at_frame)
 			elif act_type == "attack" and target_node != null:
@@ -434,6 +450,8 @@ func _disable_all_ui() -> void:
 
 
 func _save_screenshot(file_path: String) -> void:
+	if not file_path.to_lower().ends_with(".png"):
+		file_path += ".png"
 	var viewport: Viewport = get_viewport()
 	if viewport == null:
 		return

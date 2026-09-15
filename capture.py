@@ -309,6 +309,29 @@ def handle_anim(args: argparse.Namespace) -> int:
         return 1
 
 
+COMBAT_ENEMIES = ("brute", "melee", "ranged", "firebomber", "thunder_mage")
+
+
+def _combat_tag(enemy: Optional[str]) -> str:
+    """Derives a filename tag from --enemy: registry name, scene basename, or 'combat'."""
+    if not enemy:
+        return "combat"
+    if enemy.lower() in COMBAT_ENEMIES:
+        return enemy.lower()
+    base = os.path.basename(enemy)
+    if base.lower().endswith(".tscn"):
+        base = base[:-5]
+    return base or "combat"
+
+
+def _avi_name(output: Optional[str], fallback_prefix: str) -> str:
+    """Names the raw MovieMaker AVI after --output when given, else a timestamped temp name."""
+    if output:
+        base = os.path.splitext(os.path.basename(output))[0] or fallback_prefix
+        return f"{base}.avi"
+    return f"{fallback_prefix}_{int(time.time())}.avi"
+
+
 def handle_combat(args: argparse.Namespace) -> int:
     """Handles combat scenario testbed staging and recording."""
     ensure_output_dir()
@@ -321,6 +344,14 @@ def handle_combat(args: argparse.Namespace) -> int:
     if args.player:
         user_args.append("--player")
     if args.enemy:
+        enemy_id = args.enemy
+        if enemy_id.lower() not in COMBAT_ENEMIES:
+            scene_path = enemy_id[len("res://"):] if enemy_id.startswith("res://") else enemy_id.lstrip("./")
+            if not scene_path.lower().endswith(".tscn"):
+                scene_path += ".tscn"
+            if not os.path.exists(scene_path):
+                print(f"[capture.py] ERROR: Unknown --enemy '{enemy_id}'. Use a registry name {list(COMBAT_ENEMIES)} or a scene path (e.g. Enemy/akira_boss.tscn).")
+                return 1
         user_args.append(f"--enemy={args.enemy}")
     if args.action:
         for act in args.action:
@@ -346,14 +377,14 @@ def handle_combat(args: argparse.Namespace) -> int:
     else:
         user_args.append("--hide-ui")
 
-    tag = args.enemy or "combat"
+    tag = _combat_tag(args.enemy)
     if is_video:
         timeout = DEFAULT_TIMEOUT_VIDEO
         duration = args.duration if args.duration else 3.0
         user_args.append("--video")
         user_args.append(f"--duration={duration}")
 
-        temp_avi = os.path.join(OUTPUT_DIR, f"temp_combat_{tag}_{int(time.time())}.avi")
+        temp_avi = os.path.join(OUTPUT_DIR, _avi_name(args.output, f"temp_combat_{tag}"))
         godot_flags.extend(["--write-movie", temp_avi])
 
         out_mp4 = args.output if args.output else os.path.join(OUTPUT_DIR, f"combat_{tag}.mp4")
@@ -368,6 +399,8 @@ def handle_combat(args: argparse.Namespace) -> int:
         return 1
     else:
         out_png = args.output if args.output else os.path.join(OUTPUT_DIR, f"combat_{tag}.png")
+        if not out_png.endswith(".png"):
+            out_png += ".png"
         user_args.append(f"--output={out_png}")
         if args.frames:
             user_args.append(f"--frames={args.frames}")
@@ -401,7 +434,7 @@ def handle_test(args: argparse.Namespace) -> int:
     user_args.append("--video")
     user_args.append(f"--duration={duration}")
 
-    temp_avi = os.path.join(OUTPUT_DIR, f"temp_test_{test_name}_{int(time.time())}.avi")
+    temp_avi = os.path.join(OUTPUT_DIR, _avi_name(args.output, f"temp_test_{test_name}"))
     godot_flags.extend(["--write-movie", temp_avi])
 
     out_mp4 = args.output if args.output else os.path.join(OUTPUT_DIR, f"{test_name}.mp4")
@@ -472,7 +505,7 @@ def main() -> int:
     p_combat = subparsers.add_parser("combat", help="Stage and record custom combat scenarios")
     p_combat.add_argument("--scenario", help="Path to custom scenario script or scene")
     p_combat.add_argument("--player", action="store_true", help="Spawn player character")
-    p_combat.add_argument("--enemy", choices=["brute", "melee", "ranged", "firebomber", "thunder_mage"], help="Spawn enemy character")
+    p_combat.add_argument("--enemy", help="Spawn enemy character: registry name (brute, melee, ranged, firebomber, thunder_mage) or scene path (e.g. Enemy/akira_boss.tscn)")
     p_combat.add_argument("--action", action="append", help="Scheduled action: target:type:param@frame")
     p_combat.add_argument("--no-debug-collisions", action="store_true", help="Disable collision debug shapes")
     p_combat.add_argument("--debug-collisions", action="store_true", help="Enable collision debug shapes")

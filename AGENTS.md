@@ -251,6 +251,11 @@ Practical suggestions for capturing animations, combat scenarios, and level layo
    - Some character scenes (e.g. `Player.tscn`) contain built-in `Camera3D` components (`CameraRoot/ShakeCamera3D`). When these scenes enter the scene tree, their internal cameras may attempt to claim active viewport status.
    - The built-in capture runners automatically suppress actor cameras, but when writing custom staging scripts, remember to check spawned scenes to ensure actor cameras do not override the studio camera.
 
+4. **Custom Combat Scenarios**:
+   - `--enemy` accepts a registry name (`brute`, `melee`, `ranged`, `firebomber`, `thunder_mage`) or any enemy scene path (e.g. `--enemy Enemy/akira_boss.tscn`); `--action "enemy:callback:MethodName@30"` calls a zero-argument method on the combatant at that frame.
+   - **Designated Scratch Path:** If you need temporary staging scripts, inspection scripts, or other throwaway scripts, it is recommended to use the gitignored `.scratch/` folder. Scripts kept there are a good fit when the work is exploratory and unlikely to be reused.
+   - When a staging script proves reusable (a standard encounter worth re-running), consider promoting it to `tools/capture/`. `tools/levels/out/` is intended for level-pipeline extraction scripts.
+
 
 
 

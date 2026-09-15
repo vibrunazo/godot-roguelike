@@ -111,7 +111,9 @@ Actions can be scheduled using `--action "<target>:<type>:<param>@<frame>"`.
   - `state`: requests StateMachine state (`"enemy:state:EnemyPunch@15"`)
   - `attack`: triggers Player combo strike 1, 2, or 3 (`"player:attack:1@20"`)
   - `damage`: deals direct health damage (`"enemy:damage:25@35"`)
+  - `callback`: calls a zero-argument method on the combatant (`"enemy:callback:Taunt@30"`, or `order_callback()` from a scenario script for any node)
   - `screenshot`: saves screenshot at frame (`"screenshot:movies/impact.png@28"`)
+- **Enemies**: `--enemy` accepts a registry name (`brute`, `melee`, `ranged`, `firebomber`, `thunder_mage`) or any enemy scene path (`--enemy Enemy/akira_boss.tscn`).
 
 #### Staging & Positioning Options
 - `--player-pos <X,Y,Z>`: Custom player spawn position (e.g. `0.0,1.0,4.0`)
@@ -132,10 +134,14 @@ python capture.py combat --player --enemy melee --action "player:attack:1@10" --
 ```
 
 #### Creating Custom Scenario Scripts
-You can create a reusable scenario script by extending `CombatScenarioTemplate`:
+You can create a scenario script by extending `CombatScenarioTemplate`.
+
+**Designated Scratch Path:** If you need temporary staging scripts, inspection scripts, or other throwaway scripts, it is recommended to use the gitignored `.scratch/` folder. Scripts kept there are a good fit when the work is exploratory and unlikely to be reused.
+
+When a scenario proves reusable (a standard encounter worth re-running), consider promoting it to `tools/capture/`. `tools/levels/out/` is intended for level-pipeline extraction scripts.
 
 ```gdscript
-# res://tools/capture/my_test_scenario.gd
+# res://.scratch/my_test_scenario.gd
 extends CombatScenarioTemplate
 
 func _setup_scenario() -> void:
@@ -152,7 +158,7 @@ func _setup_scenario() -> void:
 
 Run your custom script with:
 ```bash
-python capture.py combat --scenario tools/capture/my_test_scenario.tscn --video
+python capture.py combat --scenario .scratch/my_test_scenario.tscn --video
 ```
 
 ---

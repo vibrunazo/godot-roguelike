@@ -8,3 +8,9 @@ movies/
 tools/levels/out/
 # Python bytecode from tool scripts
 __pycache__/
+
+# Ignore everything inside .scratch
+.scratch/*
+
+# Except the Godot ignore marker
+!.scratch/.gdignore
