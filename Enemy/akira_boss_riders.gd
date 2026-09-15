@@ -1,10 +1,12 @@
 ## Backpack rider controller for the Akira boss.
 ## Drives the two melee riders mounted on the boss waist: they idle in
-## WalkSpace (never stuck T-posing on Start) and side-slash with oversized
+## WalkSpace (never stuck T-posing on Start) and side-slash with melee-equal
 ## swords when the player comes close. The slash animation carries its own
 ## WeaponSlot:enabled track, opening a large hitbox zone around the rider so
-## approaching is costly. Riders are visual AnimatedEnemy rigs (legs hidden,
-## torso up out of primitive backpacks), not full Characters.
+## approaching is costly, while the slot's Slash attack_mode drives a
+## player-style fire SlashVFX quad and fire-slash audio. Riders are visual
+## AnimatedEnemy rigs (legs hidden, torso up out of primitive backpacks),
+## not full Characters.
 class_name AkiraBossRiders
 extends Node
 

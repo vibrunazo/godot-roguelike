@@ -1,6 +1,7 @@
 ## Automated verification suite for the Akira boss.
 ## Verifies brute-based bigger body, backpack riders with hidden legs and
-## swords, oversized firebombs with larger traps, and difficulty 8 spawning.
+## melee-equal swords with player-like fire slash VFX, oversized firebombs
+## with larger traps, and difficulty 8 spawning.
 extends Node3D
 
 var _passed: int = 0
@@ -161,7 +162,7 @@ func _part2_body_and_scale() -> void:
 
 
 func _part3_backpacks_and_riders() -> void:
-	print("\n>>> PART 3: Bone-mounted backpacks, waist riders, hidden legs, big swords")
+	print("\n>>> PART 3: Bone-mounted backpacks, waist riders, hidden legs, melee swords, fire slash VFX")
 	var boss: Character = _boss()
 	add_child(boss)
 	await get_tree().physics_frame
@@ -236,23 +237,76 @@ func _part3_backpacks_and_riders() -> void:
 			_fail(rider_names[i] + " torso/head should stay visible above backpack.")
 			boss.queue_free()
 			return
-		# Oversized sword under rider WeaponSlot.
+		# Melee-equal sword: same orange unshaded cylinder the melee enemy
+		# carries (child of HitboxArea), no custom box blades/handles left.
 		var slot: Node = rider.find_child("WeaponSlot", true, false)
 		if slot == null:
 			_fail(rider_names[i] + " missing WeaponSlot.")
 			boss.queue_free()
 			return
-		var blade: MeshInstance3D = slot.find_child("SwordBlade", true, false) as MeshInstance3D
-		if blade == null or not (blade.mesh is BoxMesh):
-			_fail(rider_names[i] + " has no SwordBlade mesh under WeaponSlot.")
+		for stale: String in ["SwordBlade", "SwordGuard", "SwordHandle"]:
+			if slot.find_child(stale, true, false) != null:
+				_fail(rider_names[i] + " still carries custom sword node " + stale + ".")
+				boss.queue_free()
+				return
+		var hitbox: Area3D = rider.find_child("HitboxArea", true, false) as Area3D
+		if hitbox == null:
+			_fail(rider_names[i] + " missing HitboxArea.")
 			boss.queue_free()
 			return
-		if (blade.mesh as BoxMesh).size.y <= 1.2:
-			_fail(rider_names[i] + " sword should be oversized, blade length: %.2f" % (blade.mesh as BoxMesh).size.y)
+		var sword: MeshInstance3D = hitbox.find_child("Sword", true, false) as MeshInstance3D
+		if sword == null or not (sword.mesh is CylinderMesh):
+			_fail(rider_names[i] + " has no melee-style cylinder Sword under HitboxArea.")
+			boss.queue_free()
+			return
+		var blade_mesh: CylinderMesh = sword.mesh as CylinderMesh
+		if not is_equal_approx(blade_mesh.top_radius, 0.1) or not is_equal_approx(blade_mesh.bottom_radius, 0.1) or not is_equal_approx(blade_mesh.height, 2.0):
+			_fail(rider_names[i] + " sword must equal the melee cylinder (r=0.1 h=2.0).")
+			boss.queue_free()
+			return
+		var sword_mat: StandardMaterial3D = sword.material_override as StandardMaterial3D
+		if sword_mat == null or sword_mat.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
+			_fail(rider_names[i] + " sword must use the melee unshaded material.")
+			boss.queue_free()
+			return
+		if not sword_mat.albedo_color.is_equal_approx(Color(1.0, 0.5058824, 0.0, 1.0)):
+			_fail(rider_names[i] + " sword must use the melee orange albedo, got: " + str(sword_mat.albedo_color))
+			boss.queue_free()
+			return
+		# Player-like fire slash VFX on the side-slash: SlashVFX quad driven
+		# by the slot's Slash attack_mode, plus fire-slash audio on slash.
+		var vfx: MeshInstance3D = slot.find_child("SlashVFX", true, false) as MeshInstance3D
+		if vfx == null or not (vfx.mesh is QuadMesh):
+			_fail(rider_names[i] + " has no player-style SlashVFX quad under WeaponSlot.")
+			boss.queue_free()
+			return
+		if not is_equal_approx((vfx.mesh as QuadMesh).size.x, 4.0) or not is_equal_approx((vfx.mesh as QuadMesh).size.y, 2.0):
+			_fail(rider_names[i] + " SlashVFX quad must be 4x2 like the player, got: " + str((vfx.mesh as QuadMesh).size))
+			boss.queue_free()
+			return
+		if vfx.get_script() == null or not str((vfx.get_script() as Resource).resource_path).ends_with("slash_vfx.gd"):
+			_fail(rider_names[i] + " SlashVFX must run the player slash_vfx.gd driver.")
+			boss.queue_free()
+			return
+		if int(vfx.get("attack_type")) != 1:
+			_fail(rider_names[i] + " SlashVFX attack_type must be Slash (1).")
+			boss.queue_free()
+			return
+		var vfx_mat: ShaderMaterial = vfx.material_override as ShaderMaterial
+		if vfx_mat == null or vfx_mat.shader == null or not str((vfx_mat.shader as Resource).resource_path).ends_with("dash.tres"):
+			_fail(rider_names[i] + " SlashVFX must use the player dash.tres fire shader.")
+			boss.queue_free()
+			return
+		var audio: AudioStreamPlayer3D = slot.find_child("AttackAudio", true, false) as AudioStreamPlayer3D
+		if audio == null or audio.stream == null or not str((audio.stream as Resource).resource_path).ends_with("fire-slash.ogg"):
+			_fail(rider_names[i] + " side-slash must play the player fire-slash sound.")
+			boss.queue_free()
+			return
+		if not (slot as WeaponSlot).is_connected(&"slash", Callable(audio, &"play")):
+			_fail(rider_names[i] + " WeaponSlot.slash must trigger the fire-slash audio.")
 			boss.queue_free()
 			return
 		# Rider hitbox masks player layer, carries damage, and covers a large zone.
-		var hitbox: Area3D = rider.find_child("HitboxArea", true, false) as Area3D
 		if hitbox == null or hitbox.collision_mask != 64:
 			_fail(rider_names[i] + " HitboxArea must mask player layer 64.")
 			boss.queue_free()
@@ -479,13 +533,53 @@ func _part6_rider_attack() -> void:
 	player.global_position = left_root.global_position + rider_fwd * 1.1 + Vector3(0.0, 0.9, 0.0)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
+	var hp_before_swing: float = player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	ctrl.call("force_rider_attack", true)
 	if bool(ctrl.call("is_rider_ready", true)):
 		_fail("Rider cooldown should start after forced swing.")
 		player.queue_free()
 		boss.queue_free()
 		return
-	if not await _wait_rider_hit(player, rslot, 150):
+	# Fire slash VFX must show and sweep while the swing window is open.
+	var vfx: MeshInstance3D = rslot.find_child("SlashVFX", true, false) as MeshInstance3D
+	if vfx == null:
+		_fail("Rider SlashVFX missing at swing time.")
+		player.queue_free()
+		boss.queue_free()
+		return
+	var vfx_shown: bool = false
+	var min_threshold: float = 1.0
+	for frame: int in range(90):
+		await get_tree().physics_frame
+		if rslot.enabled:
+			var vfx_mat: ShaderMaterial = vfx.material_override as ShaderMaterial
+			if vfx.visible:
+				vfx_shown = true
+			if vfx_mat != null:
+				min_threshold = minf(min_threshold, float(vfx_mat.get_shader_parameter("Threshold")))
+		elif vfx_shown:
+			break
+	if not vfx_shown:
+		_fail("Rider fire SlashVFX never became visible during the swing window.")
+		player.queue_free()
+		boss.queue_free()
+		return
+	if min_threshold >= 1.0:
+		_fail("Rider fire SlashVFX Threshold never swept below 1.0.")
+		player.queue_free()
+		boss.queue_free()
+		return
+	print("Rider fire SlashVFX fired and swept to %.2f." % min_threshold)
+	# The swing may have landed while watching the VFX, so baseline from
+	# before the swing and allow a short grace for hit latency.
+	var first_landed: bool = player.attribute_component.get_current(AttributeComponent.POOL_HEALTH) < hp_before_swing
+	for frame: int in range(15):
+		if first_landed:
+			break
+		await get_tree().physics_frame
+		if player.attribute_component.get_current(AttributeComponent.POOL_HEALTH) < hp_before_swing:
+			first_landed = true
+	if not first_landed:
 		_fail("First rider side-slash missed the player in its zone.")
 		player.queue_free()
 		boss.queue_free()
