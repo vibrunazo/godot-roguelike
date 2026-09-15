@@ -220,6 +220,115 @@ func _ready() -> void:
 	print("Second simulated 'P' key successfully resumed the game.")
 
 	# ---------------------------------------------------------
+	# PART 7: Game-Over Reuse (Red Tint, Title, No Resume, Locked Toggle)
+	# ---------------------------------------------------------
+	print("\n>>> PART 7: Game-Over Menu Configuration")
+	var gameover_menu: PauseMenu = GlobalVars.pause_menu_scene.instantiate() as PauseMenu
+	gameover_menu.title_text = "GAME OVER"
+	gameover_menu.title_color = Color(0.85, 0.2, 0.2)
+	gameover_menu.backdrop_color = Color(0.25, 0.03, 0.03, 0.78)
+	gameover_menu.show_resume_button = false
+	add_child(gameover_menu)
+	await get_tree().process_frame
+
+	var gameover_title: RichTextLabel = gameover_menu.find_child("Title", true, false) as RichTextLabel
+	if gameover_title == null or not gameover_title.text.contains("GAME OVER"):
+		printerr("TEST FAILED: Game-over title should read GAME OVER, got: ", gameover_title.text if gameover_title != null else "null")
+		get_tree().quit(1)
+		return
+	var gameover_backdrop: ColorRect = gameover_menu.find_child("Backdrop", true, false) as ColorRect
+	if gameover_backdrop == null or gameover_backdrop.color.r < 0.15 or gameover_backdrop.color.b > 0.1:
+		printerr("TEST FAILED: Game-over backdrop should be red-tinted.")
+		get_tree().quit(1)
+		return
+	if gameover_menu.resume_button.visible:
+		printerr("TEST FAILED: Game-over menu should hide the resume button.")
+		get_tree().quit(1)
+		return
+	if not gameover_menu.restart_button.visible:
+		printerr("TEST FAILED: Game-over menu should keep the restart button.")
+		get_tree().quit(1)
+		return
+	print("Game-over configuration verified: red GAME OVER title, red backdrop, resume hidden, restart kept.")
+	gameover_menu.queue_free()
+	await get_tree().process_frame
+
+	UI.show_game_over()
+	await get_tree().process_frame
+	if not UI.is_paused():
+		printerr("TEST FAILED: UI.show_game_over() should pause the tree.")
+		get_tree().quit(1)
+		return
+	var active_gameover: PauseMenu = UI._current_pause_menu
+	if active_gameover == null or not is_instance_valid(active_gameover):
+		printerr("TEST FAILED: UI.show_game_over() should track its menu.")
+		get_tree().quit(1)
+		return
+	if active_gameover.resume_button.visible:
+		printerr("TEST FAILED: Game-over menu from UI should hide resume.")
+		get_tree().quit(1)
+		return
+	UI.toggle_pause()
+	if not UI.is_paused():
+		printerr("TEST FAILED: Pause toggle should stay locked on the game-over screen.")
+		get_tree().quit(1)
+		return
+	print("UI.show_game_over() verified: paused, resume hidden, toggle locked.")
+	UI.resume_game()
+	if UI.is_paused():
+		printerr("TEST FAILED: UI.resume_game() should clear the game-over screen.")
+		get_tree().quit(1)
+		return
+
+	# ---------------------------------------------------------
+	# PART 8: Player Defeat Shows Game Over After a Delay
+	# ---------------------------------------------------------
+	print("\n>>> PART 8: Delayed Game Over on Player Defeat")
+	var player: Character = (load("res://Player/player.tscn") as PackedScene).instantiate() as Character
+	add_child(player)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var player_attrs: AttributeComponent = player.get_node("AttributeComponent") as AttributeComponent
+	var saved_difficulty: int = ProgressionState.difficulty_level
+	var saved_dungeon_level: int = ProgressionState.dungeon_level
+	ProgressionState.difficulty_level = 9
+	ProgressionState.dungeon_level = 5
+	player_attrs.damage_pool(AttributeComponent.POOL_HEALTH, player_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH))
+	await get_tree().create_timer(1.0).timeout
+	if UI.is_paused():
+		player.queue_free()
+		UI.resume_game()
+		printerr("TEST FAILED: Game-over screen appeared before the defeat delay elapsed.")
+		get_tree().quit(1)
+		return
+	await get_tree().create_timer(1.6).timeout
+	await get_tree().process_frame
+	if not UI.is_paused():
+		player.queue_free()
+		UI.resume_game()
+		printerr("TEST FAILED: Player defeat should pause into the game-over screen.")
+		get_tree().quit(1)
+		return
+	var defeat_menu: PauseMenu = UI._current_pause_menu
+	if defeat_menu == null or not (defeat_menu.find_child("Title", true, false) as RichTextLabel).text.contains("GAME OVER"):
+		player.queue_free()
+		UI.resume_game()
+		printerr("TEST FAILED: Defeat menu should read GAME OVER.")
+		get_tree().quit(1)
+		return
+	if ProgressionState.difficulty_level != 9 or ProgressionState.dungeon_level != 5:
+		player.queue_free()
+		UI.resume_game()
+		printerr("TEST FAILED: Death should not reset progression; reset is deferred to restart.")
+		get_tree().quit(1)
+		return
+	print("Delayed game over verified: death plays out, then the GAME OVER menu takes over.")
+	ProgressionState.difficulty_level = saved_difficulty
+	ProgressionState.dungeon_level = saved_dungeon_level
+	player.queue_free()
+	UI.resume_game()
+
+	# ---------------------------------------------------------
 	# Clean Teardown
 	# ---------------------------------------------------------
 	UI.resume_game()
@@ -231,5 +340,7 @@ func _ready() -> void:
 	print("  4. PauseMenu [wave] BBCode title and button components ok         ")
 	print("  5. Resume button interaction unpauses and frees menu ok            ")
 	print("  6. Simulated 'ui_pause' input event toggles pause cleanly          ")
+	print("  7. Game-over reuse (red tint, title, no resume, locked toggle) ok  ")
+	print("  8. Delayed GAME OVER menu on player defeat ok                      ")
 	print("====================================================================")
 	get_tree().quit(0)

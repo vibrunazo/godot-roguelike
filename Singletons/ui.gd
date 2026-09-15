@@ -68,6 +68,9 @@ const DEFAULT_PAUSE_MENU_SCENE: PackedScene = preload("res://UserInterface/pause
 
 var _current_level_overlay: LevelTitleOverlay = null
 var _current_pause_menu: PauseMenu = null
+## True while the game-over screen owns the pause state. The pause toggle is
+## disabled then: there is nothing to resume to, only restart or quit.
+var _is_game_over: bool = false
 
 ## Pause menu scene override. When null, uses GlobalVars.pause_menu_scene or DEFAULT_PAUSE_MENU_SCENE.
 @export var pause_menu_scene: PackedScene = null
@@ -111,29 +114,57 @@ func pause_game() -> void:
 		_current_pause_menu.queue_free()
 		_current_pause_menu = null
 
-	var scene: PackedScene = pause_menu_scene
-	if scene == null and GlobalVars != null and GlobalVars.pause_menu_scene != null:
-		scene = GlobalVars.pause_menu_scene
-	if scene == null:
-		scene = DEFAULT_PAUSE_MENU_SCENE
-
-	var menu: PauseMenu = scene.instantiate() as PauseMenu
+	var menu: PauseMenu = _spawn_menu()
 	add_child(menu)
 	_current_pause_menu = menu
 	pause_state_changed.emit(true)
 
 
+## Resolves the configured pause menu scene and instantiates it. Callers set
+## per-use-case exports before adding it to the tree (its _ready applies them).
+func _spawn_menu() -> PauseMenu:
+	var scene: PackedScene = pause_menu_scene
+	if scene == null and GlobalVars != null and GlobalVars.pause_menu_scene != null:
+		scene = GlobalVars.pause_menu_scene
+	if scene == null:
+		scene = DEFAULT_PAUSE_MENU_SCENE
+	return scene.instantiate() as PauseMenu
+
+
 ## Unpauses the game tree and removes the pause menu overlay.
 func resume_game() -> void:
 	get_tree().paused = false
+	_is_game_over = false
 	if _current_pause_menu != null and is_instance_valid(_current_pause_menu):
 		_current_pause_menu.queue_free()
 		_current_pause_menu = null
 	pause_state_changed.emit(false)
 
 
-## Toggles pause state between paused and unpaused.
+## Pauses the game tree and displays the game-over screen: the pause menu
+## scene with a red backdrop, a "GAME OVER" title, and no resume button.
+## The pause toggle stays disabled until restart or quit.
+func show_game_over() -> void:
+	if _current_pause_menu != null and is_instance_valid(_current_pause_menu):
+		_current_pause_menu.queue_free()
+		_current_pause_menu = null
+	get_tree().paused = true
+	_is_game_over = true
+	var menu: PauseMenu = _spawn_menu()
+	menu.title_text = "GAME OVER"
+	menu.title_color = Color(0.85, 0.2, 0.2)
+	menu.backdrop_color = Color(0.25, 0.03, 0.03, 0.78)
+	menu.show_resume_button = false
+	add_child(menu)
+	_current_pause_menu = menu
+	pause_state_changed.emit(true)
+
+
+## Toggles pause state between paused and unpaused. Does nothing on the
+## game-over screen, where resume is unavailable.
 func toggle_pause() -> void:
+	if _is_game_over:
+		return
 	if is_paused():
 		resume_game()
 	else:

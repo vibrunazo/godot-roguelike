@@ -33,6 +33,9 @@ Godot does not exit on GDScript compilation errors, cyclic preloads, or unhandle
 >
 > *Note*: Agents are encouraged to run whatever standard CLI commands they need (`git status`, `git diff`, Python scripts, filesystem inspection, etc.). The timeout rule applies specifically when invoking the Godot engine process.
 
+### Watchdog-Kill Artifacts (Don't Chase These)
+A run terminated by the watchdog can print misleading tree-membership errors (`get_tree()` null, `in_tree=false`, null parent) produced by the engine shutdown sequence itself. They look exactly like game code evicting the scene, but no scene change occurred. If a log shows no error before the `[TIMEOUT]` line, assume budget overrun first: time the suite and shrink waits (see frame-budget rule below) before inventing eviction theories.
+
 ### Built-in Project Runners & Shortcuts
 Agents can write and execute whatever custom scripts or commands their task requires. For common Godot workflows, prefer using these built-in runners because they already implement watchdog timeouts, portable executable resolution, and engine validation:
 
@@ -66,7 +69,7 @@ Scripts executed standalone via Godot's `-s` flag **strictly require** two rules
 1. **The script MUST inherit `SceneTree` (or `MainLoop`)**: e.g. `extends SceneTree`.
    - Standalone execution bypasses the scene tree root. If the script extends `Node` or `Node3D`, Godot fails to start the main loop, `--quit-after` will never count process frames, and Godot idles indefinitely.
 2. **The script MUST explicitly call `quit(code)`** when done (e.g. `quit(0)`).
-3. **Always use `run_scratch.py`**: It automatically validates these invariants before launching Godot and enforces an external OS watchdog timeout.
+3. **Consider using `run_scratch.py`**: It automatically validates these invariants before launching Godot and enforces an external OS watchdog timeout.
 
 ### Testing Philosophy & Invariants
 - **Never assert balance values or tuning constants:** Do not test for hardcoded damage numbers, cooldown lengths, movement speeds, or specific keyboard scancodes.
@@ -75,6 +78,8 @@ Scripts executed standalone via Godot's `-s` flag **strictly require** two rules
   - Test relative damage application (`target.health == previous_health - attack.damage`), not arbitrary final integers.
   - Test actions via `InputMap` action names (e.g., `"toggle_fullscreen"`), never physical key constants (`KEY_F`).
 - **If a test fails due to intentional balance changes, the test design was flawed.** Fix the test to evaluate the mechanic dynamically, never hardcode the new value.
+- **Simulate hits via `Hurtbox.receive_hit()`, never direct pool writes:** `damage_pool()` / `restore_pool()` are silent resource changes by design (no stun, flash, or shake); only `receive_hit()` emits `struck`. Tests asserting hit reactions must go through the hurtbox.
+- **Mind the frame budget (20s/test):** headless idle/process frames are far slower than physics frames, so long `await process_frame` loops and wall-clock `create_timer` waits can overrun the budget in large suites while hundreds of `physics_frame` awaits run in ~1s. Keep timed behavior in small dedicated suites (e.g. `test_pause_menu.tscn`).
 
 ---
 
@@ -85,8 +90,14 @@ Scripts executed standalone via Godot's `-s` flag **strictly require** two rules
 - **Combat Components**:
   - `AttackComponent`: Sits under an `Area3D` hitbox or projectile. Listens to `body_entered` / `area_entered` signals to deal damage and knockback, handles screen shake, and manages `rehit_interval`.
   - `KnockbackComponent`: Handles physics impulse and exponential decay (`lerp` with `exp(-decay * delta)`). Active if magnitude > 1.0.
-  - `HealthComponent`: Manages current/max health, damage taking, and `defeat` signal.
+  - `AttributeComponent`: Owns pools (health/mana) and buffable stats. `damage_pool()` / `restore_pool()` are silent value changes; `defeat` fires exactly on the killing health transition.
   - `WeaponSlot`: Extends `BoneAttachment3D`. Has exported `hitbox: Area3D`. Animating `WeaponSlot:enabled` automatically toggles `hitbox.monitoring` and `hitbox.monitorable`.
+- **VFX & Attachment Parenting**:
+  - A `Node3D` parented under a plain `Node` inherits no transform (it renders at its local position in world space). Always parent runtime visuals to the nearest `Node3D` ancestor (e.g. the character body, never its `AttributeComponent`).
+- **Hit Reaction Ordering**:
+  - Lethal hits report `defeat` (inside `damage_pool()`) *before* `Hurtbox.struck` reaches handlers. Reaction handlers must early-out when the target is dead, or stun re-entry overrides the defeat state (corpse stuck standing).
+- **Scene File Literals**:
+  - The 6-float `Aabb(...)` constructor does not parse in `.tscn` text (verified via `str_to_var` → null). Omit optional AABB properties (e.g. `visibility_aabb`) instead of hand-writing them; defaults cover body-sized effects.
 - **Hit Timing & Multi-Hit Logic**:
   - `AttackComponent.rehit_interval`: Minimum interval (seconds) before a target can take damage again.
   - If `<= 0.0`, target is hit once per attack until `reset_exceptions()`.

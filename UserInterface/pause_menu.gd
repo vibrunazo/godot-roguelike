@@ -1,4 +1,6 @@
-## Pause menu overlay presented when pausing gameplay.
+## Pause menu overlay presented when pausing gameplay. Doubles as the game-over
+## screen: UI.show_game_over() reuses this scene with a red backdrop, a
+## "GAME OVER" title, and the resume button hidden.
 ## Handles resume, restart run, fullscreen toggle, and game quit actions.
 class_name PauseMenu
 extends CanvasLayer
@@ -9,6 +11,19 @@ signal resume_requested
 ## Emitted when the restart button is triggered.
 signal restart_requested
 
+## Title text rendered with the wave BBCode effect. "PAUSED" for the pause
+## menu, "GAME OVER" for the game-over screen.
+@export var title_text: String = "PAUSED"
+## Title accent color. Pause blue by default; game over uses red.
+@export var title_color: Color = Color(0.31, 0.66, 0.8)
+## Full-screen backdrop tint. Dark blue by default; game over uses dark red.
+@export var backdrop_color: Color = Color(0.039, 0.047, 0.078, 0.745)
+## Hides the resume button (and focuses restart instead) for terminal menus
+## like game over, where there is nothing to resume to.
+@export var show_resume_button: bool = true
+
+@onready var title_label: RichTextLabel = %Title
+@onready var backdrop_rect: ColorRect = %Backdrop
 @onready var resume_button: Button = %ResumeButton
 @onready var restart_button: Button = %RestartButton
 @onready var fullscreen_button: Button = %FullscreenButton
@@ -19,16 +34,33 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 100
 
+	_apply_configuration()
+
 	if resume_button != null:
 		resume_button.pressed.connect(_on_resume_pressed)
-		resume_button.grab_focus()
 	if restart_button != null:
 		restart_button.pressed.connect(_on_restart_pressed)
+	if show_resume_button and resume_button != null:
+		resume_button.grab_focus()
+	elif restart_button != null:
+		restart_button.grab_focus()
 	if fullscreen_button != null:
 		fullscreen_button.pressed.connect(_on_fullscreen_pressed)
 		_update_fullscreen_button_text()
 	if quit_button != null:
 		quit_button.pressed.connect(_on_quit_pressed)
+
+
+## Applies the exported title, backdrop, and resume-button configuration to
+## the scene nodes. Runs on entry so UI can set the exports per use-case
+## (pause vs game over) between instantiate and add_child.
+func _apply_configuration() -> void:
+	if title_label != null:
+		title_label.text = "[center][wave amp=25.0 freq=3.0][color=#%s]%s[/color][/wave][/center]" % [title_color.to_html(false), title_text]
+	if backdrop_rect != null:
+		backdrop_rect.color = backdrop_color
+	if resume_button != null:
+		resume_button.visible = show_resume_button
 
 
 ## Closes the pause menu and resumes the game.

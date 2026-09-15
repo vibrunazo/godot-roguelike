@@ -328,11 +328,21 @@ func get_nearest_target(group_name: String = "") -> Character:
 	return closest_char
 
 
-## Resets game state and reloads level on player defeat.
+## Seconds between player defeat and the game-over screen, letting the death
+## animation and corpse read before the menu takes over.
+const DEFEAT_MENU_DELAY: float = 2.0
+
+
+## Shows the game-over screen shortly after player defeat instead of
+## reloading instantly. The run itself resets only when restart is chosen
+## from the menu.
 func reset_game_state() -> void:
-	ProgressionState.reset_run()
-	if is_inside_tree():
-		get_tree().reload_current_scene.call_deferred()
+	if not is_inside_tree():
+		return
+	await get_tree().create_timer(DEFEAT_MENU_DELAY).timeout
+	if not is_inside_tree():
+		return
+	UI.show_game_over()
 
 
 ## Returns true if this character is executing an uninterruptable attack or ability (hyper-armor).
