@@ -20,6 +20,7 @@
 [ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="16_wait"]
 [ext_resource type="Script" uid="uid://ccsy0o7o6ccoh" path="res://StateMachine/AIStates/ai_conditional_attack.gd" id="17_slam_ai"]
 [ext_resource type="Script" uid="uid://c8j4cclflxm5n" path="res://Components/character_color_component.gd" id="18_color"]
+[ext_resource type="Script" uid="uid://d1jynuos72fph" path="res://Components/attribute_component.gd" id="19_attr"]
 
 [sub_resource type="Gradient" id="Gradient_8pxb0"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -96,12 +97,13 @@ height = 3.0
 radius = 0.8
 height = 3.0
 
-[node name="EnemyBrute" type="CharacterBody3D" unique_id=1709182326 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "weapon_hitbox", "hurtbox", "color_component", "stun_state", "defeat_state") groups=["enemy"]]
+[node name="EnemyBrute" type="CharacterBody3D" unique_id=1709182326 node_paths=PackedStringArray("mesh_mount", "health_component", "attribute_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "weapon_hitbox", "hurtbox", "color_component", "stun_state", "defeat_state") groups=["enemy"]]
 collision_layer = 3
 script = ExtResource("1_char")
 movement_speed = 2.2
 mesh_mount = NodePath("AnimationAnchor")
 health_component = NodePath("HealthComponent")
+attribute_component = NodePath("AttributeComponent")
 knockback_component = NodePath("KnockbackComponent")
 animation_tree = NodePath("AnimationAnchor/AnimatedBrute/Enemy_Large/AnimationTree")
 state_machine = NodePath("StateMachine")
@@ -156,9 +158,10 @@ transform = Transform3D(1, 4.4723222e-08, 2.1036702e-07, 1.7821199e-07, -0.71987
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1786120980]
 shape = SubResource("CapsuleShape3D_brute_body")
 
-[node name="HealthComponent" type="Node" parent="." unique_id=1348160016 node_paths=PackedStringArray("hit_audio")]
+[node name="HealthComponent" type="Node" parent="." unique_id=1348160016 node_paths=PackedStringArray("hit_audio", "attribute_component")]
 script = ExtResource("3_health")
 hit_audio = NodePath("../HitAudio")
+attribute_component = NodePath("../AttributeComponent")
 
 [node name="KnockbackComponent" type="Node" parent="." unique_id=1827090601]
 script = ExtResource("4_knockback")
@@ -262,6 +265,12 @@ ai_state_machine = NodePath("..")
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=1882190998]
 path_desired_distance = 2.0
 target_desired_distance = 2.0
+
+[node name="AttributeComponent" type="Node" parent="." unique_id=271828461]
+script = ExtResource("19_attr")
+base_max_health = 100.0
+base_attack = 100.0
+base_speed = 2.2
 
 [connection signal="defeat" from="HealthComponent" to="." method="_on_health_component_defeat"]
 [connection signal="health_changed" from="HealthComponent" to="." method="_on_health_component_health_changed"]

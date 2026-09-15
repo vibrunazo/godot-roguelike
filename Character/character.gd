@@ -15,16 +15,38 @@ signal target_changed(new_target: Node3D)
 ## Emitted when an attack belonging to this character lands a hit on a target.
 signal hit_landed(target: Node, attack_component: AttackComponent)
 
-## Base movement speed in meters per second.
-@export var movement_speed: float = 8.0
+## Base movement speed in meters per second. Forwards to the AttributeComponent
+## speed stat base when one is wired, so scene edits and upgrades keep working
+## while the attribute store stays the single source of truth.
+@export var movement_speed: float = 8.0:
+	get:
+		if attribute_component != null and is_instance_valid(attribute_component):
+			return attribute_component.get_current(AttributeComponent.STAT_SPEED)
+		return movement_speed
+	set(value):
+		movement_speed = value
+		if attribute_component != null and is_instance_valid(attribute_component):
+			attribute_component.set_base(AttributeComponent.STAT_SPEED, value)
 ## Exponential decay rate for orientation smoothing.
 @export var decay: float = 12.0
-## Overall damage percentage stat (default 100.0 = 100%).
-@export var damage_stat: float = 100.0
+## Overall damage percentage stat (default 100.0 = 100%). Forwards to the
+## AttributeComponent attack stat base when one is wired.
+@export var damage_stat: float = 100.0:
+	get:
+		if attribute_component != null and is_instance_valid(attribute_component):
+			return attribute_component.get_current(AttributeComponent.STAT_ATTACK)
+		return damage_stat
+	set(value):
+		damage_stat = value
+		if attribute_component != null and is_instance_valid(attribute_component):
+			attribute_component.set_base(AttributeComponent.STAT_ATTACK, value)
 ## The visual mount node rotated to face movement or aim directions.
 @export var mesh_mount: Node3D
 ## Reference to the character's HealthComponent.
 @export var health_component: HealthComponent
+## Reference to the character's AttributeComponent (stat store). When wired,
+## movement_speed, damage_stat, and health numbers forward to it.
+@export var attribute_component: AttributeComponent
 ## Reference to the character's KnockbackComponent.
 @export var knockback_component: KnockbackComponent
 ## Reference to the character's AnimationTree.
@@ -86,6 +108,13 @@ var _retarget_timer: float = 0.0
 func _ready() -> void:
 	if health_component == null:
 		health_component = get_node_or_null("HealthComponent") as HealthComponent
+	if attribute_component == null:
+		attribute_component = get_node_or_null("AttributeComponent") as AttributeComponent
+	if attribute_component == null:
+		for child: Node in get_children():
+			if child is AttributeComponent:
+				attribute_component = child as AttributeComponent
+				break
 	if knockback_component == null:
 		knockback_component = get_node_or_null("KnockbackComponent") as KnockbackComponent
 	if state_machine == null:

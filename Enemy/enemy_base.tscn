@@ -14,15 +14,17 @@
 [ext_resource type="Script" uid="uid://b53uetcel424p" path="res://StateMachine/EnemyStates/enemy_fall.gd" id="10_47ove"]
 [ext_resource type="Script" uid="uid://bktjbk1s3kg6n" path="res://StateMachine/ai_state_machine.gd" id="11_aism"]
 [ext_resource type="Script" uid="uid://c8j4cclflxm5n" path="res://Components/character_color_component.gd" id="13_color"]
+[ext_resource type="Script" uid="uid://d1jynuos72fph" path="res://Components/attribute_component.gd" id="14_attr"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
 
-[node name="EnemyBase" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "stun_state", "defeat_state", "color_component") groups=["enemy"] editor_description="ABSTRACT BASE TEMPLATE: Defines shared physics, health, knockback, and rig. Concrete enemies (melee_enemy.tscn, ranged_enemy.tscn) must inherit from this scene and configure their own attacks and AI states. Do not instantiate directly in waves."]
+[node name="EnemyBase" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("mesh_mount", "health_component", "attribute_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "stun_state", "defeat_state", "color_component") groups=["enemy"] editor_description="ABSTRACT BASE TEMPLATE: Defines shared physics, health, knockback, and rig. Concrete enemies (melee_enemy.tscn, ranged_enemy.tscn) must inherit from this scene and configure their own attacks and AI states. Do not instantiate directly in waves."]
 collision_layer = 3
 script = ExtResource("1_eqilm")
 movement_speed = 3.5
 mesh_mount = NodePath("AnimationAnchor")
 health_component = NodePath("HealthComponent")
+attribute_component = NodePath("AttributeComponent")
 knockback_component = NodePath("KnockbackComponent")
 animation_tree = NodePath("AnimationAnchor/AnimatedEnemy/Enemy_Medium/AnimationTree")
 state_machine = NodePath("StateMachine")
@@ -41,9 +43,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1931491374]
 shape = SubResource("CapsuleShape3D_ncf7h")
 
-[node name="HealthComponent" type="Node" parent="." unique_id=1014190827 node_paths=PackedStringArray("hit_audio")]
+[node name="HealthComponent" type="Node" parent="." unique_id=1014190827 node_paths=PackedStringArray("hit_audio", "attribute_component")]
 script = ExtResource("1_px1sc")
 hit_audio = NodePath("../HitAudio")
+attribute_component = NodePath("../AttributeComponent")
 max_health = 40.0
 
 [node name="KnockbackComponent" type="Node" parent="." unique_id=800122148]
@@ -102,6 +105,12 @@ script = ExtResource("11_aism")
 character = NodePath("..")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=2019475689]
+
+[node name="AttributeComponent" type="Node" parent="." unique_id=271828460]
+script = ExtResource("14_attr")
+base_max_health = 40.0
+base_attack = 100.0
+base_speed = 3.5
 
 [connection signal="defeat" from="HealthComponent" to="." method="_on_health_component_defeat"]
 [connection signal="health_changed" from="HealthComponent" to="." method="_on_health_component_health_changed"]

@@ -144,6 +144,9 @@ parameters/RangedAttack/TimeScale/scale = 1.0
 [node name="HealthComponent" parent="." index="2" unique_id=1014190827]
 max_health = 60.0
 
+[node name="AttributeComponent" parent="." index="11" unique_id=271828460]
+base_max_health = 60.0
+
 [node name="CharacterColorComponent" parent="." index="7" unique_id=1409284102]
 gradients = Array[Gradient]([SubResource("Gradient_2d2of"), SubResource("Gradient_3w52u"), SubResource("Gradient_bp76g"), SubResource("Gradient_7q86h"), SubResource("Gradient_oyy5o"), SubResource("Gradient_lje1f"), SubResource("Gradient_u2l8l"), SubResource("Gradient_qdnsb")])
 

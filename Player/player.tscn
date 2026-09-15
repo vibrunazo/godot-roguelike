@@ -26,6 +26,7 @@
 [ext_resource type="Script" uid="uid://c2y6regew58y" path="res://Components/hurtbox.gd" id="23_hurtbox"]
 [ext_resource type="Script" uid="uid://c8j4cclflxm5n" path="res://Components/character_color_component.gd" id="24_color"]
 [ext_resource type="Script" path="res://Components/screen_shake_component.gd" id="25_shake"]
+[ext_resource type="Script" uid="uid://d1jynuos72fph" path="res://Components/attribute_component.gd" id="26_attr"]
 
 [sub_resource type="Gradient" id="Gradient_vtle1"]
 offsets = PackedFloat32Array(0, 0.25247526, 0.7574257)
@@ -282,11 +283,12 @@ _data = {
 &"dash": SubResource("Animation_7emwf")
 }
 
-[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "health_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "color_component") groups=["player"]]
+[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "health_component", "attribute_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "color_component") groups=["player"]]
 collision_layer = 17
 script = ExtResource("1_l8h54")
 mesh_mount = NodePath("GamedevTV_Mannequin_Medium")
 health_component = NodePath("HealthComponent")
+attribute_component = NodePath("AttributeComponent")
 knockback_component = NodePath("KnockbackComponent")
 animation_tree = NodePath("GamedevTV_Mannequin_Medium/MannequinAnimationTree")
 state_machine = NodePath("StateMachine")
@@ -515,9 +517,10 @@ self_hitstop_duration = 0.17
 character = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
 
-[node name="HealthComponent" type="Node" parent="." unique_id=142968894 node_paths=PackedStringArray("hit_audio")]
+[node name="HealthComponent" type="Node" parent="." unique_id=142968894 node_paths=PackedStringArray("hit_audio", "attribute_component")]
 script = ExtResource("12_5htga")
 hit_audio = NodePath("../DamageAudio")
+attribute_component = NodePath("../AttributeComponent")
 max_health = 60.0
 
 [node name="KnockbackComponent" type="Node" parent="." unique_id=531001606]
@@ -577,5 +580,11 @@ autoplay = &"RESET"
 [connection signal="slash" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone/AudioStreamPlayer3D" method="play"]
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/LeftFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/LeftFootBone/AudioStreamPlayer3D" method="play"]
+
+[node name="AttributeComponent" type="Node" parent="." unique_id=271828459]
+script = ExtResource("26_attr")
+base_max_health = 60.0
+base_attack = 100.0
+base_speed = 8.0
 
 [editable path="GamedevTV_Mannequin_Medium"]
