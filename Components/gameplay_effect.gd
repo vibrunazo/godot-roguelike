@@ -9,9 +9,19 @@
 class_name GameplayEffect
 extends Resource
 
+## Re-application policies for GameplayEffect.stacking (stored as int).
+enum Stacking {
+	REFRESH, ## Restart the duration on the single entry (slows, stuns).
+	STACK, ## Add an independent entry per application (poison, burn).
+}
+
 ## Unique effect identity. Doubles as the modifier instance id, so re-applying
 ## an effect refreshes its duration instead of stacking a second copy.
 @export var effect_name: String = ""
+## What happens when the same effect is applied while already active.
+## REFRESH restarts the duration on the single entry; STACK adds an
+## independent entry per application (returned ids remove one stack each).
+@export_enum("REFRESH", "STACK") var stacking: int = 0
 ## Stat on AttributeComponent receiving the modifier (e.g. &"attack").
 @export var target_attribute: StringName = &"attack"
 ## Stacking operation as an Attribute.Op index (0 = ADD, 1 = MULT_ADD, 2 = MULT_COMP).

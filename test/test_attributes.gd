@@ -40,7 +40,7 @@ func _run_all() -> void:
 		return
 	if not await _part_health_adapter():
 		return
-	if not _part_gameplay_effect_roundtrip():
+	if not await _part_gameplay_effect_roundtrip():
 		return
 	if not await _part_character_facades():
 		return
@@ -298,7 +298,48 @@ func _part_gameplay_effect_roundtrip() -> bool:
 		return _fail("Effect removal should restore the base-derived value.")
 	if comp.remove_effect(instance_id):
 		return _fail("Removing the same instance twice should report false.")
-	print("GameplayEffect roundtrip verified.")
+	# REFRESH (default): re-applying restarts the single entry, never stacks.
+	var first_id: StringName = comp.apply_effect(effect)
+	var second_id: StringName = comp.apply_effect(effect)
+	if first_id != second_id:
+		return _fail("REFRESH re-application should return the same instance id.")
+	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), base_attack * 1.5):
+		comp.queue_free()
+		return _fail("REFRESH re-application must not double-stack the magnitude.")
+	if not comp.remove_effect(first_id):
+		comp.queue_free()
+		return _fail("REFRESH removal should clear the entry.")
+	# STACK: each application adds an independent entry with its own id.
+	var poison: GameplayEffect = GameplayEffect.new()
+	poison.effect_name = "test_poison"
+	poison.target_attribute = AttributeComponent.STAT_ATTACK
+	poison.operation = Attribute.Op.ADD
+	poison.magnitude = 10.0
+	poison.duration = 0.0
+	poison.stacking = GameplayEffect.Stacking.STACK
+	var stack_a: StringName = comp.apply_effect(poison)
+	var stack_b: StringName = comp.apply_effect(poison)
+	if stack_a == stack_b:
+		comp.queue_free()
+		return _fail("STACK applications should mint distinct instance ids.")
+	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), base_attack + 20.0):
+		comp.queue_free()
+		return _fail("Two STACK entries should both contribute.")
+	if not comp.remove_effect(stack_a):
+		comp.queue_free()
+		return _fail("Removing one stack should succeed.")
+	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), base_attack + 10.0):
+		comp.queue_free()
+		return _fail("One remaining stack should contribute once.")
+	if not comp.remove_effect(stack_b):
+		comp.queue_free()
+		return _fail("Removing the last stack should succeed.")
+	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), base_attack):
+		comp.queue_free()
+		return _fail("Removing all stacks should restore the base value.")
+	comp.queue_free()
+	await get_tree().process_frame
+	print("GameplayEffect roundtrip, REFRESH, and STACK verified.")
 	return true
 
 
