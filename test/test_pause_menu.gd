@@ -301,6 +301,25 @@ func _ready() -> void:
 		printerr("TEST FAILED: Game-over screen appeared before the defeat delay elapsed.")
 		get_tree().quit(1)
 		return
+	var player_sm: StateMachine = player.state_machine
+	if player_sm == null or player_sm.state == null or player_sm.state.name != "PlayerDefeat":
+		ProgressionState.difficulty_level = saved_difficulty
+		ProgressionState.dungeon_level = saved_dungeon_level
+		player.queue_free()
+		UI.resume_game()
+		printerr("TEST FAILED: Player defeat should enter the PlayerDefeat state.")
+		get_tree().quit(1)
+		return
+	var playback: AnimationNodeStateMachinePlayback = player.animation_tree.get("parameters/playback") as AnimationNodeStateMachinePlayback
+	if playback == null or playback.get_current_node() != &"Defeat":
+		ProgressionState.difficulty_level = saved_difficulty
+		ProgressionState.dungeon_level = saved_dungeon_level
+		player.queue_free()
+		UI.resume_game()
+		printerr("TEST FAILED: Player defeat should play the Defeat animation.")
+		get_tree().quit(1)
+		return
+	print("PlayerDefeat state and animation verified.")
 	await get_tree().create_timer(1.6).timeout
 	await get_tree().process_frame
 	if not UI.is_paused():

@@ -25,6 +25,7 @@
 [ext_resource type="Script" uid="uid://c2y6regew58y" path="res://Components/hurtbox.gd" id="23_hurtbox"]
 [ext_resource type="Script" uid="uid://c8j4cclflxm5n" path="res://Components/character_color_component.gd" id="24_color"]
 [ext_resource type="Script" path="res://Components/screen_shake_component.gd" id="25_shake"]
+[ext_resource type="Script" path="res://StateMachine/PlayerStates/player_defeat.gd" id="27_defeat"]
 [ext_resource type="Script" uid="uid://d1jynuos72fph" path="res://Components/attribute_component.gd" id="26_attr"]
 
 [sub_resource type="Gradient" id="Gradient_vtle1"]
@@ -97,6 +98,9 @@ animation = &"PlayerAnimations/Dodge_Forward"
 
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_od3ui"]
 animation = &"PlayerAnimations/Hit_A"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_defeat"]
+animation = &"PlayerAnimations/Death_A"
 
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_00tjw"]
 animation = &"PlayerAnimations/Spawn_Ground"
@@ -198,7 +202,11 @@ xfade_time = 0.5
 switch_mode = 2
 advance_mode = 2
 
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_defeat"]
+
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_o28un"]
+states/Defeat/node = SubResource("AnimationNodeAnimation_defeat")
+states/Defeat/position = Vector2(900, 184.44444)
 states/DodgeForward/node = SubResource("AnimationNodeAnimation_vtle1")
 states/DodgeForward/position = Vector2(274.6667, -145.33333)
 states/End/position = Vector2(1132, 184.44444)
@@ -215,7 +223,7 @@ states/StabAttack/position = Vector2(867.3334, -170.33333)
 states/Start/position = Vector2(211.99998, 183.33333)
 states/WalkSpace/node = SubResource("AnimationNodeBlendSpace1D_5htga")
 states/WalkSpace/position = Vector2(606, 37.666668)
-transitions = ["Start", "PlayerAnimations_Spawn_Ground", SubResource("AnimationNodeStateMachineTransition_p5o4e"), "PlayerAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_gu6f8"), "WalkSpace", "DodgeForward", SubResource("AnimationNodeStateMachineTransition_dkpta"), "DodgeForward", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_lfmf2"), "WalkSpace", "PlayerAnimations_Hit_A", SubResource("AnimationNodeStateMachineTransition_pisgm"), "PlayerAnimations_Hit_A", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_b1ygp"), "WalkSpace", "SlashAttack", SubResource("AnimationNodeStateMachineTransition_7emwf"), "SlashAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_hshwv"), "WalkSpace", "StabAttack", SubResource("AnimationNodeStateMachineTransition_gpjlu"), "StabAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8mwp6"), "WalkSpace", "SpinAttack", SubResource("AnimationNodeStateMachineTransition_qemgg"), "SpinAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8viyr")]
+transitions = ["Start", "PlayerAnimations_Spawn_Ground", SubResource("AnimationNodeStateMachineTransition_p5o4e"), "PlayerAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_gu6f8"), "WalkSpace", "DodgeForward", SubResource("AnimationNodeStateMachineTransition_dkpta"), "DodgeForward", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_lfmf2"), "WalkSpace", "PlayerAnimations_Hit_A", SubResource("AnimationNodeStateMachineTransition_pisgm"), "PlayerAnimations_Hit_A", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_b1ygp"), "WalkSpace", "SlashAttack", SubResource("AnimationNodeStateMachineTransition_7emwf"), "SlashAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_hshwv"), "WalkSpace", "StabAttack", SubResource("AnimationNodeStateMachineTransition_gpjlu"), "StabAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8mwp6"), "WalkSpace", "SpinAttack", SubResource("AnimationNodeStateMachineTransition_qemgg"), "SpinAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8viyr"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_defeat")]
 graph_offset = Vector2(41, -108)
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_l8h54"]
@@ -282,7 +290,7 @@ _data = {
 &"dash": SubResource("Animation_7emwf")
 }
 
-[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "color_component") groups=["player"]]
+[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "color_component", "defeat_state") groups=["player"]]
 collision_layer = 17
 script = ExtResource("1_l8h54")
 mesh_mount = NodePath("GamedevTV_Mannequin_Medium")
@@ -292,6 +300,7 @@ animation_tree = NodePath("GamedevTV_Mannequin_Medium/MannequinAnimationTree")
 state_machine = NodePath("StateMachine")
 collision_shape_3d = NodePath("CollisionShape3D")
 color_component = NodePath("CharacterColorComponent")
+defeat_state = NodePath("StateMachine/PlayerDefeat")
 
 [node name="CharacterColorComponent" type="Node" parent="." unique_id=1982736410]
 script = ExtResource("24_color")
@@ -477,6 +486,10 @@ metadata/_custom_type_script = "uid://21pflv2d1drw"
 [node name="DashDuration" type="Timer" parent="StateMachine/PlayerDash" unique_id=793371820]
 wait_time = 0.1
 one_shot = true
+
+[node name="PlayerDefeat" type="Node" parent="StateMachine" node_paths=PackedStringArray("character")]
+script = ExtResource("27_defeat")
+character = NodePath("../..")
 
 [node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("next_states", "combo_next", "attack_component", "character", "dash_state")]
 script = ExtResource("13_gu6f8")
