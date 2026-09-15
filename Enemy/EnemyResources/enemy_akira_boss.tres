@@ -6,4 +6,5 @@
 [resource]
 script = ExtResource("1_script")
 scene = ExtResource("2_scene")
-difficulty_level = 8
+difficulty_level = 12
+minimum_spawn_difficulty = 20

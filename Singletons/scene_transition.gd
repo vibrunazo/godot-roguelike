@@ -7,6 +7,8 @@
 ## - Level rotation (`levels`, `load_next_level`) and direct scene loading
 ##   (`load_scene_path`), preserving the player across scene changes
 ##   (`player_cache`).
+## - Boss fight routing (`boss_arenas`): dungeon levels listed there detour
+##   to their boss arena instead of rotating.
 extends CanvasLayer
 
 @onready var color_rect: ColorRect = $ColorRect
@@ -25,6 +27,14 @@ var player_cache: Character
 	"res://Levels/level_9.tscn",
 	"res://Levels/level_10.tscn"
 ]
+
+## Boss fights keyed by dungeon level: when the run reaches one of these
+## levels, load_next_level goes to that boss arena instead of rotating.
+## The arena scene carries its boss on its WaveObjective.boss_resources.
+## Reusable: later bosses only need a new entry here plus their arena scene.
+@export var boss_arenas: Dictionary = {
+	10: "res://Levels/boss_arena_1.tscn",
+}
 
 
 func _ready() -> void:
@@ -63,5 +73,9 @@ func load_scene_path(path_in: String, args: Dictionary = {}) -> void:
 
 
 func load_next_level(args: Dictionary = {}) -> void:
+	var dungeon_level: int = ProgressionState.dungeon_level if ProgressionState != null else 0
+	if boss_arenas.has(dungeon_level):
+		load_scene_path(str(boss_arenas[dungeon_level]), args)
+		return
 	levels.push_back(levels.pop_front())
 	load_scene_path(levels.front(), args)

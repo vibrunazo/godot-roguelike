@@ -4,6 +4,13 @@ extends Node3D
 ## Enemy resources available to spawn. Leave empty to use GlobalVars.enemies.
 @export var enemy_resources: Array[EnemyResource] = []
 
+## Boss resources for a boss arena. When non-empty, the wave is exactly these
+## bosses (each spawned once, bypassing the difficulty budget and the
+## minimum-spawn gate); the regular budget fill is skipped. Leave empty for a
+## normal level. Reusable: later bosses only need their own arena scene with
+## this set.
+@export var boss_resources: Array[EnemyResource] = []
+
 signal finished
 
 var all_enemies: Array[Character] = []
@@ -18,10 +25,14 @@ func _get_default_enemy_resources() -> Array[EnemyResource]:
 
 
 ## Groups available enemy resources into tiers by difficulty level.
-func build_difficulty_pool(resources: Array[EnemyResource]) -> Dictionary:
+## Resources gated by minimum_spawn_difficulty above current_difficulty are
+## excluded. Pass -1 (default) to skip gating, e.g. for inspection.
+func build_difficulty_pool(resources: Array[EnemyResource], current_difficulty: int = -1) -> Dictionary:
 	var pool: Dictionary = {}
 	for res: EnemyResource in resources:
 		if res == null or res.scene == null:
+			continue
+		if current_difficulty >= 0 and res.minimum_spawn_difficulty > current_difficulty:
 			continue
 		var diff: int = res.difficulty_level
 		if not pool.has(diff):
@@ -33,15 +44,25 @@ func build_difficulty_pool(resources: Array[EnemyResource]) -> Dictionary:
 
 ## Generates the list of enemies for the current wave matching the progression difficulty budget.
 ## Always picks 2 level-1 enemies first, then fills the remaining budget randomly with available tiers.
+## When boss_resources is set (boss arena), the wave is exactly those bosses and the budget fill is skipped.
 func generate_wave_enemies() -> Array[Character]:
+	var generated_enemies: Array[Character] = []
+	_enemy_difficulties.clear()
+	if not boss_resources.is_empty():
+		for boss_res: EnemyResource in boss_resources:
+			if boss_res == null or boss_res.scene == null:
+				continue
+			var boss_inst: Character = boss_res.scene.instantiate() as Character
+			generated_enemies.append(boss_inst)
+			_enemy_difficulties[boss_inst] = boss_res.difficulty_level
+		return generated_enemies
+
 	if enemy_resources.is_empty():
 		enemy_resources = _get_default_enemy_resources()
 
-	var pool: Dictionary = build_difficulty_pool(enemy_resources)
 	var target_budget: int = ProgressionState.difficulty_level if ProgressionState != null else 3
+	var pool: Dictionary = build_difficulty_pool(enemy_resources, target_budget)
 	var remaining_budget: int = max(0, target_budget)
-	var generated_enemies: Array[Character] = []
-	_enemy_difficulties.clear()
 
 	# Pick 2 level-1 enemies first (or remaining_budget if < 2)
 	var level_1_count: int = 2 if remaining_budget >= 2 else remaining_budget

@@ -1,7 +1,8 @@
 ## Automated verification suite for the Akira boss.
 ## Verifies brute-based bigger body, backpack riders with hidden legs and
 ## melee-equal swords with player-like fire slash VFX, oversized firebombs
-## with larger traps, and difficulty 8 spawning.
+## with larger traps, difficulty 12, and a difficulty-20 regular-spawn gate
+## (boss-arena spawn bypasses the gate).
 extends Node3D
 
 var _passed: int = 0
@@ -73,7 +74,7 @@ func _boss() -> Character:
 
 
 func _part1_registration() -> void:
-	print("\n>>> PART 1: GlobalVars registration & difficulty 8")
+	print("\n>>> PART 1: GlobalVars registration, difficulty 12 & spawn gate 20")
 	var boss_scene: PackedScene = load("res://Enemy/akira_boss.tscn") as PackedScene
 	if boss_scene == null:
 		_fail("Could not load akira_boss.tscn")
@@ -82,20 +83,35 @@ func _part1_registration() -> void:
 	if boss_res == null:
 		_fail("GlobalVars.enemies does not contain akira boss resource.")
 		return
-	if boss_res.difficulty_level != 8:
-		_fail("Akira boss difficulty expected 8, got: %d" % boss_res.difficulty_level)
+	if boss_res.difficulty_level != 12:
+		_fail("Akira boss difficulty expected 12, got: %d" % boss_res.difficulty_level)
 		return
-	print("Boss registered at difficulty 8.")
+	if boss_res.minimum_spawn_difficulty != 20:
+		_fail("Akira boss minimum_spawn_difficulty expected 20, got: %d" % boss_res.minimum_spawn_difficulty)
+		return
+	print("Boss registered at difficulty 12, regular-spawn gate 20.")
 	var wave := WaveObjective.new()
 	add_child(wave)
 	await get_tree().process_frame
 	var pool: Dictionary = wave.build_difficulty_pool(wave._get_default_enemy_resources())
-	if not pool.has(8) or not (pool[8] as Array[EnemyResource]).has(boss_res):
+	if not pool.has(12) or not (pool[12] as Array[EnemyResource]).has(boss_res):
 		wave.queue_free()
-		_fail("WaveObjective difficulty pool tier 8 missing akira boss.")
+		_fail("WaveObjective ungated difficulty pool tier 12 missing akira boss.")
+		return
+	print("WaveObjective ungated tier 12 contains akira boss.")
+	var gated_early: Dictionary = wave.build_difficulty_pool(wave._get_default_enemy_resources(), 15)
+	if gated_early.has(12) and (gated_early[12] as Array[EnemyResource]).has(boss_res):
+		wave.queue_free()
+		_fail("Akira boss must be gated out of the regular pool below difficulty 20.")
+		return
+	print("Akira boss gated out of the regular pool at difficulty 15.")
+	var gated_open: Dictionary = wave.build_difficulty_pool(wave._get_default_enemy_resources(), 20)
+	if not gated_open.has(12) or not (gated_open[12] as Array[EnemyResource]).has(boss_res):
+		wave.queue_free()
+		_fail("Akira boss must join the regular pool at difficulty 20.")
 		return
 	wave.queue_free()
-	print("WaveObjective tier 8 contains akira boss.")
+	print("Akira boss joins the regular pool at difficulty 20.")
 	_passed += 1
 
 

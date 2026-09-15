@@ -28,6 +28,7 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 | `pack_cells.gd` | Serializes cell files through the engine into a temp scene. GridMap `data` arrays use an internal packed encoding, so hand-writing them tends to corrupt the scene — round-trip through this tool instead. |
 | `assemble_level.py` | Builds an inherited level `.tscn` from a JSON spec (template + cells + exit + hazards + litter + VoxelGI). Supports `strip_*` dressing removal, `litter_placed`, hazard kinds, `hide_nodes` (pins `visible = false` on inherited nodes; never use on `Pit` — the template abyss must stay visible). `extra_pits` is honored for legacy specs only. Recomputes root `index` attributes automatically. |
 | `bake_navmesh.gd` | Headless navmesh bake via `NavigationMeshGenerator` (`--level= --out=`). Output proved byte-equivalent (modulo float formatting) to the editor's Bake button on Level 4. |
+| `bake_navmesh_scene.tscn` / `.gd` | Same bake as `bake_navmesh.gd`, run as a scene (`godot --headless --path . tools/levels/bake_navmesh_scene.tscn -- --level= --out=`). Use this when the `-s` bake cannot load template-inheriting levels: level scripts reference autoload singletons that do not resolve in `-s` SceneTree runs. |
 | `bake_level_gi.gd` / `.tscn` | Nav pre-check + VoxelGI bake (`--level= --gi-out=`). Must run **with** the display server (see command below). |
 | `examples/double_level.py` | Worked example: the Level 4 mirror recipe. Reads a dump, writes cells + navmesh + spec. Copy and adapt for new designs. |
 | `examples/grand_hall.py` | Worked example: the original Level 5 design (vestibule + hall + pit lakes + colonnades). Shows perimeter generation, floor art variants, explicit dressing. |
@@ -36,6 +37,7 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 | `examples/three_islands.py` | Worked example: the Level 8 design (three islands joined by tall-railed causeways, lined central pit lake). First shipped use of `corridor()`; shows `room(holes=)` + `pit_lining()` for lakes. |
 | `examples/crossing.py` | Worked example: the Level 9 design (two rooms joined by a long open bridge over an unjumpable void). First shipped use of `bridge(rails="open")`; shows auto long-side rails on multi-row spans and an open room cliff (`edge={"e": None}`). |
 | `examples/crucible.py` | Worked example: the Level 10 design (symmetric 11x11 finale arena, all rims low cliffs, four lined 1x2 pit lakes, lone center pillar). Shows all-low `edge` dicts, `room(holes=)` with multiple lakes, and `check_cover_clearances` (lone cover keeps 3 m+ off pit edges so no thin navmesh sliver wedges enemies). |
+| `examples/boss_arena_1.py` | Worked example: the Boss Arena 1 design (medium 9x9 arena, no pits, no hazards, four symmetric pillars, open center, open south cliff, north rim on the east half only via two composed rooms). Shows the `boss_resources` spec key pinning the akira boss on the arena WaveObjective. |
 | `layout.py` | Composable floor-plan primitives: `room()` (solid block, optional holes and per-side tiers), `bridge()` (railed strip: `low`/`open`/`tall`, optional explicit `sides`), `corridor()` (tall-railed bridge), `touches()`/`compose()` junction checks, `paint()` floor-art variants. Edge letters are the generator's (`n`=min-z, `s`=max-z, `w`=min-x, `e`=max-x). Overrides apply only where derivation would already emit a wall, so part junctions (bridge mouths) stay wall-free automatically. |
 
 The gate for every level is the committed test `test/test_level_rotation_nav.tscn`:
@@ -125,6 +127,11 @@ python capture.py map Levels/level_5.tscn --preset all
 - `hide_nodes` pins `visible = false` on inherited root nodes the layout
   must not show. Never use it on `Pit`: hiding the abyss breaks the level
   (the rotation test fails a hidden or undersized `Pit`).
+- `boss_resources` (boss arenas only) lists EnemyResource `.tres` paths to
+  pin on `WaveObjective.boss_resources`, so the arena spawns its boss(es)
+  instead of a budgeted wave. Omit it for normal levels. Boss arenas are
+  routed via `SceneTransition.boss_arenas` (dungeon level -> arena scene),
+  never via the `levels` rotation.
 - `uid: null` generates a fresh scene uid; pin one to reproduce a file exactly.
 - `player: null` keeps the template spawn; otherwise `[x, y, z]`.
 - `gi_data: null` assembles the pre-bake state (no data reference — required,

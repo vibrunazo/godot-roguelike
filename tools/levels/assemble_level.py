@@ -319,6 +319,13 @@ def main() -> int:
         out = _insert_after_node(out, anchor, "\n".join(blocks[n] for n in names))
         fallback = names[-1]
 
+    # --- boss wave (boss arena scenes only) ---
+    # Pins WaveObjective.boss_resources to the given EnemyResource .tres
+    # files so the arena spawns its boss(es) instead of a budgeted wave.
+    # Reusable: later boss arenas just list their own boss resources here.
+    if spec.get("boss_resources"):
+        out = _set_boss_resources(out, spec["boss_resources"])
+
     # --- exit / player overrides ---
     ex, ey, ez = spec["exit"]
     out = _retarget_node(out, "ExitPoint", ex, ey, ez)
@@ -408,6 +415,47 @@ def main() -> int:
 
 
 def _ext_id_for(text: str, scene_substring: str) -> str:
+    """Finds an ExtResource id by filename substring (e.g. "Couch" -> "3_abc")."""
+    for m in re.finditer(r'\[ext_resource[^]]*path="([^"]+)"[^]]*id="([^"]+)"\]', text):
+        if scene_substring.lower() in m.group(1).lower():
+            return m.group(2)
+    raise AssertionError(f"no ExtResource matching {scene_substring!r} (pick a template containing it)")
+
+
+def _fresh_ext_ids(text: str, count: int) -> list[str]:
+    """Allocates collision-free ext_resource ids ("<n>_boss<n>") above the max numeric prefix in use."""
+    nums = [int(m.group(1)) for m in re.finditer(r'id="(\d+)_', text)]
+    top = max(nums) if nums else 0
+    return [f"{top + 1 + i}_boss{i}" for i in range(count)]
+
+
+def _set_boss_resources(text: str, boss_paths: list[str]) -> str:
+    """Overrides WaveObjective.boss_resources with EnemyResource .tres refs.
+
+    Appends an ext_resource entry per boss .tres, then inserts a
+    WaveObjective override block carrying the typed array. Godot serializes
+    Array[EnemyResource] with the script path as the element constraint:
+    Array[Resource("res://Enemy/enemy_resource.gd")]([ExtResource(...)]) --
+    an ext_resource id there is misread as a res:// path and fails to load.
+    """
+    tres_ids = _fresh_ext_ids(text, len(boss_paths))
+    assert len(tres_ids) == len(boss_paths)
+    ext_lines = ""
+    for tres_id, path in zip(tres_ids, boss_paths):
+        ext_lines += (f'[ext_resource type="Resource" path="{path}" id="{tres_id}"]\n')
+    exts = list(re.finditer(r"^\[ext_resource[^\n]*\n", text, re.M))
+    assert exts, "no ext_resource lines to append after"
+    i = exts[-1].end()
+    text = text[:i] + ext_lines + text[i:]
+    refs = ", ".join(f'ExtResource("{t}")' for t in tres_ids)
+    block = (f'[node name="WaveObjective" parent="."]\n'
+             f'boss_resources = Array[Resource("res://Enemy/enemy_resource.gd")]'
+             f'([{refs}])\n')
+    nodes = [n for n in parse_nodes(text) if n["name"] == "ExitPoint"]
+    assert nodes, "ExitPoint anchor missing for WaveObjective block"
+    anchor = nodes[0]["text"]
+    j = text.index(anchor)
+    return text[:j] + block + "\n" + text[j:]
     """Finds an ExtResource id by filename substring (e.g. "Couch" -> "3_abc")."""
     for m in re.finditer(r'\[ext_resource[^]]*path="([^"]+)"[^]]*id="([^"]+)"\]', text):
         if scene_substring.lower() in m.group(1).lower():
