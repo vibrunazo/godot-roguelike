@@ -230,6 +230,14 @@ func _load_tscn_target(path: String) -> void:
 		var c: Character = character_instance as Character
 		if c.ai_state_machine != null:
 			c.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+		# Multi-rig characters (e.g. a boss carrying rider rigs) nest extra
+		# players and trees; prefer the Character's own rig so captures drive
+		# the main body instead of a passenger.
+		if c.animation_tree != null:
+			anim_tree = c.animation_tree
+			var tree_player: Node = anim_tree.get_node_or_null(anim_tree.anim_player)
+			if tree_player is AnimationPlayer:
+				anim_player = tree_player as AnimationPlayer
 
 	_suppress_actor_cameras(character_instance)
 

@@ -11,6 +11,7 @@
 [ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_firebomber.tres" id="14_firebomber_res"]
 [ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_brute.tres" id="13_brute_res"]
 [ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_thunder_mage.tres" id="16_thunder_mage_res"]
+[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_akira_boss.tres" id="20_akira_res"]
 [ext_resource type="PackedScene" path="res://Enemy/firebomb_projectile.tscn" id="15_firebomb_proj"]
 [ext_resource type="PackedScene" uid="uid://0qtans3shtxh" path="res://Enemy/enemy_projectile.tscn" id="7_proj"]
 [ext_resource type="PackedScene" uid="uid://olax7oyumfwu" path="res://Enemy/fireball_hit.tscn" id="8_hit"]
@@ -30,7 +31,7 @@ upgrade_damage = ExtResource("3_dmg")
 upgrade_health = ExtResource("4_hp")
 upgrade_speed = ExtResource("5_spd")
 upgrade_potion = ExtResource("12_pot")
-enemies = [ExtResource("5_melee_res"), ExtResource("6_ranged_res"), ExtResource("14_firebomber_res"), ExtResource("13_brute_res"), ExtResource("16_thunder_mage_res")]
+enemies = [ExtResource("5_melee_res"), ExtResource("6_ranged_res"), ExtResource("14_firebomber_res"), ExtResource("13_brute_res"), ExtResource("16_thunder_mage_res"), ExtResource("20_akira_res")]
 enemy_projectile_scene = ExtResource("7_proj")
 firebomb_projectile_scene = ExtResource("15_firebomb_proj")
 lightning_bolt_scene = ExtResource("17_lightning_proj")

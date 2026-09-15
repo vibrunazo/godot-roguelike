@@ -1,0 +1,485 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://c6dnkrcmpkn7o" path="res://Character/character.gd" id="1_char"]
+[ext_resource type="PackedScene" path="res://Enemy/animated_enemy_brute.tscn" id="2_anim_brute"]
+[ext_resource type="PackedScene" uid="uid://b7usbbh1tfnjv" path="res://Enemy/animated_enemy.tscn" id="2_anim_med"]
+[ext_resource type="Shader" uid="uid://b81ujloplemnj" path="res://Shaders/character_palette.gdshader" id="3_8pxb0"]
+[ext_resource type="Script" uid="uid://bmbhix5t0xhx4" path="res://Components/knockback_component.gd" id="4_knockback"]
+[ext_resource type="Texture2D" uid="uid://c856ldt6utxms" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/Enemy_Large_enemy_texture.png" id="4_wha28"]
+[ext_resource type="Script" uid="uid://c2y6regew58y" path="res://Components/hurtbox.gd" id="5_hurtbox"]
+[ext_resource type="PackedScene" uid="uid://bwo2c4dl16ces" path="res://Components/health_bar.tscn" id="6_healthbar"]
+[ext_resource type="AudioStream" uid="uid://bhd6x8sglgt14" path="res://Assets/Audio/hit.ogg" id="7_hit_audio"]
+[ext_resource type="Script" uid="uid://cmbcvwh0p2jjq" path="res://StateMachine/state_machine.gd" id="8_sm"]
+[ext_resource type="Script" uid="uid://ncoy0s2ai2o6" path="res://StateMachine/EnemyStates/enemy_move.gd" id="9_move"]
+[ext_resource type="Script" uid="uid://sw7pl5xbk8p7" path="res://StateMachine/EnemyStates/enemy_stun.gd" id="10_stun"]
+[ext_resource type="Script" uid="uid://c81hirrrp64m2" path="res://StateMachine/EnemyStates/enemy_defeat.gd" id="11_defeat"]
+[ext_resource type="Script" uid="uid://b53uetcel424p" path="res://StateMachine/EnemyStates/enemy_fall.gd" id="12_fall"]
+[ext_resource type="Script" uid="uid://cmqolk21i2p4i" path="res://StateMachine/character_attack.gd" id="13_attack"]
+[ext_resource type="Script" path="res://Enemy/akira_boss_firebomb_attack.gd" id="13_firebomb_attack"]
+[ext_resource type="Script" uid="uid://bktjbk1s3kg6n" path="res://StateMachine/ai_state_machine.gd" id="14_aism"]
+[ext_resource type="Script" uid="uid://0n22etq4hpy8" path="res://StateMachine/AIStates/ai_pursue.gd" id="15_pursue"]
+[ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="16_wait"]
+[ext_resource type="Script" uid="uid://ccsy0o7o6ccoh" path="res://StateMachine/AIStates/ai_conditional_attack.gd" id="17_slam_ai"]
+[ext_resource type="Script" uid="uid://c8j4cclflxm5n" path="res://Components/character_color_component.gd" id="18_color"]
+[ext_resource type="Script" uid="uid://d1jynuos72fph" path="res://Components/attribute_component.gd" id="19_attr"]
+[ext_resource type="Script" uid="uid://0d7edkd4gwy7" path="res://Components/projectile_spawner_component.gd" id="20_spawner"]
+[ext_resource type="PackedScene" path="res://Enemy/akira_firebomb_projectile.tscn" id="21_akira_proj"]
+[ext_resource type="Script" path="res://Enemy/akira_boss_riders.gd" id="22_riders"]
+[ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="23_attack_comp"]
+
+[sub_resource type="Gradient" id="Gradient_8pxb0"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_wha28"]
+gradient = SubResource("Gradient_8pxb0")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_2e3mc"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_a12w5"]
+gradient = SubResource("Gradient_2e3mc")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_wk3lu"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ncu3x"]
+gradient = SubResource("Gradient_wk3lu")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_pbva5"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ugokn"]
+gradient = SubResource("Gradient_pbva5")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_qgrg0"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_vsohp"]
+gradient = SubResource("Gradient_qgrg0")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_jbwix"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_uumri"]
+gradient = SubResource("Gradient_jbwix")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_fmqxm"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_wuy52"]
+gradient = SubResource("Gradient_fmqxm")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_akira"]
+colors = PackedColorArray(0.75, 0.15, 0.1, 1, 0.35, 0.05, 0.28, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_akira"]
+gradient = SubResource("Gradient_akira")
+width = 64
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_akira"]
+render_priority = 0
+shader = ExtResource("3_8pxb0")
+shader_parameter/albedo_texture = ExtResource("4_wha28")
+shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_wha28"), SubResource("GradientTexture1D_a12w5"), SubResource("GradientTexture1D_ncu3x"), SubResource("GradientTexture1D_ugokn"), SubResource("GradientTexture1D_vsohp"), SubResource("GradientTexture1D_uumri"), SubResource("GradientTexture1D_wuy52"), SubResource("GradientTexture1D_akira")])
+shader_parameter/palette_mode = 0
+shader_parameter/enable_palette = true
+shader_parameter/gradient_mask = 255
+shader_parameter/global_tint = Color(1, 1, 1, 1)
+shader_parameter/roughness = 0.3
+shader_parameter/metallic = 0.0
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_akira_body"]
+radius = 0.65
+height = 4.0
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_akira_hurtbox"]
+radius = 1.0
+height = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_backpack"]
+albedo_color = Color(0.35, 0.22, 0.12, 1)
+roughness = 0.85
+metallic = 0.05
+
+[sub_resource type="StandardMaterial3D" id="Mat_backpack_trim"]
+albedo_color = Color(0.2, 0.13, 0.07, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Mat_blade"]
+albedo_color = Color(0.75, 0.78, 0.82, 1)
+metallic = 0.85
+roughness = 0.25
+
+[sub_resource type="StandardMaterial3D" id="Mat_handle"]
+albedo_color = Color(0.25, 0.15, 0.08, 1)
+roughness = 0.8
+
+[sub_resource type="BoxMesh" id="Mesh_pack_body"]
+material = SubResource("Mat_backpack")
+size = Vector3(0.6, 0.7, 0.45)
+
+[sub_resource type="BoxMesh" id="Mesh_pack_lid"]
+material = SubResource("Mat_backpack_trim")
+size = Vector3(0.64, 0.12, 0.47)
+
+[sub_resource type="BoxMesh" id="Mesh_pack_strap"]
+material = SubResource("Mat_backpack_trim")
+size = Vector3(0.64, 0.08, 0.46)
+
+[sub_resource type="BoxMesh" id="Mesh_blade"]
+material = SubResource("Mat_blade")
+size = Vector3(0.16, 1.7, 0.3)
+
+[sub_resource type="BoxMesh" id="Mesh_guard"]
+material = SubResource("Mat_handle")
+size = Vector3(0.42, 0.09, 0.18)
+
+[sub_resource type="CylinderMesh" id="Mesh_handle"]
+material = SubResource("Mat_handle")
+top_radius = 0.05
+bottom_radius = 0.05
+height = 0.4
+
+[sub_resource type="BoxShape3D" id="BoxShape_rider_hitbox"]
+size = Vector3(3.2, 2.6, 3.2)
+
+[node name="AkiraBoss" type="CharacterBody3D" node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "weapon_hitbox", "hurtbox", "color_component", "stun_state", "defeat_state") groups=["enemy"]]
+collision_layer = 3
+script = ExtResource("1_char")
+mesh_mount = NodePath("AnimationAnchor")
+attribute_component = NodePath("AttributeComponent")
+knockback_component = NodePath("KnockbackComponent")
+animation_tree = NodePath("AnimationAnchor/AnimatedBrute/Enemy_Large/AnimationTree")
+state_machine = NodePath("StateMachine")
+ai_state_machine = NodePath("AIStateMachine")
+navigation_agent_3d = NodePath("NavigationAgent3D")
+collision_shape_3d = NodePath("CollisionShape3D")
+weapon_hitbox = NodePath("AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot/HitboxArea")
+hurtbox = NodePath("Hurtbox")
+color_component = NodePath("CharacterColorComponent")
+stun_state = NodePath("StateMachine/EnemyStun")
+defeat_state = NodePath("StateMachine/EnemyDefeat")
+
+[node name="AnimationAnchor" type="Node3D" parent="."]
+scale = Vector3(1.32, 1.32, 1.32)
+
+[node name="AnimatedBrute" parent="AnimationAnchor" instance=ExtResource("2_anim_brute")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.5, 0)
+
+[node name="Enemy_Large_ArmLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="0"]
+material_override = SubResource("ShaderMaterial_akira")
+
+[node name="Enemy_Large_ArmRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="1"]
+material_override = SubResource("ShaderMaterial_akira")
+
+[node name="Enemy_Large_Body" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="2"]
+material_override = SubResource("ShaderMaterial_akira")
+
+[node name="Enemy_Large_Head" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="3"]
+material_override = SubResource("ShaderMaterial_akira")
+
+[node name="Enemy_Large_LegLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="4"]
+material_override = SubResource("ShaderMaterial_akira")
+
+[node name="Enemy_Large_LegRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="5"]
+material_override = SubResource("ShaderMaterial_akira")
+
+[node name="WeaponSlot" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="6"]
+transform = Transform3D(-0.99999946, 3.9575104e-07, 1.2435319e-07, 8.5915715e-08, -2.2241217e-07, 0.99999994, 3.2124552e-07, 0.9999996, 1.894397e-07, -2.4947143, 2.5355213, -3.422245e-07)
+attack_mode = 0
+vfx_threshold = 0.0
+
+[node name="PunchSlot" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="7"]
+transform = Transform3D(-0.99999946, 3.9575104e-07, 1.2435319e-07, 8.5915715e-08, -2.2241217e-07, 0.99999994, 3.2124552e-07, 0.9999996, 1.894397e-07, -2.4947143, 2.5355213, -3.422245e-07)
+attack_mode = 0
+vfx_threshold = 0.0
+
+[node name="RightFootBone" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="8"]
+transform = Transform3D(1, -4.4585803e-08, 2.1036722e-07, 1.1392112e-07, -0.7198726, -0.69410586, 1.8238478e-07, 0.6941063, -0.7198726, -0.34189, 0.29047453, -0.037171766)
+
+[node name="LeftFootBone" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="9"]
+transform = Transform3D(1, 4.4723222e-08, 2.1036702e-07, 1.7821199e-07, -0.7198726, -0.69410586, 1.2039492e-07, 0.6941063, -0.7198726, 0.34189004, 0.2904745, -0.03717175)
+
+[node name="RiderMountLeft" type="BoneAttachment3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="10"]
+bone_name = "spine"
+bone_idx = 2
+
+[node name="RiderMountRight" type="BoneAttachment3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="11"]
+bone_name = "spine"
+bone_idx = 2
+
+[node name="BackpackLeft" type="Node3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0.05, -0.45)
+
+[node name="PackBody" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft"]
+mesh = SubResource("Mesh_pack_body")
+
+[node name="PackLid" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.36, 0)
+mesh = SubResource("Mesh_pack_lid")
+
+[node name="PackStrap" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, 0)
+mesh = SubResource("Mesh_pack_strap")
+
+[node name="RiderLeft" type="Node3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft"]
+transform = Transform3D(-0.8, 0, 0, 0, 0.8, 0, 0, 0, -0.8, 0, -0.25, -0.05)
+
+[node name="AnimatedEnemyLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft" instance=ExtResource("2_anim_med")]
+
+[node name="BackpackRight" type="Node3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.75, 0.05, -0.45)
+
+[node name="PackBody" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight"]
+mesh = SubResource("Mesh_pack_body")
+
+[node name="PackLid" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.36, 0)
+mesh = SubResource("Mesh_pack_lid")
+
+[node name="PackStrap" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, 0)
+mesh = SubResource("Mesh_pack_strap")
+
+[node name="RiderRight" type="Node3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight"]
+transform = Transform3D(-0.8, 0, 0, 0, 0.8, 0, 0, 0, -0.8, 0, -0.25, -0.05)
+
+[node name="AnimatedEnemyRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight" instance=ExtResource("2_anim_med")]
+
+[node name="WeaponSlot" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D" index="6" node_paths=PackedStringArray("hitbox")]
+hitbox = NodePath("HitboxArea")
+
+[node name="Enemy_Medium_LegLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D" index="4"]
+visible = false
+
+[node name="Enemy_Medium_LegRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D" index="5"]
+visible = false
+
+[node name="HitboxArea" type="Area3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0"]
+collision_layer = 0
+collision_mask = 64
+monitoring = false
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("BoxShape_rider_hitbox")
+
+[node name="AttackComponent" type="Node" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="1"]
+script = ExtResource("23_attack_comp")
+damage = 8.0
+knockback = Vector3(0, 2, 12)
+
+[node name="SwordBlade" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+mesh = SubResource("Mesh_blade")
+
+[node name="SwordGuard" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
+mesh = SubResource("Mesh_guard")
+
+[node name="SwordHandle" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, 0)
+mesh = SubResource("Mesh_handle")
+
+[node name="WeaponSlot" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D" index="6" node_paths=PackedStringArray("hitbox")]
+hitbox = NodePath("HitboxArea")
+
+[node name="Enemy_Medium_LegLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D" index="4"]
+visible = false
+
+[node name="Enemy_Medium_LegRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D" index="5"]
+visible = false
+
+[node name="HitboxArea" type="Area3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0"]
+collision_layer = 0
+collision_mask = 64
+monitoring = false
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("BoxShape_rider_hitbox")
+
+[node name="AttackComponent" type="Node" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="1"]
+script = ExtResource("23_attack_comp")
+damage = 8.0
+knockback = Vector3(0, 2, 12)
+
+[node name="SwordBlade" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+mesh = SubResource("Mesh_blade")
+
+[node name="SwordGuard" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
+mesh = SubResource("Mesh_guard")
+
+[node name="SwordHandle" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, 0)
+mesh = SubResource("Mesh_handle")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("CapsuleShape3D_akira_body")
+
+[node name="KnockbackComponent" type="Node" parent="."]
+script = ExtResource("4_knockback")
+
+[node name="Hurtbox" type="Area3D" parent="." node_paths=PackedStringArray("hit_audio", "attribute_component", "knockback_component")]
+collision_layer = 128
+collision_mask = 0
+script = ExtResource("5_hurtbox")
+hit_audio = NodePath("../HitAudio")
+attribute_component = NodePath("../AttributeComponent")
+knockback_component = NodePath("../KnockbackComponent")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+shape = SubResource("CapsuleShape3D_akira_hurtbox")
+
+[node name="HealthBar" parent="." instance=ExtResource("6_healthbar") node_paths=PackedStringArray("attribute_component")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+attribute_component = NodePath("../AttributeComponent")
+health_color = Color(0.85, 0.15, 0.1, 1)
+
+[node name="HitAudio" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("7_hit_audio")
+bus = &"SFX"
+
+[node name="CharacterColorComponent" type="Node" parent="."]
+script = ExtResource("18_color")
+gradients = Array[Gradient]([null, null, null, null, null, null, null, SubResource("Gradient_akira")])
+
+[node name="StateMachine" type="Node" parent="." node_paths=PackedStringArray("initial_state")]
+script = ExtResource("8_sm")
+initial_state = NodePath("EnemyMove")
+
+[node name="EnemyMove" type="Node" parent="StateMachine" node_paths=PackedStringArray("character", "fall_state")]
+script = ExtResource("9_move")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyStun" type="Node" parent="StateMachine" node_paths=PackedStringArray("next_state", "character", "fall_state")]
+script = ExtResource("10_stun")
+next_state = NodePath("../EnemyMove")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyDefeat" type="Node" parent="StateMachine" node_paths=PackedStringArray("character", "fall_state")]
+script = ExtResource("11_defeat")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyFall" type="Node" parent="StateMachine" node_paths=PackedStringArray("land_state", "character", "fall_state")]
+script = ExtResource("12_fall")
+land_state = NodePath("../EnemyStun")
+character = NodePath("../..")
+fall_state = NodePath(".")
+
+[node name="EnemyAttack" type="Node" parent="StateMachine" node_paths=PackedStringArray("next_states", "attack_component", "character", "fall_state")]
+script = ExtResource("13_attack")
+damage = 30.0
+knockback = 35.0
+next_states = [NodePath("../EnemyMove")]
+attack_animation_name = "MeleeAttack"
+attack_component = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
+self_hitstop_duration = 0.25
+uninterruptable = true
+cooldown = 8.0
+starting_cooldown = 5.0
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyPunch" type="Node" parent="StateMachine" node_paths=PackedStringArray("next_states", "attack_component", "character", "fall_state")]
+script = ExtResource("13_attack")
+damage = 15.0
+knockback = 14.0
+next_states = [NodePath("../EnemyMove")]
+attack_animation_name = "PunchAttack"
+attack_component = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/PunchSlot/HitboxArea/AttackComponent")
+self_hitstop_scale = 0.1
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyFirebomb" type="Node" parent="StateMachine" node_paths=PackedStringArray("next_states", "character", "fall_state", "projectile_spawner")]
+script = ExtResource("13_firebomb_attack")
+next_states = [NodePath("../EnemyMove")]
+attack_animation_name = "PunchAttack"
+cooldown = 4.0
+starting_cooldown = 1.5
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+projectile_spawner = NodePath("../../ProjectileSpawnerComponent")
+spawn_delay = 0.45
+
+[node name="AIStateMachine" type="Node" parent="." node_paths=PackedStringArray("character", "initial_state")]
+script = ExtResource("14_aism")
+character = NodePath("..")
+initial_state = NodePath("AIPursue")
+
+[node name="AISlam" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("17_slam_ai")
+attack_state_name = "EnemyAttack"
+trigger_range = 4.5
+next_state = NodePath("../AIPursue")
+ai_state_machine = NodePath("..")
+
+[node name="AIWait" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("16_wait")
+next_state = NodePath("../AIPursue")
+ai_state_machine = NodePath("..")
+
+[node name="AIPursue" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("lost_target_state", "ai_state_machine")]
+script = ExtResource("15_pursue")
+attack_state_name = "EnemyPunch"
+attack_range = 3.0
+lost_target_state = NodePath("../AIWait")
+attack_cooldown = 2.0
+ai_state_machine = NodePath("..")
+
+[node name="AIFirebomb" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("17_slam_ai")
+attack_state_name = "EnemyFirebomb"
+trigger_range = 14.0
+min_range = 5.0
+can_break_stun = true
+next_state = NodePath("../AIPursue")
+ai_state_machine = NodePath("..")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+path_desired_distance = 2.5
+target_desired_distance = 2.5
+
+[node name="AttributeComponent" type="Node" parent="."]
+script = ExtResource("19_attr")
+base_max_health = 280.0
+base_attack = 110.0
+base_speed = 2.0
+
+[node name="ProjectileSpawnerComponent" type="Node" parent="." node_paths=PackedStringArray("spawn_point", "character")]
+script = ExtResource("20_spawner")
+projectile_scene = ExtResource("21_akira_proj")
+spawn_point = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot")
+character = NodePath("..")
+
+[node name="RiderController" type="Node" parent="." node_paths=PackedStringArray("character", "left_rider_tree", "right_rider_tree", "left_rider_root", "right_rider_root")]
+script = ExtResource("22_riders")
+character = NodePath("..")
+left_rider_tree = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/AnimationTree")
+right_rider_tree = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/AnimationTree")
+left_rider_root = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft")
+right_rider_root = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight")
+attack_range = 2.8
+attack_cooldown = 1.6
+
+[editable path="AnimationAnchor/AnimatedBrute"]
+[editable path="AnimationAnchor/AnimatedBrute/Enemy_Large"]
+[editable path="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft"]
+[editable path="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium"]
+[editable path="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight"]
+[editable path="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium"]

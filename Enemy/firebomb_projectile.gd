@@ -19,6 +19,8 @@ const EARTH_GRAVITY: float = 9.8
 @export var trap_duration: float = 10.0
 ## Size in meters (X = width, Y = depth) of the spawned fire trap.
 @export var trap_size: Vector2 = Vector2(2.0, 2.0)
+## Damage per tick dealt by the spawned fire trap.
+@export var trap_damage: float = 5.0
 
 ## Current 3D velocity vector.
 var velocity: Vector3 = Vector3.ZERO
@@ -234,6 +236,7 @@ func _spawn_fire_trap(pos: Vector3) -> void:
 	trap.trap_size = trap_size
 	trap.show_ground_mesh = false
 	trap.duration = trap_duration
+	trap.damage = trap_damage
 	trap.position = pos
 	VfxManager.spawn_world_entity(trap)
 
