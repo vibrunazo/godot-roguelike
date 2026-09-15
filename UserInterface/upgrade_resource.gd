@@ -18,7 +18,8 @@ enum UpgradeType {
 ## Type of upgrade behavior.
 @export var upgrade_type: UpgradeType = UpgradeType.STAT
 
-## Target stat property name on Character when upgrade_type is STAT (e.g. "damage_stat", "movement_speed").
+## Target attribute name on AttributeComponent when upgrade_type is STAT
+## (e.g. "attack", "speed"). Written as a permanent base bonus.
 @export var stat_name: String = ""
 
 ## Numeric bonus added to the stat or health (e.g. 50.0 for 50% heal or +50 damage stat).
@@ -36,8 +37,9 @@ func get_current_value(player: Character) -> float:
 		return 0.0
 	match upgrade_type:
 		UpgradeType.STAT:
-			var val: Variant = player.get(stat_name)
-			return float(val) if val != null else 0.0
+			if player.attribute_component != null and not stat_name.is_empty():
+				return player.attribute_component.get_current(StringName(stat_name))
+			return 0.0
 		UpgradeType.MAX_HEALTH:
 			if player.attribute_component != null:
 				return player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
@@ -82,8 +84,9 @@ func apply(player: Character) -> void:
 		return
 	match upgrade_type:
 		UpgradeType.STAT:
-			if not stat_name.is_empty():
-				player.set(stat_name, get_current_value(player) + stat_bonus)
+			if player.attribute_component != null and not stat_name.is_empty():
+				var stat_attrs: AttributeComponent = player.attribute_component
+				stat_attrs.set_base(StringName(stat_name), stat_attrs.get_base(StringName(stat_name)) + stat_bonus)
 		UpgradeType.MAX_HEALTH:
 			if player.attribute_component != null:
 				var attrs: AttributeComponent = player.attribute_component

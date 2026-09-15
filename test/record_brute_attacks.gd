@@ -91,7 +91,7 @@ func _physics_process(_delta: float) -> void:
 
 	if frame_count == 76:
 		# Hit brute during punch windup -> interrupts punch into EnemyStun
-		brute.health_component.take_damage(10.0)
+		brute.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 10.0)
 
 	if frame_count == 84:
 		# Stun state screenshot (punch was interrupted)
@@ -115,7 +115,7 @@ func _physics_process(_delta: float) -> void:
 
 	if frame_count == 130:
 		# Test hyper-armor: hit brute with damage during slam windup
-		brute.health_component.take_damage(10.0)
+		brute.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 10.0)
 
 	if frame_count == 138:
 		# Hyper-armor proof screenshot (brute absorbed damage without entering stun, still swinging)

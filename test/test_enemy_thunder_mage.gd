@@ -92,7 +92,7 @@ func _ready() -> void:
 		mage.queue_free()
 		get_tree().quit(1)
 		return
-	print("[OK] HealthComponent and max_health (", mage.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH), ") verified.")
+	print("[OK] AttributeComponent and max_health (", mage.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH), ") verified.")
 
 	var spawner: ProjectileSpawnerComponent = mage.get_node_or_null("ProjectileSpawnerComponent") as ProjectileSpawnerComponent
 	if spawner == null:

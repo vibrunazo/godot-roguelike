@@ -65,16 +65,16 @@ func _ready() -> void:
 		printerr("TEST FAILED: Brute collision_layer is ", brute.collision_layer, ", expected 3.")
 		get_tree().quit(1)
 		return
-	if brute.health_component == null or brute.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) <= 0.0:
-		printerr("TEST FAILED: Brute max_health is invalid: ", brute.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) if brute.health_component else 0.0)
+	if brute.attribute_component == null or brute.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) <= 0.0:
+		printerr("TEST FAILED: Brute max_health is invalid: ", brute.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) if brute.attribute_component else 0.0)
 		get_tree().quit(1)
 		return
 	if not is_equal_approx(brute.attribute_component.get_current(AttributeComponent.POOL_HEALTH), brute.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)):
 		printerr("TEST FAILED: Brute current_health does not match max_health initially.")
 		get_tree().quit(1)
 		return
-	if brute.movement_speed <= 0.0:
-		printerr("TEST FAILED: Brute movement_speed must be > 0.0, got: ", brute.movement_speed)
+	if brute.attribute_component.get_current(AttributeComponent.STAT_SPEED) <= 0.0:
+		printerr("TEST FAILED: Brute movement_speed must be > 0.0, got: ", brute.attribute_component.get_current(AttributeComponent.STAT_SPEED))
 		get_tree().quit(1)
 		return
 
@@ -359,7 +359,7 @@ func _ready() -> void:
 	# Phase 4C: Hyper-Armor & Recovery phase
 	# Brute is still in uninterruptable EnemyAttack. Dealing damage must NOT interrupt into EnemyStun!
 	var hp_before_armor_hit: float = brute.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-	brute.health_component.take_damage(10.0)
+	brute.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 10.0)
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	if body_sm.state.name != "EnemyAttack":
@@ -472,7 +472,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	brute.health_component.take_damage(10.0)
+	brute.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 10.0)
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	if body_sm.state.name != "EnemyStun":
@@ -549,7 +549,7 @@ func _ready() -> void:
 	brute.defeat.connect(func() -> void: 
 		defeat_emitted.append(true)
 	)
-	brute.health_component.take_damage(brute.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
+	brute.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, brute.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
 	await get_tree().physics_frame
 	await get_tree().process_frame
 

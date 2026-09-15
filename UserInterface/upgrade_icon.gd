@@ -14,7 +14,7 @@ signal upgrade_taken(this: UpgradeIcon)
 
 ## Fallback text template used if upgrade_resource is not set.
 @export_multiline() var text_template: String = "%.1f -> [color='7fffd4']%.1f[/color] m/s"
-## Fallback stat name used if upgrade_resource is not set.
+## Fallback attribute name on AttributeComponent used if upgrade_resource is not set.
 @export var stat_name: String = ""
 ## Fallback stat bonus used if upgrade_resource is not set.
 @export var stat_bonus: float = 0.0
@@ -48,8 +48,9 @@ func take_upgrade() -> void:
 
 	if upgrade_resource != null:
 		upgrade_resource.apply(player)
-	elif stat_bonus != 0.0 and player != null:
-		player.set(stat_name, player.get(stat_name) + stat_bonus)
+	elif stat_bonus != 0.0 and player != null and player.attribute_component != null and not stat_name.is_empty():
+		var fallback_attrs: AttributeComponent = player.attribute_component
+		fallback_attrs.set_base(StringName(stat_name), fallback_attrs.get_base(StringName(stat_name)) + stat_bonus)
 
 	upgrade_taken.emit(self)
 
@@ -65,5 +66,6 @@ func setup_label() -> void:
 		if not upgrade_resource.title.is_empty():
 			title.text = upgrade_resource.title
 		description.text = upgrade_resource.format_description(player)
-	elif stat_bonus != 0.0 and player != null:
-		description.text = text_template % [player.get(stat_name), player.get(stat_name) + stat_bonus]
+	elif stat_bonus != 0.0 and player != null and player.attribute_component != null and not stat_name.is_empty():
+		var label_attrs: AttributeComponent = player.attribute_component
+		description.text = text_template % [label_attrs.get_current(StringName(stat_name)), label_attrs.get_current(StringName(stat_name)) + stat_bonus]

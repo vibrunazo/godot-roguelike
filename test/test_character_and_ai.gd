@@ -270,7 +270,7 @@ func test_part_5_stun_independence_and_recovery() -> void:
 	var mind_sm: AIStateMachine = enemy.ai_state_machine as AIStateMachine
 	
 	# Verify taking damage enters EnemyStun on Body
-	enemy.health_component.take_damage(10.0)
+	enemy.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 10.0)
 	await get_tree().process_frame
 	if body_sm.state.name != "EnemyStun":
 		printerr("TEST FAILED: Taking damage did not put body into EnemyStun. Got: ", body_sm.state.name)
@@ -560,7 +560,7 @@ func test_part_8_defeat_inactivity_and_rotation_lock() -> void:
 		return
 
 	# Defeat the enemy
-	melee_enemy.health_component.take_damage(melee_enemy.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
+	melee_enemy.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, melee_enemy.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
 	await get_tree().process_frame
 
 	if melee_enemy.is_alive():

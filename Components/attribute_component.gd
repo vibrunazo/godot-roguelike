@@ -40,11 +40,11 @@ const POOL_MAX_LINK: Dictionary = {POOL_HEALTH: STAT_MAX_HEALTH, POOL_MANA: STAT
 @export var base_max_health: float = 100.0
 ## Base maximum mana. Seeds the max_mana stat once on tree entry.
 @export var base_max_mana: float = 0.0
-## Base attack in percent (100.0 = 100%, matching Character.damage_stat scale).
+## Base attack in percent (100.0 = 100%, read via Character.get_damage_modifier()).
 @export var base_attack: float = 100.0
 ## Base defense (flat data for now; no damage formula reads it yet).
 @export var base_defense: float = 0.0
-## Base movement speed in meters per second (matching Character.movement_speed).
+## Base movement speed in meters per second, read by movement states.
 @export var base_speed: float = 8.0
 ## Base attack speed multiplier (1.0 = normal; no cooldown scaler reads it yet).
 @export var base_attack_speed: float = 1.0
@@ -181,16 +181,16 @@ func remove_effect(instance_id: StringName) -> bool:
 	return false
 
 
-## Subtracts an instant delta from a pool (damage, mana spend), clamped at
-## zero. Always emits attribute_changed (matching the legacy
-## HealthComponent.take_damage setter behavior, including zero deltas).
-## Emits defeat exactly when health transitions to zero from a positive value.
+## Subtracts an instant delta from a pool (damage, mana spend) with exact
+## arithmetic: overkill may drive the pool negative, and callers observe the
+## precise remainder. Always emits attribute_changed, even for zero deltas.
+## Emits defeat exactly when health transitions to zero or below from above.
 func damage_pool(pool_name: StringName, amount: float) -> void:
 	if not _pools.has(pool_name):
 		push_error("AttributeComponent: unknown pool '%s'." % pool_name)
 		return
 	var before: float = float(_pools[pool_name])
-	_pools[pool_name] = maxf(0.0, before - amount)
+	_pools[pool_name] = before - amount
 	attribute_changed.emit(pool_name, float(_pools[pool_name]))
 	if amount > 0.0 and before > 0.0 and float(_pools[pool_name]) <= 0.0 and pool_name == POOL_HEALTH:
 		defeat.emit()
@@ -209,8 +209,7 @@ func restore_pool(pool_name: StringName, amount: float) -> void:
 
 
 ## Writes a pool current value directly (clamped to 0..max). Emits
-## attribute_changed but never defeat (matching the legacy current_health
-## setter, which only take_damage could turn into a defeat).
+## attribute_changed but never defeat (only damage_pool damage can defeat).
 func set_pool_current(pool_name: StringName, value: float) -> void:
 	if not _pools.has(pool_name):
 		push_error("AttributeComponent: unknown pool '%s'." % pool_name)

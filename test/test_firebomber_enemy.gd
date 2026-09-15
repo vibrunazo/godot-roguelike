@@ -690,7 +690,7 @@ func _ready() -> void:
 	print("High aerial apex verified: reached height ", max_y_reached, "m in air.")
 
 	# Verify Hyper-Armor: damage during leap does not interrupt into EnemyStun
-	leap_bomber.health_component.take_damage(5.0)
+	leap_bomber.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 5.0)
 	await get_tree().physics_frame
 	if leap_body_sm.state == leap_bomber.stun_state:
 		printerr("TEST FAILED: Firebomber was interrupted into EnemyStun during uninterruptable leaping dodge!")

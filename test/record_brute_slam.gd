@@ -91,14 +91,14 @@ func _physics_process(_delta: float) -> void:
 
 	if frame_count == 145:
 		# Trigger Stun animation
-		brute.health_component.take_damage(20.0)
+		brute.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 20.0)
 
 	if frame_count == 160:
 		_save_screenshot("movies/brute_stun.png")
 
 	if frame_count == 190:
 		# Trigger Defeat animation
-		brute.health_component.take_damage(100.0)
+		brute.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 100.0)
 
 	if frame_count == 270:
 		_save_screenshot("movies/brute_defeat.png")

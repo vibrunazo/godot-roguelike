@@ -9,7 +9,7 @@ extends CharacterState
 func physics_update(delta: float) -> void:
 	if character == null or not character.is_inside_tree():
 		return
-	core_movement(delta, character.movement_speed, character.move_direction)
+	core_movement(delta, character.attribute_component.get_current(AttributeComponent.STAT_SPEED), character.move_direction)
 	if character.is_on_floor() and run_state != null:
 		finished.emit(run_state.name)
 	character.velocity += character.get_gravity()

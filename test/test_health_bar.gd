@@ -132,7 +132,7 @@ func _ready() -> void:
 	# Deal 25% max_health damage -> current health 75%
 	var player_attrs: AttributeComponent = player.attribute_component
 	var dmg_step: float = player_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH) * 0.25
-	player.health_component.take_damage(dmg_step)
+	player.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, dmg_step)
 	await get_tree().process_frame
 	
 	var expected_pct_1: float = (player_attrs.get_current(AttributeComponent.POOL_HEALTH) / player_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)) * 100.0
@@ -166,7 +166,7 @@ func _ready() -> void:
 	print("HealthProgressBar smoothly completed animation to ", expected_pct_1, "%!")
 	
 	# Deal another 25% damage -> current health 50%
-	player.health_component.take_damage(dmg_step)
+	player.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, dmg_step)
 	await get_tree().process_frame
 	var expected_pct_2: float = (player_attrs.get_current(AttributeComponent.POOL_HEALTH) / player_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)) * 100.0
 	if not is_equal_approx(front_bar.value, expected_pct_2):
@@ -198,7 +198,6 @@ func _ready() -> void:
 	await get_tree().process_frame
 	
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level)
-	var dummy_health: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var dummy_attrs: AttributeComponent = dummy.get_node("AttributeComponent") as AttributeComponent
 	var dummy_health_bar: HealthBar = dummy.get_node_or_null("HealthBar") as HealthBar
 	
@@ -217,7 +216,7 @@ func _ready() -> void:
 	print("Enemy HealthBar attribute_component assignment verified.")
 	
 	# Trigger defeat on dummy
-	dummy_health.take_damage(dummy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH))
+	dummy.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, dummy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH))
 	await get_tree().process_frame
 	
 	# Mid-fade check: transparency should be animating towards 1.0
@@ -243,7 +242,7 @@ func _ready() -> void:
 	
 	print("\n====================================================================")
 	print("  ALL HEALTH BAR TESTS PASSED!                                      ")
-	print("  1. HealthBar instantiated and connected to Player.HealthComponent ")
+	print("  1. HealthBar instantiated and connected to Player.AttributeComponent ")
 	print("  2. SubViewport, Sprite3D billboard, and dual-layer bars verified  ")
 	print("  3. FrontProgressBar initialized to 100% and custom color applied  ")
 	print("  4. Damage animates via Tween: front bar snaps, back bar smoothly lags")

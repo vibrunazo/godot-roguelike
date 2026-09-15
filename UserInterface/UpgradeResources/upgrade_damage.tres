@@ -7,5 +7,5 @@ script = ExtResource("1_script")
 title = "[wave]Damage[/wave]"
 text_template = "%d%% -> [color='7fffd4']%d%%[/color] damage"
 upgrade_type = 0
-stat_name = "damage_stat"
+stat_name = "attack"
 stat_bonus = 50.0

@@ -14,7 +14,6 @@ func _ready() -> void:
 	
 	var player: Character = level.get_node("Player") as Character
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
-	var dummy_health: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
 	var camera: ShakeCamera3D = player.get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
 	var attack_comp: AttackComponent = player.get_node_or_null("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent") as AttackComponent
 	var damage_tint: ColorRect = player.get_node_or_null("DamageTint") as ColorRect
@@ -76,8 +75,8 @@ func _ready() -> void:
 	camera.trauma = 0.0
 	var initial_health: float = player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	
-	# Trigger damage programmatically via health_component
-	player.health_component.take_damage(5.0)
+	# Trigger damage programmatically via the attribute pool
+	player.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 5.0)
 	await get_tree().process_frame
 	
 	print("Health after damage: ", player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), " (took 5.0 damage)")
@@ -235,7 +234,8 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	dummy.global_position = Vector3(5, 1, 5)
-	dummy_health.take_damage(12.0)
+	var vfx_hurtbox: Hurtbox = dummy.get_node("Hurtbox") as Hurtbox
+	vfx_hurtbox.receive_hit(12.0, Vector3.ZERO)
 	await get_tree().physics_frame
 	await get_tree().process_frame
 

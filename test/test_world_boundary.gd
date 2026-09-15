@@ -16,10 +16,10 @@ func _ready() -> void:
 		return
 	print("WorldBoundary found at position: ", world_boundary.global_position)
 	
-	# 2. Verify Player health_component defeat signal connection to reset_game_state
+	# 2. Verify Player attribute_component defeat signal connection to reset_game_state
 	var player: Character = level.get_node("Player") as Character
-	if not player.health_component.defeat.is_connected(player.reset_game_state):
-		printerr("TEST FAILED: Player health_component defeat is not connected to reset_game_state.")
+	if not player.attribute_component.defeat.is_connected(player.reset_game_state):
+		printerr("TEST FAILED: Player attribute_component defeat is not connected to reset_game_state.")
 		level.queue_free()
 		await get_tree().physics_frame
 		get_tree().quit(1)
@@ -31,14 +31,11 @@ func _ready() -> void:
 	var test_attrs := AttributeComponent.new()
 	test_attrs.name = "AttributeComponent"
 	test_target.add_child(test_attrs)
-	var test_hc := HealthComponent.new()
-	test_hc.name = "HealthComponent"
-	test_target.add_child(test_hc)
 	level.add_child(test_target)
 	test_attrs.set_base(AttributeComponent.STAT_MAX_HEALTH, 50.0)
 	
 	var test_state := {"defeat_emitted": false}
-	test_hc.defeat.connect(func() -> void: test_state["defeat_emitted"] = true)
+	test_attrs.defeat.connect(func() -> void: test_state["defeat_emitted"] = true)
 	
 	world_boundary.on_body_entered(test_target)
 	
@@ -67,9 +64,9 @@ func _ready() -> void:
 	print("Target visibility set to false verified!")
 	
 	# 4. Test Player taking fatal damage through WorldBoundary
-	player.health_component.defeat.disconnect(player.reset_game_state)
+	player.attribute_component.defeat.disconnect(player.reset_game_state)
 	var player_state := {"defeat_emitted": false}
-	player.health_component.defeat.connect(func() -> void: player_state["defeat_emitted"] = true)
+	player.attribute_component.defeat.connect(func() -> void: player_state["defeat_emitted"] = true)
 	
 	world_boundary.on_body_entered(player)
 	
@@ -100,15 +97,13 @@ func _ready() -> void:
 	var fall_attrs := AttributeComponent.new()
 	fall_attrs.name = "AttributeComponent"
 	falling_body.add_child(fall_attrs)
-	var fall_hc := HealthComponent.new()
-	fall_hc.name = "HealthComponent"
-	falling_body.add_child(fall_hc)
+
 	
 	level.add_child(falling_body)
 	falling_body.global_position = Vector3(0, 0, -16) # Above the pit!
 	
 	var physics_defeat := {"emitted": false}
-	fall_hc.defeat.connect(func() -> void: physics_defeat["emitted"] = true)
+	fall_attrs.defeat.connect(func() -> void: physics_defeat["emitted"] = true)
 	
 	for i: int in range(80):
 		await get_tree().physics_frame

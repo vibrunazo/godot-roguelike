@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://c6dnkrcmpkn7o" path="res://Character/character.gd" id="1_char"]
 [ext_resource type="PackedScene" path="res://Enemy/animated_enemy_brute.tscn" id="2_anim_brute"]
 [ext_resource type="Shader" uid="uid://b81ujloplemnj" path="res://Shaders/character_palette.gdshader" id="3_8pxb0"]
-[ext_resource type="Script" uid="uid://bdisjfqdmyaha" path="res://Components/health_component.gd" id="3_health"]
 [ext_resource type="Script" uid="uid://bmbhix5t0xhx4" path="res://Components/knockback_component.gd" id="4_knockback"]
 [ext_resource type="Texture2D" uid="uid://c856ldt6utxms" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/Enemy_Large_enemy_texture.png" id="4_wha28"]
 [ext_resource type="Script" uid="uid://c2y6regew58y" path="res://Components/hurtbox.gd" id="5_hurtbox"]
@@ -97,12 +96,10 @@ height = 3.0
 radius = 0.8
 height = 3.0
 
-[node name="EnemyBrute" type="CharacterBody3D" unique_id=1709182326 node_paths=PackedStringArray("mesh_mount", "health_component", "attribute_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "weapon_hitbox", "hurtbox", "color_component", "stun_state", "defeat_state") groups=["enemy"]]
+[node name="EnemyBrute" type="CharacterBody3D" unique_id=1709182326 node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "weapon_hitbox", "hurtbox", "color_component", "stun_state", "defeat_state") groups=["enemy"]]
 collision_layer = 3
 script = ExtResource("1_char")
-movement_speed = 2.2
 mesh_mount = NodePath("AnimationAnchor")
-health_component = NodePath("HealthComponent")
 attribute_component = NodePath("AttributeComponent")
 knockback_component = NodePath("KnockbackComponent")
 animation_tree = NodePath("AnimationAnchor/AnimatedBrute/Enemy_Large/AnimationTree")
@@ -158,19 +155,14 @@ transform = Transform3D(1, 4.4723222e-08, 2.1036702e-07, 1.7821199e-07, -0.71987
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1786120980]
 shape = SubResource("CapsuleShape3D_brute_body")
 
-[node name="HealthComponent" type="Node" parent="." unique_id=1348160016 node_paths=PackedStringArray("hit_audio", "attribute_component")]
-script = ExtResource("3_health")
-hit_audio = NodePath("../HitAudio")
-attribute_component = NodePath("../AttributeComponent")
-
 [node name="KnockbackComponent" type="Node" parent="." unique_id=1827090601]
 script = ExtResource("4_knockback")
 
-[node name="Hurtbox" type="Area3D" parent="." unique_id=1985336169 node_paths=PackedStringArray("health_component", "attribute_component", "knockback_component")]
+[node name="Hurtbox" type="Area3D" parent="." unique_id=1985336169 node_paths=PackedStringArray("hit_audio", "attribute_component", "knockback_component")]
 collision_layer = 128
 collision_mask = 0
 script = ExtResource("5_hurtbox")
-health_component = NodePath("../HealthComponent")
+hit_audio = NodePath("../HitAudio")
 attribute_component = NodePath("../AttributeComponent")
 knockback_component = NodePath("../KnockbackComponent")
 
@@ -273,8 +265,7 @@ base_max_health = 100.0
 base_attack = 100.0
 base_speed = 2.2
 
-[connection signal="defeat" from="HealthComponent" to="." method="_on_health_component_defeat"]
-[connection signal="health_changed" from="HealthComponent" to="." method="_on_health_component_health_changed"]
+
 
 [editable path="AnimationAnchor/AnimatedBrute"]
 [editable path="AnimationAnchor/AnimatedBrute/Enemy_Large"]

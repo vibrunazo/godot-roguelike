@@ -2,7 +2,6 @@ extends Node
 
 const TestUtils = preload("res://test/test_utils.gd")
 const Character = preload("res://Character/character.gd")
-const HealthComponent = preload("res://Components/health_component.gd")
 const AttackComponent = preload("res://Components/attack_component.gd")
 
 func _ready() -> void:

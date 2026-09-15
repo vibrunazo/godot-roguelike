@@ -49,25 +49,25 @@ func _ready() -> void:
 		return
 	print("dash_audio verified: node found, stream assigned, SFX bus assigned.")
 	
-	# Check Damage Audio
-	var health_comp: HealthComponent = player.health_component
-	if health_comp == null:
-		printerr("TEST FAILED: player.health_component is null.")
+	# Check Damage Audio on the player Hurtbox
+	var player_hurtbox: Hurtbox = player.get_node_or_null("Hurtbox") as Hurtbox
+	if player_hurtbox == null:
+		printerr("TEST FAILED: player Hurtbox is null.")
 		get_tree().quit(1)
 		return
-	if health_comp.hit_audio == null:
-		printerr("TEST FAILED: health_component.hit_audio is null.")
+	if player_hurtbox.hit_audio == null:
+		printerr("TEST FAILED: hurtbox.hit_audio is null.")
 		get_tree().quit(1)
 		return
-	if health_comp.hit_audio.stream == null:
-		printerr("TEST FAILED: health_component.hit_audio stream is null.")
+	if player_hurtbox.hit_audio.stream == null:
+		printerr("TEST FAILED: hurtbox.hit_audio stream is null.")
 		get_tree().quit(1)
 		return
-	if health_comp.hit_audio.bus != &"SFX":
-		printerr("TEST FAILED: Expected hit_audio bus to be 'SFX', got: ", health_comp.hit_audio.bus)
+	if player_hurtbox.hit_audio.bus != &"SFX":
+		printerr("TEST FAILED: Expected hit_audio bus to be 'SFX', got: ", player_hurtbox.hit_audio.bus)
 		get_tree().quit(1)
 		return
-	print("health_component.hit_audio verified: node found, stream assigned, SFX bus assigned.")
+	print("hurtbox.hit_audio verified: node found, stream assigned, SFX bus assigned.")
 	
 	# Check Attack Audio & WeaponSlot connection
 	var weapon_slot: BoneAttachment3D = player.get_node_or_null("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot") as BoneAttachment3D
@@ -141,19 +141,19 @@ func _ready() -> void:
 	# ---------------------------------------------------------
 	print("\n>>> PART 3: Functional Playback Trigger Tests")
 	
-	# 1. Damage audio plays on take_damage()
+	# 1. Damage audio plays on receive_hit()
 	attack_audio.stop()
 	dash_audio.stop()
-	health_comp.hit_audio.stop()
+	player_hurtbox.hit_audio.stop()
 	
-	health_comp.take_damage(5.0)
+	player_hurtbox.receive_hit(5.0, Vector3.ZERO)
 	await get_tree().process_frame
-	if not health_comp.hit_audio.playing:
-		printerr("TEST FAILED: hit_audio is not playing after take_damage().")
+	if not player_hurtbox.hit_audio.playing:
+		printerr("TEST FAILED: hit_audio is not playing after receive_hit().")
 		get_tree().quit(1)
 		return
-	print("Damage audio playback confirmed on take_damage().")
-	health_comp.hit_audio.stop()
+	print("Damage audio playback confirmed on receive_hit().")
+	player_hurtbox.hit_audio.stop()
 	
 	# 2. Dash audio plays when entering PlayerDash state
 	var state_machine: StateMachine = player.get_node("StateMachine") as StateMachine
@@ -190,7 +190,7 @@ func _ready() -> void:
 	print("  ALL AUDIO & SOUND EFFECTS TESTS PASSED!                           ")
 	print("  1. Master and SFX audio bus configuration verified                ")
 	print("  2. Player dash_audio assigned, configured to SFX, plays on dash   ")
-	print("  3. HealthComponent hit_audio configured to SFX, plays on damage   ")
+	print("  3. Hurtbox hit_audio configured to SFX, plays on damage          ")
 	print("  4. AttackAudio on WeaponSlot configured to SFX, plays on slash    ")
 	print("  5. MeleeEnemy AttackAudio configured to SFX weapon-swing.ogg      ")
 	print("====================================================================")

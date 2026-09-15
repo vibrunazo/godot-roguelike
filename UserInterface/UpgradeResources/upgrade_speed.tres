@@ -7,5 +7,5 @@ script = ExtResource("1_script")
 title = "[wave]Speed[/wave]"
 text_template = "%.1f -> [color=\"7fffd4\"]%.1f[/color] m/s"
 upgrade_type = 0
-stat_name = "movement_speed"
+stat_name = "speed"
 stat_bonus = 1.5

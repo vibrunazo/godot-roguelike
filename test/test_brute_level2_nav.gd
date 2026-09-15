@@ -42,8 +42,8 @@ func _ready() -> void:
 		return
 
 	# Prevent player reload on defeat
-	if player.health_component != null and player.health_component.defeat.is_connected(player.reset_game_state):
-		player.health_component.defeat.disconnect(player.reset_game_state)
+	if player.attribute_component != null and player.attribute_component.defeat.is_connected(player.reset_game_state):
+		player.attribute_component.defeat.disconnect(player.reset_game_state)
 
 	player.global_position = Vector3(1.5, 1.0, -14.0)
 

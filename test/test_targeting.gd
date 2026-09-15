@@ -161,8 +161,7 @@ func _ready() -> void:
 		if sm.state.name != "PlayerAttack":
 			break
 		if not killed_mid_attack and held_frames >= 3:
-			var health_a: HealthComponent = enemy_a.get_node("HealthComponent") as HealthComponent
-			health_a.take_damage(9999.0)
+			enemy_a.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 9999.0)
 			killed_mid_attack = true
 			if player.current_target != null:
 				await _fail(level, "Killed target lingered mid-attack.")
@@ -212,8 +211,7 @@ func _ready() -> void:
 	if player.current_target != enemy_c:
 		await _fail(level, "Player did not acquire fresh enemy C before the death check.")
 		return
-	var health_c: HealthComponent = enemy_c.get_node("HealthComponent") as HealthComponent
-	health_c.take_damage(9999.0)
+	enemy_c.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 9999.0)
 	if player.current_target != null:
 		await _fail(level, "Killed target lingered instead of clearing on death.")
 		return
@@ -239,8 +237,7 @@ func _ready() -> void:
 	if player.current_target != enemy_d:
 		await _fail(level, "Player did not acquire nearest enemy D.")
 		return
-	var health_d: HealthComponent = enemy_d.get_node("HealthComponent") as HealthComponent
-	health_d.take_damage(9999.0)
+	enemy_d.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 9999.0)
 	# Death must clear synchronously: no frame may observe the corpse targeted.
 	if player.current_target != null:
 		await _fail(level, "Killed target lingered instead of clearing on death.")

@@ -233,7 +233,7 @@ func _setup_noisy_dash(player: Character, sm: StateMachine) -> bool:
 		printerr("TEST FAILED: No WeaponSlot found on player.")
 		return false
 	(slots[0] as WeaponSlot).enabled = true
-	var hit_audio: AudioStreamPlayer3D = player.health_component.hit_audio
+	var hit_audio: AudioStreamPlayer3D = player.get_node_or_null("DamageAudio") as AudioStreamPlayer3D
 	if hit_audio != null:
 		hit_audio.play()
 	var tint: ColorRect = player.get_node_or_null("DamageTint") as ColorRect

@@ -12,7 +12,7 @@ func physics_update(delta: float) -> void:
 	if character == null or not character.is_inside_tree() or not character.is_alive():
 		return
 
-	core_movement(delta, character.movement_speed, character.move_direction)
+	core_movement(delta, character.attribute_component.get_current(AttributeComponent.STAT_SPEED), character.move_direction)
 
 	if character.animation_tree != null:
 		if character.move_direction.is_zero_approx():

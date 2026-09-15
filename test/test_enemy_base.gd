@@ -188,11 +188,11 @@ func _ready() -> void:
 		return
 	print("Enemy.animation_tree onready variable verified.")
 	
-	if enemy.movement_speed <= 0.0:
-		printerr("TEST FAILED: Expected Enemy.movement_speed > 0.0, got: ", enemy.movement_speed)
+	if enemy.attribute_component.get_current(AttributeComponent.STAT_SPEED) <= 0.0:
+		printerr("TEST FAILED: Expected Enemy.movement_speed > 0.0, got: ", enemy.attribute_component.get_current(AttributeComponent.STAT_SPEED))
 		get_tree().quit(1)
 		return
-	print("Enemy.movement_speed (", enemy.movement_speed, ") verified.")
+	print("Enemy.movement_speed (", enemy.attribute_component.get_current(AttributeComponent.STAT_SPEED), ") verified.")
 	
 	var col_shape: CollisionShape3D = enemy.get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if col_shape == null:
@@ -206,14 +206,9 @@ func _ready() -> void:
 	print("CollisionShape3D with CapsuleShape3D verified.")
 	
 	# ---------------------------------------------------------
-	# PART 3: HealthComponent & HealthBar Wiring
+	# PART 3: AttributeComponent & HealthBar Wiring
 	# ---------------------------------------------------------
-	print("\n>>> PART 3: HealthComponent & HealthBar Wiring")
-	var health_comp: HealthComponent = enemy.get_node_or_null("HealthComponent") as HealthComponent
-	if health_comp == null:
-		printerr("TEST FAILED: HealthComponent node not found on Enemy.")
-		get_tree().quit(1)
-		return
+	print("\n>>> PART 3: AttributeComponent & HealthBar Wiring")
 	var enemy_attrs: AttributeComponent = enemy.get_node_or_null("AttributeComponent") as AttributeComponent
 	if enemy_attrs == null:
 		printerr("TEST FAILED: AttributeComponent node not found on Enemy.")
@@ -340,15 +335,15 @@ func _ready() -> void:
 
 	# Test core_movement with direction
 	var move_dir := Vector3(1.0, 0.0, 0.0)
-	enemy_move.core_movement(0.1, enemy.movement_speed, move_dir)
-	if not is_equal_approx(enemy.velocity.x, enemy.movement_speed) or not is_equal_approx(enemy.velocity.z, 0.0):
+	enemy_move.core_movement(0.1, enemy.attribute_component.get_current(AttributeComponent.STAT_SPEED), move_dir)
+	if not is_equal_approx(enemy.velocity.x, enemy.attribute_component.get_current(AttributeComponent.STAT_SPEED)) or not is_equal_approx(enemy.velocity.z, 0.0):
 		printerr("TEST FAILED: core_movement did not set velocity correctly with direction.")
 		get_tree().quit(1)
 		return
 	print("core_movement with direction verified.")
 
 	# Test core_movement deceleration with ZERO direction
-	enemy_move.core_movement(0.1, enemy.movement_speed, Vector3.ZERO)
+	enemy_move.core_movement(0.1, enemy.attribute_component.get_current(AttributeComponent.STAT_SPEED), Vector3.ZERO)
 	if not is_equal_approx(enemy.velocity.x, 0.0):
 		printerr("TEST FAILED: core_movement did not decelerate velocity to 0.")
 		get_tree().quit(1)
@@ -390,20 +385,25 @@ func _ready() -> void:
 		printerr("TEST FAILED: Expected HitAudio bus == 'SFX', got: ", hit_audio.bus)
 		get_tree().quit(1)
 		return
-	if health_comp.hit_audio != hit_audio:
-		printerr("TEST FAILED: HealthComponent.hit_audio is not assigned to HitAudio.")
+	var enemy_hurtbox_p5: Hurtbox = enemy.get_node_or_null("Hurtbox") as Hurtbox
+	if enemy_hurtbox_p5 == null:
+		printerr("TEST FAILED: Hurtbox node not found on Enemy.")
 		get_tree().quit(1)
 		return
-	print("HitAudio configured (stream assigned, SFX bus, wired to HealthComponent).")
-	
+	if enemy_hurtbox_p5.hit_audio != hit_audio:
+		printerr("TEST FAILED: Hurtbox.hit_audio is not assigned to HitAudio.")
+		get_tree().quit(1)
+		return
+	print("HitAudio configured (stream assigned, SFX bus, wired to Hurtbox).")
+
 	# Test taking damage triggers HitAudio AND transitions to EnemyStun
 	hit_audio.stop()
 	var test_dmg: float = 10.0
 	var prev_hp: float = enemy_attrs.get_current(AttributeComponent.POOL_HEALTH)
-	health_comp.take_damage(test_dmg)
+	enemy_hurtbox_p5.receive_hit(test_dmg, Vector3.ZERO)
 	await get_tree().process_frame
 	if not hit_audio.playing:
-		printerr("TEST FAILED: HitAudio is not playing after take_damage().")
+		printerr("TEST FAILED: HitAudio is not playing after receive_hit().")
 		get_tree().quit(1)
 		return
 	print("HitAudio playback confirmed on taking damage.")
@@ -434,19 +434,19 @@ func _ready() -> void:
 	if enemy.has_signal("defeat"):
 		enemy.defeat.connect(func() -> void: enemy_defeat_emitted[0] = true)
 	var defeat_emitted: Array[bool] = [false]
-	health_comp.defeat.connect(func() -> void: defeat_emitted[0] = true)
-	health_comp.take_damage(enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
+	enemy.attribute_component.defeat.connect(func() -> void: defeat_emitted[0] = true)
+	enemy.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 	await get_tree().process_frame
 	if not enemy_defeat_emitted[0]:
 		printerr("TEST FAILED: Enemy defeat signal was not emitted when health reached 0.")
 		get_tree().quit(1)
 		return
-	print("Enemy defeat signal emitted successfully.")
+	print("Enemy defeat signal emitted successfully (via attribute defeat).")
 	if not defeat_emitted[0]:
-		printerr("TEST FAILED: HealthComponent defeat signal was not emitted when health reached 0.")
+		printerr("TEST FAILED: AttributeComponent defeat signal was not emitted when health reached 0.")
 		get_tree().quit(1)
 		return
-	print("HealthComponent defeat signal emitted successfully.")
+	print("AttributeComponent defeat signal emitted successfully.")
 
 	if state_machine.state != enemy_defeat:
 		printerr("TEST FAILED: StateMachine did not transition to EnemyDefeat on defeat. Got: ", state_machine.state.name)
@@ -1801,7 +1801,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Could not load res://UserInterface/UpgradeResources/upgrade_speed.tres")
 		get_tree().quit(1)
 		return
-	if speed_res.stat_name != "movement_speed" or speed_res.stat_bonus <= 0.0:
+	if speed_res.stat_name != "speed" or speed_res.stat_bonus <= 0.0:
 		printerr("TEST FAILED: UpgradeSpeed stat_name or stat_bonus incorrect. Got: ", speed_res.stat_name, ", ", speed_res.stat_bonus)
 		get_tree().quit(1)
 		return
@@ -1832,14 +1832,14 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	var expected_desc: String = speed_res.text_template % [upgrade_player.movement_speed, upgrade_player.movement_speed + speed_res.stat_bonus]
+	var expected_desc: String = speed_res.text_template % [upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED), upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED) + speed_res.stat_bonus]
 	if speed_icon.description.text != expected_desc:
 		printerr("TEST FAILED: UpgradeSpeed description.text did not match formatted template. Got: '", speed_icon.description.text, "', expected: '", expected_desc, "'")
 		get_tree().quit(1)
 		return
 	print("UpgradeSpeed setup_label() text formatting verified: ", speed_icon.description.text)
 
-	var base_speed: float = upgrade_player.movement_speed
+	var base_speed: float = upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
 	var speed_taken_emitted: Array[UpgradeIcon] = []
 	speed_icon.upgrade_taken.connect(func(taken_icon: UpgradeIcon) -> void: speed_taken_emitted.append(taken_icon))
 	speed_icon.take_upgrade()
@@ -1848,11 +1848,11 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("UpgradeIcon upgrade_taken signal emitted with self verified.")
-	if not is_equal_approx(upgrade_player.movement_speed, base_speed + speed_res.stat_bonus):
-		printerr("TEST FAILED: take_upgrade did not increase player movement_speed by ", speed_res.stat_bonus, ". Got: ", upgrade_player.movement_speed)
+	if not is_equal_approx(upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED), base_speed + speed_res.stat_bonus):
+		printerr("TEST FAILED: take_upgrade did not increase player movement_speed by ", speed_res.stat_bonus, ". Got: ", upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED))
 		get_tree().quit(1)
 		return
-	print("take_upgrade() successfully modified player movement_speed from ", base_speed, " to ", upgrade_player.movement_speed)
+	print("take_upgrade() successfully modified player movement_speed from ", base_speed, " to ", upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED))
 
 	# Verify texture_button is disabled after taking upgrade
 	if not speed_icon.texture_button.disabled:
@@ -1864,11 +1864,11 @@ func _ready() -> void:
 	# Verify clicking or calling take_upgrade again does NOT increase speed
 	speed_icon.texture_button.pressed.emit()
 	speed_icon.take_upgrade()
-	if not is_equal_approx(upgrade_player.movement_speed, base_speed + speed_res.stat_bonus):
-		printerr("TEST FAILED: take_upgrade applied bonus again while disabled! Speed: ", upgrade_player.movement_speed)
+	if not is_equal_approx(upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED), base_speed + speed_res.stat_bonus):
+		printerr("TEST FAILED: take_upgrade applied bonus again while disabled! Speed: ", upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED))
 		get_tree().quit(1)
 		return
-	print("UpgradeIcon multiple click prevention verified (speed remained ", upgrade_player.movement_speed, ").")
+	print("UpgradeIcon multiple click prevention verified (speed remained ", upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED), ").")
 
 	speed_icon.queue_free()
 	upgrade_player.queue_free()
@@ -1880,7 +1880,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Could not load res://UserInterface/UpgradeResources/upgrade_damage.tres")
 		get_tree().quit(1)
 		return
-	if damage_res.stat_name != "damage_stat" or damage_res.stat_bonus <= 0.0:
+	if damage_res.stat_name != "attack" or damage_res.stat_bonus <= 0.0:
 		printerr("TEST FAILED: UpgradeDamage stat_name or stat_bonus incorrect. Got: ", damage_res.stat_name, ", ", damage_res.stat_bonus)
 		get_tree().quit(1)
 		return
@@ -1911,7 +1911,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	var base_dmg_stat: float = dmg_player.damage_stat
+	var base_dmg_stat: float = dmg_player.attribute_component.get_current(AttributeComponent.STAT_ATTACK)
 	var expected_dmg_desc: String = damage_res.text_template % [int(base_dmg_stat), int(base_dmg_stat + damage_res.stat_bonus)]
 	if damage_icon.description.text != expected_dmg_desc:
 		printerr("TEST FAILED: UpgradeDamage description.text did not match formatted template. Got: '", damage_icon.description.text, "', expected: '", expected_dmg_desc, "'")
@@ -1919,17 +1919,17 @@ func _ready() -> void:
 		return
 	print("UpgradeDamage setup_label() text formatting verified: ", damage_icon.description.text)
 
-	if dmg_player.damage_stat <= 0.0 or not is_equal_approx(dmg_player.get_damage_modifier(), base_dmg_stat / 100.0):
+	if dmg_player.attribute_component.get_current(AttributeComponent.STAT_ATTACK) <= 0.0 or not is_equal_approx(dmg_player.get_damage_modifier(), base_dmg_stat / 100.0):
 		printerr("TEST FAILED: Initial damage_stat or get_damage_modifier incorrect")
 		get_tree().quit(1)
 		return
 
 	damage_icon.take_upgrade()
-	if not is_equal_approx(dmg_player.damage_stat, base_dmg_stat + damage_res.stat_bonus) or not is_equal_approx(dmg_player.get_damage_modifier(), (base_dmg_stat + damage_res.stat_bonus) / 100.0):
+	if not is_equal_approx(dmg_player.attribute_component.get_current(AttributeComponent.STAT_ATTACK), base_dmg_stat + damage_res.stat_bonus) or not is_equal_approx(dmg_player.get_damage_modifier(), (base_dmg_stat + damage_res.stat_bonus) / 100.0):
 		printerr("TEST FAILED: take_upgrade did not increase damage_stat by ", damage_res.stat_bonus)
 		get_tree().quit(1)
 		return
-	print("take_upgrade() successfully modified damage_stat to ", dmg_player.damage_stat, " and get_damage_modifier() to ", dmg_player.get_damage_modifier())
+	print("take_upgrade() successfully modified damage_stat to ", dmg_player.attribute_component.get_current(AttributeComponent.STAT_ATTACK), " and get_damage_modifier() to ", dmg_player.get_damage_modifier())
 
 	if not damage_icon.texture_button.disabled:
 		printerr("TEST FAILED: damage_icon texture_button was not disabled after take_upgrade.")
@@ -1964,7 +1964,7 @@ func _ready() -> void:
 	var player_scene_hp: PackedScene = load("res://Player/player.tscn")
 	var hp_player: Character = player_scene_hp.instantiate() as Character
 	add_child(hp_player)
-	hp_player.health_component.take_damage(hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) * 0.25)
+	hp_player.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) * 0.25)
 	add_child(health_icon)
 	await get_tree().process_frame
 
@@ -2058,7 +2058,7 @@ func _ready() -> void:
 	var pot_max_hp: float = potion_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
 	var pot_heal_amount: float = pot_max_hp * (potion_res.stat_bonus / 100.0)
 	var pot_dmg: float = clampf(pot_heal_amount + (pot_max_hp * 0.1), pot_heal_amount + 1.0, pot_max_hp - 1.0)
-	potion_player.health_component.take_damage(pot_dmg)
+	potion_player.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, pot_dmg)
 	var hp_before_heal: float = potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	add_child(potion_icon)
 	await get_tree().process_frame
@@ -2525,8 +2525,8 @@ func _ready() -> void:
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	if melee_hurtbox.health_component == null or melee_hurtbox.knockback_component == null:
-		printerr("TEST FAILED: MeleeEnemy Hurtbox missing health/knockback wiring.")
+	if melee_hurtbox.attribute_component == null or melee_hurtbox.knockback_component == null or melee_hurtbox.hit_audio == null:
+		printerr("TEST FAILED: MeleeEnemy Hurtbox missing attribute/knockback/audio wiring.")
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
@@ -2572,8 +2572,8 @@ func _ready() -> void:
 		melee_inst.queue_free()
 		get_tree().quit(1)
 		return
-	if player_hurtbox.health_component != player_chk.health_component or player_hurtbox.knockback_component != player_chk.knockback_component:
-		printerr("TEST FAILED: Player Hurtbox not wired to player health/knockback components.")
+	if player_hurtbox.attribute_component != player_chk.attribute_component or player_hurtbox.knockback_component != player_chk.knockback_component:
+		printerr("TEST FAILED: Player Hurtbox not wired to player attribute/knockback components.")
 		player_chk.queue_free()
 		melee_inst.queue_free()
 		get_tree().quit(1)
@@ -2773,7 +2773,7 @@ func _ready() -> void:
 	# Verify CharacterState.core_movement() emits fall_state when not on floor
 	var state_transitioned := {"target": ""}
 	p33_move.finished.connect(func(next: String) -> void: state_transitioned["target"] = next)
-	p33_move.core_movement(0.1, base_enemy_inst_p33.movement_speed, Vector3(1, 0, 0))
+	p33_move.core_movement(0.1, base_enemy_inst_p33.attribute_component.get_current(AttributeComponent.STAT_SPEED), Vector3(1, 0, 0))
 	if state_transitioned["target"] != "EnemyFall":
 		printerr("TEST FAILED: core_movement did not emit EnemyFall when not on floor. Got: ", state_transitioned["target"])
 		base_enemy_inst_p33.queue_free()
@@ -2901,7 +2901,6 @@ func _ready() -> void:
 		team_player_target.queue_free()
 		get_tree().quit(1)
 		return
-	var enemy_health_p34: HealthComponent = team_enemy_target.get_node("HealthComponent") as HealthComponent
 	var enemy_p34_attrs: AttributeComponent = team_enemy_target.get_node("AttributeComponent") as AttributeComponent
 	if not is_equal_approx(enemy_p34_attrs.get_current(AttributeComponent.POOL_HEALTH), enemy_p34_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)):
 		printerr("TEST FAILED: Melee enemy damaged another enemy (friendly fire). Health: ", enemy_p34_attrs.get_current(AttributeComponent.POOL_HEALTH))
@@ -2911,7 +2910,6 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Melee friendly-fire blocked verified (enemy health unchanged).")
-	var player_health_p34: HealthComponent = team_player_target.get_node("HealthComponent") as HealthComponent
 	var player_p34_attrs: AttributeComponent = team_player_target.get_node("AttributeComponent") as AttributeComponent
 	if player_p34_attrs.get_current(AttributeComponent.POOL_HEALTH) >= player_p34_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH):
 		printerr("TEST FAILED: Melee enemy did not damage the player.")
@@ -2924,7 +2922,7 @@ func _ready() -> void:
 
 	# Dead targets must reject hits.
 	var enemy_hurtbox_p34: Hurtbox = team_enemy_target.get_node("Hurtbox") as Hurtbox
-	enemy_health_p34.take_damage(9999.0)
+	team_enemy_target.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 9999.0)
 	await get_tree().physics_frame
 	var health_after_kill: float = enemy_p34_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	team_att.reset_exceptions()
@@ -2978,7 +2976,7 @@ func _ready() -> void:
 	print("Hurtbox.is_alive() true on alive enemy verified.")
 
 	# Defeat enemy to make it a corpse
-	corpse_enemy.health_component.take_damage(9999.0)
+	corpse_enemy.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 9999.0)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 
@@ -3055,7 +3053,7 @@ func _ready() -> void:
 	print("  2. CapsuleMesh & CapsuleShape3D configured                        ")
 	print("  3. Collision layers 1 & 2 active (collision_layer = 3)            ")
 	print("  4. Skeleton bone attachments (WeaponSlot, FootBones) verified     ")
-	print("  5. HealthComponent (40 max health) & HealthBar wired              ")
+	print("  5. AttributeComponent (40 max health) & HealthBar wired            ")
 	print("  6. StateMachine, EnemyWait, EnemyStun & EnemyDefeat wired         ")
 	print("  7. Damage triggers HitAudio & transitions to EnemyStun            ")
 	print("  8. Stun animation_finished returns to EnemyWait                   ")

@@ -1,6 +1,6 @@
 ## Behavioral contract suite for AttributeComponent, Attribute stacking,
-## GameplayEffect application, the HealthComponent adapter, and per-scene
-## attribute parity. All expectations are relative (deltas, recompute rules,
+## GameplayEffect application, Hurtbox damage routing, and per-scene attribute
+## parity. All expectations are relative (deltas, recompute rules,
 ## transitions), never hardcoded balance numbers.
 extends Node
 
@@ -224,46 +224,52 @@ func _part_defeat_fires_once() -> bool:
 	return true
 
 
-## PART 6: HealthComponent forwards storage and signals to attributes.
+## PART 6: Hurtbox routes damage into the attribute pool and rejects corpses.
 func _part_health_adapter() -> bool:
-	print("\n>>> PART 6: HealthComponent attribute adapter")
-	var holder: Node = Node.new()
+	print("\n>>> PART 6: Hurtbox damage routing")
+	var holder: Node3D = Node3D.new()
 	add_child(holder)
 	await get_tree().process_frame
 	var comp: AttributeComponent = AttributeComponent.new()
 	comp.name = "AttributeComponent"
 	holder.add_child(comp)
-	var health: HealthComponent = HealthComponent.new()
-	holder.add_child(health)
+	var hurtbox: Hurtbox = Hurtbox.new()
+	hurtbox.name = "Hurtbox"
+	holder.add_child(hurtbox)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if health.attribute_component != comp:
+	if hurtbox.attribute_component != comp:
 		holder.queue_free()
-		return _fail("HealthComponent should resolve its sibling AttributeComponent.")
-	var changes: Array[float] = []
-	health.health_changed.connect(func(value: float) -> void: changes.append(value))
-	_defeat_count = 0
-	health.defeat.connect(_on_attr_defeat)
+		return _fail("Hurtbox should resolve its sibling AttributeComponent.")
+	_reset_counters()
+	comp.attribute_changed.connect(_on_attr_changed)
+	comp.defeat.connect(_on_attr_defeat)
 	var max_val: float = comp.get_current(AttributeComponent.STAT_MAX_HEALTH)
 	var damage: float = 25.0
-	health.take_damage(damage)
+	if not hurtbox.receive_hit(damage, Vector3.ZERO):
+		holder.queue_free()
+		return _fail("receive_hit should report damage on a live target.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), max_val - damage):
 		holder.queue_free()
-		return _fail("Adapter damage should reduce the attribute pool relatively.")
-	if changes.is_empty():
+		return _fail("Hurtbox damage should reduce the attribute pool relatively.")
+	if _change_count < 1 or _last_change_name != AttributeComponent.POOL_HEALTH:
 		holder.queue_free()
-		return _fail("Adapter damage should forward health_changed.")
-	comp.set_pool_current(AttributeComponent.POOL_HEALTH, max_val)
-	if _defeat_count != 0:
+		return _fail("Pool damage should emit attribute_changed for the pool.")
+	if not hurtbox.receive_hit(max_val, Vector3.ZERO):
 		holder.queue_free()
-		return _fail("Direct pool writes must never emit defeat.")
-	health.take_damage(max_val)
+		return _fail("Lethal receive_hit should still report damage.")
 	if _defeat_count != 1:
 		holder.queue_free()
-		return _fail("Lethal adapter damage should forward defeat exactly once.")
+		return _fail("Lethal Hurtbox damage should emit defeat exactly once.")
+	if hurtbox.receive_hit(10.0, Vector3.ZERO):
+		holder.queue_free()
+		return _fail("Corpses must reject further hits.")
+	if _defeat_count != 1:
+		holder.queue_free()
+		return _fail("Overkill hits must not re-emit defeat.")
 	holder.queue_free()
 	await get_tree().process_frame
-	print("Adapter verb, signals, and defeat forwarding verified.")
+	print("Hurtbox routing, signals, and corpse rejection verified.")
 	return true
 
 
@@ -294,9 +300,9 @@ func _part_gameplay_effect_roundtrip() -> bool:
 	return true
 
 
-## PART 8: Character facades read and write through attributes.
+## PART 8: Character stats, damage modifier, and Hurtbox route through attributes.
 func _part_character_facades() -> bool:
-	print("\n>>> PART 8: Character stat facades")
+	print("\n>>> PART 8: Character attribute integration")
 	var player_scene: PackedScene = load("res://Player/player.tscn") as PackedScene
 	var player: Character = player_scene.instantiate() as Character
 	add_child(player)
@@ -306,17 +312,15 @@ func _part_character_facades() -> bool:
 		player.queue_free()
 		return _fail("Player should wire an AttributeComponent.")
 	var attrs: AttributeComponent = player.attribute_component
-	if not is_equal_approx(player.movement_speed, attrs.get_current(AttributeComponent.STAT_SPEED)):
+	var base_speed: float = attrs.get_base(AttributeComponent.STAT_SPEED)
+	if base_speed <= 0.0:
 		player.queue_free()
-		return _fail("movement_speed facade should read the speed stat.")
-	if not is_equal_approx(player.damage_stat, attrs.get_current(AttributeComponent.STAT_ATTACK)):
+		return _fail("Player speed base should be positive.")
+	var speed_bonus: float = 2.0
+	attrs.set_base(AttributeComponent.STAT_SPEED, base_speed + speed_bonus)
+	if not is_equal_approx(attrs.get_current(AttributeComponent.STAT_SPEED), base_speed + speed_bonus):
 		player.queue_free()
-		return _fail("damage_stat facade should read the attack stat.")
-	var new_speed: float = player.movement_speed + 2.0
-	player.movement_speed = new_speed
-	if not is_equal_approx(attrs.get_base(AttributeComponent.STAT_SPEED), new_speed):
-		player.queue_free()
-		return _fail("Writing movement_speed should update the speed base.")
+		return _fail("Speed base writes should move the speed stat.")
 	var modifier_before: float = player.get_damage_modifier()
 	var buff: float = 0.5
 	attrs.apply_modifier(AttributeComponent.STAT_ATTACK, &"test_facade_buff", Attribute.Op.MULT_ADD, buff)
@@ -325,18 +329,21 @@ func _part_character_facades() -> bool:
 		return _fail("Attack buffs should scale get_damage_modifier relatively.")
 	var full: float = attrs.get_current(AttributeComponent.POOL_HEALTH)
 	var damage: float = 7.0
-	player.health_component.take_damage(damage)
+	var player_hurtbox: Hurtbox = player.get_node_or_null("Hurtbox") as Hurtbox
+	if player_hurtbox == null or not player_hurtbox.receive_hit(damage, Vector3.ZERO):
+		player.queue_free()
+		return _fail("Player Hurtbox should route hits into the attribute pool.")
 	if not is_equal_approx(attrs.get_current(AttributeComponent.POOL_HEALTH), full - damage):
 		player.queue_free()
 		return _fail("Player damage should flow into the attribute pool.")
 	player.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	print("Character facades verified.")
+	print("Character attribute integration verified.")
 	return true
 
 
-## PART 9: every shipped character keeps legacy readings through attributes.
+## PART 9: every shipped character carries consistent attribute bases.
 func _part_scene_parity() -> bool:
 	print("\n>>> PART 9: Per-scene attribute parity")
 	for scene_path: String in CHARACTER_SCENES:
@@ -359,9 +366,9 @@ func _part_scene_parity() -> bool:
 		if not is_equal_approx(attrs.get_current(AttributeComponent.POOL_HEALTH), attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)):
 			character.queue_free()
 			return _fail("Scene %s health pool did not spawn full." % scene_path)
-		if not is_equal_approx(character.movement_speed, attrs.get_current(AttributeComponent.STAT_SPEED)):
+		if attrs.get_current(AttributeComponent.STAT_SPEED) <= 0.0:
 			character.queue_free()
-			return _fail("Scene %s movement_speed drifted from its attribute base." % scene_path)
+			return _fail("Scene %s has a non-positive speed stat." % scene_path)
 		print("Parity OK: ", scene_path)
 		character.queue_free()
 		await get_tree().process_frame

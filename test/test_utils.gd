@@ -6,14 +6,14 @@ static func find_dummy(level: Node, exclude: Node = null) -> CollisionObject3D:
 	for child: Node in level.get_children():
 		if child == exclude or child.is_in_group("player"):
 			continue
-		if child is CollisionObject3D and child.has_node("HealthComponent"):
+		if child is CollisionObject3D and child.has_node("AttributeComponent"):
 			return child as CollisionObject3D
 	var wave_obj: Node = level.get_node_or_null("WaveObjective")
 	if wave_obj:
 		for child: Node in wave_obj.get_children():
 			if child == exclude or child.is_in_group("player"):
 				continue
-			if child is CollisionObject3D and child.has_node("HealthComponent"):
+			if child is CollisionObject3D and child.has_node("AttributeComponent"):
 				return child as CollisionObject3D
 		if "all_enemies" in wave_obj and not (wave_obj.all_enemies as Array).is_empty():
 			var enemy: Character = null
