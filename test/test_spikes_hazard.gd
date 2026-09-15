@@ -107,11 +107,11 @@ func _ready() -> void:
 		return
 	print("Enemy triggered spikes hazard successfully (state == TRIGGERED).")
 	
-	var enemy_health: HealthComponent = enemy.get_node("HealthComponent") as HealthComponent
-	var initial_enemy_hp: float = enemy_health.current_health
+	var enemy_attrs: AttributeComponent = enemy.get_node("AttributeComponent") as AttributeComponent
+	var initial_enemy_hp: float = enemy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	
 	# During dodge delay, enemy should not have taken damage yet
-	if enemy_health.current_health < initial_enemy_hp:
+	if enemy_attrs.get_current(AttributeComponent.POOL_HEALTH) < initial_enemy_hp:
 		printerr("TEST FAILED: Enemy took damage prematurely during trigger delay window!")
 		get_tree().quit(1)
 		return
@@ -121,15 +121,15 @@ func _ready() -> void:
 	var enemy_damaged := false
 	for i: int in range(30):
 		await get_tree().physics_frame
-		if enemy_health.current_health < initial_enemy_hp:
+		if enemy_attrs.get_current(AttributeComponent.POOL_HEALTH) < initial_enemy_hp:
 			enemy_damaged = true
 			break
 			
 	if not enemy_damaged:
-		printerr("TEST FAILED: Enemy did not take damage after spikes emerged! HP: ", enemy_health.current_health)
+		printerr("TEST FAILED: Enemy did not take damage after spikes emerged! HP: ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("Enemy damage confirmed on emergence! HP: ", initial_enemy_hp, " -> ", enemy_health.current_health)
+	print("Enemy damage confirmed on emergence! HP: ", initial_enemy_hp, " -> ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 	
 	# Move enemy away and wait for reset
 	enemy.global_position = Vector3(-15.0, 1.0, -15.0)
@@ -164,10 +164,10 @@ func _ready() -> void:
 		return
 	print("Player triggered hazard (is_triggered() == true).")
 	
-	var player_health: HealthComponent = player.get_node("HealthComponent") as HealthComponent
-	var initial_player_hp: float = player_health.current_health
+	var player_attrs: AttributeComponent = player.get_node("AttributeComponent") as AttributeComponent
+	var initial_player_hp: float = player_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	
-	if player_health.current_health < initial_player_hp:
+	if player_attrs.get_current(AttributeComponent.POOL_HEALTH) < initial_player_hp:
 		printerr("TEST FAILED: Player took damage prematurely during trigger delay window!")
 		get_tree().quit(1)
 		return
@@ -177,15 +177,15 @@ func _ready() -> void:
 	var player_damaged := false
 	for i: int in range(30):
 		await get_tree().physics_frame
-		if player_health.current_health < initial_player_hp:
+		if player_attrs.get_current(AttributeComponent.POOL_HEALTH) < initial_player_hp:
 			player_damaged = true
 			break
 	
 	if not player_damaged:
-		printerr("TEST FAILED: Player did not take damage after spikes emerged! Current HP: ", player_health.current_health)
+		printerr("TEST FAILED: Player did not take damage after spikes emerged! Current HP: ", player_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("Player damage confirmed! HP: ", initial_player_hp, " -> ", player_health.current_health)
+	print("Player damage confirmed! HP: ", initial_player_hp, " -> ", player_attrs.get_current(AttributeComponent.POOL_HEALTH))
 	
 	# ---------------------------------------------------------
 	# PART 4: Retraction & Cooldown

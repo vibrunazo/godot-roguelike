@@ -13,10 +13,10 @@ func _ready() -> void:
 	var dash_root: Node3D = player.get_node("DashRoot") as Node3D
 	var dash_animation_player: AnimationPlayer = dash_root.get_node("AnimationPlayer") as AnimationPlayer
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
-	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
+	var dummy_attrs: AttributeComponent = dummy.get_node("AttributeComponent") as AttributeComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
 	
-	var initial_health: float = health_comp.current_health
+	var initial_health: float = dummy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	print("Dummy initial health: ", initial_health)
 	
 	# Wait for initial spawn/navigation repositioning timer (1.0s) to settle, then for player to land on floor
@@ -74,13 +74,13 @@ func _ready() -> void:
 	# Wait for Attack 1 to hit
 	for i: int in range(30):
 		await get_tree().physics_frame
-		if health_comp.current_health <= expected_hp_1:
+		if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) <= expected_hp_1:
 			break
-	if not is_equal_approx(health_comp.current_health, expected_hp_1):
-		printerr("TEST FAILED: Attack 1 damage mismatch. Expected: ", expected_hp_1, ", got: ", health_comp.current_health)
+	if not is_equal_approx(dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), expected_hp_1):
+		printerr("TEST FAILED: Attack 1 damage mismatch. Expected: ", expected_hp_1, ", got: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("Attack 1 hit confirmed! Dummy health: ", health_comp.current_health, " (-", dmg1, " damage)")
+	print("Attack 1 hit confirmed! Dummy health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), " (-", dmg1, " damage)")
 	if Vector2(player.global_position.x, player.global_position.z).distance_to(slash_start) > 0.05:
 		printerr("TEST FAILED: PlayerAttack (slash, zero dash exports) must stay stationary.")
 		get_tree().quit(1)
@@ -126,13 +126,13 @@ func _ready() -> void:
 	# Wait for Attack 2 to hit
 	for i: int in range(50):
 		await get_tree().physics_frame
-		if health_comp.current_health <= expected_hp_2:
+		if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) <= expected_hp_2:
 			break
-	if not is_equal_approx(health_comp.current_health, expected_hp_2):
-		printerr("TEST FAILED: Attack 2 damage mismatch. Expected: ", expected_hp_2, ", got: ", health_comp.current_health)
+	if not is_equal_approx(dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), expected_hp_2):
+		printerr("TEST FAILED: Attack 2 damage mismatch. Expected: ", expected_hp_2, ", got: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("Attack 2 hit confirmed! Dummy health: ", health_comp.current_health, " (-", dmg2, " damage)")
+	print("Attack 2 hit confirmed! Dummy health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), " (-", dmg2, " damage)")
 	var stab_travel: float = Vector2(player.global_position.x, player.global_position.z).distance_to(stab_start)
 	if stab_travel < 0.3 or stab_travel > 3.0:
 		printerr("TEST FAILED: PlayerAttack2 stab lunge out of bounds. Travelled: ", stab_travel)
@@ -164,13 +164,13 @@ func _ready() -> void:
 	# Wait for Attack 3 (Spin) first hit
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= expected_hp_3_1:
+		if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) <= expected_hp_3_1:
 			break
-	if not is_equal_approx(health_comp.current_health, expected_hp_3_1):
-		printerr("TEST FAILED: Attack 3 first hit damage mismatch. Expected: ", expected_hp_3_1, ", got: ", health_comp.current_health)
+	if not is_equal_approx(dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), expected_hp_3_1):
+		printerr("TEST FAILED: Attack 3 first hit damage mismatch. Expected: ", expected_hp_3_1, ", got: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("Attack 3 first hit confirmed! Dummy health: ", health_comp.current_health, " (-", dmg3, " damage)")
+	print("Attack 3 first hit confirmed! Dummy health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), " (-", dmg3, " damage)")
 	
 	# Ensure player stays within range for second slash of spin attack
 	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.0)
@@ -178,13 +178,13 @@ func _ready() -> void:
 	# Wait for Attack 3 (Spin) second hit (rehit_interval = 0.32s)
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= expected_hp_3_2:
+		if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) <= expected_hp_3_2:
 			break
-	if not is_equal_approx(health_comp.current_health, expected_hp_3_2):
-		printerr("TEST FAILED: Attack 3 second hit damage mismatch. Expected: ", expected_hp_3_2, ", got: ", health_comp.current_health)
+	if not is_equal_approx(dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), expected_hp_3_2):
+		printerr("TEST FAILED: Attack 3 second hit damage mismatch. Expected: ", expected_hp_3_2, ", got: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("Attack 3 second hit confirmed via rehit_interval! Dummy health: ", health_comp.current_health, " (-", dmg3, " damage, ", (2.0 * dmg3), " total)")
+	print("Attack 3 second hit confirmed via rehit_interval! Dummy health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), " (-", dmg3, " damage, ", (2.0 * dmg3), " total)")
 	
 	# Wait for Attack 3 to finish and return to PlayerRun
 	var back_to_run := false

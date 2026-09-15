@@ -65,11 +65,11 @@ func _ready() -> void:
 		printerr("TEST FAILED: Brute collision_layer is ", brute.collision_layer, ", expected 3.")
 		get_tree().quit(1)
 		return
-	if brute.health_component == null or brute.health_component.max_health <= 0.0:
-		printerr("TEST FAILED: Brute max_health is invalid: ", brute.health_component.max_health if brute.health_component else 0.0)
+	if brute.health_component == null or brute.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) <= 0.0:
+		printerr("TEST FAILED: Brute max_health is invalid: ", brute.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) if brute.health_component else 0.0)
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(brute.health_component.current_health, brute.health_component.max_health):
+	if not is_equal_approx(brute.attribute_component.get_current(AttributeComponent.POOL_HEALTH), brute.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)):
 		printerr("TEST FAILED: Brute current_health does not match max_health initially.")
 		get_tree().quit(1)
 		return
@@ -283,9 +283,9 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 
-	var target_hp_before: float = player_target.health_component.current_health
-	var outside_hp_before: float = player_outside.health_component.current_health
-	var behind_hp_before: float = player_behind.health_component.current_health
+	var target_hp_before: float = player_target.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	var outside_hp_before: float = player_outside.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	var behind_hp_before: float = player_behind.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 
 	# Trigger brute slam attack
 	print("Triggering EnemyAttack on Brute...")
@@ -310,7 +310,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: weapon_hitbox is monitoring during windup!")
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(player_target.health_component.current_health, target_hp_before):
+	if not is_equal_approx(player_target.attribute_component.get_current(AttributeComponent.POOL_HEALTH), target_hp_before):
 		printerr("TEST FAILED: Player damaged during windup phase!")
 		get_tree().quit(1)
 		return
@@ -335,7 +335,7 @@ func _ready() -> void:
 	_save_debug_screenshot("movies/brute_slam_impact.png")
 
 	# Target inside AOE should take enemy_attack.damage
-	var target_damage_dealt: float = target_hp_before - player_target.health_component.current_health
+	var target_damage_dealt: float = target_hp_before - player_target.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	if not is_equal_approx(target_damage_dealt, enemy_attack.damage):
 		printerr("TEST FAILED: Target inside AOE took ", target_damage_dealt, " damage, expected ", enemy_attack.damage, "!")
 		get_tree().quit(1)
@@ -343,14 +343,14 @@ func _ready() -> void:
 	print("AOE impact hit verified: target inside shockwave received ", target_damage_dealt, " damage.")
 
 	# Target outside AOE should take 0 damage
-	if not is_equal_approx(player_outside.health_component.current_health, outside_hp_before):
+	if not is_equal_approx(player_outside.attribute_component.get_current(AttributeComponent.POOL_HEALTH), outside_hp_before):
 		printerr("TEST FAILED: Target outside AOE range took damage!")
 		get_tree().quit(1)
 		return
 	print("AOE radius boundary verified: target at 7.5m took 0 damage.")
 
 	# Target behind brute should take 0 damage
-	if not is_equal_approx(player_behind.health_component.current_health, behind_hp_before):
+	if not is_equal_approx(player_behind.attribute_component.get_current(AttributeComponent.POOL_HEALTH), behind_hp_before):
 		printerr("TEST FAILED: Target behind brute took damage from forward slam!")
 		get_tree().quit(1)
 		return
@@ -358,7 +358,7 @@ func _ready() -> void:
 
 	# Phase 4C: Hyper-Armor & Recovery phase
 	# Brute is still in uninterruptable EnemyAttack. Dealing damage must NOT interrupt into EnemyStun!
-	var hp_before_armor_hit: float = brute.health_component.current_health
+	var hp_before_armor_hit: float = brute.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	brute.health_component.take_damage(10.0)
 	await get_tree().physics_frame
 	await get_tree().process_frame
@@ -366,7 +366,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Brute was interrupted during uninterruptable EnemyAttack! State: ", body_sm.state.name)
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(brute.health_component.current_health, hp_before_armor_hit - 10.0):
+	if not is_equal_approx(brute.attribute_component.get_current(AttributeComponent.POOL_HEALTH), hp_before_armor_hit - 10.0):
 		printerr("TEST FAILED: Brute did not take damage during hyper-armor!")
 		get_tree().quit(1)
 		return
@@ -411,7 +411,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	var punch_target_hp_before: float = punch_player.health_component.current_health
+	var punch_target_hp_before: float = punch_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 
 	# Trigger Punch
 	print("Triggering EnemyPunch on Brute...")
@@ -430,7 +430,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Punch hitbox is monitoring during windup!")
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(punch_player.health_component.current_health, punch_target_hp_before):
+	if not is_equal_approx(punch_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), punch_target_hp_before):
 		printerr("TEST FAILED: Punch target took damage during windup!")
 		get_tree().quit(1)
 		return
@@ -451,7 +451,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	var punch_damage: float = punch_target_hp_before - punch_player.health_component.current_health
+	var punch_damage: float = punch_target_hp_before - punch_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	if not is_equal_approx(punch_damage, enemy_punch.damage):
 		printerr("TEST FAILED: Punch dealt ", punch_damage, " damage, expected ", enemy_punch.damage, "!")
 		get_tree().quit(1)
@@ -549,7 +549,7 @@ func _ready() -> void:
 	brute.defeat.connect(func() -> void: 
 		defeat_emitted.append(true)
 	)
-	brute.health_component.take_damage(brute.health_component.max_health)
+	brute.health_component.take_damage(brute.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
 	await get_tree().physics_frame
 	await get_tree().process_frame
 

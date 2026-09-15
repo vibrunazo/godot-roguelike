@@ -120,24 +120,24 @@ func _ready() -> void:
 	add_child(enemy)
 	enemy.global_position = Vector3(0.0, 1.0, 0.0)
 
-	var enemy_health: HealthComponent = enemy.get_node("HealthComponent") as HealthComponent
-	var initial_hp: float = enemy_health.current_health
+	var enemy_attrs: AttributeComponent = enemy.get_node("AttributeComponent") as AttributeComponent
+	var initial_hp: float = enemy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 
 	# Wait a couple physics frames for instant contact damage
 	for i: int in range(3):
 		await get_tree().physics_frame
 
-	if enemy_health.current_health >= initial_hp:
+	if enemy_attrs.get_current(AttributeComponent.POOL_HEALTH) >= initial_hp:
 		printerr("TEST FAILED: Enemy did not take immediate damage on contact with fire trap!")
 		get_tree().quit(1)
 		return
-	print("Instant touch damage confirmed on first contact! HP: ", initial_hp, " -> ", enemy_health.current_health)
+	print("Instant touch damage confirmed on first contact! HP: ", initial_hp, " -> ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 
 	# Verify enemy is not hit again within 0.5s (EnemyStun completes and enemy is free to move)
-	var hp_after_first_hit: float = enemy_health.current_health
+	var hp_after_first_hit: float = enemy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	for i: int in range(30): # ~0.5s at 60 FPS
 		await get_tree().physics_frame
-		if enemy_health.current_health < hp_after_first_hit:
+		if enemy_attrs.get_current(AttributeComponent.POOL_HEALTH) < hp_after_first_hit:
 			printerr("TEST FAILED: Enemy took premature lingering damage! Stunlock prevention violated.")
 			get_tree().quit(1)
 			return
@@ -148,15 +148,15 @@ func _ready() -> void:
 	var second_hit := false
 	for i: int in range(110):
 		await get_tree().physics_frame
-		if enemy_health.current_health < hp_after_first_hit:
+		if enemy_attrs.get_current(AttributeComponent.POOL_HEALTH) < hp_after_first_hit:
 			second_hit = true
 			break
 
 	if not second_hit:
-		printerr("TEST FAILED: Lingering enemy did not receive second damage tick after 2.0s interval! HP: ", enemy_health.current_health)
+		printerr("TEST FAILED: Lingering enemy did not receive second damage tick after 2.0s interval! HP: ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("Lingering re-hit tick confirmed after 2.0s interval! HP: ", hp_after_first_hit, " -> ", enemy_health.current_health)
+	print("Lingering re-hit tick confirmed after 2.0s interval! HP: ", hp_after_first_hit, " -> ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 
 	# Move enemy away
 	enemy.global_position = Vector3(-20.0, 1.0, -20.0)
@@ -170,17 +170,17 @@ func _ready() -> void:
 	add_child(player)
 	player.global_position = Vector3(0.0, 1.0, 0.0)
 
-	var player_health: HealthComponent = player.get_node("HealthComponent") as HealthComponent
-	var initial_player_hp: float = player_health.current_health
+	var player_attrs: AttributeComponent = player.get_node("AttributeComponent") as AttributeComponent
+	var initial_player_hp: float = player_attrs.get_current(AttributeComponent.POOL_HEALTH)
 
 	for i: int in range(3):
 		await get_tree().physics_frame
 
-	if player_health.current_health >= initial_player_hp:
+	if player_attrs.get_current(AttributeComponent.POOL_HEALTH) >= initial_player_hp:
 		printerr("TEST FAILED: Player did not take instant contact damage from fire trap!")
 		get_tree().quit(1)
 		return
-	print("Player instant touch damage confirmed! HP: ", initial_player_hp, " -> ", player_health.current_health)
+	print("Player instant touch damage confirmed! HP: ", initial_player_hp, " -> ", player_attrs.get_current(AttributeComponent.POOL_HEALTH))
 
 	player.global_position = Vector3(20.0, 1.0, 20.0)
 

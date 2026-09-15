@@ -1,8 +1,8 @@
 class_name HealthBar
 extends Node3D
 
-## Reference to the health component driving this health bar.
-@export var health_component: HealthComponent
+## AttributeComponent driving this health bar (health pool + max_health stat).
+@export var attribute_component: AttributeComponent
 ## Tint color applied to the front progress bar.
 @export var health_color: Color
 
@@ -11,9 +11,9 @@ extends Node3D
 @onready var sprite_3d: Sprite3D = $Sprite3D
 
 func _ready() -> void:
-	if health_component != null:
-		health_component.health_changed.connect(update_health_value)
-		health_component.defeat.connect(defeat)
+	if attribute_component != null:
+		attribute_component.attribute_changed.connect(_on_attribute_changed)
+		attribute_component.defeat.connect(defeat)
 	front_progress_bar.value = 100.0
 	var fill_style: StyleBoxFlat = front_progress_bar.get_theme_stylebox("fill") as StyleBoxFlat
 	if fill_style != null:
@@ -21,12 +21,23 @@ func _ready() -> void:
 
 var health_tween: Tween
 
+## Refreshes the bar from the attribute health pool when the pool or its max
+## stat changes.
+func _on_attribute_changed(attribute_name: StringName, _value: float) -> void:
+	if attribute_component == null or not is_instance_valid(attribute_component):
+		return
+	if attribute_name == AttributeComponent.POOL_HEALTH or attribute_name == AttributeComponent.STAT_MAX_HEALTH:
+		update_health_value(attribute_component.get_current(AttributeComponent.POOL_HEALTH))
+
 func update_health_value(value_in: float) -> void:
-	if health_component == null or health_component.max_health <= 0.0:
+	if attribute_component == null or not is_instance_valid(attribute_component):
+		return
+	var max_health: float = attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
+	if max_health <= 0.0:
 		return
 	if health_tween and health_tween.is_valid():
 		health_tween.kill()
-	var target_health_percentage: float = (value_in / health_component.max_health) * 100.0
+	var target_health_percentage: float = (value_in / max_health) * 100.0
 	if target_health_percentage < front_progress_bar.value:
 		health_tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 		health_tween.tween_property(health_progress_bar, "value", target_health_percentage, 0.2).from(front_progress_bar.value)

@@ -244,19 +244,16 @@ func _part_health_adapter() -> bool:
 	health.health_changed.connect(func(value: float) -> void: changes.append(value))
 	_defeat_count = 0
 	health.defeat.connect(_on_attr_defeat)
-	var max_val: float = health.max_health
+	var max_val: float = comp.get_current(AttributeComponent.STAT_MAX_HEALTH)
 	var damage: float = 25.0
 	health.take_damage(damage)
-	if not is_equal_approx(health.current_health, max_val - damage):
-		holder.queue_free()
-		return _fail("Adapter damage should reduce the attribute pool relatively.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), max_val - damage):
 		holder.queue_free()
-		return _fail("Attribute pool and adapter reading disagree.")
+		return _fail("Adapter damage should reduce the attribute pool relatively.")
 	if changes.is_empty():
 		holder.queue_free()
 		return _fail("Adapter damage should forward health_changed.")
-	health.current_health = max_val
+	comp.set_pool_current(AttributeComponent.POOL_HEALTH, max_val)
 	if _defeat_count != 0:
 		holder.queue_free()
 		return _fail("Direct pool writes must never emit defeat.")
@@ -266,7 +263,7 @@ func _part_health_adapter() -> bool:
 		return _fail("Lethal adapter damage should forward defeat exactly once.")
 	holder.queue_free()
 	await get_tree().process_frame
-	print("Adapter storage, signals, and defeat forwarding verified.")
+	print("Adapter verb, signals, and defeat forwarding verified.")
 	return true
 
 
@@ -326,7 +323,7 @@ func _part_character_facades() -> bool:
 	if not is_equal_approx(player.get_damage_modifier(), modifier_before * (1.0 + buff)):
 		player.queue_free()
 		return _fail("Attack buffs should scale get_damage_modifier relatively.")
-	var full: float = player.health_component.current_health
+	var full: float = attrs.get_current(AttributeComponent.POOL_HEALTH)
 	var damage: float = 7.0
 	player.health_component.take_damage(damage)
 	if not is_equal_approx(attrs.get_current(AttributeComponent.POOL_HEALTH), full - damage):
@@ -356,12 +353,12 @@ func _part_scene_parity() -> bool:
 			character.queue_free()
 			return _fail("Scene %s wires no AttributeComponent." % scene_path)
 		var attrs: AttributeComponent = character.attribute_component
-		if not is_equal_approx(character.health_component.max_health, attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)):
+		if not is_equal_approx(attrs.get_base(AttributeComponent.STAT_MAX_HEALTH), attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)):
 			character.queue_free()
-			return _fail("Scene %s max_health drifted from its attribute base." % scene_path)
-		if not is_equal_approx(character.health_component.current_health, attrs.get_current(AttributeComponent.POOL_HEALTH)):
+			return _fail("Scene %s max_health base drifted from its current value." % scene_path)
+		if not is_equal_approx(attrs.get_current(AttributeComponent.POOL_HEALTH), attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)):
 			character.queue_free()
-			return _fail("Scene %s health pool drifted from its adapter." % scene_path)
+			return _fail("Scene %s health pool did not spawn full." % scene_path)
 		if not is_equal_approx(character.movement_speed, attrs.get_current(AttributeComponent.STAT_SPEED)):
 			character.queue_free()
 			return _fail("Scene %s movement_speed drifted from its attribute base." % scene_path)

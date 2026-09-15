@@ -10,10 +10,10 @@ func _ready() -> void:
 	
 	var player: Character = level.get_node("Player") as Character
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
-	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
+	var dummy_attrs: AttributeComponent = dummy.get_node("AttributeComponent") as AttributeComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
 	
-	var initial_health: float = health_comp.current_health
+	var initial_health: float = dummy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	print("Dummy initial health: ", initial_health)
 	
 	# Wait for player to land on floor in PlayerRun state
@@ -51,13 +51,13 @@ func _ready() -> void:
 	var hit := false
 	for i: int in range(80):
 		await get_tree().physics_frame
-		if health_comp.current_health < initial_health:
+		if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) < initial_health:
 			hit = true
-			print("HIT CONFIRMED! Dummy health reduced to: ", health_comp.current_health, " on frame ", i)
+			print("HIT CONFIRMED! Dummy health reduced to: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), " on frame ", i)
 			break
 			
-	print("Final Health: ", health_comp.current_health)
-	if hit and is_equal_approx(health_comp.current_health, initial_health - attack_damage):
+	print("Final Health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
+	if hit and is_equal_approx(dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), initial_health - attack_damage):
 		print("================================")
 		print("  ALL TESTS PASSED (100% OK)    ")
 		print("================================")
@@ -66,7 +66,7 @@ func _ready() -> void:
 		await get_tree().process_frame
 		get_tree().quit(0)
 	else:
-		printerr("TEST FAILED: Health was not reduced as expected. Got: ", health_comp.current_health)
+		printerr("TEST FAILED: Health was not reduced as expected. Got: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		level.queue_free()
 		await get_tree().process_frame
 		await get_tree().process_frame

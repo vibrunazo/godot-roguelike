@@ -39,7 +39,7 @@ func _evaluate_state_triggers(delta: float) -> void:
 
 ## Returns the active target, finding the closest living member of target_group if needed.
 func get_target() -> Character:
-	if target != null and is_instance_valid(target) and target.health_component != null and target.health_component.current_health > 0.0:
+	if target != null and is_instance_valid(target) and target.is_alive():
 		return target
 	if character != null:
 		target = character.get_nearest_target(target_group)

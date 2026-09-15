@@ -257,12 +257,13 @@ func _on_target_defeat() -> void:
 	_retarget_timer = 0.0
 
 
-## Returns true if the character is alive (current_health > 0 and not defeated).
+## Returns true if the character is alive (attribute health pool above zero and
+## not defeated). Health values live in the AttributeComponent alone.
 func is_alive() -> bool:
 	if _is_defeated:
 		return false
-	if health_component != null:
-		return health_component.current_health > 0.0
+	if attribute_component != null and is_instance_valid(attribute_component):
+		return attribute_component.is_alive()
 	return true
 
 
@@ -341,7 +342,7 @@ func get_nearest_target(group_name: String = "") -> Character:
 		if node == self or not (node is Character):
 			continue
 		var target_char: Character = node as Character
-		if target_char.health_component != null and target_char.health_component.current_health <= 0.0:
+		if not target_char.is_alive():
 			continue
 		var dist_sq: float = global_position.distance_squared_to(target_char.global_position)
 		if dist_sq < min_distance_sq:

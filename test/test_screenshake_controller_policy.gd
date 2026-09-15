@@ -99,8 +99,8 @@ func _ready() -> void:
 	await get_tree().physics_frame
 
 	var enemy_hurtbox: Hurtbox = melee_enemy.get_node("Hurtbox") as Hurtbox
-	var enemy_health: HealthComponent = melee_enemy.health_component
-	var enemy_hp_before: float = enemy_health.current_health
+	var melee_attrs: AttributeComponent = melee_enemy.attribute_component
+	var enemy_hp_before: float = melee_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	var enemy_hit: bool = spikes.attack_component.deal_damage_to(enemy_hurtbox, 5.0, Vector3.ZERO)
 	if not enemy_hit:
 		printerr("TEST FAILED: Spikes could not deal damage to melee_enemy.")
@@ -108,7 +108,7 @@ func _ready() -> void:
 		return
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if enemy_health.current_health >= enemy_hp_before:
+	if melee_attrs.get_current(AttributeComponent.POOL_HEALTH) >= enemy_hp_before:
 		printerr("TEST FAILED: Enemy did not take damage from spikes.")
 		get_tree().quit(1)
 		return
@@ -116,13 +116,13 @@ func _ready() -> void:
 		printerr("TEST FAILED: Camera trauma occurred when enemy took damage from spikes! Trauma: ", camera.trauma)
 		get_tree().quit(1)
 		return
-	print("Enemy damaged by trap with ZERO camera trauma verified! (HP: ", enemy_hp_before, " -> ", enemy_health.current_health, ", trauma: ", camera.trauma, ")")
+	print("Enemy damaged by trap with ZERO camera trauma verified! (HP: ", enemy_hp_before, " -> ", melee_attrs.get_current(AttributeComponent.POOL_HEALTH), ", trauma: ", camera.trauma, ")")
 
 	# Even if an attack component on a trap had shake_on_damage forcefully enabled,
 	# without a ScreenShakeComponent on the trap or enemy, zero camera trauma occurs!
 	spikes.attack_component.shake_on_damage = true
 	spikes.attack_component.reset_exceptions()
-	enemy_hp_before = enemy_health.current_health
+	enemy_hp_before = melee_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	spikes.attack_component.deal_damage_to(enemy_hurtbox, 5.0, Vector3.ZERO)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -143,8 +143,8 @@ func _ready() -> void:
 	await get_tree().physics_frame
 
 	var player_hurtbox: Hurtbox = player.get_node("Hurtbox") as Hurtbox
-	var player_health: HealthComponent = player.health_component
-	var player_hp_before: float = player_health.current_health
+	var player_attrs: AttributeComponent = player.attribute_component
+	var player_hp_before: float = player_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	spikes.attack_component.reset_exceptions()
 	var player_hit: bool = spikes.attack_component.deal_damage_to(player_hurtbox, 5.0, Vector3.ZERO)
 	if not player_hit:
@@ -153,7 +153,7 @@ func _ready() -> void:
 		return
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if player_health.current_health >= player_hp_before:
+	if player_attrs.get_current(AttributeComponent.POOL_HEALTH) >= player_hp_before:
 		printerr("TEST FAILED: Player did not take damage from spikes.")
 		get_tree().quit(1)
 		return
@@ -175,8 +175,8 @@ func _ready() -> void:
 	player_att.reset_exceptions()
 	player_att.shake_on_damage = true
 	var dummy_hurtbox: Hurtbox = dummy.get_node("Hurtbox") as Hurtbox
-	var dummy_health: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
-	var dummy_hp_before: float = dummy_health.current_health
+	var dummy_attrs: AttributeComponent = dummy.get_node("AttributeComponent") as AttributeComponent
+	var dummy_hp_before: float = dummy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	var deal_success: bool = player_att.deal_damage_to(dummy_hurtbox, 5.0, Vector3.ZERO)
 	if not deal_success:
 		printerr("TEST FAILED: Player could not deal damage to dummy.")
@@ -184,7 +184,7 @@ func _ready() -> void:
 		return
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if dummy_health.current_health >= dummy_hp_before:
+	if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) >= dummy_hp_before:
 		printerr("TEST FAILED: Dummy health was not reduced.")
 		get_tree().quit(1)
 		return
@@ -207,8 +207,7 @@ func _ready() -> void:
 	if enemy_att != null:
 		enemy_att.reset_exceptions()
 		var brute_hurtbox: Hurtbox = brute_enemy.get_node("Hurtbox") as Hurtbox
-		var brute_health: HealthComponent = brute_enemy.health_component
-		var brute_hp_before: float = brute_health.current_health
+		var brute_hp_before: float = brute_enemy.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 		enemy_att.deal_damage_to(brute_hurtbox, 5.0, Vector3.ZERO)
 		await get_tree().process_frame
 		await get_tree().process_frame

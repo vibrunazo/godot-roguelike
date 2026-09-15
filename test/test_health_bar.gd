@@ -24,13 +24,13 @@ func _ready() -> void:
 		return
 	print("HealthBar found on Player.")
 	
-	# Check health_component assignment
-	if health_bar.health_component != player.health_component:
-		printerr("TEST FAILED: HealthBar health_component not assigned to Player.HealthComponent.")
+	# Check attribute_component assignment
+	if health_bar.attribute_component != player.attribute_component:
+		printerr("TEST FAILED: HealthBar attribute_component not assigned to Player.AttributeComponent.")
 		player.queue_free()
 		get_tree().quit(1)
 		return
-	print("HealthBar health_component assignment verified.")
+	print("HealthBar attribute_component assignment verified.")
 	
 	# ---------------------------------------------------------
 	# PART 2: Scene Internal Structure & Properties
@@ -130,11 +130,12 @@ func _ready() -> void:
 	# ---------------------------------------------------------
 	print("\n>>> PART 3: Testing Health Damage Animation & Tweening")
 	# Deal 25% max_health damage -> current health 75%
-	var dmg_step: float = player.health_component.max_health * 0.25
+	var player_attrs: AttributeComponent = player.attribute_component
+	var dmg_step: float = player_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH) * 0.25
 	player.health_component.take_damage(dmg_step)
 	await get_tree().process_frame
 	
-	var expected_pct_1: float = (player.health_component.current_health / player.health_component.max_health) * 100.0
+	var expected_pct_1: float = (player_attrs.get_current(AttributeComponent.POOL_HEALTH) / player_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)) * 100.0
 	# Front bar should snap immediately to expected percentage
 	print("Front bar value immediately after damage: ", front_bar.value)
 	if not is_equal_approx(front_bar.value, expected_pct_1):
@@ -167,7 +168,7 @@ func _ready() -> void:
 	# Deal another 25% damage -> current health 50%
 	player.health_component.take_damage(dmg_step)
 	await get_tree().process_frame
-	var expected_pct_2: float = (player.health_component.current_health / player.health_component.max_health) * 100.0
+	var expected_pct_2: float = (player_attrs.get_current(AttributeComponent.POOL_HEALTH) / player_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)) * 100.0
 	if not is_equal_approx(front_bar.value, expected_pct_2):
 		printerr("TEST FAILED: FrontProgressBar did not snap to ", expected_pct_2, ". Got: ", front_bar.value)
 		player.queue_free()
@@ -198,6 +199,7 @@ func _ready() -> void:
 	
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level)
 	var dummy_health: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
+	var dummy_attrs: AttributeComponent = dummy.get_node("AttributeComponent") as AttributeComponent
 	var dummy_health_bar: HealthBar = dummy.get_node_or_null("HealthBar") as HealthBar
 	
 	if dummy_health_bar == null:
@@ -207,15 +209,15 @@ func _ready() -> void:
 		return
 	print("Enemy HealthBar found in LevelTemplate.")
 	
-	if dummy_health_bar.health_component != dummy_health:
-		printerr("TEST FAILED: Enemy HealthBar health_component not wired to dummy HealthComponent.")
+	if dummy_health_bar.attribute_component != dummy_attrs:
+		printerr("TEST FAILED: Enemy HealthBar attribute_component not wired to dummy AttributeComponent.")
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("Enemy HealthBar health_component assignment verified.")
+	print("Enemy HealthBar attribute_component assignment verified.")
 	
 	# Trigger defeat on dummy
-	dummy_health.take_damage(dummy_health.max_health)
+	dummy_health.take_damage(dummy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH))
 	await get_tree().process_frame
 	
 	# Mid-fade check: transparency should be animating towards 1.0

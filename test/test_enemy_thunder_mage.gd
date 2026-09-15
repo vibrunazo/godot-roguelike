@@ -82,17 +82,17 @@ func _ready() -> void:
 	mage.global_position = Vector3(0.0, 1.0, 0.0)
 	await get_tree().process_frame
 
-	if mage.health_component == null:
-		printerr("TEST FAILED: HealthComponent missing on EnemyThunderMage.")
+	if mage.attribute_component == null:
+		printerr("TEST FAILED: AttributeComponent missing on EnemyThunderMage.")
 		mage.queue_free()
 		get_tree().quit(1)
 		return
-	if mage.health_component.max_health <= 0.0:
-		printerr("TEST FAILED: Expected max_health > 0.0, got: ", mage.health_component.max_health)
+	if mage.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) <= 0.0:
+		printerr("TEST FAILED: Expected max_health > 0.0, got: ", mage.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
 		mage.queue_free()
 		get_tree().quit(1)
 		return
-	print("[OK] HealthComponent and max_health (", mage.health_component.max_health, ") verified.")
+	print("[OK] HealthComponent and max_health (", mage.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH), ") verified.")
 
 	var spawner: ProjectileSpawnerComponent = mage.get_node_or_null("ProjectileSpawnerComponent") as ProjectileSpawnerComponent
 	if spawner == null:
@@ -310,8 +310,8 @@ func _ready() -> void:
 	player.global_position = Vector3(0.0, 1.0, 3.0)
 	await get_tree().physics_frame
 
-	var p_health: HealthComponent = player.health_component
-	var hp_before: float = p_health.current_health
+	var p_attrs: AttributeComponent = player.attribute_component
+	var hp_before: float = p_attrs.get_current(AttributeComponent.POOL_HEALTH)
 
 	var flight_bolt: LightningBoltProjectile = proj_scene.instantiate() as LightningBoltProjectile
 	add_child(flight_bolt)
@@ -320,23 +320,23 @@ func _ready() -> void:
 	var hit_detected: bool = false
 	for i: int in range(10):
 		await get_tree().physics_frame
-		if p_health.current_health < hp_before:
+		if p_attrs.get_current(AttributeComponent.POOL_HEALTH) < hp_before:
 			hit_detected = true
 			break
 
 	if not hit_detected:
-		printerr("TEST FAILED: Player did not receive damage from LightningBoltProjectile! HP: ", p_health.current_health)
+		printerr("TEST FAILED: Player did not receive damage from LightningBoltProjectile! HP: ", p_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		player.queue_free()
 		get_tree().quit(1)
 		return
 
-	var damage_taken: float = hp_before - p_health.current_health
+	var damage_taken: float = hp_before - p_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	if not is_equal_approx(damage_taken, flight_bolt.damage):
 		printerr("TEST FAILED: Expected ", flight_bolt.damage, " damage, player took: ", damage_taken)
 		player.queue_free()
 		get_tree().quit(1)
 		return
-	print("[OK] Player received exactly ", flight_bolt.damage, " lightning bolt damage (HP: ", hp_before, " -> ", p_health.current_health, ").")
+	print("[OK] Player received exactly ", flight_bolt.damage, " lightning bolt damage (HP: ", hp_before, " -> ", p_attrs.get_current(AttributeComponent.POOL_HEALTH), ").")
 	player.queue_free()
 	await get_tree().process_frame
 

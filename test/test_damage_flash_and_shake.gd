@@ -74,14 +74,14 @@ func _ready() -> void:
 	# ---------------------------------------------------------
 	print("\n>>> PART 2: Testing Player Hurt Flash & Shake")
 	camera.trauma = 0.0
-	var initial_health: float = player.health_component.current_health
+	var initial_health: float = player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	
 	# Trigger damage programmatically via health_component
 	player.health_component.take_damage(5.0)
 	await get_tree().process_frame
 	
-	print("Health after damage: ", player.health_component.current_health, " (took 5.0 damage)")
-	if player.health_component.current_health != initial_health - 5.0:
+	print("Health after damage: ", player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), " (took 5.0 damage)")
+	if player.attribute_component.get_current(AttributeComponent.POOL_HEALTH) != initial_health - 5.0:
 		printerr("TEST FAILED: Health not reduced as expected.")
 		get_tree().quit(1)
 		return

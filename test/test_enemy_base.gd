@@ -214,26 +214,31 @@ func _ready() -> void:
 		printerr("TEST FAILED: HealthComponent node not found on Enemy.")
 		get_tree().quit(1)
 		return
-	if health_comp.max_health <= 0.0:
-		printerr("TEST FAILED: Expected max_health > 0.0, got: ", health_comp.max_health)
+	var enemy_attrs: AttributeComponent = enemy.get_node_or_null("AttributeComponent") as AttributeComponent
+	if enemy_attrs == null:
+		printerr("TEST FAILED: AttributeComponent node not found on Enemy.")
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(health_comp.current_health, health_comp.max_health):
-		printerr("TEST FAILED: Expected current_health == max_health (", health_comp.max_health, "), got: ", health_comp.current_health)
+	if enemy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH) <= 0.0:
+		printerr("TEST FAILED: Expected max_health > 0.0, got: ", enemy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH))
 		get_tree().quit(1)
 		return
-	print("HealthComponent verified (max_health: ", health_comp.max_health, ", current_health: ", health_comp.current_health, ").")
-	
+	if not is_equal_approx(enemy_attrs.get_current(AttributeComponent.POOL_HEALTH), enemy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)):
+		printerr("TEST FAILED: Expected health pool == max_health (", enemy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH), "), got: ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
+		get_tree().quit(1)
+		return
+	print("Attribute health verified (max_health: ", enemy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH), ", health: ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH), ").")
+
 	var health_bar: HealthBar = enemy.get_node_or_null("HealthBar") as HealthBar
 	if health_bar == null:
 		printerr("TEST FAILED: HealthBar node not found on Enemy.")
 		get_tree().quit(1)
 		return
-	if health_bar.health_component != health_comp:
-		printerr("TEST FAILED: HealthBar.health_component is not wired to Enemy HealthComponent.")
+	if health_bar.attribute_component != enemy_attrs:
+		printerr("TEST FAILED: HealthBar.attribute_component is not wired to Enemy AttributeComponent.")
 		get_tree().quit(1)
 		return
-	print("HealthBar health_component reference verified.")
+	print("HealthBar attribute_component reference verified.")
 	
 	# ---------------------------------------------------------
 	# PART 4: StateMachine, EnemyMove, EnemyStun & AIStateMachine Verification
@@ -394,7 +399,7 @@ func _ready() -> void:
 	# Test taking damage triggers HitAudio AND transitions to EnemyStun
 	hit_audio.stop()
 	var test_dmg: float = 10.0
-	var prev_hp: float = health_comp.current_health
+	var prev_hp: float = enemy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	health_comp.take_damage(test_dmg)
 	await get_tree().process_frame
 	if not hit_audio.playing:
@@ -402,8 +407,8 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("HitAudio playback confirmed on taking damage.")
-	if not is_equal_approx(health_comp.current_health, prev_hp - test_dmg):
-		printerr("TEST FAILED: Health not reduced after damage. Expected: ", prev_hp - test_dmg, ", Got: ", health_comp.current_health)
+	if not is_equal_approx(enemy_attrs.get_current(AttributeComponent.POOL_HEALTH), prev_hp - test_dmg):
+		printerr("TEST FAILED: Health not reduced after damage. Expected: ", prev_hp - test_dmg, ", Got: ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
 	print("Health reduced dynamically as expected.")
@@ -430,7 +435,7 @@ func _ready() -> void:
 		enemy.defeat.connect(func() -> void: enemy_defeat_emitted[0] = true)
 	var defeat_emitted: Array[bool] = [false]
 	health_comp.defeat.connect(func() -> void: defeat_emitted[0] = true)
-	health_comp.take_damage(health_comp.current_health)
+	health_comp.take_damage(enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 	await get_tree().process_frame
 	if not enemy_defeat_emitted[0]:
 		printerr("TEST FAILED: Enemy defeat signal was not emitted when health reached 0.")
@@ -749,7 +754,7 @@ func _ready() -> void:
 	var cached_player: Character = cached_player_scene.instantiate() as Character
 	scene_trans.add_child(cached_player)
 	cached_player.process_mode = Node.PROCESS_MODE_DISABLED
-	cached_player.health_component.current_health = 42.0
+	cached_player.attribute_component.set_pool_current(AttributeComponent.POOL_HEALTH, 42.0)
 	scene_trans.player_cache = cached_player
 
 	var test_level: Node3D = level_scene.instantiate() as Node3D
@@ -768,7 +773,7 @@ func _ready() -> void:
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	if cached_player.health_component.current_health != 42.0:
+	if not is_equal_approx(cached_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), 42.0):
 		printerr("TEST FAILED: Cached player health was not preserved across level load.")
 		test_level.queue_free()
 		cached_player.queue_free()
@@ -794,13 +799,13 @@ func _ready() -> void:
 		return
 	print("Enemy instance found in LevelTemplate via WaveObjective: ", level_enemy.name)
 	
-	var level_enemy_health: HealthComponent = level_enemy.get_node_or_null("HealthComponent") as HealthComponent
-	if level_enemy_health == null or level_enemy_health.max_health <= 0.0:
-		printerr("TEST FAILED: LevelTemplate Enemy HealthComponent missing or invalid max_health.")
+	var level_enemy_attrs: AttributeComponent = level_enemy.get_node_or_null("AttributeComponent") as AttributeComponent
+	if level_enemy_attrs == null or level_enemy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH) <= 0.0:
+		printerr("TEST FAILED: LevelTemplate Enemy AttributeComponent missing or invalid max_health.")
 		level.queue_free()
 		get_tree().quit(1)
 		return
-	print("LevelTemplate Enemy HealthComponent confirmed with ", level_enemy_health.max_health, " max health.")
+	print("LevelTemplate Enemy attributes confirmed with ", level_enemy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH), " max health.")
 
 	var nav_region: NavigationRegion3D = level.get_node_or_null("NavigationRegion3D") as NavigationRegion3D
 
@@ -1443,8 +1448,8 @@ func _ready() -> void:
 	spawned_proj.queue_free()
 
 	# Test projectile collision & damage dealing
-	var target_health: HealthComponent = test_player.get_node_or_null("HealthComponent") as HealthComponent
-	var initial_health: float = target_health.current_health
+	var target_attrs: AttributeComponent = test_player.get_node_or_null("AttributeComponent") as AttributeComponent
+	var initial_health: float = target_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	# Place projectile directly at test_player to trigger Area3D collision
 	var child_count_before: int = get_child_count()
 	var hit_proj: EnemyProjectile = proj_scene.instantiate() as EnemyProjectile
@@ -1476,14 +1481,14 @@ func _ready() -> void:
 	spawned_hit.queue_free()
 	print("Projectile hit_effect() spawned FireballHit at projectile position verified.")
 
-	if not is_equal_approx(target_health.current_health, initial_health - hit_proj.damage):
-		printerr("TEST FAILED: Target health was not reduced by projectile damage. Expected ", initial_health - hit_proj.damage, ", got ", target_health.current_health)
+	if not is_equal_approx(target_attrs.get_current(AttributeComponent.POOL_HEALTH), initial_health - hit_proj.damage):
+		printerr("TEST FAILED: Target health was not reduced by projectile damage. Expected ", initial_health - hit_proj.damage, ", got ", target_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		shooter.queue_free()
 		test_player.queue_free()
 		hit_proj.queue_free()
 		get_tree().quit(1)
 		return
-	print("Projectile dealt damage via AttackComponent verified! Health: ", target_health.current_health)
+	print("Projectile dealt damage via AttackComponent verified! Health: ", target_attrs.get_current(AttributeComponent.POOL_HEALTH))
 
 	if not hit_proj.is_queued_for_deletion():
 		printerr("TEST FAILED: Projectile was not queued for deletion on collision.")
@@ -1959,7 +1964,7 @@ func _ready() -> void:
 	var player_scene_hp: PackedScene = load("res://Player/player.tscn")
 	var hp_player: Character = player_scene_hp.instantiate() as Character
 	add_child(hp_player)
-	hp_player.health_component.take_damage(hp_player.health_component.max_health * 0.25)
+	hp_player.health_component.take_damage(hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) * 0.25)
 	add_child(health_icon)
 	await get_tree().process_frame
 
@@ -1968,15 +1973,15 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	var expected_hp_desc: String = health_res.text_template % [int(hp_player.health_component.max_health), int(hp_player.health_component.max_health + health_res.stat_bonus)]
+	var expected_hp_desc: String = health_res.text_template % [int(hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)), int(hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) + health_res.stat_bonus)]
 	if health_icon.description.text != expected_hp_desc:
 		printerr("TEST FAILED: UpgradeHealth description.text did not match formatted template. Got: '", health_icon.description.text, "', expected: '", expected_hp_desc, "'")
 		get_tree().quit(1)
 		return
 	print("UpgradeHealth setup_label() text formatting verified: ", health_icon.description.text)
 
-	var initial_max_health: float = hp_player.health_component.max_health
-	var initial_current_health: float = hp_player.health_component.current_health
+	var initial_max_health: float = hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
+	var initial_current_health: float = hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	var health_taken_emitted: Array[UpgradeIcon] = []
 	health_icon.upgrade_taken.connect(func(taken_icon: UpgradeIcon) -> void: health_taken_emitted.append(taken_icon))
 	health_icon.take_upgrade()
@@ -1985,15 +1990,15 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("UpgradeHealth upgrade_taken signal emission verified.")
-	if not is_equal_approx(hp_player.health_component.max_health, initial_max_health + health_res.stat_bonus):
-		printerr("TEST FAILED: take_upgrade did not increase max_health by ", health_res.stat_bonus, ". Got: ", hp_player.health_component.max_health)
+	if not is_equal_approx(hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH), initial_max_health + health_res.stat_bonus):
+		printerr("TEST FAILED: take_upgrade did not increase max_health by ", health_res.stat_bonus, ". Got: ", hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(hp_player.health_component.current_health, initial_current_health + health_res.stat_bonus):
-		printerr("TEST FAILED: take_upgrade did not increase current_health by ", health_res.stat_bonus, ". Got: ", hp_player.health_component.current_health)
+	if not is_equal_approx(hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), initial_current_health + health_res.stat_bonus):
+		printerr("TEST FAILED: take_upgrade did not increase current_health by ", health_res.stat_bonus, ". Got: ", hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("take_upgrade() successfully increased max_health to ", hp_player.health_component.max_health, " and current_health to ", hp_player.health_component.current_health)
+	print("take_upgrade() successfully increased max_health to ", hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH), " and current_health to ", hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
 
 	# Verify player HealthBar updated immediately
 	var player_health_bar: HealthBar = hp_player.get_node_or_null("HealthBar") as HealthBar
@@ -2001,7 +2006,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: HealthBar node not found on hp_player")
 		get_tree().quit(1)
 		return
-	var expected_hp_pct: float = (hp_player.health_component.current_health / hp_player.health_component.max_health) * 100.0
+	var expected_hp_pct: float = (hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH) / hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)) * 100.0
 	if not is_equal_approx(player_health_bar.front_progress_bar.value, expected_hp_pct):
 		printerr("TEST FAILED: HealthBar front_progress_bar.value did not update immediately upon health upgrade! Expected ", expected_hp_pct, ", got: ", player_health_bar.front_progress_bar.value)
 		get_tree().quit(1)
@@ -2020,8 +2025,8 @@ func _ready() -> void:
 	# Verify multi-click guard prevents repeated health increases
 	health_icon.take_upgrade()
 	health_icon.texture_button.pressed.emit()
-	if not is_equal_approx(hp_player.health_component.max_health, initial_max_health + health_res.stat_bonus):
-		printerr("TEST FAILED: health_icon applied bonus again while disabled! max_health: ", hp_player.health_component.max_health)
+	if not is_equal_approx(hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH), initial_max_health + health_res.stat_bonus):
+		printerr("TEST FAILED: health_icon applied bonus again while disabled! max_health: ", hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
 		get_tree().quit(1)
 		return
 	print("UpgradeHealth multiple click prevention verified.")
@@ -2050,11 +2055,11 @@ func _ready() -> void:
 	var player_scene_potion: PackedScene = load("res://Player/player.tscn")
 	var potion_player: Character = player_scene_potion.instantiate() as Character
 	add_child(potion_player)
-	var pot_max_hp: float = potion_player.health_component.max_health
+	var pot_max_hp: float = potion_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
 	var pot_heal_amount: float = pot_max_hp * (potion_res.stat_bonus / 100.0)
 	var pot_dmg: float = clampf(pot_heal_amount + (pot_max_hp * 0.1), pot_heal_amount + 1.0, pot_max_hp - 1.0)
 	potion_player.health_component.take_damage(pot_dmg)
-	var hp_before_heal: float = potion_player.health_component.current_health
+	var hp_before_heal: float = potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	add_child(potion_icon)
 	await get_tree().process_frame
 
@@ -2079,15 +2084,15 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("UpgradePotion upgrade_taken signal emission verified.")
-	if not is_equal_approx(potion_player.health_component.max_health, pot_max_hp):
-		printerr("TEST FAILED: take_upgrade should not change max_health. Got: ", potion_player.health_component.max_health)
+	if not is_equal_approx(potion_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH), pot_max_hp):
+		printerr("TEST FAILED: take_upgrade should not change max_health. Got: ", potion_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(potion_player.health_component.current_health, hp_before_heal + pot_heal_amount):
-		printerr("TEST FAILED: take_upgrade did not heal correctly. Got: ", potion_player.health_component.current_health, ", expected: ", hp_before_heal + pot_heal_amount)
+	if not is_equal_approx(potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), hp_before_heal + pot_heal_amount):
+		printerr("TEST FAILED: take_upgrade did not heal correctly. Got: ", potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), ", expected: ", hp_before_heal + pot_heal_amount)
 		get_tree().quit(1)
 		return
-	print("take_upgrade() successfully healed player from ", hp_before_heal, " to ", potion_player.health_component.current_health)
+	print("take_upgrade() successfully healed player from ", hp_before_heal, " to ", potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
 
 	# Verify player HealthBar updated immediately
 	var potion_health_bar: HealthBar = potion_player.get_node_or_null("HealthBar") as HealthBar
@@ -2109,16 +2114,16 @@ func _ready() -> void:
 	# Verify multi-click guard prevents repeated heals
 	potion_icon.take_upgrade()
 	potion_icon.texture_button.pressed.emit()
-	if not is_equal_approx(potion_player.health_component.current_health, hp_before_heal + pot_heal_amount):
-		printerr("TEST FAILED: potion_icon applied heal again while disabled! current_health: ", potion_player.health_component.current_health)
+	if not is_equal_approx(potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), hp_before_heal + pot_heal_amount):
+		printerr("TEST FAILED: potion_icon applied heal again while disabled! current_health: ", potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
 	print("UpgradePotion multiple click prevention verified.")
 
 	# Verify cap at max_health
 	potion_res.apply(potion_player) # Heals again, should cap at max_health
-	if not is_equal_approx(potion_player.health_component.current_health, pot_max_hp):
-		printerr("TEST FAILED: Potion heal did not cap at max_health! current_health: ", potion_player.health_component.current_health)
+	if not is_equal_approx(potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), pot_max_hp):
+		printerr("TEST FAILED: Potion heal did not cap at max_health! current_health: ", potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
 	print("UpgradePotion max_health cap verified (healed and capped at max ", pot_max_hp, ").")
@@ -2897,8 +2902,9 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	var enemy_health_p34: HealthComponent = team_enemy_target.get_node("HealthComponent") as HealthComponent
-	if not is_equal_approx(enemy_health_p34.current_health, enemy_health_p34.max_health):
-		printerr("TEST FAILED: Melee enemy damaged another enemy (friendly fire). Health: ", enemy_health_p34.current_health)
+	var enemy_p34_attrs: AttributeComponent = team_enemy_target.get_node("AttributeComponent") as AttributeComponent
+	if not is_equal_approx(enemy_p34_attrs.get_current(AttributeComponent.POOL_HEALTH), enemy_p34_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)):
+		printerr("TEST FAILED: Melee enemy damaged another enemy (friendly fire). Health: ", enemy_p34_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		team_attacker.queue_free()
 		team_enemy_target.queue_free()
 		team_player_target.queue_free()
@@ -2906,7 +2912,8 @@ func _ready() -> void:
 		return
 	print("Melee friendly-fire blocked verified (enemy health unchanged).")
 	var player_health_p34: HealthComponent = team_player_target.get_node("HealthComponent") as HealthComponent
-	if player_health_p34.current_health >= player_health_p34.max_health:
+	var player_p34_attrs: AttributeComponent = team_player_target.get_node("AttributeComponent") as AttributeComponent
+	if player_p34_attrs.get_current(AttributeComponent.POOL_HEALTH) >= player_p34_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH):
 		printerr("TEST FAILED: Melee enemy did not damage the player.")
 		team_attacker.queue_free()
 		team_enemy_target.queue_free()
@@ -2919,7 +2926,7 @@ func _ready() -> void:
 	var enemy_hurtbox_p34: Hurtbox = team_enemy_target.get_node("Hurtbox") as Hurtbox
 	enemy_health_p34.take_damage(9999.0)
 	await get_tree().physics_frame
-	var health_after_kill: float = enemy_health_p34.current_health
+	var health_after_kill: float = enemy_p34_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	team_att.reset_exceptions()
 	if enemy_hurtbox_p34.receive_hit(8.0, Vector3.ZERO):
 		printerr("TEST FAILED: Dead enemy accepted receive_hit.")
@@ -2935,7 +2942,7 @@ func _ready() -> void:
 		team_player_target.queue_free()
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(enemy_health_p34.current_health, health_after_kill):
+	if not is_equal_approx(enemy_p34_attrs.get_current(AttributeComponent.POOL_HEALTH), health_after_kill):
 		printerr("TEST FAILED: Dead enemy health changed after rejected hits.")
 		team_attacker.queue_free()
 		team_enemy_target.queue_free()
@@ -3015,7 +3022,7 @@ func _ready() -> void:
 	print("EnemyProjectile ignored corpse verified (did not detonate).")
 
 	# Move projectile onto living target to verify it still hits live entities
-	var target_initial_hp: float = living_target.health_component.current_health
+	var target_initial_hp: float = living_target.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	corpse_proj.global_position = living_target.global_position
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -3028,7 +3035,7 @@ func _ready() -> void:
 		living_target.queue_free()
 		get_tree().quit(1)
 		return
-	if living_target.health_component.current_health >= target_initial_hp:
+	if living_target.attribute_component.get_current(AttributeComponent.POOL_HEALTH) >= target_initial_hp:
 		printerr("TEST FAILED: Living target took no damage from projectile.")
 		corpse_enemy.queue_free()
 		living_target.queue_free()

@@ -145,7 +145,7 @@ func test_part_2_team_targeting() -> void:
 	print("Enemy nearest player resolved correctly.")
 	
 	# Defeating enemy1 should cause player to now resolve enemy2
-	enemy1.health_component.current_health = 0.0
+	enemy1.attribute_component.set_pool_current(AttributeComponent.POOL_HEALTH, 0.0)
 	var new_target_for_player: Character = player.get_nearest_target("enemy")
 	if new_target_for_player != enemy2:
 		printerr("TEST FAILED: Player did not ignore defeated enemy1. Got: ", new_target_for_player)
@@ -560,7 +560,7 @@ func test_part_8_defeat_inactivity_and_rotation_lock() -> void:
 		return
 
 	# Defeat the enemy
-	melee_enemy.health_component.take_damage(melee_enemy.health_component.max_health)
+	melee_enemy.health_component.take_damage(melee_enemy.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
 	await get_tree().process_frame
 
 	if melee_enemy.is_alive():

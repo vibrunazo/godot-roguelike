@@ -174,9 +174,6 @@ omni_range = 2.5
 parameters/MeleeAttack/TimeScale/scale = 1.0
 parameters/RangedAttack/TimeScale/scale = 1.0
 
-[node name="HealthComponent" parent="." index="2" unique_id=1014190827]
-max_health = 70.0
-
 [node name="AttributeComponent" parent="." index="11" unique_id=271828460]
 base_max_health = 70.0
 

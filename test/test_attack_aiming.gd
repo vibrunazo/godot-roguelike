@@ -11,7 +11,7 @@ func _ready() -> void:
 	var player: Character = level.get_node("Player") as Character
 	var player_input: PlayerInputComponent = player.get_node("PlayerInputComponent") as PlayerInputComponent
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
-	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
+	var dummy_attrs: AttributeComponent = dummy.get_node("AttributeComponent") as AttributeComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
 	
 	# Wait for player to settle in PlayerRun on floor
@@ -111,7 +111,7 @@ func _ready() -> void:
 	
 	# Position dummy 2.3 meters to the right (+X)
 	dummy.global_position = Vector3(2.3, player.global_position.y, 0)
-	var initial_health: float = health_comp.current_health
+	var initial_health: float = dummy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	print("Dummy initial health: ", initial_health)
 	
 	for i: int in range(60):
@@ -165,13 +165,13 @@ func _ready() -> void:
 	var hit_confirmed := false
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - expected_damage:
+		if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) <= initial_health - expected_damage:
 			hit_confirmed = true
-			print("HIT CONFIRMED via mouse aim on frame ", i, "! Dummy health: ", health_comp.current_health)
+			print("HIT CONFIRMED via mouse aim on frame ", i, "! Dummy health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 			break
 			
-	if not hit_confirmed or not is_equal_approx(health_comp.current_health, initial_health - expected_damage):
-		printerr("TEST FAILED: Aimed attack did not hit dummy. Health: ", health_comp.current_health)
+	if not hit_confirmed or not is_equal_approx(dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), initial_health - expected_damage):
+		printerr("TEST FAILED: Aimed attack did not hit dummy. Health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		level.queue_free()
 		await get_tree().physics_frame
 		get_tree().quit(1)
@@ -187,7 +187,7 @@ func _ready() -> void:
 	print("  MOUSE AIMING ATTACK TEST PASSED!                                  ")
 	print("  1. 2D unprojected coordinates & 3D camera-rotated aim verified     ")
 	print("  2. Player dynamically turned 90° to attack dummy based on mouse   ")
-	print("  3. Attack hit confirmed via mouse aim! (%s -> %s)                 " % [initial_health, health_comp.current_health])
+	print("  3. Attack hit confirmed via mouse aim! (%s -> %s)                 " % [initial_health, dummy_attrs.get_current(AttributeComponent.POOL_HEALTH)])
 	print("  4. Returned cleanly to PlayerRun state                             ")
 	print("====================================================================")
 	level.queue_free()

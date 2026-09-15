@@ -10,10 +10,10 @@ func _ready() -> void:
 	
 	var player: Character = level.get_node("Player") as Character
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
-	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
+	var dummy_attrs: AttributeComponent = dummy.get_node("AttributeComponent") as AttributeComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
 	
-	var initial_health: float = health_comp.current_health
+	var initial_health: float = dummy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	print("Dummy initial health: ", initial_health)
 	
 	# Wait for initial spawn/navigation repositioning timer (1.0s) to settle, then for player to land on floor
@@ -55,14 +55,14 @@ func _ready() -> void:
 	# Wait for first hit
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - attack_damage:
+		if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) <= initial_health - attack_damage:
 			break
 			
-	if not is_equal_approx(health_comp.current_health, initial_health - attack_damage):
-		printerr("TEST FAILED: First attack did not reduce health to expected value. Health: ", health_comp.current_health)
+	if not is_equal_approx(dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), initial_health - attack_damage):
+		printerr("TEST FAILED: First attack did not reduce health to expected value. Health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("Attack 1 hit confirmed! Dummy health: ", health_comp.current_health)
+	print("Attack 1 hit confirmed! Dummy health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 	
 	# Wait for animation to finish and return to PlayerRun
 	var returned_to_run := false
@@ -102,14 +102,14 @@ func _ready() -> void:
 	# Wait for second hit
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if health_comp.current_health <= initial_health - (2.0 * attack_damage):
+		if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) <= initial_health - (2.0 * attack_damage):
 			break
 			
-	if not is_equal_approx(health_comp.current_health, initial_health - (2.0 * attack_damage)):
-		printerr("TEST FAILED: Second attack did not reduce health to expected value. Health: ", health_comp.current_health)
+	if not is_equal_approx(dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), initial_health - (2.0 * attack_damage)):
+		printerr("TEST FAILED: Second attack did not reduce health to expected value. Health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("Attack 2 hit confirmed! Dummy health: ", health_comp.current_health)
+	print("Attack 2 hit confirmed! Dummy health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH))
 	
 	# Wait for animation to finish and return to PlayerRun again
 	returned_to_run = false
@@ -127,7 +127,7 @@ func _ready() -> void:
 		
 	print("\n========================================================")
 	print("  ATTACK CYCLE TEST PASSED: State exits and re-enters! ")
-	print("  Final Dummy Health: ", health_comp.current_health, " (Started at ", initial_health, ")      ")
+	print("  Final Dummy Health: ", dummy_attrs.get_current(AttributeComponent.POOL_HEALTH), " (Started at ", initial_health, ")      ")
 	print("========================================================")
 	level.queue_free()
 	await get_tree().process_frame

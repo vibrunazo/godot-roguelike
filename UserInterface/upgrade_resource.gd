@@ -4,8 +4,8 @@ extends Resource
 
 enum UpgradeType {
 	STAT,         ## Applies bonus to a Character property via Character.set()
-	MAX_HEALTH,   ## Modifies Character.health_component.max_health and current_health
-	HEAL_PERCENT, ## Heals Character.health_component.current_health by a percentage of max_health
+	MAX_HEALTH,   ## Raises the AttributeComponent max_health base and heals the pool by the bonus
+	HEAL_PERCENT, ## Restores the AttributeComponent health pool by a percentage of max_health
 }
 
 ## Display title of the upgrade, e.g. "[wave]Damage[/wave]".
@@ -29,6 +29,8 @@ enum UpgradeType {
 
 
 ## Returns the player's current value for this upgrade's target stat or health.
+## Health values read from the player's AttributeComponent, the single home
+## for health numbers.
 func get_current_value(player: Character) -> float:
 	if player == null:
 		return 0.0
@@ -37,11 +39,11 @@ func get_current_value(player: Character) -> float:
 			var val: Variant = player.get(stat_name)
 			return float(val) if val != null else 0.0
 		UpgradeType.MAX_HEALTH:
-			if player.health_component != null:
-				return player.health_component.max_health
+			if player.attribute_component != null:
+				return player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
 		UpgradeType.HEAL_PERCENT:
-			if player.health_component != null:
-				return player.health_component.current_health
+			if player.attribute_component != null:
+				return player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	return 0.0
 
 
@@ -53,10 +55,11 @@ func get_upgraded_value(player: Character) -> float:
 		UpgradeType.STAT, UpgradeType.MAX_HEALTH:
 			return get_current_value(player) + stat_bonus
 		UpgradeType.HEAL_PERCENT:
-			if player.health_component != null:
+			if player.attribute_component != null:
+				var attrs: AttributeComponent = player.attribute_component
 				var ratio: float = stat_bonus / 100.0 if stat_bonus > 1.0 else stat_bonus
-				var heal_amount: float = player.health_component.max_health * ratio
-				return minf(player.health_component.max_health, player.health_component.current_health + heal_amount)
+				var heal_amount: float = attrs.get_current(AttributeComponent.STAT_MAX_HEALTH) * ratio
+				return minf(attrs.get_current(AttributeComponent.STAT_MAX_HEALTH), attrs.get_current(AttributeComponent.POOL_HEALTH) + heal_amount)
 	return get_current_value(player) + stat_bonus
 
 
@@ -71,7 +74,9 @@ func format_description(player: Character) -> String:
 	return text_template % [current_val, next_val]
 
 
-## Applies this upgrade to the given player Character.
+## Applies this upgrade to the given player Character. Health upgrades write
+## the AttributeComponent directly: MAX_HEALTH raises the max base and heals
+## the pool by the bonus, HEAL_PERCENT restores the pool by a max fraction.
 func apply(player: Character) -> void:
 	if player == null:
 		return
@@ -80,14 +85,12 @@ func apply(player: Character) -> void:
 			if not stat_name.is_empty():
 				player.set(stat_name, get_current_value(player) + stat_bonus)
 		UpgradeType.MAX_HEALTH:
-			if player.health_component != null:
-				player.health_component.max_health += stat_bonus
-				player.health_component.current_health += stat_bonus
+			if player.attribute_component != null:
+				var attrs: AttributeComponent = player.attribute_component
+				attrs.set_base(AttributeComponent.STAT_MAX_HEALTH, attrs.get_base(AttributeComponent.STAT_MAX_HEALTH) + stat_bonus)
+				attrs.restore_pool(AttributeComponent.POOL_HEALTH, stat_bonus)
 		UpgradeType.HEAL_PERCENT:
-			if player.health_component != null:
+			if player.attribute_component != null:
+				var attrs_heal: AttributeComponent = player.attribute_component
 				var ratio: float = stat_bonus / 100.0 if stat_bonus > 1.0 else stat_bonus
-				var heal_amount: float = player.health_component.max_health * ratio
-				player.health_component.current_health = minf(
-					player.health_component.max_health,
-					player.health_component.current_health + heal_amount
-				)
+				attrs_heal.restore_pool(AttributeComponent.POOL_HEALTH, attrs_heal.get_current(AttributeComponent.STAT_MAX_HEALTH) * ratio)

@@ -47,24 +47,24 @@ shape = SubResource("CapsuleShape3D_ncf7h")
 script = ExtResource("1_px1sc")
 hit_audio = NodePath("../HitAudio")
 attribute_component = NodePath("../AttributeComponent")
-max_health = 40.0
 
 [node name="KnockbackComponent" type="Node" parent="." unique_id=800122148]
 script = ExtResource("4_nmr1a")
 
-[node name="Hurtbox" type="Area3D" parent="." node_paths=PackedStringArray("health_component", "knockback_component")]
+[node name="Hurtbox" type="Area3D" parent="." node_paths=PackedStringArray("health_component", "attribute_component", "knockback_component")]
 collision_layer = 128
 collision_mask = 0
 script = ExtResource("12_hurtbox")
 health_component = NodePath("../HealthComponent")
+attribute_component = NodePath("../AttributeComponent")
 knockback_component = NodePath("../KnockbackComponent")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
 shape = SubResource("CapsuleShape3D_ncf7h")
 
-[node name="HealthBar" parent="." unique_id=1961835903 node_paths=PackedStringArray("health_component") instance=ExtResource("2_am0pq")]
+[node name="HealthBar" parent="." unique_id=1961835903 node_paths=PackedStringArray("attribute_component") instance=ExtResource("2_am0pq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
-health_component = NodePath("../HealthComponent")
+attribute_component = NodePath("../AttributeComponent")
 health_color = Color(0.8901961, 0.2901961, 0.25882354, 1)
 
 [node name="HitAudio" type="AudioStreamPlayer3D" parent="." unique_id=1636824264]

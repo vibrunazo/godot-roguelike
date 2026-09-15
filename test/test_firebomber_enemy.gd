@@ -312,8 +312,8 @@ func _ready() -> void:
 	player.global_position = Vector3(0.0, 1.0, 2.0)
 	await get_tree().physics_frame
 
-	var p_health: HealthComponent = player.health_component
-	var hp_before: float = p_health.current_health
+	var p_attrs: AttributeComponent = player.attribute_component
+	var hp_before: float = p_attrs.get_current(AttributeComponent.POOL_HEALTH)
 
 	var flight_proj: FirebombProjectile = projectile_scene.instantiate() as FirebombProjectile
 	add_child(flight_proj)
@@ -322,16 +322,16 @@ func _ready() -> void:
 	var hit_detected := false
 	for i: int in range(5):
 		await get_tree().physics_frame
-		if p_health.current_health < hp_before:
+		if p_attrs.get_current(AttributeComponent.POOL_HEALTH) < hp_before:
 			hit_detected = true
 			break
 
 	if not hit_detected:
-		printerr("TEST FAILED: Player did not take damage from in-flight firebomb hit! HP: ", p_health.current_health)
+		printerr("TEST FAILED: Player did not take damage from in-flight firebomb hit! HP: ", p_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		player.queue_free()
 		get_tree().quit(1)
 		return
-	print("Player took in-flight fireball damage! HP: ", hp_before, " -> ", p_health.current_health)
+	print("Player took in-flight fireball damage! HP: ", hp_before, " -> ", p_attrs.get_current(AttributeComponent.POOL_HEALTH))
 
 	# Verify NO FireTrap was spawned in the world from an aerial player hit
 	var world_traps: Array[Node] = []

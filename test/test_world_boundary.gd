@@ -28,25 +28,27 @@ func _ready() -> void:
 	
 	# 3. Test WorldBoundary damage logic on an entity entering the boundary
 	var test_target := Node3D.new()
+	var test_attrs := AttributeComponent.new()
+	test_attrs.name = "AttributeComponent"
+	test_target.add_child(test_attrs)
 	var test_hc := HealthComponent.new()
 	test_hc.name = "HealthComponent"
-	test_hc.max_health = 50.0
-	test_hc.current_health = 50.0
 	test_target.add_child(test_hc)
 	level.add_child(test_target)
+	test_attrs.set_base(AttributeComponent.STAT_MAX_HEALTH, 50.0)
 	
 	var test_state := {"defeat_emitted": false}
 	test_hc.defeat.connect(func() -> void: test_state["defeat_emitted"] = true)
 	
 	world_boundary.on_body_entered(test_target)
 	
-	if test_hc.current_health != 0.0:
-		printerr("TEST FAILED: Target health was not reduced to 0. Got: ", test_hc.current_health)
+	if test_attrs.get_current(AttributeComponent.POOL_HEALTH) != 0.0:
+		printerr("TEST FAILED: Target health was not reduced to 0. Got: ", test_attrs.get_current(AttributeComponent.POOL_HEALTH))
 		level.queue_free()
 		await get_tree().physics_frame
 		get_tree().quit(1)
 		return
-	print("Target health reduced to: ", test_hc.current_health, " (took max_health damage)")
+	print("Target health reduced to: ", test_attrs.get_current(AttributeComponent.POOL_HEALTH), " (took max_health damage)")
 	
 	if not test_state["defeat_emitted"]:
 		printerr("TEST FAILED: Defeat signal was not emitted upon fatal boundary damage.")
@@ -71,8 +73,8 @@ func _ready() -> void:
 	
 	world_boundary.on_body_entered(player)
 	
-	if player.health_component.current_health != 0.0:
-		printerr("TEST FAILED: Player health not reduced to 0. Got: ", player.health_component.current_health)
+	if player.attribute_component.get_current(AttributeComponent.POOL_HEALTH) != 0.0:
+		printerr("TEST FAILED: Player health not reduced to 0. Got: ", player.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
 		level.queue_free()
 		await get_tree().physics_frame
 		get_tree().quit(1)
@@ -95,9 +97,11 @@ func _ready() -> void:
 	col_shape.shape = sphere
 	falling_body.add_child(col_shape)
 	
+	var fall_attrs := AttributeComponent.new()
+	fall_attrs.name = "AttributeComponent"
+	falling_body.add_child(fall_attrs)
 	var fall_hc := HealthComponent.new()
 	fall_hc.name = "HealthComponent"
-	fall_hc.max_health = 100.0
 	falling_body.add_child(fall_hc)
 	
 	level.add_child(falling_body)

@@ -27,7 +27,7 @@ func _ready() -> void:
 
 	var player: Character = level.get_node("Player") as Character
 	var dummy: CollisionObject3D = TestUtils.find_dummy(level, player)
-	var health_comp: HealthComponent = dummy.get_node("HealthComponent") as HealthComponent
+	var dummy_attrs: AttributeComponent = dummy.get_node("AttributeComponent") as AttributeComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
 	var slash: CharacterAttack = sm.get_node("PlayerAttack") as CharacterAttack
 	var stab: CharacterAttack = sm.get_node("PlayerAttack2") as CharacterAttack
@@ -84,7 +84,7 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 
-	var initial_health: float = health_comp.current_health
+	var initial_health: float = dummy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	sm._unhandled_input(_click())
 	if sm.state.name != "PlayerAttack":
 		_fail("Did not enter PlayerAttack. State: " + sm.state.name)
@@ -97,14 +97,14 @@ func _ready() -> void:
 	var hit: bool = false
 	for i: int in range(80):
 		await get_tree().physics_frame
-		if health_comp.current_health < initial_health:
+		if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) < initial_health:
 			hit = true
 			break
 	if not hit:
 		_fail("Attack never damaged the dummy.")
 		return
-	if health_comp.current_health != initial_health - 8.0:
-		_fail("Slash damage mismatch. Health: " + str(health_comp.current_health))
+	if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) != initial_health - 8.0:
+		_fail("Slash damage mismatch. Health: " + str(dummy_attrs.get_current(AttributeComponent.POOL_HEALTH)))
 		return
 	if not slash.is_in_hitstop():
 		_fail("Attacker did not enter hitstop after landing a hit.")
@@ -172,12 +172,12 @@ func _ready() -> void:
 	player.global_position = Vector3(dummy.global_position.x, player.global_position.y, dummy.global_position.z - 1.3)
 	player.mesh_mount.global_transform = player.mesh_mount.global_transform.looking_at(player.mesh_mount.global_position + dir, Vector3.UP, true)
 	await get_tree().physics_frame
-	initial_health = health_comp.current_health
+	initial_health = dummy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	sm._unhandled_input(_click())
 	var hit_again: bool = false
 	for i: int in range(80):
 		await get_tree().physics_frame
-		if health_comp.current_health < initial_health:
+		if dummy_attrs.get_current(AttributeComponent.POOL_HEALTH) < initial_health:
 			hit_again = true
 			break
 	if not hit_again or not slash.is_in_hitstop():

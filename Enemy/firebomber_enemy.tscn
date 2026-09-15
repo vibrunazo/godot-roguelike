@@ -120,9 +120,6 @@ mesh = SubResource("SphereMesh_r82ii")
 parameters/MeleeAttack/TimeScale/scale = 1.0
 parameters/RangedAttack/TimeScale/scale = 1.0
 
-[node name="HealthComponent" parent="." index="2" unique_id=1014190827]
-max_health = 55.0
-
 [node name="AttributeComponent" parent="." index="11" unique_id=271828460]
 base_max_health = 55.0
 
