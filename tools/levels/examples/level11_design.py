@@ -193,7 +193,7 @@ def main() -> int:
         "gi_data": None,
         "gi_ext_id": "4_level11",
         "out": "Levels/level_11.tscn",
-        "seed": 20260920,
+        "seed": 20260922,
     }
     spec_path = os.path.join(args.out_dir, "spec.json")
     with open(spec_path, "w") as f:

@@ -101,10 +101,21 @@ def replace_cells_after(text: str, marker: str, arr: str) -> str:
     return text[:i + m.start()] + f'"cells": PackedInt32Array({arr})' + text[i + m.end():]
 
 
+# Godot 4 ResourceUID character set: base-34 ('z' and '9' are omitted in engine).
+# Max valid UID value is 0x7FFFFFFFFFFFFFFF.
+_GODOT_UID_CHARS = "abcdefghijklmnopqrstuvwxy012345678"
+
+
 def random_uid(rng: random.Random) -> str:
-    """Generates a Godot scene uid."""
-    alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
-    return "uid://" + "".join(rng.choice(alphabet) for _ in range(13))
+    """Generates a canonical Godot scene uid matching ResourceUID::id_to_text."""
+    val = rng.randint(1, 0x7FFFFFFFFFFFFFFF)
+    tmp = []
+    while True:
+        tmp.append(_GODOT_UID_CHARS[val % len(_GODOT_UID_CHARS)])
+        val //= len(_GODOT_UID_CHARS)
+        if not val:
+            break
+    return "uid://" + "".join(reversed(tmp))
 
 
 def fresh_node_id(used: set[str], rng: random.Random) -> int:

@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://ri20wp2wbis64"]
+[gd_scene format=3 uid="uid://c1sqmw1kndesc"]
 
 [ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/level_template.tscn" id="1_cb8d3"]
 [ext_resource type="PackedScene" uid="uid://b8by0o2p8jju0" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Barrel_A.gltf" id="2_padch"]
