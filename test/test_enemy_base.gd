@@ -1156,7 +1156,19 @@ func _ready() -> void:
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	if ranged_sm.state != ranged_attack:
+	# The aim gate orders only inside the facing cone, so the body flips after
+	# physics ticks of aiming instead of synchronously. Keep pulling the mind
+	# back while polling: a failed order (body briefly unorderable) steps it
+	# out, so re-enter until the order lands.
+	var ordered: bool = false
+	for i: int in range(180):
+		if ranged_ai_sm.state != ranged_ai_attack and ranged_sm.state != ranged_attack:
+			ranged_ai_sm._transition_to_next_state("AIAttack")
+		await get_tree().physics_frame
+		if ranged_sm.state == ranged_attack:
+			ordered = true
+			break
+	if not ordered:
 		printerr("TEST FAILED: AIAttack did not transition body StateMachine to EnemyAttack. Got: ", ranged_sm.state.name if ranged_sm.state else "null")
 		test_player_inst.queue_free()
 		ranged_enemy.queue_free()

@@ -35,6 +35,7 @@ func _ready() -> void:
 	await test_part_8_defeat_inactivity_and_rotation_lock()
 	await test_part_9_scattered_enemy_spawning()
 	test_part_10_enemy_difficulty_and_wave_budget_spawning()
+	await test_part_11_ai_attack_aim_gate()
 
 	print("\n====================================================================")
 	print("  ALL CHARACTER & AI STATE MACHINE TESTS PASSED!                    ")
@@ -48,6 +49,7 @@ func _ready() -> void:
 	print("  8. Defeat inactivity & rotation lock on corpses verified        ")
 	print("  9. Scattered enemy spawning on navmesh verified                  ")
 	print(" 10. Enemy difficulty ratings & budget wave spawning verified      ")
+	print(" 11. AIAttack aim gate (desired_angle) verified                      ")
 	print("====================================================================")
 	get_tree().quit(0)
 
@@ -459,13 +461,50 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	if body_sm.state.name != "EnemyAttack":
-		printerr("TEST FAILED: AIAttack did not order EnemyAttack on Body. Got: ", body_sm.state.name if body_sm.state else "null")
+	# The aim gate must hold fire while facing away: face the enemy directly
+	# away from the player and require no attack over the next ticks.
+	_turn_to_face(ranged_enemy, ranged_enemy.global_position - player.global_position)
+	for i: int in range(3):
+		await get_tree().physics_frame
+	if body_sm.state.name == "EnemyAttack":
+		printerr("TEST FAILED: AIAttack ordered EnemyAttack while facing away from the target!")
 		player.queue_free()
 		ranged_enemy.queue_free()
 		get_tree().quit(1)
 		return
-	print("Proximity detection transitioned AI to AIAttack and Body to EnemyAttack.")
+	print("Aim gate held fire while facing away verified.")
+	# The mind must then aim at the rotation speed limit and order inside the
+	# 90-degree cone. Keep pulling the mind back while polling: a body that
+	# cannot accept orders yet (landing stun after the spawn drop, a fall)
+	# fails the order and the mind steps out, so re-enter until the order
+	# lands. Poll until the body flips, recording alignment then.
+	var order_alignment: float = -1.0
+	var ordered := false
+	for i: int in range(180):
+		if ai_sm.state != ai_attack and body_sm.state.name != "EnemyAttack":
+			ai_sm._transition_to_next_state("AIAttack")
+		await get_tree().physics_frame
+		if body_sm.state.name == "EnemyAttack":
+			var facing_now: Vector3 = ranged_enemy.mesh_mount.global_basis.z
+			facing_now.y = 0.0
+			var to_player: Vector3 = player.global_position - ranged_enemy.global_position
+			to_player.y = 0.0
+			order_alignment = facing_now.normalized().dot(to_player.normalized())
+			ordered = true
+			break
+	if not ordered:
+		printerr("TEST FAILED: AIAttack never ordered EnemyAttack after aiming at the target!")
+		player.queue_free()
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if order_alignment < 0.70:
+		printerr("TEST FAILED: AIAttack ordered EnemyAttack outside the 90-degree cone (alignment: ", order_alignment, ")!")
+		player.queue_free()
+		ranged_enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("Proximity detection transitioned AI to AIAttack; Body ordered inside the cone (alignment: ", order_alignment, ").")
 
 	# 1. Verify real production polling path:
 	# When Body finishes EnemyAttack and transitions back to EnemyMove,
@@ -520,15 +559,15 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 		get_tree().quit(1)
 		return
 
-	# Enter AIAttack directly targeting player at 10m. The order only sets the
-	# desired facing; the body turns toward the snapshot aim at its rotation
-	# speed limit, so poll until it converges instead of expecting a snap.
-	# Freeze the mind during the poll so no other AI state disturbs the body.
-	ai_attack.enter("AIWait")
-	ai_sm.process_mode = Node.PROCESS_MODE_DISABLED
+	# Drive the real production path: transition the mind into AIAttack and let
+	# it aim the body at the rotation speed limit, order inside the cone, and
+	# converge via the order aim. Poll until aligned instead of expecting a snap.
+	ai_sm._transition_to_next_state("AIAttack")
 	var facing: Vector3 = ranged_enemy.mesh_mount.global_basis.z.normalized()
 	var alignment: float = facing.dot(Vector3(1.0, 0.0, 0.0))
-	for i: int in range(60):
+	for i: int in range(90):
+		if ai_sm.state != ai_attack and alignment < 0.9:
+			ai_sm._transition_to_next_state("AIAttack")
 		await get_tree().physics_frame
 		facing = ranged_enemy.mesh_mount.global_basis.z.normalized()
 		alignment = facing.dot(Vector3(1.0, 0.0, 0.0))
@@ -866,6 +905,142 @@ func test_part_10_enemy_difficulty_and_wave_budget_spawning() -> void:
 		return
 	overlay.queue_free()
 	print("UI.show_level_title() text overlay verified.")
+
+
+func test_part_11_ai_attack_aim_gate() -> void:
+	print("\n>>> PART 11: AIAttack Aim Gate (desired_angle)")
+	var enemy: Character = RangedEnemyScene.instantiate() as Character
+	var player: Character = PlayerScene.instantiate() as Character
+	add_child(enemy)
+	add_child(player)
+	enemy.global_position = Vector3.ZERO
+	player.global_position = Vector3(3.0, 0.0, 0.0)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var mind: AIStateMachine = enemy.ai_state_machine
+	var body_sm: StateMachine = enemy.state_machine
+	var ai_attack: AIAttack = mind.get_node_or_null("AIAttack") as AIAttack
+	if mind == null or body_sm == null or ai_attack == null:
+		printerr("TEST FAILED: RangedEnemy mind, body, or AIAttack missing.")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if mind.get_target() != player:
+		printerr("TEST FAILED: RangedEnemy mind did not acquire the player as target.")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("Mind target acquisition verified.")
+	if not is_equal_approx(ai_attack.desired_angle, 90.0):
+		printerr("TEST FAILED: AIAttack desired_angle default should be 90.0, got: ", ai_attack.desired_angle)
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("AIAttack desired_angle default 90.0 verified.")
+
+	# Gate holds at the default cone while facing directly away.
+	_turn_to_face(enemy, Vector3(-1.0, 0.0, 0.0))
+	mind._transition_to_next_state("AIAttack")
+	for i: int in range(10):
+		await get_tree().physics_frame
+	if body_sm.state.name == "EnemyAttack":
+		printerr("TEST FAILED: AIAttack ordered EnemyAttack while facing away at the default cone!")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if mind.state != ai_attack:
+		printerr("TEST FAILED: AIAttack gave up aiming while outside the cone!")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("Aim gate held fire while facing away verified (still aiming).")
+
+	# Widening to 360 fires immediately despite facing away. Keep pulling the
+	# mind back while polling so a failed order (body briefly unorderable)
+	# retries instead of ending the measurement.
+	ai_attack.desired_angle = 360.0
+	var fired_wide := false
+	for i: int in range(60):
+		if mind.state != ai_attack and body_sm.state.name != "EnemyAttack":
+			mind._transition_to_next_state("AIAttack")
+		await get_tree().physics_frame
+		if body_sm.state.name == "EnemyAttack":
+			fired_wide = true
+			break
+	if not fired_wide:
+		printerr("TEST FAILED: AIAttack with desired_angle 360 did not order despite facing away!")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("desired_angle 360 fires regardless of facing verified.")
+
+	# Wait for the body to finish before the perfect-alignment checks.
+	for i: int in range(180):
+		await get_tree().physics_frame
+		if body_sm.state.name != "EnemyAttack":
+			break
+	if body_sm.state.name == "EnemyAttack":
+		printerr("TEST FAILED: Body never left EnemyAttack.")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+
+	# A 0.0 cone holds fire while misaligned but opens on true alignment.
+	_turn_to_face(enemy, Vector3(-1.0, 0.0, 0.0))
+	ai_attack.desired_angle = 0.0
+	mind._transition_to_next_state("AIAttack")
+	for i: int in range(10):
+		await get_tree().physics_frame
+	if body_sm.state.name == "EnemyAttack":
+		printerr("TEST FAILED: AIAttack with desired_angle 0 ordered while misaligned!")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("desired_angle 0 holds fire while misaligned verified.")
+	_turn_to_face(enemy, Vector3(1.0, 0.0, 0.0))
+	var fired_exact := false
+	for i: int in range(60):
+		if mind.state != ai_attack and body_sm.state.name != "EnemyAttack":
+			mind._transition_to_next_state("AIAttack")
+		await get_tree().physics_frame
+		if body_sm.state.name == "EnemyAttack":
+			fired_exact = true
+			break
+	if not fired_exact:
+		printerr("TEST FAILED: AIAttack with desired_angle 0 never ordered despite perfect alignment!")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("desired_angle 0 fires on perfect alignment verified.")
+
+	player.queue_free()
+	enemy.queue_free()
+	await get_tree().process_frame
+
+
+## Turns a character's mount toward an XZ direction with synchronous
+## speed-limited steps (no frames elapse), used to set deterministic facings.
+func _turn_to_face(c: Character, direction: Vector3) -> void:
+	var flat: Vector3 = direction
+	flat.y = 0.0
+	if flat.is_zero_approx():
+		return
+	flat = flat.normalized()
+	for i: int in range(180):
+		c.look_at_target(c.mesh_mount.global_position + flat * 5.0, 1.0 / 60.0)
+		var facing: Vector3 = c.mesh_mount.global_basis.z
+		facing.y = 0.0
+		if facing.normalized().dot(flat) >= 0.999:
+			break
 
 
 
