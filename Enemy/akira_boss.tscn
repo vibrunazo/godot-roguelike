@@ -159,7 +159,7 @@ size = Vector2(4, 2)
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_akira_body"]
 radius = 0.65
-height = 4.0
+height = 3.0
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_akira_hurtbox"]
 radius = 1.0

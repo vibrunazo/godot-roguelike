@@ -1,8 +1,8 @@
 ## Automated verification suite for the Akira boss.
-## Verifies brute-based bigger body, backpack riders with hidden legs and
-## melee-equal swords with player-like fire slash VFX, oversized firebombs
-## with larger traps, difficulty 12, and a difficulty-20 regular-spawn gate
-## (boss-arena spawn bypasses the gate).
+## Verifies brute-based bigger body, grounded collision fit (no float/sink),
+## backpack riders with hidden legs and melee-equal swords with player-like
+## fire slash VFX, oversized firebombs with larger traps, difficulty 12, and
+## a difficulty-20 regular-spawn gate (boss-arena spawn bypasses the gate).
 extends Node3D
 
 var _passed: int = 0
@@ -36,6 +36,9 @@ func _ready() -> void:
 	if _failed:
 		return
 	await _part7_boss_trap()
+	if _failed:
+		return
+	await _part8_grounding()
 	if _failed:
 		return
 	print("====================================================")
@@ -676,5 +679,56 @@ func _part7_boss_trap() -> void:
 		return
 	print("Boss trap spawned larger: area %.1f > base %.1f at %s." % [got_area, base_area, str(trap.global_position)])
 	trap.queue_free()
+	await get_tree().process_frame
+	_passed += 1
+
+
+## Lowest boot-sole height (large-rig leg meshes only) for grounding checks.
+func _boss_sole_level(boss: Character) -> float:
+	var best: float = INF
+	var stack: Array[Node] = [boss]
+	while not stack.is_empty():
+		var cur: Node = stack.pop_back()
+		if cur is MeshInstance3D and (cur.name == &"Enemy_Large_LegLeft" or cur.name == &"Enemy_Large_LegRight"):
+			var mi: MeshInstance3D = cur as MeshInstance3D
+			var box: AABB = mi.global_transform * mi.get_aabb()
+			best = minf(best, box.position.y)
+		for child: Node in cur.get_children():
+			stack.push_back(child)
+	return best
+
+
+func _part8_grounding() -> void:
+	print("\n>>> PART 8: Grounded stance (capsule fit, no float/sink)")
+	var boss: Character = _boss()
+	if boss == null:
+		return
+	boss.position = Vector3(0.0, 3.0, 0.0)
+	add_child(boss)
+	if boss.ai_state_machine != null:
+		boss.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+	for frame: int in range(60):
+		await get_tree().physics_frame
+	if not boss.is_on_floor():
+		_fail("Boss should rest on the floor after settling.")
+		boss.queue_free()
+		return
+	if boss.collision_shape_3d == null or not (boss.collision_shape_3d.shape is CapsuleShape3D):
+		_fail("Boss CollisionShape3D capsule missing.")
+		boss.queue_free()
+		return
+	var cap: CapsuleShape3D = boss.collision_shape_3d.shape as CapsuleShape3D
+	var rest_height: float = cap.height * 0.5 - boss.collision_shape_3d.position.y
+	if absf(boss.global_position.y - rest_height) > 0.08:
+		_fail("Boss origin (%.3f) should rest at capsule half-height (%.3f)." % [boss.global_position.y, rest_height])
+		boss.queue_free()
+		return
+	var sole: float = _boss_sole_level(boss)
+	if absf(sole) > 0.08:
+		_fail("Boss boot soles (%.3f) should touch the floor, not float or sink." % sole)
+		boss.queue_free()
+		return
+	print("Boss grounded: origin %.3f, soles %.3f." % [boss.global_position.y, sole])
+	boss.queue_free()
 	await get_tree().process_frame
 	_passed += 1
