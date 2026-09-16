@@ -14,13 +14,18 @@ var next_level_path: String:
 var locked: bool = true
 
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
+@onready var wisp_mesh: MeshInstance3D = $WispMesh
 
 
 func _ready() -> void:
 	visible = false
+	if wisp_mesh != null and wisp_mesh.material_override != null:
+		wisp_mesh.material_override = wisp_mesh.material_override.duplicate()
+	_reset_visuals()
 
 
 func unlock() -> void:
+	_reset_visuals()
 	visible = true
 	locked = false
 	var trail: ObjectiveTrail3D = get_tree().get_first_node_in_group("objective_trail") as ObjectiveTrail3D
@@ -29,6 +34,14 @@ func unlock() -> void:
 		var root: Node = get_parent() if get_parent() != null else self
 		root.add_child(trail)
 	trail.set_target(self, Color(0.3, 0.85, 1.0, 0.85))
+
+
+func _reset_visuals() -> void:
+	if animation_player != null and animation_player.has_animation(&"RESET"):
+		animation_player.play(&"RESET")
+		animation_player.advance(0.0)
+	elif wisp_mesh != null and wisp_mesh.material_override is ShaderMaterial:
+		(wisp_mesh.material_override as ShaderMaterial).set_shader_parameter("Cuttoff", 0.41)
 
 
 func _on_area_3d_body_entered(body: Node3D) -> void:

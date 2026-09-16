@@ -164,7 +164,30 @@ func _test_objective_trail_and_exit() -> void:
 	_assert(trail.is_active, "ExitPoint.unlock() activated ObjectiveTrail3D.")
 	_assert(trail.target_node == exit_point, "ObjectiveTrail3D target_node points to ExitPoint.")
 
+	var wisp1: MeshInstance3D = exit_point.get_node_or_null("WispMesh") as MeshInstance3D
+	var mat1: ShaderMaterial = wisp1.material_override as ShaderMaterial
+	var cutoff1: Variant = mat1.get_shader_parameter("Cuttoff")
+	_assert(is_equal_approx(float(cutoff1), 0.41), "ExitPoint WispMesh Cuttoff is 0.41 on initial unlock.")
+
+	# Simulate exit animation run to completion (setting Cuttoff to 0.0)
+	exit_point.animation_player.play("Exit")
+	exit_point.animation_player.seek(1.0, true)
+
+	exit_point.queue_free()
+	await get_tree().physics_frame
+
+	# Verify fresh instance after Exit animation was run has pristine Cuttoff (no leak to 0.0)
+	var exit_point2: ExitPoint = exit_scene.instantiate() as ExitPoint
+	add_child(exit_point2)
+	await get_tree().physics_frame
+	exit_point2.unlock()
+
+	var wisp2: MeshInstance3D = exit_point2.get_node_or_null("WispMesh") as MeshInstance3D
+	var mat2: ShaderMaterial = wisp2.material_override as ShaderMaterial
+	var cutoff2: Variant = mat2.get_shader_parameter("Cuttoff")
+	_assert(is_equal_approx(float(cutoff2), 0.41), "ExitPoint WispMesh Cuttoff is 0.41 on next level unlock (no 0.0 white leak).")
+
 	trail.queue_free()
 	target_marker.queue_free()
-	exit_point.queue_free()
+	exit_point2.queue_free()
 	await get_tree().physics_frame
