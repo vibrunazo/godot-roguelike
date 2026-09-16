@@ -81,6 +81,11 @@ Scripts executed standalone via Godot's `-s` flag **strictly require** two rules
 - **Simulate hits via `Hurtbox.receive_hit()`, never direct pool writes:** `damage_pool()` / `restore_pool()` are silent resource changes by design (no stun, flash, or shake); only `receive_hit()` emits `struck`. Tests asserting hit reactions must go through the hurtbox.
 - **Mind the frame budget (20s/test):** headless idle/process frames are far slower than physics frames, so long `await process_frame` loops and wall-clock `create_timer` waits can overrun the budget in large suites while hundreds of `physics_frame` awaits run in ~1s. Keep timed behavior in small dedicated suites (e.g. `test_pause_menu.tscn`).
 
+### Suite Hygiene Recommendations
+- **Scene-changing calls sit better at the end of a suite:** methods like `exit_shop()`, `SceneTransition.load_scene_path()` / `load_next_level()`, or `change_scene_to_file()` free the running suite about a second later (transition tween), which can read as a mysterious stall near the end. Part 11 of `test_enemy_base.gd` defers its live `exit_shop()` check to just before `quit(0)` for this reason.
+- **Suspected hangs benefit from engine timestamps:** Godot stdout can lag the engine noticeably under some setups (e.g. Windows engine via WSL interop), so wall-clock log reading may point at the wrong part. Flushed marker files (`FileAccess` to `user://` plus `Time.get_ticks_msec()`) tend to show where the engine actually stopped.
+- **Leftover engine processes are worth a glance:** a timed-out suite can leave its headless Godot running, slowing later suites. `run_tests.py` reaps those automatically; manual runs can check with the platform process list.
+
 ---
 
 ## 4. Architecture & Key Patterns
