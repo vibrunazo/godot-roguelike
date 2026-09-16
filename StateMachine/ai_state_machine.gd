@@ -99,3 +99,18 @@ func order_attack(attack_state_name: String = "", can_break_stun: bool = false, 
 		push_warning("AIStateMachine: order_attack('%s') requested non-existent state on body StateMachine." % attack_state_name)
 		return false
 	return character.state_machine.request_state(attack_state_name, data)
+
+
+## Wakes the AI mind from idle or meandering and commands pursuit/combat.
+func alert() -> void:
+	if character == null or not character.is_alive():
+		return
+	if state != null and (state.name == "AIMeander" or state.name == "AIWait"):
+		var pursue_node: Node = get_node_or_null("AIPursue")
+		if pursue_node != null:
+			request_state("AIPursue")
+		else:
+			for child: Node in get_children():
+				if child is AIState and child != state and child.name != "AIMeander" and child.name != "AIWait":
+					request_state(child.name)
+					break

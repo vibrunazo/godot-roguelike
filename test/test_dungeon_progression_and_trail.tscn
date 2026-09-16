@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dgprgtst12345"]
+
+[ext_resource type="Script" path="res://test/test_dungeon_progression_and_trail.gd" id="1_test"]
+
+[node name="TestDungeonProgressionAndTrail" type="Node3D"]
+script = ExtResource("1_test")

@@ -57,6 +57,16 @@ func generate_wave_enemies() -> Array[Character]:
 			_enemy_difficulties[boss_inst] = boss_res.difficulty_level
 		return generated_enemies
 
+	# If ProgressionState pre-planned enemies for this encounter, consume them
+	if ProgressionState != null and not ProgressionState.current_planned_enemies.is_empty():
+		for res: EnemyResource in ProgressionState.current_planned_enemies:
+			if res == null or res.scene == null:
+				continue
+			var inst: Character = res.scene.instantiate() as Character
+			generated_enemies.append(inst)
+			_enemy_difficulties[inst] = res.difficulty_level
+		return generated_enemies
+
 	if enemy_resources.is_empty():
 		enemy_resources = _get_default_enemy_resources()
 
@@ -129,17 +139,43 @@ func _print_wave_debug_info() -> void:
 	print("Level %d, difficulty %d, %s" % [current_dungeon_level, current_difficulty, enemies_str])
 
 
-## Adds enemy to scene tree and positions it randomly on the navigation mesh.
+## Finds all RoomSpawnArea nodes in the current level.
+func get_room_spawn_areas() -> Array[RoomSpawnArea]:
+	var areas: Array[RoomSpawnArea] = []
+	var root: Node = get_parent() if get_parent() != null else self
+	for child: Node in root.find_children("*", "RoomSpawnArea", true, false):
+		if child is RoomSpawnArea:
+			areas.append(child as RoomSpawnArea)
+	return areas
+
+
+## Adds enemy to scene tree and positions it in a room spawn area or randomly on the navigation mesh.
 func spawn_enemy(enemy: Character) -> void:
 	if not enemy.is_inside_tree():
 		add_child(enemy)
-	var random_point: Vector3 = NavigationServer3D.map_get_random_point(
-		get_world_3d().navigation_map, 1, true
-	)
+
+	var spawn_areas: Array[RoomSpawnArea] = get_room_spawn_areas()
+	var spawn_pos: Vector3 = Vector3.ZERO
+	if not spawn_areas.is_empty():
+		spawn_areas.sort_custom(func(a: RoomSpawnArea, b: RoomSpawnArea) -> bool:
+			return a.assigned_enemies.size() < b.assigned_enemies.size()
+		)
+		var chosen_area: RoomSpawnArea = spawn_areas.front()
+		chosen_area.assign_enemy(enemy)
+		spawn_pos = chosen_area.get_random_spawn_point()
+	else:
+		var nmap: RID = get_world_3d().navigation_map
+		spawn_pos = NavigationServer3D.map_get_random_point(nmap, 1, true)
+		if spawn_pos.is_zero_approx():
+			var jitter: Vector3 = Vector3(randf_range(-6.0, 6.0), 0.0, randf_range(-6.0, 6.0))
+			var closest: Vector3 = NavigationServer3D.map_get_closest_point(nmap, jitter)
+			spawn_pos = closest if not closest.is_zero_approx() else jitter
+
 	var half_height: float = 1.0
 	if enemy.collision_shape_3d != null and enemy.collision_shape_3d.shape is CapsuleShape3D:
 		half_height = (enemy.collision_shape_3d.shape as CapsuleShape3D).height * 0.5
-	enemy.global_position = random_point + Vector3(0.0, half_height, 0.0)
+	enemy.global_position = spawn_pos + Vector3(0.0, half_height, 0.0)
+	enemy.home_position = enemy.global_position
 
 
 func update_enemies(enemy: Character) -> void:

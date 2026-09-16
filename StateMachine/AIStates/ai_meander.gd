@@ -17,12 +17,20 @@ extends AIState
 func enter(_previous_state_path: String, _data := {}) -> void:
 	if character == null or not character.is_inside_tree() or character.navigation_agent_3d == null:
 		return
-	var random_point: Vector3 = NavigationServer3D.map_get_random_point(
-		character.get_world_3d().navigation_map,
-		1,
-		true
-	)
-	character.navigation_agent_3d.target_position = random_point
+	var target_pt: Vector3 = Vector3.ZERO
+	if character.home_spawn_area != null and character.home_spawn_area.has_method("get_random_spawn_point"):
+		target_pt = character.home_spawn_area.get_random_spawn_point()
+	elif not character.home_position.is_zero_approx():
+		var nav_map: RID = character.get_world_3d().navigation_map
+		var offset: Vector3 = Vector3(randf_range(-5.0, 5.0), 0.0, randf_range(-5.0, 5.0))
+		target_pt = NavigationServer3D.map_get_closest_point(nav_map, character.home_position + offset)
+	else:
+		target_pt = NavigationServer3D.map_get_random_point(
+			character.get_world_3d().navigation_map,
+			1,
+			true
+		)
+	character.navigation_agent_3d.target_position = target_pt
 
 
 func physics_update(delta: float) -> void:

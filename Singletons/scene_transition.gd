@@ -78,5 +78,9 @@ func load_next_level(args: Dictionary = {}) -> void:
 	if boss_arenas.has(dungeon_level):
 		load_scene_path(str(boss_arenas[dungeon_level]), args)
 		return
-	levels.push_back(levels.pop_front())
-	load_scene_path(levels.front(), args)
+	var dungeon: DungeonResource = ProgressionState.prepare_next_encounter() if ProgressionState != null else null
+	if dungeon != null and dungeon.scene != null:
+		load_scene_path(dungeon.scene.resource_path, args)
+	elif not levels.is_empty():
+		levels.push_back(levels.pop_front())
+		load_scene_path(levels.front(), args)

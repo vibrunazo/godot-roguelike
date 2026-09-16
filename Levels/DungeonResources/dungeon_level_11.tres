@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DungeonResource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Levels/dungeon_resource.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://Levels/level_11.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_script")
+name = "Level 11 - The Nine Sanctuaries"
+scene = ExtResource("2_scene")
+min_difficulty = 6
+max_difficulty = 0
+min_enemies = 8
+max_enemies = 0

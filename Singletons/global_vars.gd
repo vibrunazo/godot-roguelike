@@ -24,6 +24,8 @@ extends Node
 @export var upgrade_potion: UpgradeResource
 ## Enemy resources available for spawning, each defining an enemy scene and difficulty level.
 @export var enemies: Array[EnemyResource] = []
+## Dungeon resources available for progression, each defining a level scene and eligibility constraints.
+@export var dungeons: Array[DungeonResource] = []
 ## Projectile scene spawned by ProjectileSpawnerComponent.
 @export var enemy_projectile_scene: PackedScene
 ## Firebomb projectile scene spawned by ProjectileSpawnerComponent.

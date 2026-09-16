@@ -23,6 +23,12 @@ func _ready() -> void:
 func unlock() -> void:
 	visible = true
 	locked = false
+	var trail: ObjectiveTrail3D = get_tree().get_first_node_in_group("objective_trail") as ObjectiveTrail3D
+	if trail == null:
+		trail = ObjectiveTrail3D.new()
+		var root: Node = get_parent() if get_parent() != null else self
+		root.add_child(trail)
+	trail.set_target(self, Color(0.3, 0.85, 1.0, 0.85))
 
 
 func _on_area_3d_body_entered(body: Node3D) -> void:
@@ -36,6 +42,9 @@ func _on_area_3d_body_entered(body: Node3D) -> void:
 
 	if is_player_entity:
 		locked = true
+		var trail: ObjectiveTrail3D = get_tree().get_first_node_in_group("objective_trail") as ObjectiveTrail3D
+		if trail != null:
+			trail.clear_target()
 		animation_player.play("Exit")
 		ProgressionState.advance_level()
 		if not next_scene_path.is_empty():

@@ -22,6 +22,17 @@
 [ext_resource type="PackedScene" path="res://Enemy/lightning_bolt_projectile.tscn" id="17_lightning_proj"]
 [ext_resource type="PackedScene" path="res://Enemy/lightning_hit.tscn" id="18_lightning_hit"]
 [ext_resource type="PackedScene" path="res://UserInterface/pause_menu.tscn" id="19_pause_menu"]
+[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_1.tres" id="21_d1"]
+[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_2.tres" id="22_d2"]
+[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_3.tres" id="23_d3"]
+[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_4.tres" id="24_d4"]
+[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_5.tres" id="25_d5"]
+[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_6.tres" id="26_d6"]
+[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_7.tres" id="27_d7"]
+[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_8.tres" id="28_d8"]
+[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_9.tres" id="29_d9"]
+[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_10.tres" id="30_d10"]
+[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_11.tres" id="31_d11"]
 
 [node name="GlobalVars" type="Node"]
 script = ExtResource("1_vars")
@@ -32,6 +43,7 @@ upgrade_health = ExtResource("4_hp")
 upgrade_speed = ExtResource("5_spd")
 upgrade_potion = ExtResource("12_pot")
 enemies = [ExtResource("5_melee_res"), ExtResource("6_ranged_res"), ExtResource("14_firebomber_res"), ExtResource("13_brute_res"), ExtResource("16_thunder_mage_res"), ExtResource("20_akira_res")]
+dungeons = [ExtResource("21_d1"), ExtResource("22_d2"), ExtResource("23_d3"), ExtResource("24_d4"), ExtResource("25_d5"), ExtResource("26_d6"), ExtResource("27_d7"), ExtResource("28_d8"), ExtResource("29_d9"), ExtResource("30_d10"), ExtResource("31_d11")]
 enemy_projectile_scene = ExtResource("7_proj")
 firebomb_projectile_scene = ExtResource("15_firebomb_proj")
 lightning_bolt_scene = ExtResource("17_lightning_proj")

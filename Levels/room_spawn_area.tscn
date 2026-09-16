@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://b00mspnarea1"]
+
+[ext_resource type="Script" path="res://Levels/room_spawn_area.gd" id="1_script"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_room"]
+size = Vector3(16, 4, 16)
+
+[node name="RoomSpawnArea" type="Area3D"]
+collision_layer = 0
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_room")

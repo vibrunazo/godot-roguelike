@@ -709,10 +709,9 @@ func test_part_9_scattered_enemy_spawning() -> void:
 	add_child(level)
 	# Wait for navigation map sync (iteration > 0 and regions active)
 	var nav_map: RID = level.get_world_3d().navigation_map
-	for _i: int in range(10):
+	for _i: int in range(30):
 		await get_tree().physics_frame
-		await get_tree().process_frame
-		if NavigationServer3D.map_get_iteration_id(nav_map) > 0 and not NavigationServer3D.map_get_regions(nav_map).is_empty():
+		if not NavigationServer3D.map_get_random_point(nav_map, 1, true).is_zero_approx():
 			break
 
 	var wave_obj: WaveObjective = level.get_node_or_null("WaveObjective") as WaveObjective

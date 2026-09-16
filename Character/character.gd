@@ -15,6 +15,9 @@ signal target_changed(new_target: Node3D)
 ## Emitted when an attack belonging to this character lands a hit on a target.
 signal hit_landed(target: Node, attack_component: AttackComponent)
 
+## Emitted when this character is alerted into active combat.
+signal alerted
+
 ## The visual mount node rotated to face movement or aim directions.
 @export var mesh_mount: Node3D
 ## Reference to the character's AttributeComponent (stat store). Owns movement
@@ -77,6 +80,13 @@ var is_attacking: bool = false
 var _is_defeated: bool = false
 ## Time in seconds until the next allowed auto-aim re-evaluation.
 var _retarget_timer: float = 0.0
+
+## Whether this character has been alerted to player presence. Defaults to true.
+var is_alerted: bool = true
+## Home spawn area bounding idle patrol.
+var home_spawn_area: Node3D = null
+## Home world position where this character spawned.
+var home_position: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
@@ -443,12 +453,23 @@ func _on_hurtbox_struck(_damage: float) -> void:
 	# the dead must ignore reactions or stun would override the defeat state.
 	if not is_alive():
 		return
+	alert()
 	if attribute_component != null:
 		health_changed.emit(attribute_component.get_current(AttributeComponent.POOL_HEALTH))
 	if is_uninterruptable():
 		return
 	if stun_state != null and state_machine != null and state_machine.state != null:
 		state_machine.state.finished.emit(stun_state.name)
+
+
+## Alerts this character into active combat pursuit.
+func alert() -> void:
+	if is_alerted:
+		return
+	is_alerted = true
+	alerted.emit()
+	if ai_state_machine != null:
+		ai_state_machine.alert()
 
 
 ## Cancels all transient movement and ability state: motion vectors, pending

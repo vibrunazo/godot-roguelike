@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DungeonResource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Levels/dungeon_resource.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://Levels/level_9.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_script")
+name = "Level 9 - The Crossing"
+scene = ExtResource("2_scene")
+min_difficulty = 4
+max_difficulty = 10
+min_enemies = 5
+max_enemies = 10

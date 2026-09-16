@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://0bjtrai13dscn"]
+
+[ext_resource type="Script" path="res://Components/objective_trail_3d.gd" id="1_trail"]
+
+[node name="ObjectiveTrail3D" type="Node3D" groups=["objective_trail"]]
+script = ExtResource("1_trail")
