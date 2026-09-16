@@ -11,6 +11,9 @@
 extends Node
 
 
+## Damage dealt to each enemy by the `debug_kill` action.
+const DEBUG_KILL_DAMAGE: float = 50.0
+
 ## Emitted when the game pause state changes.
 signal pause_state_changed(is_paused: bool)
 
@@ -35,6 +38,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		toggle_fullscreen()
 	elif event.is_action_pressed("ui_pause"):
 		toggle_pause()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("debug_kill"):
+		debug_kill_enemies()
 		get_viewport().set_input_as_handled()
 
 
@@ -169,3 +175,24 @@ func toggle_pause() -> void:
 		resume_game()
 	else:
 		pause_game()
+
+
+## Deals damage to every living enemy in the "enemy" group. Routes hits
+## through Hurtbox.receive_hit() so damage numbers, hit audio, and stun
+## reactions fire exactly like combat hits; falls back to direct pool
+## damage only when an enemy has no wired hurtbox.
+func debug_kill_enemies(damage: float = DEBUG_KILL_DAMAGE) -> void:
+	var enemies: Array[Node] = get_tree().get_nodes_in_group("enemy")
+	for node: Node in enemies:
+		if not (node is Character):
+			continue
+		var enemy: Character = node as Character
+		if not enemy.is_alive():
+			continue
+		var hurtbox: Hurtbox = enemy.hurtbox
+		if hurtbox == null or not is_instance_valid(hurtbox):
+			hurtbox = enemy.get_node_or_null("Hurtbox") as Hurtbox
+		if hurtbox != null and is_instance_valid(hurtbox):
+			hurtbox.receive_hit(damage, Vector3.ZERO)
+		elif enemy.attribute_component != null and is_instance_valid(enemy.attribute_component):
+			enemy.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, damage)

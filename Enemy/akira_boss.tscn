@@ -30,67 +30,67 @@
 [ext_resource type="Script" uid="uid://brm6ulu844i0u" path="res://Player/slash_vfx.gd" id="25_slashvfx"]
 [ext_resource type="AudioStream" uid="uid://cx123snak3vdw" path="res://Assets/Audio/fire-slash.ogg" id="26_fireslash"]
 
-[sub_resource type="Gradient" id="Gradient_kcyww"]
+[sub_resource type="Gradient" id="Gradient_ib8qb"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_mrvd6"]
-gradient = SubResource("Gradient_kcyww")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_nocqm"]
+gradient = SubResource("Gradient_ib8qb")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_j8l7g"]
+[sub_resource type="Gradient" id="Gradient_odgeq"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_ib8qb"]
-gradient = SubResource("Gradient_j8l7g")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_obebn"]
+gradient = SubResource("Gradient_odgeq")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_nocqm"]
+[sub_resource type="Gradient" id="Gradient_jc4pd"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_odgeq"]
-gradient = SubResource("Gradient_nocqm")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_w108o"]
+gradient = SubResource("Gradient_jc4pd")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_obebn"]
+[sub_resource type="Gradient" id="Gradient_sopqw"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_jc4pd"]
-gradient = SubResource("Gradient_obebn")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_20gru"]
+gradient = SubResource("Gradient_sopqw")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_w108o"]
+[sub_resource type="Gradient" id="Gradient_ddnmb"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_sopqw"]
-gradient = SubResource("Gradient_w108o")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_2tj75"]
+gradient = SubResource("Gradient_ddnmb")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_20gru"]
+[sub_resource type="Gradient" id="Gradient_pow1w"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_ddnmb"]
-gradient = SubResource("Gradient_20gru")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_s6vrq"]
+gradient = SubResource("Gradient_pow1w")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_2tj75"]
+[sub_resource type="Gradient" id="Gradient_2gdgw"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_pow1w"]
-gradient = SubResource("Gradient_2tj75")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_fh3vx"]
+gradient = SubResource("Gradient_2gdgw")
 width = 64
 
 [sub_resource type="Gradient" id="Gradient_akira"]
 colors = PackedColorArray(0.75, 0.15, 0.1, 1, 0.35, 0.05, 0.28, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_s6vrq"]
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ju7y7"]
 gradient = SubResource("Gradient_akira")
 width = 64
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_2gdgw"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_a4mjr"]
 render_priority = 0
 shader = ExtResource("3_8pxb0")
 shader_parameter/albedo_texture = ExtResource("4_wha28")
-shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_mrvd6"), SubResource("GradientTexture1D_ib8qb"), SubResource("GradientTexture1D_odgeq"), SubResource("GradientTexture1D_jc4pd"), SubResource("GradientTexture1D_sopqw"), SubResource("GradientTexture1D_ddnmb"), SubResource("GradientTexture1D_pow1w"), SubResource("GradientTexture1D_s6vrq")])
+shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_nocqm"), SubResource("GradientTexture1D_obebn"), SubResource("GradientTexture1D_w108o"), SubResource("GradientTexture1D_20gru"), SubResource("GradientTexture1D_2tj75"), SubResource("GradientTexture1D_s6vrq"), SubResource("GradientTexture1D_fh3vx"), SubResource("GradientTexture1D_ju7y7")])
 shader_parameter/palette_mode = 0
 shader_parameter/enable_palette = true
 shader_parameter/gradient_mask = 128
@@ -189,22 +189,22 @@ transform = Transform3D(1.32, 0, 0, 0, 1.32, 0, 0, 0, 1.32, 0, 0, 0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.5, 0)
 
 [node name="Enemy_Large_ArmLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="0" unique_id=1934282389]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Large_ArmRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="1" unique_id=1228640668]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Large_Body" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="2" unique_id=1747424752]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Large_Head" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="3" unique_id=14919571]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Large_LegLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="4" unique_id=1490232625]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Large_LegRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="5" unique_id=409806451]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="WeaponSlot" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D" index="6"]
 transform = Transform3D(-0.99999946, 3.9575104e-07, 1.2435319e-07, 8.5915715e-08, -2.2241217e-07, 0.99999994, 3.2124552e-07, 0.9999996, 1.894397e-07, -2.4947143, 2.5355213, -3.422245e-07)
@@ -247,24 +247,24 @@ transform = Transform3D(-0.8, 0, 0, 0, 0.8, 0, 0, 0, -0.8, 0, -0.25, -0.05)
 [node name="AnimatedEnemyLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft" unique_id=902038026 instance=ExtResource("2_anim_med")]
 
 [node name="Enemy_Medium_ArmLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(902038026, 1921158861, 1960628849) index="0" unique_id=117100866]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Medium_ArmRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(902038026, 1921158861, 1960628849) index="1" unique_id=258279752]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Medium_Body" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(902038026, 1921158861, 1960628849) index="2" unique_id=1362487821]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Medium_Head" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(902038026, 1921158861, 1960628849) index="3" unique_id=1681711066]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Medium_LegLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(902038026, 1921158861, 1960628849) index="4" unique_id=1428134451]
 visible = false
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Medium_LegRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(902038026, 1921158861, 1960628849) index="5" unique_id=491739949]
 visible = false
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="WeaponSlot" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(902038026, 1921158861, 1960628849) index="6" unique_id=211580224 node_paths=PackedStringArray("hitbox")]
 hitbox = NodePath("HitboxArea")
@@ -284,14 +284,13 @@ script = ExtResource("23_attack_comp")
 damage = 8.0
 knockback = Vector3(0, 2, 12)
 
-[node name="Sword" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="2"]
+[node name="Sword" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" unique_id=1136192254]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 material_override = SubResource("Mat_rider_sword")
 mesh = SubResource("Mesh_rider_sword")
 
-[node name="SlashVFX" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1" node_paths=PackedStringArray("weapon_slot")]
+[node name="SlashVFX" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1" unique_id=179070841 node_paths=PackedStringArray("weapon_slot")]
 transform = Transform3D(0, 1, 0, 1, 0, 0, 0, 0, -1, -1.25, 2, 0)
-visible = false
 material_override = SubResource("ShaderMaterial_rider_slash")
 cast_shadow = 0
 gi_mode = 0
@@ -300,7 +299,7 @@ script = ExtResource("25_slashvfx")
 weapon_slot = NodePath("..")
 attack_type = 1
 
-[node name="AttackAudio" type="AudioStreamPlayer3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="2"]
+[node name="AttackAudio" type="AudioStreamPlayer3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="2" unique_id=1782271868]
 stream = ExtResource("26_fireslash")
 volume_db = 10.0
 max_db = 5.0
@@ -335,24 +334,24 @@ transform = Transform3D(-0.8, 0, 0, 0, 0.8, 0, 0, 0, -0.8, 0, -0.25, -0.05)
 [node name="AnimatedEnemyRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight" unique_id=497334791 instance=ExtResource("2_anim_med")]
 
 [node name="Enemy_Medium_ArmLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(497334791, 1921158861, 1960628849) index="0" unique_id=117100866]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Medium_ArmRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(497334791, 1921158861, 1960628849) index="1" unique_id=258279752]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Medium_Body" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(497334791, 1921158861, 1960628849) index="2" unique_id=1362487821]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Medium_Head" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(497334791, 1921158861, 1960628849) index="3" unique_id=1681711066]
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Medium_LegLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(497334791, 1921158861, 1960628849) index="4" unique_id=1428134451]
 visible = false
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="Enemy_Medium_LegRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(497334791, 1921158861, 1960628849) index="5" unique_id=491739949]
 visible = false
-material_override = SubResource("ShaderMaterial_2gdgw")
+material_override = SubResource("ShaderMaterial_a4mjr")
 
 [node name="WeaponSlot" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(497334791, 1921158861, 1960628849) index="6" unique_id=211580224 node_paths=PackedStringArray("hitbox")]
 hitbox = NodePath("HitboxArea")
@@ -372,14 +371,13 @@ script = ExtResource("23_attack_comp")
 damage = 8.0
 knockback = Vector3(0, 2, 12)
 
-[node name="Sword" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="2"]
+[node name="Sword" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" unique_id=1784349576]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 material_override = SubResource("Mat_rider_sword")
 mesh = SubResource("Mesh_rider_sword")
 
-[node name="SlashVFX" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1" node_paths=PackedStringArray("weapon_slot")]
+[node name="SlashVFX" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1" unique_id=84950713 node_paths=PackedStringArray("weapon_slot")]
 transform = Transform3D(0, 1, 0, 1, 0, 0, 0, 0, -1, -1.25, 2, 0)
-visible = false
 material_override = SubResource("ShaderMaterial_rider_slash")
 cast_shadow = 0
 gi_mode = 0
@@ -388,7 +386,7 @@ script = ExtResource("25_slashvfx")
 weapon_slot = NodePath("..")
 attack_type = 1
 
-[node name="AttackAudio" type="AudioStreamPlayer3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="2"]
+[node name="AttackAudio" type="AudioStreamPlayer3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="2" unique_id=223779444]
 stream = ExtResource("26_fireslash")
 volume_db = 10.0
 max_db = 5.0
@@ -526,7 +524,7 @@ target_desired_distance = 2.5
 
 [node name="AttributeComponent" type="Node" parent="." unique_id=1551787638]
 script = ExtResource("19_attr")
-base_max_health = 280.0
+base_max_health = 600.0
 base_attack = 110.0
 base_speed = 2.0
 
@@ -544,12 +542,12 @@ right_rider_tree = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_La
 left_rider_root = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft")
 right_rider_root = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight")
 
+[connection signal="slash" from="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
+[connection signal="slash" from="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
+
 [editable path="AnimationAnchor/AnimatedBrute"]
 [editable path="AnimationAnchor/AnimatedBrute/Enemy_Large"]
 [editable path="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft"]
 [editable path="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium"]
 [editable path="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight"]
 [editable path="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium"]
-
-[connection signal="slash" from="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
-[connection signal="slash" from="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
