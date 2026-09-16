@@ -10,6 +10,8 @@ extends AIState
 @export var lost_target_state: AIState
 ## Cooldown time in seconds between attack executions (0.0 = attack whenever ready).
 @export var attack_cooldown: float = 0.0
+## Whether this attack can be ordered even if the physical body is currently in EnemyStun.
+@export var can_break_stun: bool = false
 ## Total facing cone in degrees toward the target required before ordering the
 ## attack (90.0 = within 45 degrees either side). 360.0 orders regardless of
 ## facing; 0.0 waits for perfect alignment. While outside the cone the mind
@@ -64,7 +66,7 @@ func physics_update(delta: float) -> void:
 		# the body keeps converging during the swing. Failed orders (stunned
 		# body) simply retry next tick since pursue never leaves this branch.
 		if cooldown_timer <= 0.0 and is_facing_within_cone(target, desired_angle):
-			if ai_state_machine.order_attack(attack_state_name, false, build_aim_order_data(target)):
+			if ai_state_machine.order_attack(attack_state_name, can_break_stun, build_aim_order_data(target)):
 				cooldown_timer = attack_cooldown
 		return
 

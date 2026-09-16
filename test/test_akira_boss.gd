@@ -54,6 +54,9 @@ func _ready() -> void:
 	await _part10_scale_preserved()
 	if _failed:
 		return
+	await _part11_ability_hyper_armor()
+	if _failed:
+		return
 	print("====================================================")
 	print("  ALL AKIRA BOSS TESTS PASSED (%d checks)" % _passed)
 	print("====================================================")
@@ -967,5 +970,178 @@ func _part10_scale_preserved() -> void:
 			return
 	print("Mesh scale preserved while turning: %s." % str(anchor.scale))
 	boss.queue_free()
+	await get_tree().process_frame
+	_passed += 1
+
+
+func _part11_ability_hyper_armor() -> void:
+	print("\n>>> PART 11: Punch & firebomb share slam hyper-armor and stun cancel")
+	var boss: Character = _boss()
+	if boss == null:
+		return
+	add_child(boss)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	var body_sm: StateMachine = boss.state_machine
+	var mind: AIStateMachine = boss.ai_state_machine
+	if body_sm == null or mind == null:
+		_fail("Boss StateMachine or AIStateMachine missing.")
+		boss.queue_free()
+		return
+	# Freeze the mind so scripted body states are never stolen mid-check; the
+	# stun-cancel path below is driven through order_attack directly.
+	mind.process_mode = Node.PROCESS_MODE_DISABLED
+	var slam: CharacterAttack = body_sm.get_node_or_null("EnemyAttack") as CharacterAttack
+	var punch: CharacterAttack = body_sm.get_node_or_null("EnemyPunch") as CharacterAttack
+	var firebomb: CharacterAttack = body_sm.get_node_or_null("EnemyFirebomb") as CharacterAttack
+	if slam == null or punch == null or firebomb == null:
+		_fail("Boss StateMachine missing an ability state (slam/punch/firebomb).")
+		boss.queue_free()
+		return
+	if not slam.uninterruptable:
+		_fail("Boss slam (EnemyAttack) should stay uninterruptable.")
+		boss.queue_free()
+		return
+	if not punch.uninterruptable:
+		_fail("Boss punch (EnemyPunch) should be uninterruptable like the slam.")
+		boss.queue_free()
+		return
+	if not firebomb.uninterruptable:
+		_fail("Boss firebomb (EnemyFirebomb) should be uninterruptable like the slam.")
+		boss.queue_free()
+		return
+	print("Slam, punch, and firebomb all uninterruptable.")
+	var ai_slam: AIConditionalAttack = mind.get_node_or_null("AISlam") as AIConditionalAttack
+	var ai_firebomb: AIConditionalAttack = mind.get_node_or_null("AIFirebomb") as AIConditionalAttack
+	var pursue: AIPursue = mind.get_node_or_null("AIPursue") as AIPursue
+	if ai_slam == null or ai_firebomb == null or pursue == null:
+		_fail("Boss AIStateMachine missing an ability mind state.")
+		boss.queue_free()
+		return
+	if pursue.attack_state_name != "EnemyPunch":
+		_fail("Boss AIPursue should order EnemyPunch, got: " + pursue.attack_state_name)
+		boss.queue_free()
+		return
+	if not ai_slam.can_break_stun:
+		_fail("AISlam should keep breaking stun.")
+		boss.queue_free()
+		return
+	if not ai_firebomb.can_break_stun:
+		_fail("AIFirebomb should break stun like AISlam.")
+		boss.queue_free()
+		return
+	if not pursue.can_break_stun:
+		_fail("Boss AIPursue should break stun into punch like AISlam.")
+		boss.queue_free()
+		return
+	print("Slam, firebomb, and punch orders all break stun.")
+	# Hits during any ability damage the boss without stunning him out of it.
+	var hurtbox: Hurtbox = boss.get_node_or_null("Hurtbox") as Hurtbox
+	if hurtbox == null:
+		_fail("Boss Hurtbox missing.")
+		boss.queue_free()
+		return
+	var abilities: Array[String] = ["EnemyAttack", "EnemyPunch", "EnemyFirebomb"]
+	for i: int in range(abilities.size()):
+		var ability: String = abilities[i]
+		body_sm.request_state(ability)
+		await get_tree().physics_frame
+		await get_tree().physics_frame
+		if body_sm.state == null or body_sm.state.name != ability:
+			_fail("Boss could not enter %s for hyper-armor check." % ability)
+			boss.queue_free()
+			return
+		var hp_before: float = boss.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+		if not hurtbox.receive_hit(10.0, Vector3.ZERO):
+			_fail("Hit should land during %s hyper-armor." % ability)
+			boss.queue_free()
+			return
+		await get_tree().physics_frame
+		await get_tree().process_frame
+		if body_sm.state == null or body_sm.state.name != ability:
+			var stayed: String = body_sm.state.name if body_sm.state != null else "null"
+			_fail("Boss was stunned out of %s (hyper-armor broken, now %s)." % [ability, stayed])
+			boss.queue_free()
+			return
+		if not is_equal_approx(boss.attribute_component.get_current(AttributeComponent.POOL_HEALTH), hp_before - 10.0):
+			_fail("Boss should still take damage during %s hyper-armor." % ability)
+			boss.queue_free()
+			return
+	print("Hits during slam, punch, and firebomb damage without stunning.")
+	# Each ability cancels a live stun through the real order path, using the
+	# mind state's own configured flag (not a hardcoded true).
+	var cancel_names: Array[String] = ["EnemyAttack", "EnemyPunch", "EnemyFirebomb"]
+	var cancel_flags: Array[bool] = [ai_slam.can_break_stun, pursue.can_break_stun, ai_firebomb.can_break_stun]
+	for i: int in range(cancel_names.size()):
+		var target_ability: String = cancel_names[i]
+		body_sm.request_state("EnemyStun")
+		await get_tree().physics_frame
+		await get_tree().physics_frame
+		if body_sm.state == null or body_sm.state.name != "EnemyStun":
+			_fail("Boss could not enter EnemyStun for cancel check.")
+			boss.queue_free()
+			return
+		if not mind.order_attack(target_ability, cancel_flags[i]):
+			_fail("Boss stun should cancel into %s." % target_ability)
+			boss.queue_free()
+			return
+		await get_tree().physics_frame
+		if body_sm.state == null or body_sm.state.name != target_ability:
+			var landed: String = body_sm.state.name if body_sm.state != null else "null"
+			_fail("Boss did not enter %s after stun cancel (now %s)." % [target_ability, landed])
+			boss.queue_free()
+			return
+	print("Stun cancels into slam, punch, and firebomb through order_attack.")
+	boss.queue_free()
+	await get_tree().process_frame
+	# Live end to end: a stunned boss with the player in punch range breaks
+	# out into an ability on its own (mind enabled this time).
+	var player_scene: PackedScene = load("res://Player/player.tscn") as PackedScene
+	var live: Character = _boss()
+	var player: Character = (player_scene.instantiate() as Character) if player_scene != null else null
+	if live == null or player == null:
+		_fail("Could not spawn boss and player for live cancel check.")
+		if live != null:
+			live.queue_free()
+		if player != null:
+			player.queue_free()
+		return
+	add_child(live)
+	add_child(player)
+	live.global_position = Vector3(0.0, 2.5, 0.0)
+	player.global_position = Vector3(2.0, 1.0, 0.0)
+	if not await _wait_body_state(live, "EnemyMove", 120):
+		_fail("Live boss should settle into EnemyMove before stun cancel.")
+		player.queue_free()
+		live.queue_free()
+		return
+	var live_mind: AIStateMachine = live.ai_state_machine
+	if live_mind == null or live_mind.state == null or live_mind.state.name != "AIPursue":
+		_fail("Live boss mind should wait in AIPursue for the cancel check.")
+		player.queue_free()
+		live.queue_free()
+		return
+	live.state_machine.request_state("EnemyStun")
+	var broke_out: bool = false
+	for frame: int in range(300):
+		await get_tree().physics_frame
+		if live.state_machine == null or live.state_machine.state == null:
+			break
+		var now: String = live.state_machine.state.name
+		if now == "EnemyAttack" or now == "EnemyPunch" or now == "EnemyFirebomb":
+			broke_out = true
+			break
+		if now == "EnemyMove":
+			# Stun expired before an order landed: re-apply so the observed
+			# ability still has to break out of a live stun.
+			live.state_machine.request_state("EnemyStun")
+	if not broke_out:
+		_fail("Stunned live boss never broke out into an ability.")
+		player.queue_free()
+		live.queue_free()
+		return
+	print("Stunned live boss broke out into %s on its own." % live.state_machine.state.name)
+	player.queue_free()
+	live.queue_free()
 	await get_tree().process_frame
 	_passed += 1
