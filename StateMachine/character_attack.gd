@@ -85,21 +85,21 @@ func _physics_process(delta: float) -> void:
 		tick_cooldown(delta)
 
 
-func physics_update(_delta: float) -> void:
+func physics_update(delta: float) -> void:
 	if character == null or not character.is_inside_tree():
 		return
 	# Same shared checks both controllers drive: dash-cancel is gated by the
 	# dash_cancel export below, attack intents queue the combo follow-up.
 	check_dash()
 	check_attack()
-	_update_hitstop(_delta)
+	_update_hitstop(delta)
 	var motion_scale: float = clampf(self_hitstop_scale, 0.0, 1.0) if is_in_hitstop() else 1.0
 	if lunging:
 		character.velocity = lunge_direction * dash_speed * motion_scale
 	else:
 		character.velocity = character.move_direction * movement_speed * motion_scale
 	if not is_in_hitstop():
-		character.look_toward_direction(aim_direction, 1.0)
+		character.look_toward_direction(aim_direction, delta)
 	character.move_and_slide()
 
 
@@ -139,6 +139,10 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	if input_comp != null:
 		input_comp.update_aim_intent()
 		aim_direction = character.aim_direction
+	elif _data.get("aim") is Vector3:
+		## AI-ordered facing intent (see AIAttack.enter): snapshot so the body
+		## turns toward the ordered target at the rotation speed limit.
+		aim_direction = _data["aim"]
 	else:
 		aim_direction = Vector3.ZERO
 	_aim_at_current_target()

@@ -20,9 +20,9 @@ func physics_update(delta: float) -> void:
 		else:
 			character.animation_tree.blend_target = 1.0
 
-	# When moving, core_movement provides smooth orientation toward move_direction.
-	# When idle, snap-rotate towards face_target if specified.
+	# When moving, core_movement orients toward move_direction at the rotation
+	# speed limit. When idle, turn toward face_target at the same limit.
 	if character.move_direction.is_zero_approx() and not character.face_target.is_zero_approx():
-		look_at_target(character.face_target)
+		look_at_target(character.face_target, delta)
 
 	character.move_and_slide()

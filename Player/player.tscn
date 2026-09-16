@@ -673,6 +673,7 @@ autoplay = &"RESET"
 [node name="AttributeComponent" type="Node" parent="." unique_id=271828459]
 script = ExtResource("26_attr")
 base_max_health = 60.0
+base_rotation_speed = 720.0
 
 [connection signal="slash" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone/AudioStreamPlayer3D" method="play"]

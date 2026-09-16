@@ -15,8 +15,6 @@ signal target_changed(new_target: Node3D)
 ## Emitted when an attack belonging to this character lands a hit on a target.
 signal hit_landed(target: Node, attack_component: AttackComponent)
 
-## Exponential decay rate for orientation smoothing.
-@export var decay: float = 12.0
 ## The visual mount node rotated to face movement or aim directions.
 @export var mesh_mount: Node3D
 ## Reference to the character's AttributeComponent (stat store). Owns movement
@@ -242,32 +240,66 @@ func is_alive() -> bool:
 	return true
 
 
-## Smoothly rotates the mesh_mount towards the given direction using exponential decay.
-## Preserves the mount scale (e.g. the boss' enlarged rig): looking_at builds
-## a rotation-only basis, so the smoothed result re-applies the kept scale.
+## Fallback rotation speed in degrees per second when no AttributeComponent is
+## attached. Mirrors AttributeComponent.base_rotation_speed.
+const DEFAULT_ROTATION_SPEED: float = 360.0
+
+
+## Requests facing toward the given desired direction. The actual rotation only
+## ever advances toward it by at most get_rotation_speed() * delta, so every
+## caller (movement, AI auto-aim, attack aiming) merely sets intent while this
+## function enforces the speed limit. Dead characters never rotate.
 func look_toward_direction(direction: Vector3, delta: float) -> void:
-	if not is_alive() or direction.is_zero_approx() or mesh_mount == null:
-		return
-	var keep_scale: Vector3 = mesh_mount.global_transform.basis.get_scale()
-	var target_transform: Transform3D = mesh_mount.global_transform
-	target_transform = target_transform.looking_at(mesh_mount.global_position + direction, Vector3.UP, true)
-	var smoothed: Transform3D = mesh_mount.global_transform.interpolate_with(
-		target_transform,
-		1.0 - exp(-decay * delta)
-	)
-	smoothed.basis = smoothed.basis.orthonormalized().scaled(keep_scale)
-	mesh_mount.global_transform = smoothed
-
-
-## Instantly points the mesh_mount towards the target position on the XZ plane.
-func look_at_target(target: Vector3) -> void:
 	if not is_alive() or mesh_mount == null:
 		return
-	var target_pos: Vector3 = target
-	target_pos.y = mesh_mount.global_position.y
-	if mesh_mount.global_position.is_equal_approx(target_pos):
+	var flat: Vector3 = Vector3(direction.x, 0.0, direction.z)
+	if flat.is_zero_approx():
 		return
-	mesh_mount.look_at(target_pos, Vector3.UP, true)
+	_rotate_mount_toward(flat.normalized(), delta)
+
+
+## Requests facing toward the given target position on the XZ plane. Like
+## look_toward_direction this never snaps: one call advances the actual
+## rotation by the speed limit for delta only, so single calls from state
+## enter() paths or timer callbacks turn by a single step while per-frame
+## callers converge over successive frames. Dead characters never rotate.
+func look_at_target(target: Vector3, delta: float) -> void:
+	if not is_alive() or mesh_mount == null:
+		return
+	var to_target: Vector3 = target - mesh_mount.global_position
+	to_target.y = 0.0
+	if to_target.is_zero_approx():
+		return
+	_rotate_mount_toward(to_target.normalized(), delta)
+
+
+## Returns the rotation speed limit in degrees per second (360.0 = one full
+## turn per second). Reads the rotation_speed stat live so modifiers apply;
+## clamps at zero so stacked slow effects hold facing instead of reversing it.
+func get_rotation_speed() -> float:
+	if attribute_component != null and is_instance_valid(attribute_component):
+		return maxf(0.0, attribute_component.get_current(AttributeComponent.STAT_ROTATION_SPEED))
+	return DEFAULT_ROTATION_SPEED
+
+
+## Yaw-rotates the mesh_mount toward the normalized XZ desired direction by at
+## most the speed limit for delta, taking the shortest arc. Rotating the
+## existing basis (instead of rebuilding it via looking_at) preserves the
+## mount scale and origin by construction.
+func _rotate_mount_toward(desired: Vector3, delta: float) -> void:
+	var mount_basis: Basis = mesh_mount.global_transform.basis
+	var forward: Vector3 = Vector3(mount_basis.z.x, 0.0, mount_basis.z.z)
+	if forward.is_zero_approx():
+		return
+	forward = forward.normalized()
+	var signed_angle: float = atan2(forward.cross(desired).y, forward.dot(desired))
+	var max_step: float = deg_to_rad(get_rotation_speed()) * maxf(delta, 0.0)
+	var step: float = clampf(signed_angle, -max_step, max_step)
+	if is_zero_approx(step):
+		return
+	var keep_scale: Vector3 = mount_basis.get_scale()
+	var turned: Basis = (Basis(Vector3.UP, step) * mount_basis).orthonormalized().scaled(keep_scale)
+	mesh_mount.global_transform = Transform3D(turned, mesh_mount.global_transform.origin)
 
 
 ## Returns the damage scaling modifier (attack stat / 100.0).

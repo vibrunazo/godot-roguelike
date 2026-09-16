@@ -43,10 +43,11 @@ func check_attack() -> bool:
 	return character.state_machine.request_state(attack_state.name, {"direction": character.move_direction})
 
 
-## Points the character's visual mesh toward the specified target in world space.
-func look_at_target(target: Vector3) -> void:
+## Requests the character's visual mesh toward the target in world space. The
+## character turns at its rotation speed limit (see Character.look_at_target).
+func look_at_target(target: Vector3, delta: float) -> void:
 	if character != null:
-		character.look_at_target(target)
+		character.look_at_target(target, delta)
 
 
 ## Handles unified velocity calculation, knockback application, and orientation smoothing.

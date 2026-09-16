@@ -71,7 +71,7 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 			away_dir.y = 0.0
 			if not away_dir.is_zero_approx():
 				away_dir = away_dir.normalized()
-				character.look_toward_direction(away_dir, 1.0)
+				character.look_toward_direction(away_dir, character.get_physics_process_delta_time())
 
 		var target_body_state: String = attack_state_name if attack_state_name != "" else ability_state_name
 		var leap_data: Dictionary = {"direction": away_dir}

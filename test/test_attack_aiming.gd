@@ -143,12 +143,18 @@ func _ready() -> void:
 		return
 	print("Entered PlayerAttack aiming towards dummy...")
 	
-	# Verify player turned towards the dummy (+X)
-	await get_tree().physics_frame
-	var facing_dir: Vector3 = player.mesh_mount.global_transform.basis.z.normalized()
-	print("Player facing vector after attack start: ", facing_dir)
+	# Verify the player turns toward the dummy (+X) at the rotation speed limit:
+	# 90 degrees at 720 deg/sec converges in ~8 physics frames, never snaps.
 	var dir_to_dummy: Vector3 = (dummy.global_position - player.global_position).normalized()
-	var aim_alignment: float = facing_dir.dot(dir_to_dummy)
+	var facing_dir: Vector3 = Vector3.ZERO
+	var aim_alignment: float = -1.0
+	for i: int in range(30):
+		await get_tree().physics_frame
+		facing_dir = player.mesh_mount.global_transform.basis.z.normalized()
+		aim_alignment = facing_dir.dot(dir_to_dummy)
+		if aim_alignment >= 0.85:
+			break
+	print("Player facing vector after attack start: ", facing_dir)
 	print("Alignment with dummy direction: ", aim_alignment)
 	if aim_alignment < 0.85:
 		printerr("TEST FAILED: Player did not orient towards mouse aim target! Alignment: ", aim_alignment)

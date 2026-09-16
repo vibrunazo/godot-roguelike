@@ -114,7 +114,7 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	character.velocity = Vector3(horizontal_velocity.x, vertical_velocity, horizontal_velocity.z)
 
 	if not horizontal_velocity.is_zero_approx():
-		character.look_toward_direction(horizontal_velocity.normalized(), 1.0)
+		character.look_toward_direction(horizontal_velocity.normalized(), character.get_physics_process_delta_time())
 
 	_trigger_animation()
 

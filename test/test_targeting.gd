@@ -132,10 +132,19 @@ func _ready() -> void:
 	if not player.is_attacking:
 		await _fail(level, "is_attacking flag not set on attack enter.")
 		return
-	await _wait_frames(2)
-	var facing_dir: Vector3 = player.mesh_mount.global_transform.basis.z.normalized()
-	var dir_to_enemy: Vector3 = (enemy_a.global_position - player.global_position).normalized()
-	var alignment: float = facing_dir.dot(dir_to_enemy)
+	# Facing requests respect the rotation speed limit: poll until the attack
+	# aiming converges instead of expecting an instant snap. Recompute the
+	# target direction each frame in case the enemy drifts while turning.
+	var facing_dir: Vector3 = Vector3.ZERO
+	var dir_to_enemy: Vector3 = Vector3.ZERO
+	var alignment: float = -1.0
+	for i: int in range(30):
+		await _wait_frames(1)
+		facing_dir = player.mesh_mount.global_transform.basis.z.normalized()
+		dir_to_enemy = (enemy_a.global_position - player.global_position).normalized()
+		alignment = facing_dir.dot(dir_to_enemy)
+		if alignment >= 0.85:
+			break
 	print("Attack facing alignment with target: ", alignment)
 	if alignment < 0.85:
 		await _fail(level, "Attack did not rotate toward target. Alignment: %f." % alignment)

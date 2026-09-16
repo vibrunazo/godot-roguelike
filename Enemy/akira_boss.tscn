@@ -554,6 +554,7 @@ base_max_health = 600.0
 base_attack = 110.0
 base_speed = 2.0
 base_fire_resistance = 1.0
+base_rotation_speed = 90.0
 
 [node name="ProjectileSpawnerComponent" type="Node" parent="." unique_id=1897260338 node_paths=PackedStringArray("spawn_point", "character")]
 script = ExtResource("20_spawner")

@@ -25,7 +25,7 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 	character.navigation_agent_3d.target_position = random_point
 
 
-func physics_update(_delta: float) -> void:
+func physics_update(delta: float) -> void:
 	if character == null or not character.is_inside_tree() or ai_state_machine == null or not character.is_alive():
 		return
 
@@ -59,14 +59,14 @@ func physics_update(_delta: float) -> void:
 	if in_range and can_attack:
 		ai_state_machine.command_stop()
 		if target != null and character != null:
-			character.look_at_target(target.global_position)
+			character.look_at_target(target.global_position, delta)
 		finished.emit(attack_state.name)
 		return
 
 	if nav_agent.is_target_reached():
 		ai_state_machine.command_stop()
 		if target != null and character != null:
-			character.look_at_target(target.global_position)
+			character.look_at_target(target.global_position, delta)
 		if in_range and can_attack:
 			finished.emit(attack_state.name)
 			return

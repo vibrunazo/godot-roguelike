@@ -34,6 +34,6 @@ func end_wait() -> void:
 	if ai_state_machine != null:
 		var target: Character = ai_state_machine.get_target()
 		if target != null and character != null:
-			character.look_at_target(target.global_position)
+			character.look_at_target(target.global_position, character.get_physics_process_delta_time())
 	if next_state != null:
 		finished.emit(next_state.name)

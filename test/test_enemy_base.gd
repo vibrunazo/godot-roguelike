@@ -1397,14 +1397,19 @@ func _ready() -> void:
 		return
 	print("RangedEnemy spawn_point assigned: ", spawner_comp.spawn_point.name)
 
-	# Test look_at_target
-	shooter.look_at_target(test_player.global_position)
-	# The enemy mesh_mount should now face towards the player
-	# With use_model_front = true, mesh_mount +Z basis points towards the target
-	var facing_dir: Vector3 = shooter.mesh_mount.global_transform.basis.z.normalized()
+	# Test look_at_target: facing requests respect the rotation speed limit, so
+	# the mount converges over successive calls instead of snapping instantly.
 	var expected_dir: Vector3 = (test_player.global_position - shooter.mesh_mount.global_position)
 	expected_dir.y = 0.0
 	expected_dir = expected_dir.normalized()
+	var facing_dir: Vector3 = Vector3.ZERO
+	for i: int in range(180):
+		shooter.look_at_target(test_player.global_position, 1.0 / 60.0)
+		facing_dir = shooter.mesh_mount.global_transform.basis.z.normalized()
+		if facing_dir.dot(expected_dir) >= 0.999:
+			break
+	# The enemy mesh_mount should now face towards the player
+	# With use_model_front = true, mesh_mount +Z basis points towards the target
 	if facing_dir.dot(expected_dir) < 0.999:
 		printerr("TEST FAILED: mesh_mount does not face player. Facing: ", facing_dir, " Expected: ", expected_dir)
 		shooter.queue_free()

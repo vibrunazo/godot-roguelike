@@ -960,7 +960,7 @@ func _part10_scale_preserved() -> void:
 		for frame: int in range(12):
 			boss.look_toward_direction(dir, 1.0 / 60.0)
 			await get_tree().physics_frame
-		boss.look_at_target(boss.global_position + dir * 5.0)
+		boss.look_at_target(boss.global_position + dir * 5.0, 1.0 / 60.0)
 		if not anchor.scale.is_equal_approx(healthy_scale):
 			_fail("Turning should preserve mesh scale (got %s, want %s)." % [str(anchor.scale), str(healthy_scale)])
 			boss.queue_free()

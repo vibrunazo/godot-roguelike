@@ -520,13 +520,22 @@ func test_part_7_ranged_enemy_ai_attack_timing() -> void:
 		get_tree().quit(1)
 		return
 
-	# Enter AIAttack directly targeting player at 10m
+	# Enter AIAttack directly targeting player at 10m. The order only sets the
+	# desired facing; the body turns toward the snapshot aim at its rotation
+	# speed limit, so poll until it converges instead of expecting a snap.
+	# Freeze the mind during the poll so no other AI state disturbs the body.
 	ai_attack.enter("AIWait")
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
+	ai_sm.process_mode = Node.PROCESS_MODE_DISABLED
 	var facing: Vector3 = ranged_enemy.mesh_mount.global_basis.z.normalized()
 	var alignment: float = facing.dot(Vector3(1.0, 0.0, 0.0))
+	for i: int in range(60):
+		await get_tree().physics_frame
+		facing = ranged_enemy.mesh_mount.global_basis.z.normalized()
+		alignment = facing.dot(Vector3(1.0, 0.0, 0.0))
+		if alignment >= 0.9:
+			break
+	await get_tree().process_frame
+
 	if alignment < 0.9:
 		printerr("TEST FAILED: RangedEnemy mesh_mount did not align with target at 10m! Facing: ", facing, " dot: ", alignment)
 		player.queue_free()
@@ -605,7 +614,7 @@ func test_part_8_defeat_inactivity_and_rotation_lock() -> void:
 	var initial_mesh_rot: Vector3 = melee_enemy.mesh_mount.global_rotation
 
 	# Attempt to turn corpse via look_at_target
-	melee_enemy.look_at_target(Vector3(10.0, 0.0, 10.0))
+	melee_enemy.look_at_target(Vector3(10.0, 0.0, 10.0), 1.0 / 60.0)
 	if not melee_enemy.mesh_mount.global_rotation.is_equal_approx(initial_mesh_rot):
 		printerr("TEST FAILED: look_at_target rotated a dead character's mesh_mount!")
 		player.queue_free()

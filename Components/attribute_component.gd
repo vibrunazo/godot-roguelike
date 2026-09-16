@@ -5,7 +5,7 @@
 ##   set_pool_current). Pools carry no modifier stack, so expiring a max-stat
 ##   buff re-clamps but never phantom-deletes earned pool value.
 ## - Stat attributes (max_health, max_mana, attack, defense, speed,
-##   attack_speed, fire_resistance): base value plus a stack of active
+##   attack_speed, fire_resistance, rotation_speed): base value plus a stack of active
 ##   modifiers, recomputed as
 ##   (base + sum(ADD)) * (1 + sum(MULT_ADD)) * product(1 + MULT_COMP).
 ## The base_* exports seed each stat once when entering the tree (init-only);
@@ -34,8 +34,12 @@ const STAT_ATTACK_SPEED: StringName = &"attack_speed"
 ## Fire resistance as a fraction (0.0 = none, 1.0 = immune). Scales all
 ## fire-typed damage; read via get_damage_multiplier, never directly.
 const STAT_FIRE_RESISTANCE: StringName = &"fire_resistance"
+## Rotation speed limit in degrees per second (360.0 = one full turn per
+## second). Caps how fast Character.look_* rotate the mesh_mount; read via
+## Character.get_rotation_speed(), never directly.
+const STAT_ROTATION_SPEED: StringName = &"rotation_speed"
 
-const STAT_NAMES: Array[StringName] = [STAT_MAX_HEALTH, STAT_MAX_MANA, STAT_ATTACK, STAT_DEFENSE, STAT_SPEED, STAT_ATTACK_SPEED, STAT_FIRE_RESISTANCE]
+const STAT_NAMES: Array[StringName] = [STAT_MAX_HEALTH, STAT_MAX_MANA, STAT_ATTACK, STAT_DEFENSE, STAT_SPEED, STAT_ATTACK_SPEED, STAT_FIRE_RESISTANCE, STAT_ROTATION_SPEED]
 const POOL_NAMES: Array[StringName] = [POOL_HEALTH, POOL_MANA]
 ## Maps each pool to the stat that caps it.
 const POOL_MAX_LINK: Dictionary = {POOL_HEALTH: STAT_MAX_HEALTH, POOL_MANA: STAT_MAX_MANA}
@@ -56,6 +60,9 @@ const POOL_MAX_LINK: Dictionary = {POOL_HEALTH: STAT_MAX_HEALTH, POOL_MANA: STAT
 ## fire-typed damage through get_damage_multiplier; fully-resisted hits deal
 ## nothing and trigger no hit reactions.
 @export var base_fire_resistance: float = 0.0
+## Base rotation speed limit in degrees per second (360.0 = one full turn per
+## second). Seeds the rotation_speed stat once on tree entry; 0.0 holds facing.
+@export var base_rotation_speed: float = 360.0
 
 ## Stat name -> Attribute. Built in _init so the API is safe before tree entry.
 var _stats: Dictionary = {}
@@ -433,6 +440,7 @@ func _seed_from_exports() -> void:
 	_apply_export_base(STAT_SPEED, base_speed)
 	_apply_export_base(STAT_ATTACK_SPEED, base_attack_speed)
 	_apply_export_base(STAT_FIRE_RESISTANCE, base_fire_resistance)
+	_apply_export_base(STAT_ROTATION_SPEED, base_rotation_speed)
 	for pool_name: StringName in POOL_NAMES:
 		var max_stat: StringName = POOL_MAX_LINK[pool_name] as StringName
 		_pools[pool_name] = get_current(max_stat)

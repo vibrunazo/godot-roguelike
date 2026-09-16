@@ -52,7 +52,7 @@ func physics_update(delta: float) -> void:
 			and character.state_machine.state.name == attack_state_name
 		)
 		if not is_attacking:
-			character.look_at_target(target.global_position)
+			character.look_at_target(target.global_position, delta)
 		if cooldown_timer <= 0.0:
 			if ai_state_machine.order_attack(attack_state_name):
 				cooldown_timer = attack_cooldown

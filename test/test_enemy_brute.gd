@@ -406,7 +406,15 @@ func _ready() -> void:
 	add_child(punch_player)
 	await get_tree().physics_frame
 	await get_tree().process_frame
-	brute.look_at_target(punch_player.global_position)
+	# Facing requests respect the rotation speed limit: converge first so the
+	# punch fires from a fully-turned mount instead of a partially-turned one.
+	for i: int in range(180):
+		brute.look_at_target(punch_player.global_position, 1.0 / 60.0)
+		var to_player: Vector3 = punch_player.global_position - brute.mesh_mount.global_position
+		to_player.y = 0.0
+		var aim_dot: float = brute.mesh_mount.global_transform.basis.z.normalized().dot(to_player.normalized())
+		if aim_dot >= 0.999:
+			break
 
 	var punch_slot: BoneAttachment3D = brute.find_child("PunchSlot", true, false) as BoneAttachment3D
 	if punch_slot == null or punch_slot.hitbox == null:

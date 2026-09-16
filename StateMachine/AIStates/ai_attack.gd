@@ -68,9 +68,15 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 	if ai_state_machine != null:
 		ai_state_machine.command_stop()
 		var target: Character = ai_state_machine.get_target()
+		# The order only sets the desired facing; the body turns toward it at
+		# its rotation speed limit once the attack state snapshots this aim.
+		var order_data: Dictionary = {}
 		if target != null and character != null:
-			character.look_at_target(target.global_position)
-		_attack_ordered = ai_state_machine.order_attack(attack_state_name)
+			var to_target: Vector3 = target.global_position - character.global_position
+			to_target.y = 0.0
+			if not to_target.is_zero_approx():
+				order_data["aim"] = to_target.normalized()
+		_attack_ordered = ai_state_machine.order_attack(attack_state_name, false, order_data)
 		if not _attack_ordered:
 			# If the body is unable to attack (e.g. stunned/falling), transition out deferred
 			# to prevent synchronous re-entrant state transitions while still entering this state.
@@ -106,7 +112,7 @@ func _finish_attack() -> void:
 	if ai_state_machine != null:
 		var target: Character = ai_state_machine.get_target()
 		if target != null and character != null:
-			character.look_at_target(target.global_position)
+			character.look_at_target(target.global_position, character.get_physics_process_delta_time())
 	if not next_states.is_empty():
 		var chosen_state: AIState = next_states.pick_random()
 		if chosen_state != null:

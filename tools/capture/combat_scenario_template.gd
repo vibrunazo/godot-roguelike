@@ -197,6 +197,23 @@ func order_finish(at_frame: int) -> void:
 	finish_frame = at_frame
 
 
+## Instantly faces a character's mount at a position for staging setup only.
+## Gameplay auto-aim must go through Character.look_at_target (which respects
+## the rotation speed limit); captures need deterministic initial facing
+## before frame 0, so this setup helper bypasses the limit while preserving
+## mount scale and origin.
+func _snap_face(c: Character, pos: Vector3) -> void:
+	if c == null or c.mesh_mount == null:
+		return
+	var to: Vector3 = pos - c.mesh_mount.global_position
+	to.y = 0.0
+	if to.is_zero_approx():
+		return
+	var keep_scale: Vector3 = c.mesh_mount.global_transform.basis.get_scale()
+	var yaw: float = atan2(to.x, to.z)
+	c.mesh_mount.global_transform = Transform3D(Basis(Vector3.UP, yaw).scaled(keep_scale), c.mesh_mount.global_transform.origin)
+
+
 func _execute_action(action: ScheduledAction) -> void:
 	match action.action_type:
 		"state":
@@ -205,7 +222,7 @@ func _execute_action(action: ScheduledAction) -> void:
 				var s_name: String = str(action.param_value)
 				if c == enemy_instance and player_instance != null:
 					c.current_target = player_instance
-					c.look_at_target(player_instance.global_position)
+					_snap_face(c, player_instance.global_position)
 					c.aim_direction = (player_instance.global_position - c.global_position).normalized()
 				c.state_machine.request_state(s_name)
 				print("[CombatScenario @ frame %d] Requested state '%s' on %s" % [frame_count, s_name, c.name])
@@ -372,9 +389,9 @@ func _apply_cli_scenario() -> void:
 
 	if player_instance != null and enemy_instance != null:
 		enemy_instance.current_target = player_instance
-		enemy_instance.look_at_target(player_instance.global_position)
+		_snap_face(enemy_instance, player_instance.global_position)
 		enemy_instance.aim_direction = (player_instance.global_position - enemy_instance.global_position).normalized()
-		player_instance.look_at_target(enemy_instance.global_position)
+		_snap_face(player_instance, enemy_instance.global_position)
 
 	for action_str: String in cli_actions:
 		# Format: target:type:param@frame (e.g. "enemy:state:EnemyPunch@15", "player:attack:1@20", "snap:movies/test.png@30")
