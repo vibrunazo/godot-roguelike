@@ -36,6 +36,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from typing import List, Optional
 
@@ -50,13 +51,45 @@ def ensure_output_dir(path: str = OUTPUT_DIR) -> None:
     os.makedirs(path, exist_ok=True)
 
 
+# Substring markers streamed live on stdout; everything else is kept for the
+# end-of-run report (or streamed live with --verbose).
+LIVE_TAGS = (
+    "[MapCapturer]",
+    "[AnimCapturer]",
+    "[CombatScenario",
+    "[TestCapturer]",
+    "Saved screenshot",
+    "Done recording",
+)
+
+
+def _pipe_reader(pipe, sink: List[str], stream_all: bool, tags) -> None:
+    """Accumulates pipe lines and echoes them live: tagged lines, or all lines in verbose mode."""
+    try:
+        for line in iter(pipe.readline, ""):
+            sink.append(line)
+            if stream_all or any(tag in line for tag in tags):
+                print(f"  {line}", end="" if line.endswith("\n") else "\n", flush=True)
+    finally:
+        try:
+            pipe.close()
+        except Exception:
+            pass
+
+
 def run_godot_command(
     godot_flags: List[str],
     user_args: List[str],
     scene_path: str,
     timeout: int = DEFAULT_TIMEOUT_SCREENSHOT,
+    verbose: bool = False,
 ) -> subprocess.CompletedProcess:
-    """Runs a Godot scene with the specified engine flags and user arguments using a timeout watchdog."""
+    """Runs a Godot scene with the specified engine flags and user arguments using a timeout watchdog.
+
+    Engine output streams live (highlight lines by default, everything with
+    verbose=True) and is also accumulated so the CompletedProcess contract
+    (returncode/stdout/stderr) is preserved for callers.
+    """
     # OS-agnostic godot resolution (works on Linux, WSL, macOS, and Windows)
     godot_bin = shutil.which("godot") or "godot"
     cmd: List[str] = [godot_bin, "--path", "."]
@@ -69,35 +102,47 @@ def run_godot_command(
     print(f"[capture.py] Executing command: {' '.join(cmd)}")
     t0 = time.time()
     try:
-        res = subprocess.run(
+        proc = subprocess.Popen(
             cmd,
             shell=False,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout,
         )
-        elapsed = time.time() - t0
-        if res.returncode != 0:
-            print(f"[capture.py] Process exited with error code {res.returncode} ({elapsed:.2f}s):")
-            if res.stdout:
-                print(res.stdout)
-            if res.stderr:
-                print(res.stderr)
-        else:
-            print(f"[capture.py] Godot execution completed successfully in {elapsed:.2f}s")
-            if res.stdout:
-                # Print relevant Godot logs
-                for line in res.stdout.splitlines():
-                    if any(tag in line for tag in ["[MapCapturer]", "[AnimCapturer]", "[CombatScenario", "[TestCapturer]", "Saved screenshot", "Done recording"]):
-                        print(f"  {line}")
-        return res
-    except subprocess.TimeoutExpired:
-        elapsed = time.time() - t0
-        print(f"[capture.py] ERROR: Godot command timed out after {timeout} seconds and was terminated.")
-        sys.exit(1)
     except Exception as e:
         print(f"[capture.py] ERROR: Failed to execute Godot: {e}")
         sys.exit(1)
+    stdout_lines: List[str] = []
+    stderr_lines: List[str] = []
+    readers = [
+        threading.Thread(target=_pipe_reader, args=(proc.stdout, stdout_lines, verbose, LIVE_TAGS)),
+        threading.Thread(target=_pipe_reader, args=(proc.stderr, stderr_lines, verbose, ())),
+    ]
+    for reader in readers:
+        reader.start()
+    try:
+        returncode = proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        elapsed = time.time() - t0
+        print(f"[capture.py] ERROR: Godot command timed out after {timeout} seconds and was terminated.")
+        proc.kill()
+        proc.wait()
+        for reader in readers:
+            reader.join(timeout=5)
+        sys.exit(1)
+    for reader in readers:
+        reader.join(timeout=10)
+    elapsed = time.time() - t0
+    res = subprocess.CompletedProcess(cmd, returncode, "".join(stdout_lines), "".join(stderr_lines))
+    if res.returncode != 0:
+        print(f"[capture.py] Process exited with error code {res.returncode} ({elapsed:.2f}s):")
+        if res.stdout:
+            print(res.stdout)
+        if res.stderr:
+            print(res.stderr)
+    else:
+        print(f"[capture.py] Godot execution completed successfully in {elapsed:.2f}s")
+    return res
 
 
 def convert_avi_to_mp4(avi_path: str, mp4_path: str, keep_avi: bool = False, generate_gif: bool = False) -> Optional[str]:
@@ -214,7 +259,7 @@ def handle_map(args: argparse.Namespace) -> int:
         if not out_mp4.endswith(".mp4"):
             out_mp4 += ".mp4"
 
-        res = run_godot_command(godot_flags, user_args, "tools/capture/map_capturer.tscn", timeout=timeout)
+        res = run_godot_command(godot_flags, user_args, "tools/capture/map_capturer.tscn", timeout=timeout, verbose=getattr(args, "verbose", False))
         if res.returncode == 0:
             final_media = convert_avi_to_mp4(temp_avi, out_mp4, keep_avi=args.keep_avi, generate_gif=args.gif)
             print(f"\n[SUCCESS] Level video saved: {final_media}")
@@ -224,7 +269,7 @@ def handle_map(args: argparse.Namespace) -> int:
         out_png = args.output
         if out_png:
             user_args.append(f"--output={out_png}")
-        res = run_godot_command(godot_flags, user_args, "tools/capture/map_capturer.tscn", timeout=timeout)
+        res = run_godot_command(godot_flags, user_args, "tools/capture/map_capturer.tscn", timeout=timeout, verbose=getattr(args, "verbose", False))
         if res.returncode == 0:
             if args.preset == "all":
                 print(f"\n[SUCCESS] All preset angles saved to {OUTPUT_DIR}/")
@@ -288,7 +333,7 @@ def handle_anim(args: argparse.Namespace) -> int:
         if not out_mp4.endswith(".mp4"):
             out_mp4 += ".mp4"
 
-        res = run_godot_command(godot_flags, user_args, "tools/capture/anim_capturer.tscn", timeout=timeout)
+        res = run_godot_command(godot_flags, user_args, "tools/capture/anim_capturer.tscn", timeout=timeout, verbose=getattr(args, "verbose", False))
         if res.returncode == 0:
             final_media = convert_avi_to_mp4(temp_avi, out_mp4, keep_avi=args.keep_avi, generate_gif=args.gif)
             print(f"\n[SUCCESS] Animation video saved: {final_media}")
@@ -302,7 +347,7 @@ def handle_anim(args: argparse.Namespace) -> int:
             out_png = os.path.join(OUTPUT_DIR, f"{base_name}_{tag}_{args.cam_angle or 'three_quarters'}.png")
             user_args.append(f"--output={out_png}")
 
-        res = run_godot_command(godot_flags, user_args, "tools/capture/anim_capturer.tscn", timeout=DEFAULT_TIMEOUT_SCREENSHOT)
+        res = run_godot_command(godot_flags, user_args, "tools/capture/anim_capturer.tscn", timeout=DEFAULT_TIMEOUT_SCREENSHOT, verbose=getattr(args, "verbose", False))
         if res.returncode == 0:
             print(f"\n[SUCCESS] Animation screenshot saved: {out_png}")
             return 0
@@ -362,6 +407,8 @@ def handle_combat(args: argparse.Namespace) -> int:
         user_args.append("--debug-collisions")
     if getattr(args, "enable_ai", False):
         user_args.append("--enable-ai")
+    if getattr(args, "freeze", False):
+        user_args.append("--freeze")
     if getattr(args, "player_pos", None):
         user_args.append(f"--player-pos={args.player_pos}")
     if getattr(args, "enemy_pos", None):
@@ -391,7 +438,7 @@ def handle_combat(args: argparse.Namespace) -> int:
         if not out_mp4.endswith(".mp4"):
             out_mp4 += ".mp4"
 
-        res = run_godot_command(godot_flags, user_args, scene_file, timeout=timeout)
+        res = run_godot_command(godot_flags, user_args, scene_file, timeout=timeout, verbose=getattr(args, "verbose", False))
         if res.returncode == 0:
             final_media = convert_avi_to_mp4(temp_avi, out_mp4, keep_avi=args.keep_avi, generate_gif=args.gif)
             print(f"\n[SUCCESS] Combat scenario video saved: {final_media}")
@@ -405,7 +452,7 @@ def handle_combat(args: argparse.Namespace) -> int:
         if args.frames:
             user_args.append(f"--frames={args.frames}")
 
-        res = run_godot_command(godot_flags, user_args, scene_file, timeout=DEFAULT_TIMEOUT_SCREENSHOT)
+        res = run_godot_command(godot_flags, user_args, scene_file, timeout=DEFAULT_TIMEOUT_SCREENSHOT, verbose=getattr(args, "verbose", False))
         if res.returncode == 0:
             print(f"\n[SUCCESS] Combat scenario screenshot saved: {out_png}")
             return 0
@@ -441,7 +488,7 @@ def handle_test(args: argparse.Namespace) -> int:
     if not out_mp4.endswith(".mp4"):
         out_mp4 += ".mp4"
 
-    res = run_godot_command(godot_flags, user_args, "tools/capture/test_capturer.tscn", timeout=timeout)
+    res = run_godot_command(godot_flags, user_args, "tools/capture/test_capturer.tscn", timeout=timeout, verbose=getattr(args, "verbose", False))
     if res.returncode == 0:
         final_media = convert_avi_to_mp4(temp_avi, out_mp4, keep_avi=args.keep_avi, generate_gif=args.gif)
         print(f"\n[SUCCESS] Test execution video saved: {final_media}")
@@ -479,6 +526,7 @@ def main() -> int:
     p_map.add_argument("--output", help="Output file path in movies/")
     p_map.add_argument("--keep-avi", action="store_true", help="Do not delete intermediate AVI file")
     p_map.add_argument("--gif", action="store_true", help="Also generate an animated GIF")
+    p_map.add_argument("--verbose", action="store_true", help="Stream full engine output live instead of highlight lines")
 
     # --- ANIM SUBCOMMAND ---
     p_anim = subparsers.add_parser("anim", help="Capture or record character animations or raw assets")
@@ -500,6 +548,7 @@ def main() -> int:
     p_anim.add_argument("--output", help="Output file path in movies/")
     p_anim.add_argument("--keep-avi", action="store_true", help="Do not delete intermediate AVI file")
     p_anim.add_argument("--gif", action="store_true", help="Also generate an animated GIF")
+    p_anim.add_argument("--verbose", action="store_true", help="Stream full engine output live instead of highlight lines")
 
     # --- COMBAT SUBCOMMAND ---
     p_combat = subparsers.add_parser("combat", help="Stage and record custom combat scenarios")
@@ -510,6 +559,7 @@ def main() -> int:
     p_combat.add_argument("--no-debug-collisions", action="store_true", help="Disable collision debug shapes")
     p_combat.add_argument("--debug-collisions", action="store_true", help="Enable collision debug shapes")
     p_combat.add_argument("--enable-ai", action="store_true", help="Enable autonomous AI processing")
+    p_combat.add_argument("--freeze", action="store_true", help="Hold staged combatants in place (AI and character physics paused)")
     p_combat.add_argument("--player-pos", help="Player spawn position X,Y,Z (e.g. 0.0,1.0,4.0)")
     p_combat.add_argument("--enemy-pos", help="Enemy spawn position X,Y,Z (e.g. 0.0,1.0,0.0)")
     p_combat.add_argument("--cam-pos", help="Camera position X,Y,Z (e.g. 5.5,2.2,0.5)")
@@ -522,6 +572,7 @@ def main() -> int:
     p_combat.add_argument("--output", help="Output file path in movies/")
     p_combat.add_argument("--keep-avi", action="store_true", help="Do not delete intermediate AVI file")
     p_combat.add_argument("--gif", action="store_true", help="Also generate an animated GIF")
+    p_combat.add_argument("--verbose", action="store_true", help="Stream full engine output live instead of highlight lines")
 
     # --- TEST SUBCOMMAND ---
     p_test = subparsers.add_parser("test", help="Visually record a test suite execution")
@@ -533,6 +584,7 @@ def main() -> int:
     p_test.add_argument("--output", help="Output file path in movies/")
     p_test.add_argument("--keep-avi", action="store_true", help="Do not delete intermediate AVI file")
     p_test.add_argument("--gif", action="store_true", help="Also generate an animated GIF")
+    p_test.add_argument("--verbose", action="store_true", help="Stream full engine output live instead of highlight lines")
 
     args = parser.parse_args()
 

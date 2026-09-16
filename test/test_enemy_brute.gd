@@ -568,10 +568,10 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	# Corpse stays solid so it rests on the ground; the hurtbox shuts off instead
+	# Corpse shape shuts off so it never blocks movement; the hurtbox shuts off instead of taking re-hits
 	await get_tree().physics_frame
-	if brute.collision_shape_3d.disabled:
-		printerr("TEST FAILED: CollisionShape3D was disabled on defeat; corpses must stay solid!")
+	if not brute.collision_shape_3d.disabled:
+		printerr("TEST FAILED: CollisionShape3D was not disabled on defeat; corpses must not block!")
 		get_tree().quit(1)
 		return
 	if brute.hurtbox == null or brute.hurtbox.monitoring or brute.hurtbox.monitorable:
@@ -579,7 +579,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	_save_debug_screenshot("movies/brute_defeat.png")
-	print("EnemyDefeat transition and corpse collision verified.")
+	print("EnemyDefeat transition and corpse shutdown verified.")
 	passed_steps += 1
 
 	brute.queue_free()

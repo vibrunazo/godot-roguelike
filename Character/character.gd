@@ -436,9 +436,10 @@ func on_defeat() -> void:
 		input_comp.set_physics_process(false)
 	if defeat_state != null and state_machine != null and state_machine.state != null:
 		state_machine.state.finished.emit(defeat_state.name)
-	# The body shape stays enabled so the corpse rests on the ground instead
-	# of falling through it. Only the hurtbox below is shut off, so corpses
-	# can never be re-hit.
+	# The body shape is shut off so corpses never block movement. They still
+	# rest where they fell: the defeat states pin velocity to zero every frame.
+	if collision_shape_3d != null:
+		collision_shape_3d.set_deferred("disabled", true)
 	if hurtbox != null:
 		hurtbox.set_deferred("monitoring", false)
 		hurtbox.set_deferred("monitorable", false)

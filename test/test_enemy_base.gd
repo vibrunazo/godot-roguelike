@@ -463,14 +463,14 @@ func _ready() -> void:
 		return
 	print("Enemy properly remains in EnemyDefeat state after animation finished.")
 	
-	# Verify the body stays solid so the corpse rests on the ground, while the
-	# hurtbox is shut off so corpses can never be re-hit
+	# Verify the body shape is shut off so the corpse never blocks movement,
+	# while the hurtbox is shut off so corpses can never be re-hit
 	await get_tree().physics_frame
-	if enemy.collision_shape_3d.disabled:
-		printerr("TEST FAILED: Enemy collision_shape_3d was disabled on defeat; corpses must stay solid.")
+	if not enemy.collision_shape_3d.disabled:
+		printerr("TEST FAILED: Enemy collision_shape_3d was not disabled on defeat; corpses must not block.")
 		get_tree().quit(1)
 		return
-	print("Enemy collision_shape_3d stays enabled on defeat verified!")
+	print("Enemy collision_shape_3d disabled on defeat verified!")
 	if enemy.hurtbox == null or enemy.hurtbox.monitoring or enemy.hurtbox.monitorable:
 		printerr("TEST FAILED: Enemy hurtbox was not shut off on defeat.")
 		get_tree().quit(1)

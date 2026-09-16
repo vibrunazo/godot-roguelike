@@ -255,6 +255,7 @@ Practical suggestions for capturing animations, combat scenarios, and level layo
    - `--enemy` accepts a registry name (`brute`, `melee`, `ranged`, `firebomber`, `thunder_mage`) or any enemy scene path (e.g. `--enemy Enemy/akira_boss.tscn`); `--action "enemy:callback:MethodName@30"` calls a zero-argument method on the combatant at that frame.
    - **Designated Scratch Path:** If you need temporary staging scripts, inspection scripts, or other throwaway scripts, it is recommended to use the gitignored `.scratch/` folder. Scripts kept there are a good fit when the work is exploratory and unlikely to be reused.
    - When a staging script proves reusable (a standard encounter worth re-running), consider promoting it to `tools/capture/`. `tools/levels/out/` is intended for level-pipeline extraction scripts.
+   - For a clean still of a live interaction, `--freeze` is available to hold combatants in place (actors keep their spawn position, so spawning at rest height is recommended); `--verbose` streams full engine output when debugging staging.
 
 
 

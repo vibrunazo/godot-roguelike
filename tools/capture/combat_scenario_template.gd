@@ -51,6 +51,7 @@ var has_custom_cam_pos: bool = false
 var has_custom_cam_target: bool = false
 var cam_fov: float = 50.0
 var cli_enable_ai: bool = false
+var cli_freeze_actors: bool = false
 
 var custom_player_pos: Vector3 = Vector3.ZERO
 var custom_enemy_pos: Vector3 = Vector3.ZERO
@@ -352,6 +353,8 @@ func _parse_arguments() -> void:
 			debug_collisions = false
 		elif arg == "--enable-ai":
 			cli_enable_ai = true
+		elif arg == "--freeze":
+			cli_freeze_actors = true
 		elif arg == "--show-ui":
 			hide_ui = false
 		elif arg == "--hide-ui":
@@ -421,9 +424,30 @@ func _apply_cli_scenario() -> void:
 					snap_path = "movies/combat_frame_%d.png" % at_frame
 				order_screenshot(snap_path, at_frame)
 
+	if cli_freeze_actors:
+		_freeze_combatants()
+
 	if not output_path.is_empty() and not is_video:
 		# Schedule final screenshot before exit
 		order_screenshot(output_path, maxi(finish_frame - 2, 1))
+
+
+## Holds staged combatants in place: zeroes velocity and pauses physics, state
+## machines, and AI. Companion nodes without physics (e.g. boss rider
+## controllers) keep running, so scripted attacks can still fire at frozen
+## targets. Frozen actors keep their spawn position, so spawning at rest
+## height is recommended for grounded stills.
+func _freeze_combatants() -> void:
+	for c: Character in all_combatants:
+		if not is_instance_valid(c):
+			continue
+		c.set_physics_process(false)
+		c.velocity = Vector3.ZERO
+		if c.state_machine != null:
+			c.state_machine.set_physics_process(false)
+		if c.ai_state_machine != null:
+			c.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+	print("[CombatScenario] Froze %d combatant(s) in place." % all_combatants.size())
 
 
 func _disable_all_ui() -> void:

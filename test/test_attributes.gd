@@ -754,8 +754,9 @@ func _part_effect_vfx_lifecycle() -> bool:
 	return true
 
 
-## PART 14: defeated enemies keep their body collision and rest on the ground
-## instead of falling through the floor.
+## PART 14: defeated enemies rest where they fell without blocking movement:
+## the body shape is shut off (walk-through corpses) while the defeat state
+## pins velocity to zero, so the corpse never drifts or falls through.
 func _part_corpse_stays_grounded() -> bool:
 	print("\n>>> PART 14: Corpse grounding")
 	var floor_body: StaticBody3D = StaticBody3D.new()
@@ -776,10 +777,15 @@ func _part_corpse_stays_grounded() -> bool:
 	enemy_attrs.damage_pool(AttributeComponent.POOL_HEALTH, enemy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH))
 	for i: int in range(60):
 		await get_tree().physics_frame
-	if enemy.collision_shape_3d == null or enemy.collision_shape_3d.disabled:
+	if enemy.collision_shape_3d == null or not enemy.collision_shape_3d.disabled:
 		enemy.queue_free()
 		floor_body.queue_free()
-		return _fail("Defeat must not disable the body collision shape.")
+		return _fail("Defeat must shut off the body shape so corpses never block.")
+	var enemy_hurtbox: Hurtbox = enemy.get_node_or_null("Hurtbox") as Hurtbox
+	if enemy_hurtbox == null or enemy_hurtbox.monitoring or enemy_hurtbox.monitorable:
+		enemy.queue_free()
+		floor_body.queue_free()
+		return _fail("Defeat must shut off the hurtbox so corpses are never re-hit.")
 	if enemy.global_position.y < rest_y - 0.5:
 		enemy.queue_free()
 		floor_body.queue_free()
@@ -787,7 +793,7 @@ func _part_corpse_stays_grounded() -> bool:
 	enemy.queue_free()
 	floor_body.queue_free()
 	await get_tree().process_frame
-	print("Corpse collision and grounding verified.")
+	print("Corpse non-blocking shutdown and grounding verified.")
 	return true
 
 
