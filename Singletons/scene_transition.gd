@@ -25,7 +25,8 @@ var player_cache: Character
 	"res://Levels/level_7.tscn",
 	"res://Levels/level_8.tscn",
 	"res://Levels/level_9.tscn",
-	"res://Levels/level_10.tscn"
+	"res://Levels/level_10.tscn",
+	"res://Levels/level_11.tscn"
 ]
 
 ## Boss fights keyed by dungeon level: when the run reaches one of these
