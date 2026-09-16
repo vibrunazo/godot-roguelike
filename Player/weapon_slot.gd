@@ -36,5 +36,9 @@ var shapecast: Area3D:
 
 func _ready() -> void:
 	if hitbox:
-		hitbox.monitoring = enabled
-		hitbox.monitorable = enabled
+		if Engine.is_in_physics_frame():
+			hitbox.set_deferred("monitoring", enabled)
+			hitbox.set_deferred("monitorable", enabled)
+		else:
+			hitbox.monitoring = enabled
+			hitbox.monitorable = enabled

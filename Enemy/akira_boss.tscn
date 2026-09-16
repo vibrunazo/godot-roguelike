@@ -29,6 +29,9 @@
 [ext_resource type="Shader" uid="uid://blvpj1ywd506d" path="res://Assets/Shaders/dash.tres" id="24_slash_shader"]
 [ext_resource type="Script" uid="uid://brm6ulu844i0u" path="res://Player/slash_vfx.gd" id="25_slashvfx"]
 [ext_resource type="AudioStream" uid="uid://cx123snak3vdw" path="res://Assets/Audio/fire-slash.ogg" id="26_fireslash"]
+[ext_resource type="Script" path="res://Enemy/akira_boss_throw_riders_attack.gd" id="27_throw_attack"]
+[ext_resource type="Script" path="res://Enemy/akira_boss_summon_helpers_attack.gd" id="28_summon_attack"]
+[ext_resource type="Resource" path="res://Components/effect_has_riders.tres" id="29_riders_effect"]
 
 [sub_resource type="Gradient" id="Gradient_ib8qb"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -490,14 +493,62 @@ starting_cooldown = 1.5
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
+[node name="EnemyThrowRiders" type="Node" parent="StateMachine" unique_id=2081734912 node_paths=PackedStringArray("left_spawn_point", "right_spawn_point", "rider_effect", "next_states", "character", "fall_state")]
+script = ExtResource("27_throw_attack")
+next_states = [NodePath("../EnemyMove")]
+attack_animation_name = "DualWieldSlash"
+uninterruptable = true
+cooldown = 30.0
+starting_cooldown = 30.0
+required_tags = Array[StringName]([&"has_riders"])
+left_spawn_point = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft")
+right_spawn_point = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight")
+rider_effect = ExtResource("29_riders_effect")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemySummonHelpers" type="Node" parent="StateMachine" unique_id=2081734913 node_paths=PackedStringArray("left_backpack", "right_backpack", "rider_effect", "next_states", "character", "fall_state")]
+script = ExtResource("28_summon_attack")
+next_states = [NodePath("../EnemyMove")]
+attack_animation_name = "Flexing"
+uninterruptable = true
+cooldown = 20.0
+starting_cooldown = 0.0
+blocked_tags = Array[StringName]([&"has_riders"])
+start_cooldown_on_enabled = true
+left_backpack = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft")
+right_backpack = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight")
+rider_effect = ExtResource("29_riders_effect")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
 [node name="AIStateMachine" type="Node" parent="." unique_id=1386002843 node_paths=PackedStringArray("character", "initial_state")]
 script = ExtResource("14_aism")
 character = NodePath("..")
 initial_state = NodePath("AIPursue")
 
+[node name="AIThrowRiders" type="Node" parent="AIStateMachine" unique_id=1849201941 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("17_slam_ai")
+attack_state_name = "EnemyThrowRiders"
+trigger_range = 25.0
+priority = 10
+can_break_stun = true
+next_state = NodePath("../AIPursue")
+ai_state_machine = NodePath("..")
+
+[node name="AISummonHelpers" type="Node" parent="AIStateMachine" unique_id=1849201942 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("17_slam_ai")
+attack_state_name = "EnemySummonHelpers"
+trigger_range = 30.0
+priority = 10
+can_break_stun = true
+next_state = NodePath("../AIPursue")
+ai_state_machine = NodePath("..")
+
 [node name="AISlam" type="Node" parent="AIStateMachine" unique_id=1366128415 node_paths=PackedStringArray("next_state", "ai_state_machine")]
 script = ExtResource("17_slam_ai")
 trigger_range = 4.5
+priority = 5
 next_state = NodePath("../AIPursue")
 ai_state_machine = NodePath("..")
 
@@ -519,6 +570,7 @@ script = ExtResource("17_slam_ai")
 attack_state_name = "EnemyFirebomb"
 trigger_range = 14.0
 min_range = 5.0
+priority = 1
 next_state = NodePath("../AIPursue")
 ai_state_machine = NodePath("..")
 
@@ -532,7 +584,8 @@ base_max_health = 600.0
 base_attack = 110.0
 base_speed = 2.0
 base_fire_resistance = 1.0
-base_rotation_speed = 30.0
+base_rotation_speed = 90.0
+initial_effects = Array[GameplayEffect]([ExtResource("29_riders_effect")])
 
 [node name="ProjectileSpawnerComponent" type="Node" parent="." unique_id=1897260338 node_paths=PackedStringArray("spawn_point", "character")]
 script = ExtResource("20_spawner")

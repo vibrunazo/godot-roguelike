@@ -52,6 +52,8 @@ enum Stacking {
 @export var vfx_offset: Vector3 = Vector3.ZERO
 ## Optional designer note describing the effect's intent.
 @export var description: String = ""
+## Gameplay tags granted to the target's AttributeComponent while this effect is active.
+@export var granted_tags: Array[StringName] = []
 
 
 ## Applies this effect to the target component. Returns the unique instance id

@@ -83,6 +83,8 @@ func evaluate_trigger(delta: float) -> bool:
 		return false
 	if is_on_cooldown():
 		return false
+	if att != null and att.has_method("can_activate") and not att.can_activate():
+		return false
 	if ai_state_machine == null:
 		return false
 

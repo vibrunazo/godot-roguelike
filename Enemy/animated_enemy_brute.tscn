@@ -12,6 +12,8 @@
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Large/LargeRigAnimations/Running_A.res" id="10_running"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Large/LargeRigAnimations/Walking_A.res" id="11_walking"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Large/LargeRigAnimations/Melee_Unarmed_Punch.res" id="12_punch"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Large/LargeRigAnimations/Melee_Dualwield_Slash.res" id="13_slash"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Large/LargeRigAnimations/Flexing.res" id="14_flex"]
 
 [sub_resource type="Animation" id="Animation_reset"]
 length = 0.001
@@ -48,9 +50,11 @@ _data = {
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_enemy"]
 _data = {
 &"Death_A": ExtResource("6_death"),
+&"Flexing": ExtResource("14_flex"),
 &"Hit_A": ExtResource("7_hit"),
 &"Idle_A": ExtResource("8_idle"),
 &"Melee_2H_Slam": ExtResource("9_slam"),
+&"Melee_Dualwield_Slash": ExtResource("13_slash"),
 &"Melee_Unarmed_Punch": ExtResource("12_punch"),
 &"Running_A": ExtResource("10_running"),
 &"Walking_A": ExtResource("11_walking")
@@ -86,6 +90,30 @@ animation = &"EnemyAnimations/Melee_Unarmed_Punch"
 nodes/Animation/node = SubResource("AnimationNodeAnimation_punch")
 nodes/Animation/position = Vector2(-40, 133)
 nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_punch")
+nodes/TimeScale/position = Vector2(466, 133)
+node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_slash"]
+animation = &"EnemyAnimations/Melee_Dualwield_Slash"
+
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_slash"]
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_slash"]
+nodes/Animation/node = SubResource("AnimationNodeAnimation_slash")
+nodes/Animation/position = Vector2(-40, 133)
+nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_slash")
+nodes/TimeScale/position = Vector2(466, 133)
+node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_flex"]
+animation = &"EnemyAnimations/Flexing"
+
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_flex"]
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_flex"]
+nodes/Animation/node = SubResource("AnimationNodeAnimation_flex")
+nodes/Animation/position = Vector2(-40, 133)
+nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_flex")
 nodes/TimeScale/position = Vector2(466, 133)
 node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
 
@@ -129,9 +157,27 @@ advance_mode = 2
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_w2d"]
 
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_w2slash"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_slash2w"]
+xfade_time = 0.2
+switch_mode = 2
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_w2flex"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_flex2w"]
+xfade_time = 0.2
+switch_mode = 2
+advance_mode = 2
+
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_root"]
 states/Defeat/node = SubResource("AnimationNodeAnimation_death")
 states/Defeat/position = Vector2(800, 32)
+states/DualWieldSlash/node = SubResource("AnimationNodeBlendTree_slash")
+states/DualWieldSlash/position = Vector2(400, 320)
+states/Flexing/node = SubResource("AnimationNodeBlendTree_flex")
+states/Flexing/position = Vector2(400, 420)
 states/MeleeAttack/node = SubResource("AnimationNodeBlendTree_slam")
 states/MeleeAttack/position = Vector2(400, -25)
 states/PunchAttack/node = SubResource("AnimationNodeBlendTree_punch")
@@ -140,7 +186,7 @@ states/Stun/node = SubResource("AnimationNodeAnimation_hit")
 states/Stun/position = Vector2(800, 184)
 states/WalkSpace/node = SubResource("AnimationNodeBlendSpace1D_walk")
 states/WalkSpace/position = Vector2(595, 100)
-transitions = ["WalkSpace", "MeleeAttack", SubResource("AnimationNodeStateMachineTransition_w2m"), "MeleeAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_m2w"), "WalkSpace", "PunchAttack", SubResource("AnimationNodeStateMachineTransition_w2p"), "PunchAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_p2w"), "WalkSpace", "Stun", SubResource("AnimationNodeStateMachineTransition_w2s"), "Stun", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_s2w"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_w2d")]
+transitions = ["WalkSpace", "MeleeAttack", SubResource("AnimationNodeStateMachineTransition_w2m"), "MeleeAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_m2w"), "WalkSpace", "PunchAttack", SubResource("AnimationNodeStateMachineTransition_w2p"), "PunchAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_p2w"), "WalkSpace", "Stun", SubResource("AnimationNodeStateMachineTransition_w2s"), "Stun", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_s2w"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_w2d"), "WalkSpace", "DualWieldSlash", SubResource("AnimationNodeStateMachineTransition_w2slash"), "DualWieldSlash", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_slash2w"), "WalkSpace", "Flexing", SubResource("AnimationNodeStateMachineTransition_w2flex"), "Flexing", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_flex2w")]
 
 [node name="AnimatedBrute" type="Node3D"]
 
@@ -213,6 +259,8 @@ tree_root = SubResource("AnimationNodeStateMachine_root")
 anim_player = NodePath("../AnimationPlayer")
 parameters/MeleeAttack/TimeScale/scale = 1.0
 parameters/PunchAttack/TimeScale/scale = 1.0
+parameters/DualWieldSlash/TimeScale/scale = 1.0
+parameters/Flexing/TimeScale/scale = 1.0
 parameters/WalkSpace/blend_position = 0.0
 script = ExtResource("5_anim_tree")
 

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="GameplayEffect" format=3]
+
+[ext_resource type="Script" path="res://Components/gameplay_effect.gd" id="1_effect"]
+
+[resource]
+script = ExtResource("1_effect")
+effect_name = "has_riders"
+target_attribute = &""
+duration = 0.0
+description = "Applied to characters carrying backpack riders."
+granted_tags = Array[StringName]([&"has_riders"])

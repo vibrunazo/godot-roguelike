@@ -4,6 +4,8 @@ extends State
 
 ## Reference to the owning AIStateMachine.
 @export var ai_state_machine: AIStateMachine
+## Evaluation priority for state triggers (higher values are evaluated first).
+@export var priority: int = 0
 
 ## Reference to the Character controlled by the AI.
 var character: Character:

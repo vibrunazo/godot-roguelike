@@ -20,6 +20,10 @@ signal attribute_changed(attribute_name: StringName, current_value: float)
 ## Emitted exactly when the health pool transitions to zero via damage_pool().
 ## Max-stat edits that clamp the pool never emit this (only damage kills).
 signal defeat()
+## Emitted when a gameplay tag is added to this component.
+signal tag_added(tag: StringName)
+## Emitted when a gameplay tag is removed from this component.
+signal tag_removed(tag: StringName)
 
 ## Pool names (read via get_current, written via damage/restore/set_pool_current).
 const POOL_HEALTH: StringName = &"health"
@@ -63,6 +67,10 @@ const POOL_MAX_LINK: Dictionary = {POOL_HEALTH: STAT_MAX_HEALTH, POOL_MANA: STAT
 ## Base rotation speed limit in degrees per second (360.0 = one full turn per
 ## second). Seeds the rotation_speed stat once on tree entry; 0.0 holds facing.
 @export var base_rotation_speed: float = 360.0
+## Gameplay tags granted to this component initially on ready.
+@export var initial_tags: Array[StringName] = []
+## Gameplay effects applied to this component initially on ready.
+@export var initial_effects: Array[GameplayEffect] = []
 
 ## Stat name -> Attribute. Built in _init so the API is safe before tree entry.
 var _stats: Dictionary = {}
@@ -83,6 +91,14 @@ var _base_overrides: Dictionary = {}
 var _effect_vfx: Dictionary = {}
 var _stack_counter: int = 0
 var _seeded_from_exports: bool = false
+## Tag name -> int count of active sources granting the tag.
+var _tags: Dictionary = {}
+## Effect instance id -> Array[StringName] of tags granted by that effect.
+var _effect_tags: Dictionary = {}
+## Timed tag-only effect entries: Dictionary with id (StringName), remaining (float).
+var _timed_tag_effects: Array[Dictionary] = []
+## Permanent tag-only effect entries: Array of instance_id (StringName).
+var _permanent_tag_effects: Array[StringName] = []
 
 
 func _init() -> void:
@@ -98,6 +114,65 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	_seed_from_exports()
 	_update_processing()
+	for tag: StringName in initial_tags:
+		add_tag(tag)
+	for effect: GameplayEffect in initial_effects:
+		if effect != null:
+			apply_effect(effect)
+
+
+## Returns true if this component currently has the specified gameplay tag.
+func has_tag(tag: StringName) -> bool:
+	return _tags.get(tag, 0) > 0
+
+
+## Returns true if this component has all tags in the given array.
+func has_all_tags(tags: Array[StringName]) -> bool:
+	for tag: StringName in tags:
+		if not has_tag(tag):
+			return false
+	return true
+
+
+## Returns true if this component has at least one of the tags in the given array.
+func has_any_tag(tags: Array[StringName]) -> bool:
+	if tags.is_empty():
+		return false
+	for tag: StringName in tags:
+		if has_tag(tag):
+			return true
+	return false
+
+
+## Adds one count of the specified gameplay tag. Emits tag_added if newly gained.
+func add_tag(tag: StringName) -> void:
+	if tag.is_empty():
+		return
+	var current: int = _tags.get(tag, 0)
+	_tags[tag] = current + 1
+	if current == 0:
+		tag_added.emit(tag)
+
+
+## Removes one count of the specified gameplay tag. Emits tag_removed if fully lost.
+func remove_tag(tag: StringName) -> void:
+	if not _tags.has(tag):
+		return
+	var current: int = _tags[tag]
+	if current <= 1:
+		_tags.erase(tag)
+		tag_removed.emit(tag)
+	else:
+		_tags[tag] = current - 1
+
+
+## Returns all currently active gameplay tags.
+func get_tags() -> Array[StringName]:
+	var active_tags: Array[StringName] = []
+	for tag: StringName in _tags.keys():
+		if _tags[tag] > 0:
+			active_tags.append(tag)
+	return active_tags
 
 
 ## Returns true for the six buffable stat names.
@@ -198,15 +273,34 @@ func apply_effect(effect: GameplayEffect) -> StringName:
 		push_error("AttributeComponent: effects need an effect_name identity.")
 		return &""
 	if _pools.has(effect.target_attribute):
-		return _apply_pool_effect(effect)
-	if effect.total_damage != 0.0:
-		push_warning("AttributeComponent: total_damage only applies to pool targets; ignored on '%s'." % effect.target_attribute)
+		var pool_id: StringName = _apply_pool_effect(effect)
+		if pool_id != &"":
+			_register_granted_tags(pool_id, effect.granted_tags)
+		return pool_id
 	var instance_id: StringName = StringName(effect.effect_name)
 	if effect.stacking == GameplayEffect.Stacking.STACK:
 		_stack_counter += 1
 		instance_id = StringName("%s_%d" % [effect.effect_name, _stack_counter])
+	var is_tag_only: bool = not _stats.has(effect.target_attribute)
+	if is_tag_only:
+		if effect.duration > 0.0:
+			_remove_timed_tag_effect(instance_id, true)
+			_timed_tag_effects.append({
+				"id": instance_id,
+				"remaining": effect.duration
+			})
+			_update_processing()
+		else:
+			if not _permanent_tag_effects.has(instance_id):
+				_permanent_tag_effects.append(instance_id)
+		_register_granted_tags(instance_id, effect.granted_tags)
+		_show_effect_vfx(instance_id, effect)
+		return instance_id
+	if effect.total_damage != 0.0:
+		push_warning("AttributeComponent: total_damage only applies to pool targets; ignored on '%s'." % effect.target_attribute)
 	if not apply_modifier(effect.target_attribute, instance_id, effect.operation, effect.magnitude, effect.duration):
 		return &""
+	_register_granted_tags(instance_id, effect.granted_tags)
 	_show_effect_vfx(instance_id, effect)
 	return instance_id
 
@@ -246,13 +340,23 @@ func _apply_pool_effect(effect: GameplayEffect) -> StringName:
 ## Removes a previously applied effect instance by id, from stat entries and
 ## damage-over-time entries alike. Returns true when found.
 func remove_effect(instance_id: StringName) -> bool:
+	var found: bool = false
 	for stat_name: StringName in STAT_NAMES:
 		var attr: Attribute = _stats[stat_name] as Attribute
 		if attr != null and attr.has_modifier(instance_id):
-			return remove_modifier(stat_name, instance_id)
+			if remove_modifier(stat_name, instance_id):
+				found = true
 	if _remove_dot(instance_id):
-		return true
-	return false
+		found = true
+	if _remove_timed_tag_effect(instance_id):
+		found = true
+	if _permanent_tag_effects.has(instance_id):
+		_permanent_tag_effects.erase(instance_id)
+		found = true
+	if _unregister_granted_tags(instance_id):
+		found = true
+	_reap_effect_vfx()
+	return found
 
 
 ## Drops one damage-over-time entry by id. Returns true when one existed.
@@ -262,6 +366,42 @@ func _remove_dot(instance_id: StringName, keep_visual: bool = false) -> bool:
 		var entry: Dictionary = _dots[i]
 		if StringName(entry.get("id", &"")) == instance_id:
 			_dots.remove_at(i)
+			_update_processing()
+			if not keep_visual:
+				_reap_effect_vfx()
+			return true
+	return false
+
+
+func _register_granted_tags(instance_id: StringName, tags: Array[StringName]) -> void:
+	if tags.is_empty():
+		return
+	if _effect_tags.has(instance_id):
+		_unregister_granted_tags(instance_id)
+	var registered: Array[StringName] = []
+	for tag: StringName in tags:
+		if not tag.is_empty():
+			add_tag(tag)
+			registered.append(tag)
+	if not registered.is_empty():
+		_effect_tags[instance_id] = registered
+
+
+func _unregister_granted_tags(instance_id: StringName) -> bool:
+	if not _effect_tags.has(instance_id):
+		return false
+	var tags: Array[StringName] = _effect_tags[instance_id] as Array[StringName]
+	_effect_tags.erase(instance_id)
+	for tag: StringName in tags:
+		remove_tag(tag)
+	return true
+
+
+func _remove_timed_tag_effect(instance_id: StringName, keep_visual: bool = false) -> bool:
+	for i: int in range(_timed_tag_effects.size()):
+		var entry: Dictionary = _timed_tag_effects[i]
+		if StringName(entry.get("id", &"")) == instance_id:
+			_timed_tag_effects.remove_at(i)
 			_update_processing()
 			if not keep_visual:
 				_reap_effect_vfx()
@@ -306,6 +446,11 @@ func _has_effect_instance(instance_id: StringName) -> bool:
 		var attr: Attribute = _stats[stat_name] as Attribute
 		if attr != null and attr.has_modifier(instance_id):
 			return true
+	for i: int in range(_timed_tag_effects.size()):
+		if StringName((_timed_tag_effects[i] as Dictionary).get("id", &"")) == instance_id:
+			return true
+	if _permanent_tag_effects.has(instance_id):
+		return true
 	return false
 
 
@@ -394,6 +539,7 @@ func is_alive() -> bool:
 
 func _process(delta: float) -> void:
 	_tick_dots(delta)
+	_tick_timed_tag_effects(delta)
 	var changed_stats: Array[StringName] = []
 	for stat_name: StringName in STAT_NAMES:
 		var attr: Attribute = _stats[stat_name] as Attribute
@@ -402,6 +548,7 @@ func _process(delta: float) -> void:
 	for stat_name: StringName in changed_stats:
 		attribute_changed.emit(stat_name, get_current(stat_name))
 		_clamp_pool_to_max(stat_name)
+	_reap_effect_tags()
 	_update_processing()
 	_reap_effect_vfx()
 
@@ -427,6 +574,28 @@ func _tick_dots(delta: float) -> void:
 			_dots[i] = entry
 
 
+func _tick_timed_tag_effects(delta: float) -> void:
+	for i: int in range(_timed_tag_effects.size() - 1, -1, -1):
+		var entry: Dictionary = _timed_tag_effects[i]
+		var remaining: float = float(entry.get("remaining", 0.0)) - delta
+		if remaining <= 0.0:
+			var id: StringName = StringName(entry.get("id", &""))
+			_timed_tag_effects.remove_at(i)
+			_unregister_granted_tags(id)
+		else:
+			entry["remaining"] = remaining
+			_timed_tag_effects[i] = entry
+
+
+func _reap_effect_tags() -> void:
+	var expired: Array[StringName] = []
+	for instance_id: StringName in _effect_tags.keys():
+		if not _has_effect_instance(instance_id):
+			expired.append(instance_id)
+	for instance_id: StringName in expired:
+		_unregister_granted_tags(instance_id)
+
+
 ## Seeds stat bases from the base_* exports on first tree entry and fills
 ## pools to full. Stats written programmatically before entry win over exports.
 func _seed_from_exports() -> void:
@@ -446,9 +615,9 @@ func _seed_from_exports() -> void:
 		_pools[pool_name] = get_current(max_stat)
 
 
-## Enables ticking only while a timed modifier or damage-over-time entry exists.
+## Enables ticking only while a timed modifier, damage-over-time, or timed tag entry exists.
 func _update_processing() -> void:
-	if not _dots.is_empty():
+	if not _dots.is_empty() or not _timed_tag_effects.is_empty():
 		set_process(true)
 		return
 	for stat_name: StringName in STAT_NAMES:

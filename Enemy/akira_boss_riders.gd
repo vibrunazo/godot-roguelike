@@ -40,6 +40,7 @@ var _left_swinging: bool = false
 var _right_swinging: bool = false
 var _left_player: AnimationPlayer = null
 var _right_player: AnimationPlayer = null
+var _has_riders: bool = true
 
 
 func _ready() -> void:
@@ -48,6 +49,47 @@ func _ready() -> void:
 	_hide_rider_legs()
 	_left_player = _setup_rider(true)
 	_right_player = _setup_rider(false)
+	if character != null and character.attribute_component != null:
+		character.attribute_component.tag_added.connect(_on_tag_added)
+		character.attribute_component.tag_removed.connect(_on_tag_removed)
+		_has_riders = character.has_tag(&"has_riders")
+		_apply_rider_presence()
+
+
+func _on_tag_added(tag: StringName) -> void:
+	if tag == &"has_riders":
+		attach_riders()
+
+
+func _on_tag_removed(tag: StringName) -> void:
+	if tag == &"has_riders":
+		detach_riders()
+
+
+## Returns true if riders are currently attached to the boss backpack.
+func has_riders() -> bool:
+	return _has_riders
+
+
+## Detaches riders: hides rider visuals and disables their melee defense.
+func detach_riders() -> void:
+	_has_riders = false
+	_apply_rider_presence()
+
+
+## Attaches riders: unhides rider visuals and restores their melee defense.
+func attach_riders() -> void:
+	_has_riders = true
+	_apply_rider_presence()
+
+
+func _apply_rider_presence() -> void:
+	for root: Node3D in [left_rider_root, right_rider_root]:
+		if root != null and is_instance_valid(root):
+			root.visible = _has_riders
+			var slot: WeaponSlot = root.find_child("WeaponSlot", true, false) as WeaponSlot
+			if slot != null:
+				slot.enabled = false
 
 
 func _physics_process(delta: float) -> void:
@@ -55,6 +97,8 @@ func _physics_process(delta: float) -> void:
 		_left_cooldown = maxf(0.0, _left_cooldown - delta)
 	if _right_cooldown > 0.0:
 		_right_cooldown = maxf(0.0, _right_cooldown - delta)
+	if not _has_riders:
+		return
 	if character == null or not is_instance_valid(character):
 		return
 	if not character.is_inside_tree() or not character.is_alive():
@@ -86,6 +130,8 @@ func _setup_rider(is_left: bool) -> AnimationPlayer:
 
 ## Checks range and cooldown for one rider and triggers its sword swing.
 func _try_rider_attack(is_left: bool, player: Character) -> void:
+	if not _has_riders:
+		return
 	var rider_root: Node3D = left_rider_root if is_left else right_rider_root
 	var rider_tree: AnimationTree = left_rider_tree if is_left else right_rider_tree
 	var cooldown: float = _left_cooldown if is_left else _right_cooldown
@@ -167,6 +213,8 @@ func _hide_rider_legs() -> void:
 
 ## Returns true when the given rider is ready to swing (in range bookkeeping helper for tests).
 func is_rider_ready(is_left: bool) -> bool:
+	if not _has_riders:
+		return false
 	if is_left:
 		return _left_cooldown <= 0.0
 	return _right_cooldown <= 0.0

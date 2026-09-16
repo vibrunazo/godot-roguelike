@@ -240,6 +240,46 @@ func is_alive() -> bool:
 	return true
 
 
+## Returns true if this character has the specified gameplay tag.
+func has_tag(tag: StringName) -> bool:
+	if attribute_component != null and is_instance_valid(attribute_component):
+		return attribute_component.has_tag(tag)
+	return false
+
+
+## Returns true if this character has all specified gameplay tags.
+func has_all_tags(tags: Array[StringName]) -> bool:
+	if attribute_component != null and is_instance_valid(attribute_component):
+		return attribute_component.has_all_tags(tags)
+	return tags.is_empty()
+
+
+## Returns true if this character has any of the specified gameplay tags.
+func has_any_tag(tags: Array[StringName]) -> bool:
+	if attribute_component != null and is_instance_valid(attribute_component):
+		return attribute_component.has_any_tag(tags)
+	return false
+
+
+## Adds one count of the specified gameplay tag.
+func add_tag(tag: StringName) -> void:
+	if attribute_component != null and is_instance_valid(attribute_component):
+		attribute_component.add_tag(tag)
+
+
+## Removes one count of the specified gameplay tag.
+func remove_tag(tag: StringName) -> void:
+	if attribute_component != null and is_instance_valid(attribute_component):
+		attribute_component.remove_tag(tag)
+
+
+## Returns all currently active gameplay tags.
+func get_tags() -> Array[StringName]:
+	if attribute_component != null and is_instance_valid(attribute_component):
+		return attribute_component.get_tags()
+	return []
+
+
 ## Fallback rotation speed in degrees per second when no AttributeComponent is
 ## attached. Mirrors AttributeComponent.base_rotation_speed.
 const DEFAULT_ROTATION_SPEED: float = 360.0

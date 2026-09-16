@@ -29,12 +29,18 @@ func _physics_process(delta: float) -> void:
 
 ## Orchestrates conditional interrupts across child AIState nodes.
 ## Allows inactive AI states (such as cooldown attacks or phase changes) to preemptively activate.
+## Evaluates states in descending priority order (higher priority evaluated first; ties preserve node order).
 func _evaluate_state_triggers(delta: float) -> void:
+	var candidates: Array[AIState] = []
 	for child: Node in get_children():
 		if child is AIState and child != state:
-			var ai_child: AIState = child as AIState
-			if ai_child.evaluate_trigger(delta):
-				break
+			candidates.append(child as AIState)
+	candidates.sort_custom(func(a: AIState, b: AIState) -> bool:
+		return a.priority > b.priority
+	)
+	for ai_child: AIState in candidates:
+		if ai_child.evaluate_trigger(delta):
+			break
 
 
 ## Returns the active target, finding the closest living member of target_group if needed.

@@ -57,6 +57,15 @@ func _ready() -> void:
 	await _part11_ability_hyper_armor()
 	if _failed:
 		return
+	await _part12_gameplay_tags_and_gating()
+	if _failed:
+		return
+	await _part13_throw_riders_ability()
+	if _failed:
+		return
+	await _part14_summon_helpers_ability()
+	if _failed:
+		return
 	print("====================================================")
 	print("  ALL AKIRA BOSS TESTS PASSED (%d checks)" % _passed)
 	print("====================================================")
@@ -1145,3 +1154,392 @@ func _part11_ability_hyper_armor() -> void:
 	live.queue_free()
 	await get_tree().process_frame
 	_passed += 1
+
+
+func _part12_gameplay_tags_and_gating() -> void:
+	print("\n>>> PART 12: Gameplay tags, querying, signals, and attack gating")
+	var boss: Character = _boss()
+	if boss == null:
+		_fail("Could not spawn boss for gameplay tags test.")
+		return
+	add_child(boss)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+
+	var attr: AttributeComponent = boss.attribute_component
+	if attr == null:
+		_fail("Boss AttributeComponent missing.")
+		boss.queue_free()
+		return
+
+	# 1. Starts with has_riders tag
+	if not attr.has_tag(&"has_riders"):
+		_fail("Boss should start with 'has_riders' tag from initial_effects.")
+		boss.queue_free()
+		return
+	if not boss.has_tag(&"has_riders"):
+		_fail("Character.has_tag('has_riders') should return true.")
+		boss.queue_free()
+		return
+	var req_tags: Array[StringName] = [&"has_riders"]
+	if not boss.has_all_tags(req_tags):
+		_fail("Character.has_all_tags([&'has_riders']) should return true.")
+		boss.queue_free()
+		return
+	var test_any: Array[StringName] = [&"has_riders", &"nonexistent"]
+	if not boss.has_any_tag(test_any):
+		_fail("Character.has_any_tag should return true.")
+		boss.queue_free()
+		return
+
+	# 2. Tag signals
+	var signal_data: Array[StringName] = [&"", &""]
+	attr.tag_added.connect(func(tag: StringName) -> void: signal_data[0] = tag)
+	attr.tag_removed.connect(func(tag: StringName) -> void: signal_data[1] = tag)
+
+	attr.add_tag(&"custom_test_tag")
+	if signal_data[0] != &"custom_test_tag":
+		_fail("tag_added signal was not emitted with the added tag.")
+		boss.queue_free()
+		return
+	if not attr.has_tag(&"custom_test_tag"):
+		_fail("Custom test tag was not added.")
+		boss.queue_free()
+		return
+
+	attr.remove_tag(&"custom_test_tag")
+	if signal_data[1] != &"custom_test_tag":
+		_fail("tag_removed signal was not emitted with the removed tag.")
+		boss.queue_free()
+		return
+	if attr.has_tag(&"custom_test_tag"):
+		_fail("Custom test tag was not removed.")
+		boss.queue_free()
+		return
+
+	# 3. Attack state gating
+	var throw_attack: CharacterAttack = boss.state_machine.get_node_or_null("EnemyThrowRiders") as CharacterAttack
+	var summon_attack: CharacterAttack = boss.state_machine.get_node_or_null("EnemySummonHelpers") as CharacterAttack
+	if throw_attack == null or summon_attack == null:
+		_fail("EnemyThrowRiders or EnemySummonHelpers state missing.")
+		boss.queue_free()
+		return
+
+	throw_attack.cooldown_timer = 0.0
+	summon_attack.cooldown_timer = 0.0
+
+	# With has_riders: throw is allowed, summon is blocked
+	if not throw_attack.can_activate():
+		_fail("EnemyThrowRiders should be activatable when boss has 'has_riders'.")
+		boss.queue_free()
+		return
+	if summon_attack.can_activate():
+		_fail("EnemySummonHelpers should be blocked when boss has 'has_riders'.")
+		boss.queue_free()
+		return
+
+	# Remove has_riders: throw is blocked, summon is enabled
+	attr.remove_tag(&"has_riders")
+	await get_tree().physics_frame
+
+	if throw_attack.can_activate():
+		_fail("EnemyThrowRiders should be blocked when boss lacks 'has_riders'.")
+		boss.queue_free()
+		return
+
+	# Verify start_cooldown_on_enabled triggered on summon_attack
+	if summon_attack.start_cooldown_on_enabled:
+		if summon_attack.cooldown_timer <= 0.0:
+			_fail("EnemySummonHelpers should start cooldown timer when enabled by tag transition.")
+			boss.queue_free()
+			return
+
+	summon_attack.cooldown_timer = 0.0
+	if not summon_attack.can_activate():
+		_fail("EnemySummonHelpers should be activatable once cooldown is 0 and 'has_riders' is absent.")
+		boss.queue_free()
+		return
+
+	# Re-add has_riders
+	attr.add_tag(&"has_riders")
+	if not throw_attack.can_activate():
+		_fail("EnemyThrowRiders should be re-enabled when 'has_riders' is re-added.")
+		boss.queue_free()
+		return
+	if summon_attack.can_activate():
+		_fail("EnemySummonHelpers should be blocked again when 'has_riders' is re-added.")
+		boss.queue_free()
+		return
+
+	print("Gameplay tags queried, signals emitted, and attacks gated properly.")
+	boss.queue_free()
+	await get_tree().process_frame
+	_passed += 1
+
+
+func _part13_throw_riders_ability() -> void:
+	print("\n>>> PART 13: Throw riders ability, minion spawn, and rider detachment")
+	var boss: Character = _boss()
+	if boss == null:
+		_fail("Could not spawn boss for throw riders test.")
+		return
+	add_child(boss)
+	boss.global_position = Vector3(0.0, 1.0, 0.0)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+
+	var throw_attack: AkiraBossThrowRidersAttack = boss.state_machine.get_node_or_null("EnemyThrowRiders") as AkiraBossThrowRidersAttack
+	if throw_attack == null:
+		_fail("EnemyThrowRiders is not an AkiraBossThrowRidersAttack instance.")
+		boss.queue_free()
+		return
+
+	# Check exports and configuration
+	if throw_attack.cooldown != 30.0:
+		_fail("EnemyThrowRiders cooldown expected 30.0, got: %f" % throw_attack.cooldown)
+		boss.queue_free()
+		return
+	if throw_attack.starting_cooldown != 30.0:
+		_fail("EnemyThrowRiders starting_cooldown expected 30.0, got: %f" % throw_attack.starting_cooldown)
+		boss.queue_free()
+		return
+	if throw_attack.attack_animation_name != "DualWieldSlash":
+		_fail("EnemyThrowRiders animation expected 'DualWieldSlash', got: %s" % throw_attack.attack_animation_name)
+		boss.queue_free()
+		return
+	if not throw_attack.uninterruptable:
+		_fail("EnemyThrowRiders should be uninterruptable.")
+		boss.queue_free()
+		return
+	if not throw_attack.required_tags.has(&"has_riders"):
+		_fail("EnemyThrowRiders should require 'has_riders' tag.")
+		boss.queue_free()
+		return
+
+	# AI state check
+	var ai_throw: AIConditionalAttack = boss.ai_state_machine.get_node_or_null("AIThrowRiders") as AIConditionalAttack
+	if ai_throw == null:
+		_fail("AIThrowRiders node missing on AIStateMachine.")
+		boss.queue_free()
+		return
+	if ai_throw.attack_state_name != "EnemyThrowRiders":
+		_fail("AIThrowRiders attack_state_name expected 'EnemyThrowRiders', got: %s" % ai_throw.attack_state_name)
+		boss.queue_free()
+		return
+	if ai_throw.priority != 10:
+		_fail("AIThrowRiders priority expected 10, got: %d" % ai_throw.priority)
+		boss.queue_free()
+		return
+	if not ai_throw.can_break_stun:
+		_fail("AIThrowRiders should have can_break_stun = true.")
+		boss.queue_free()
+		return
+
+	var riders_ctrl: AkiraBossRiders = boss.get_node_or_null("RiderController") as AkiraBossRiders
+	if riders_ctrl == null:
+		_fail("RiderController missing.")
+		boss.queue_free()
+		return
+	if not riders_ctrl.has_riders():
+		_fail("RiderController should initially have riders.")
+		boss.queue_free()
+		return
+
+	# Spawn player in front of boss
+	var player_scene: PackedScene = load("res://Player/player.tscn") as PackedScene
+	var player: Character = player_scene.instantiate() as Character
+	add_child(player)
+	player.global_position = Vector3(0.0, 1.0, 5.0)
+	boss.current_target = player
+
+	# Execute throw ability
+	throw_attack.cooldown_timer = 0.0
+	throw_attack.throw_delay = 0.05
+	boss.state_machine.request_state("EnemyThrowRiders")
+
+	# Wait for throw to occur
+	for _i: int in range(25):
+		await get_tree().process_frame
+		await get_tree().physics_frame
+		if not riders_ctrl.has_riders():
+			break
+
+	if riders_ctrl.has_riders():
+		_fail("Riders should be detached after throw.")
+		player.queue_free()
+		boss.queue_free()
+		return
+	if boss.has_tag(&"has_riders"):
+		_fail("Boss should lose 'has_riders' tag after throw.")
+		player.queue_free()
+		boss.queue_free()
+		return
+	if riders_ctrl.left_rider_root.visible or riders_ctrl.right_rider_root.visible:
+		_fail("Rider visuals should be hidden after detach.")
+		player.queue_free()
+		boss.queue_free()
+		return
+
+	# Wait for projectiles to land and spawn minions
+	var spawned_minions: Array[Character] = []
+	for _i: int in range(60):
+		await get_tree().physics_frame
+		var all_enemies: Array[Node] = get_tree().get_nodes_in_group("enemy")
+		for e: Node in all_enemies:
+			if e != boss and not spawned_minions.has(e) and e is Character:
+				spawned_minions.append(e as Character)
+		if spawned_minions.size() >= 2:
+			break
+
+	if spawned_minions.size() < 2:
+		_fail("Throw riders should spawn 2 melee enemy minions upon landing (got %d)." % spawned_minions.size())
+		for m: Character in spawned_minions:
+			m.queue_free()
+		player.queue_free()
+		boss.queue_free()
+		return
+
+	print("Throw riders detached riders, hid meshes, and spawned 2 melee minions.")
+	for m: Character in spawned_minions:
+		m.queue_free()
+	player.queue_free()
+	boss.queue_free()
+	await get_tree().process_frame
+	_passed += 1
+
+
+func _part14_summon_helpers_ability() -> void:
+	print("\n>>> PART 14: Summon helpers ability, minion spawn, and rider restoration")
+	var boss: Character = _boss()
+	if boss == null:
+		_fail("Could not spawn boss for summon helpers test.")
+		return
+	add_child(boss)
+	boss.global_position = Vector3(0.0, 1.0, 0.0)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+
+	var summon_attack: AkiraBossSummonHelpersAttack = boss.state_machine.get_node_or_null("EnemySummonHelpers") as AkiraBossSummonHelpersAttack
+	if summon_attack == null:
+		_fail("EnemySummonHelpers is not an AkiraBossSummonHelpersAttack instance.")
+		boss.queue_free()
+		return
+
+	# Check exports and configuration
+	if summon_attack.cooldown != 20.0:
+		_fail("EnemySummonHelpers cooldown expected 20.0, got: %f" % summon_attack.cooldown)
+		boss.queue_free()
+		return
+	if summon_attack.starting_cooldown != 0.0:
+		_fail("EnemySummonHelpers starting_cooldown expected 0.0, got: %f" % summon_attack.starting_cooldown)
+		boss.queue_free()
+		return
+	if summon_attack.attack_animation_name != "Flexing":
+		_fail("EnemySummonHelpers animation expected 'Flexing', got: %s" % summon_attack.attack_animation_name)
+		boss.queue_free()
+		return
+	if not summon_attack.uninterruptable:
+		_fail("EnemySummonHelpers should be uninterruptable.")
+		boss.queue_free()
+		return
+	if not summon_attack.blocked_tags.has(&"has_riders"):
+		_fail("EnemySummonHelpers should be blocked by 'has_riders' tag.")
+		boss.queue_free()
+		return
+	if not summon_attack.start_cooldown_on_enabled:
+		_fail("EnemySummonHelpers should have start_cooldown_on_enabled = true.")
+		boss.queue_free()
+		return
+
+	# AI state check
+	var ai_summon: AIConditionalAttack = boss.ai_state_machine.get_node_or_null("AISummonHelpers") as AIConditionalAttack
+	if ai_summon == null:
+		_fail("AISummonHelpers node missing on AIStateMachine.")
+		boss.queue_free()
+		return
+	if ai_summon.attack_state_name != "EnemySummonHelpers":
+		_fail("AISummonHelpers attack_state_name expected 'EnemySummonHelpers', got: %s" % ai_summon.attack_state_name)
+		boss.queue_free()
+		return
+	if ai_summon.priority != 10:
+		_fail("AISummonHelpers priority expected 10, got: %d" % ai_summon.priority)
+		boss.queue_free()
+		return
+	if not ai_summon.can_break_stun:
+		_fail("AISummonHelpers should have can_break_stun = true.")
+		boss.queue_free()
+		return
+
+	var riders_ctrl: AkiraBossRiders = boss.get_node_or_null("RiderController") as AkiraBossRiders
+	if riders_ctrl == null:
+		_fail("RiderController missing.")
+		boss.queue_free()
+		return
+
+	# Detach riders first so summon can be activated
+	riders_ctrl.detach_riders()
+	boss.attribute_component.remove_effect(&"has_riders")
+	boss.attribute_component.remove_tag(&"has_riders")
+	await get_tree().physics_frame
+
+	if riders_ctrl.has_riders():
+		_fail("Riders should be detached before summon.")
+		boss.queue_free()
+		return
+	if boss.has_tag(&"has_riders"):
+		_fail("Boss should not have 'has_riders' tag before summon.")
+		boss.queue_free()
+		return
+
+	# Execute summon ability
+	summon_attack.cooldown_timer = 0.0
+	summon_attack.summon_delay = 0.05
+	boss.state_machine.request_state("EnemySummonHelpers")
+
+	# Wait for helpers to spawn and land
+	var spawned_helpers: Array[Character] = []
+	for _i: int in range(60):
+		await get_tree().process_frame
+		await get_tree().physics_frame
+		var all_enemies: Array[Node] = get_tree().get_nodes_in_group("enemy")
+		for e: Node in all_enemies:
+			if e != boss and not spawned_helpers.has(e) and e is Character:
+				spawned_helpers.append(e as Character)
+		if spawned_helpers.size() >= 2 and riders_ctrl.has_riders():
+			break
+
+	if spawned_helpers.size() < 2:
+		_fail("Summon helpers should spawn 2 ground melee minions (got %d)." % spawned_helpers.size())
+		for h: Character in spawned_helpers:
+			h.queue_free()
+		boss.queue_free()
+		return
+
+	if not riders_ctrl.has_riders():
+		_fail("Backpack helpers should restore riders upon landing.")
+		for h: Character in spawned_helpers:
+			h.queue_free()
+		boss.queue_free()
+		return
+
+	if not boss.has_tag(&"has_riders"):
+		_fail("Boss should regain 'has_riders' tag upon backpack helpers landing.")
+		for h: Character in spawned_helpers:
+			h.queue_free()
+		boss.queue_free()
+		return
+
+	if not riders_ctrl.left_rider_root.visible or not riders_ctrl.right_rider_root.visible:
+		_fail("Rider meshes should be visible again after restoration.")
+		for h: Character in spawned_helpers:
+			h.queue_free()
+		boss.queue_free()
+		return
+
+	print("Summon helpers summoned 4 helpers: 2 ground minions spawned and 2 backpack riders restored.")
+	for h: Character in spawned_helpers:
+		h.queue_free()
+	boss.queue_free()
+	await get_tree().process_frame
+	_passed += 1
+

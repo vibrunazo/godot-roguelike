@@ -46,6 +46,12 @@ extends CharacterState
 @export var cooldown: float = 0.0
 ## Initial cooldown in seconds applied when entering the scene (0.0 = ready immediately).
 @export var starting_cooldown: float = 0.0
+## Gameplay tags required on the character for this attack state to activate.
+@export var required_tags: Array[StringName] = []
+## Gameplay tags that block this attack state from activating if present on the character.
+@export var blocked_tags: Array[StringName] = []
+## If true, starts the cooldown timer when tag requirements transition from unmet to met.
+@export var start_cooldown_on_enabled: bool = false
 
 ## Remaining cooldown time in seconds before this attack can be executed again.
 var cooldown_timer: float = 0.0
@@ -63,10 +69,12 @@ var hitstop_time_remaining: float = 0.0
 var hitstop_base_timescale: float = 1.0
 ## Whether the current attack animation exposes a TimeScale node for slowdown.
 var hitstop_has_timescale: bool = false
+var _was_tag_enabled: bool = false
 
 
 func _ready() -> void:
 	cooldown_timer = starting_cooldown
+	_was_tag_enabled = _check_tags()
 
 
 ## Returns true if this attack is currently on cooldown.
@@ -76,11 +84,45 @@ func is_on_cooldown() -> bool:
 
 ## Progresses cooldown decay by delta.
 func tick_cooldown(delta: float) -> void:
+	_update_tag_enablement()
 	if cooldown_timer > 0.0:
 		cooldown_timer = maxf(0.0, cooldown_timer - delta)
 
 
+## Checks whether all required tags are present and no blocked tags are present.
+func _check_tags() -> bool:
+	if character == null:
+		return true
+	if not required_tags.is_empty():
+		for tag: StringName in required_tags:
+			if not character.has_tag(tag):
+				return false
+	if not blocked_tags.is_empty():
+		for tag: StringName in blocked_tags:
+			if character.has_tag(tag):
+				return false
+	return true
+
+
+## Updates tag enablement and starts cooldown on transition if configured.
+func _update_tag_enablement() -> void:
+	var currently_enabled: bool = _check_tags()
+	if currently_enabled and not _was_tag_enabled:
+		if start_cooldown_on_enabled:
+			cooldown_timer = cooldown
+	_was_tag_enabled = currently_enabled
+
+
+## Returns true if both cooldown and tag requirements allow activation.
+func can_activate() -> bool:
+	_update_tag_enablement()
+	if is_on_cooldown():
+		return false
+	return _check_tags()
+
+
 func _physics_process(delta: float) -> void:
+	_update_tag_enablement()
 	if character == null or character.ai_state_machine == null:
 		tick_cooldown(delta)
 
