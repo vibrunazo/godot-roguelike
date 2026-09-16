@@ -52,21 +52,29 @@ func _on_defeat() -> void:
 
 
 ## Applies damage and knockback to the owning character, spawning a damage
-## number and playing hit audio.
+## number and playing hit audio. Damage is scaled by the owner's resistance
+## to damage_type; fully-resisted hits are ignored entirely (no damage, no
+## knockback, no struck), so immunity also blocks stun reactions.
 ## Returns true when damage was dealt. Returns false when no AttributeComponent
 ## is wired or the owner is already defeated (health pool at zero), so corpses
 ## can never be re-hit for extra damage numbers, knockback, or screen shake.
-func receive_hit(damage: float, knockback: Vector3) -> bool:
+func receive_hit(damage: float, knockback: Vector3, damage_type: StringName = &"physical") -> bool:
 	if not is_alive():
 		return false
-	attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, damage)
+	var mult: float = 1.0
+	if attribute_component != null and is_instance_valid(attribute_component):
+		mult = attribute_component.get_damage_multiplier(damage_type)
+	if mult <= 0.0:
+		return false
+	var effective: float = damage * mult
+	attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, effective)
 	if knockback_component != null and is_instance_valid(knockback_component):
 		knockback_component.add_knockback(knockback)
 	var parent: Node = get_parent()
 	if parent is Node3D:
-		VfxManager.spawn_damage_number(parent as Node3D, damage)
+		VfxManager.spawn_damage_number(parent as Node3D, effective)
 	if hit_audio: hit_audio.play()
-	struck.emit(damage)
+	struck.emit(effective)
 	return true
 
 

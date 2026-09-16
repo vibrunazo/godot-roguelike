@@ -34,6 +34,9 @@ enum Stacking {
 ## heals over time). Spread evenly across duration; all at once when instant.
 ## Only meaningful for pool targets; ignored (with a warning) on stat targets.
 @export var total_damage: float = 0.0
+## Damage type tag for pool damage (e.g. &"physical", &"fire"). Resistance
+## stats scale typed damage; fully-resisted targets ignore the effect.
+@export var damage_type: StringName = &"physical"
 ## Lifetime in seconds. On stats, values <= 0.0 mean permanent until removed.
 ## On pools, values > 0.0 spread total_damage over time, values <= 0.0 apply
 ## it instantly.

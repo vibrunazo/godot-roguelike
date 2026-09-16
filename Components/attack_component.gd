@@ -14,6 +14,10 @@ signal hit_landed(target: Node)
 ## Current knockback vector applied to hit targets upon collision.
 @export var knockback: Vector3 = Vector3.ZERO
 
+## Damage type tag routed to Hurtbox.receive_hit (e.g. &"physical", &"fire").
+## Resistance stats scale typed damage; hazards and projectiles that burn set fire.
+@export var damage_type: StringName = &"physical"
+
 ## Whether landing a hit with this attack component triggers a camera screen shake.
 @export var shake_on_damage: bool = false
 
@@ -104,7 +108,7 @@ func deal_damage_to(hurtbox: Hurtbox, dmg: float = -1.0, kb: Vector3 = Vector3.Z
 	if temporary_exceptions.has(hurtbox as CollisionObject3D):
 		return false
 
-	var has_hit: bool = hurtbox.receive_hit(d, k)
+	var has_hit: bool = hurtbox.receive_hit(d, k, damage_type)
 	if has_hit:
 		temporary_exceptions.append(hurtbox as CollisionObject3D)
 		if interval > 0.0:

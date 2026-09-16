@@ -243,15 +243,20 @@ func is_alive() -> bool:
 
 
 ## Smoothly rotates the mesh_mount towards the given direction using exponential decay.
+## Preserves the mount scale (e.g. the boss' enlarged rig): looking_at builds
+## a rotation-only basis, so the smoothed result re-applies the kept scale.
 func look_toward_direction(direction: Vector3, delta: float) -> void:
 	if not is_alive() or direction.is_zero_approx() or mesh_mount == null:
 		return
+	var keep_scale: Vector3 = mesh_mount.global_transform.basis.get_scale()
 	var target_transform: Transform3D = mesh_mount.global_transform
 	target_transform = target_transform.looking_at(mesh_mount.global_position + direction, Vector3.UP, true)
-	mesh_mount.global_transform = mesh_mount.global_transform.interpolate_with(
+	var smoothed: Transform3D = mesh_mount.global_transform.interpolate_with(
 		target_transform,
 		1.0 - exp(-decay * delta)
 	)
+	smoothed.basis = smoothed.basis.orthonormalized().scaled(keep_scale)
+	mesh_mount.global_transform = smoothed
 
 
 ## Instantly points the mesh_mount towards the target position on the XZ plane.

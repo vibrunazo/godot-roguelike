@@ -1,9 +1,16 @@
 ## Automated verification suite for the Akira boss.
 ## Verifies brute-based bigger body, grounded collision fit (no float/sink),
-## backpack riders with hidden legs and melee-equal swords with player-like
-## fire slash VFX, oversized firebombs with larger traps, difficulty 12, and
-## a difficulty-20 regular-spawn gate (boss-arena spawn bypasses the gate).
+## mesh scale preserved while turning, 100% fire immunity (no damage, stun,
+## or burn from his own fire traps), backpack riders with hidden legs and
+## melee-equal swords with player-like fire slash VFX, oversized firebombs
+## with larger traps, difficulty 12, and a difficulty-20 regular-spawn gate
+## (boss-arena spawn bypasses the gate).
 extends Node3D
+
+## Ankle joint height above the boot sole for the 1.32-scaled large rig,
+## from bind-pose geometry (ankle -1.60, sole -1.98). Rigid boots keep this
+## offset in every pose, so live soles = live ankle - FOOT_HEIGHT.
+const FOOT_HEIGHT: float = 0.38
 
 var _passed: int = 0
 var _failed: bool = false
@@ -39,6 +46,12 @@ func _ready() -> void:
 	if _failed:
 		return
 	await _part8_grounding()
+	if _failed:
+		return
+	await _part9_fire_immunity()
+	if _failed:
+		return
+	await _part10_scale_preserved()
 	if _failed:
 		return
 	print("====================================================")
@@ -683,19 +696,18 @@ func _part7_boss_trap() -> void:
 	_passed += 1
 
 
-## Lowest boot-sole height (large-rig leg meshes only) for grounding checks.
-func _boss_sole_level(boss: Character) -> float:
-	var best: float = INF
-	var stack: Array[Node] = [boss]
-	while not stack.is_empty():
-		var cur: Node = stack.pop_back()
-		if cur is MeshInstance3D and (cur.name == &"Enemy_Large_LegLeft" or cur.name == &"Enemy_Large_LegRight"):
-			var mi: MeshInstance3D = cur as MeshInstance3D
-			var box: AABB = mi.global_transform * mi.get_aabb()
-			best = minf(best, box.position.y)
-		for child: Node in cur.get_children():
-			stack.push_back(child)
-	return best
+## Live ankle height (foot-bone global) for the large rig, relative to the
+## body origin. Bones track the posed skeleton; unposed mesh bounds only ever
+## report the bind pose, so they must not be used for grounding checks. Uses
+## the direct skeleton path so waist-rider feet never contaminate the reading.
+func _boss_ankle_level(boss: Character) -> float:
+	var skel: Skeleton3D = boss.get_node_or_null("AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D") as Skeleton3D
+	if skel == null:
+		return INF
+	var foot: BoneAttachment3D = skel.get_node_or_null("LeftFootBone") as BoneAttachment3D
+	if foot == null:
+		return INF
+	return foot.global_position.y - boss.global_position.y
 
 
 func _part8_grounding() -> void:
@@ -723,12 +735,237 @@ func _part8_grounding() -> void:
 		_fail("Boss origin (%.3f) should rest at capsule half-height (%.3f)." % [boss.global_position.y, rest_height])
 		boss.queue_free()
 		return
-	var sole: float = _boss_sole_level(boss)
-	if absf(sole) > 0.08:
-		_fail("Boss boot soles (%.3f) should touch the floor, not float or sink." % sole)
+	var ankle_total: float = 0.0
+	var ankle_frames: int = 0
+	for frame: int in range(45):
+		await get_tree().physics_frame
+		var ankle: float = _boss_ankle_level(boss)
+		if ankle < INF:
+			ankle_total += ankle
+			ankle_frames += 1
+	if ankle_frames <= 0:
+		_fail("Boss large-rig foot bone missing.")
 		boss.queue_free()
 		return
-	print("Boss grounded: origin %.3f, soles %.3f." % [boss.global_position.y, sole])
+	var sole_est: float = boss.global_position.y + ankle_total / float(ankle_frames) - FOOT_HEIGHT
+	if absf(sole_est) > 0.15:
+		_fail("Boss boot soles (est %.3f) should touch the floor, not float or sink." % sole_est)
+		boss.queue_free()
+		return
+	print("Boss grounded: origin %.3f, soles est %.3f." % [boss.global_position.y, sole_est])
+	boss.queue_free()
+	await get_tree().process_frame
+	_passed += 1
+
+
+## Waits up to timeout_frames physics frames for a body state. Returns true
+## once the machine rests in the named state (used to clear landing stun).
+func _wait_body_state(body: Character, state_name: String, timeout_frames: int) -> bool:
+	for frame: int in range(timeout_frames):
+		await get_tree().physics_frame
+		if body == null or not is_instance_valid(body):
+			return false
+		if body.state_machine != null and body.state_machine.state != null and body.state_machine.state.name == state_name:
+			return true
+	return false
+
+
+func _part9_fire_immunity() -> void:
+	print("\n>>> PART 9: Immune to fire (no damage, stun, or burn)")
+	var boss: Character = _boss()
+	if boss == null:
+		return
+	add_child(boss)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	if not await _wait_body_state(boss, "EnemyMove", 90):
+		_fail("Boss should settle into EnemyMove after landing.")
+		boss.queue_free()
+		return
+	var attrs: AttributeComponent = boss.attribute_component
+	if attrs == null:
+		_fail("Boss AttributeComponent missing.")
+		boss.queue_free()
+		return
+	if not is_equal_approx(attrs.get_current(AttributeComponent.STAT_FIRE_RESISTANCE), 1.0):
+		_fail("Boss fire resistance should be 1.0 (immune), got: %.2f" % attrs.get_current(AttributeComponent.STAT_FIRE_RESISTANCE))
+		boss.queue_free()
+		return
+	print("Boss fire resistance reads 1.0.")
+	var hurtbox: Hurtbox = boss.get_node_or_null("Hurtbox") as Hurtbox
+	if hurtbox == null:
+		_fail("Boss Hurtbox missing.")
+		boss.queue_free()
+		return
+	var struck: Array[float] = []
+	hurtbox.struck.connect(func(damage: float) -> void: struck.append(damage))
+	var full_health: float = attrs.get_current(AttributeComponent.POOL_HEALTH)
+	# Fire hits are fully ignored: no damage, no hit reaction, no stun state.
+	if hurtbox.receive_hit(10.0, Vector3.ZERO, &"fire"):
+		_fail("Fire receive_hit on the immune boss should return false.")
+		boss.queue_free()
+		return
+	if not is_equal_approx(attrs.get_current(AttributeComponent.POOL_HEALTH), full_health):
+		_fail("Fire hit should not damage the immune boss.")
+		boss.queue_free()
+		return
+	if not struck.is_empty():
+		_fail("Fire hit should not emit struck on the immune boss.")
+		boss.queue_free()
+		return
+	if boss.state_machine != null and boss.state_machine.state != null and boss.state_machine.state.name == "EnemyStun":
+		_fail("Fire hit should not stun the immune boss.")
+		boss.queue_free()
+		return
+	print("Fire hit ignored: health steady, no struck, no stun.")
+	# Physical hits still land relatively, with exactly one hit reaction.
+	if not hurtbox.receive_hit(10.0, Vector3.ZERO, &"physical"):
+		_fail("Physical receive_hit on the boss should return true.")
+		boss.queue_free()
+		return
+	if not is_equal_approx(attrs.get_current(AttributeComponent.POOL_HEALTH), full_health - 10.0):
+		_fail("Physical hit should damage the boss relatively.")
+		boss.queue_free()
+		return
+	if struck.size() != 1:
+		_fail("Physical hit should emit struck exactly once, got: %d" % struck.size())
+		boss.queue_free()
+		return
+	print("Physical hit lands relatively with one struck.")
+	# The shared burn is rejected while immune...
+	var burn: GameplayEffect = load("res://Components/effect_fire_burn.tres") as GameplayEffect
+	if burn == null:
+		_fail("Could not load effect_fire_burn.tres.")
+		boss.queue_free()
+		return
+	if attrs.apply_effect(burn) != &"":
+		_fail("Burn effect should be rejected on the immune boss.")
+		boss.queue_free()
+		return
+	# ...and burns once the attribute is lowered, proving the stat drives it.
+	attrs.set_base(AttributeComponent.STAT_FIRE_RESISTANCE, 0.0)
+	if attrs.apply_effect(burn) == &"":
+		_fail("Burn effect should apply once fire resistance is lowered.")
+		boss.queue_free()
+		return
+	var burning_from: float = attrs.get_current(AttributeComponent.POOL_HEALTH)
+	for frame: int in range(65):
+		await get_tree().physics_frame
+	if not (attrs.get_current(AttributeComponent.POOL_HEALTH) < burning_from):
+		_fail("Accepted burn should tick damage over time.")
+		boss.queue_free()
+		return
+	print("Burn rejected while immune, ticks once resistance is lowered.")
+	boss.queue_free()
+	await get_tree().process_frame
+	# End to end: a live fire trap harms a normal enemy but not the boss.
+	var fresh: Character = _boss()
+	if fresh == null:
+		return
+	add_child(fresh)
+	fresh.position = Vector3(0.0, 3.0, 0.0)
+	if fresh.ai_state_machine != null:
+		fresh.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+	var melee_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
+	if melee_scene == null:
+		_fail("Could not load melee_enemy.tscn.")
+		fresh.queue_free()
+		return
+	var control: Character = melee_scene.instantiate() as Character
+	add_child(control)
+	control.position = Vector3(2.0, 3.0, 0.0)
+	if control.ai_state_machine != null:
+		control.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+	var trap_scene: PackedScene = load("res://Hazards/fire_trap.tscn") as PackedScene
+	if trap_scene == null:
+		_fail("Could not load fire_trap.tscn.")
+		fresh.queue_free()
+		control.queue_free()
+		return
+	var trap: FireTrap = trap_scene.instantiate() as FireTrap
+	add_child(trap)
+	await get_tree().physics_frame
+	trap.set_trap_size(Vector2(4.0, 2.0))
+	trap.damage_interval = 0.1
+	trap.position = Vector3(1.0, 1.0, 0.0)
+	var fresh_struck: Array[float] = []
+	var fresh_hurtbox: Hurtbox = fresh.get_node_or_null("Hurtbox") as Hurtbox
+	if fresh_hurtbox != null:
+		fresh_hurtbox.struck.connect(func(damage: float) -> void: fresh_struck.append(damage))
+	if not await _wait_body_state(fresh, "EnemyMove", 120):
+		_fail("Boss should settle into EnemyMove before trap exposure.")
+		fresh.queue_free()
+		control.queue_free()
+		trap.queue_free()
+		return
+	var boss_full: float = fresh.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	var control_full: float = control.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	fresh_struck.clear()
+	for frame: int in range(30):
+		await get_tree().physics_frame
+	if not is_equal_approx(fresh.attribute_component.get_current(AttributeComponent.POOL_HEALTH), boss_full):
+		_fail("Live fire trap should not damage the immune boss.")
+		fresh.queue_free()
+		control.queue_free()
+		trap.queue_free()
+		return
+	if not fresh_struck.is_empty():
+		_fail("Live fire trap should not trigger hit reactions on the immune boss.")
+		fresh.queue_free()
+		control.queue_free()
+		trap.queue_free()
+		return
+	if fresh.state_machine != null and fresh.state_machine.state != null and fresh.state_machine.state.name == "EnemyStun":
+		_fail("Live fire trap should not stun the immune boss.")
+		fresh.queue_free()
+		control.queue_free()
+		trap.queue_free()
+		return
+	if not (control.attribute_component.get_current(AttributeComponent.POOL_HEALTH) < control_full):
+		_fail("Live fire trap should damage the non-immune control enemy.")
+		fresh.queue_free()
+		control.queue_free()
+		trap.queue_free()
+		return
+	print("Live fire trap: boss unharmed and unstunned, control burned.")
+	fresh.queue_free()
+	control.queue_free()
+	trap.queue_free()
+	await get_tree().process_frame
+	_passed += 1
+
+
+func _part10_scale_preserved() -> void:
+	print("\n>>> PART 10: Mesh scale preserved while turning")
+	var boss: Character = _boss()
+	if boss == null:
+		return
+	add_child(boss)
+	if boss.ai_state_machine != null:
+		boss.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	var anchor: Node3D = boss.get_node_or_null("AnimationAnchor") as Node3D
+	if anchor == null:
+		_fail("Boss AnimationAnchor missing.")
+		boss.queue_free()
+		return
+	var healthy_scale: Vector3 = anchor.scale
+	if healthy_scale.is_equal_approx(Vector3.ONE):
+		_fail("Boss anchor should start scaled up, got: %s" % str(healthy_scale))
+		boss.queue_free()
+		return
+	var dirs: Array[Vector3] = [Vector3.RIGHT, Vector3.BACK, Vector3.LEFT, Vector3.FORWARD, Vector3(1.0, 0.0, 1.0).normalized()]
+	for dir: Vector3 in dirs:
+		for frame: int in range(12):
+			boss.look_toward_direction(dir, 1.0 / 60.0)
+			await get_tree().physics_frame
+		boss.look_at_target(boss.global_position + dir * 5.0)
+		if not anchor.scale.is_equal_approx(healthy_scale):
+			_fail("Turning should preserve mesh scale (got %s, want %s)." % [str(anchor.scale), str(healthy_scale)])
+			boss.queue_free()
+			return
+	print("Mesh scale preserved while turning: %s." % str(anchor.scale))
 	boss.queue_free()
 	await get_tree().process_frame
 	_passed += 1

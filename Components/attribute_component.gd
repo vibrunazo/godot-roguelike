@@ -5,7 +5,8 @@
 ##   set_pool_current). Pools carry no modifier stack, so expiring a max-stat
 ##   buff re-clamps but never phantom-deletes earned pool value.
 ## - Stat attributes (max_health, max_mana, attack, defense, speed,
-##   attack_speed): base value plus a stack of active modifiers, recomputed as
+##   attack_speed, fire_resistance): base value plus a stack of active
+##   modifiers, recomputed as
 ##   (base + sum(ADD)) * (1 + sum(MULT_ADD)) * product(1 + MULT_COMP).
 ## The base_* exports seed each stat once when entering the tree (init-only);
 ## all runtime reads and writes go through the typed API below, which is the
@@ -30,8 +31,11 @@ const STAT_ATTACK: StringName = &"attack"
 const STAT_DEFENSE: StringName = &"defense"
 const STAT_SPEED: StringName = &"speed"
 const STAT_ATTACK_SPEED: StringName = &"attack_speed"
+## Fire resistance as a fraction (0.0 = none, 1.0 = immune). Scales all
+## fire-typed damage; read via get_damage_multiplier, never directly.
+const STAT_FIRE_RESISTANCE: StringName = &"fire_resistance"
 
-const STAT_NAMES: Array[StringName] = [STAT_MAX_HEALTH, STAT_MAX_MANA, STAT_ATTACK, STAT_DEFENSE, STAT_SPEED, STAT_ATTACK_SPEED]
+const STAT_NAMES: Array[StringName] = [STAT_MAX_HEALTH, STAT_MAX_MANA, STAT_ATTACK, STAT_DEFENSE, STAT_SPEED, STAT_ATTACK_SPEED, STAT_FIRE_RESISTANCE]
 const POOL_NAMES: Array[StringName] = [POOL_HEALTH, POOL_MANA]
 ## Maps each pool to the stat that caps it.
 const POOL_MAX_LINK: Dictionary = {POOL_HEALTH: STAT_MAX_HEALTH, POOL_MANA: STAT_MAX_MANA}
@@ -48,6 +52,10 @@ const POOL_MAX_LINK: Dictionary = {POOL_HEALTH: STAT_MAX_HEALTH, POOL_MANA: STAT
 @export var base_speed: float = 8.0
 ## Base attack speed multiplier (1.0 = normal; no cooldown scaler reads it yet).
 @export var base_attack_speed: float = 1.0
+## Base fire resistance as a fraction (0.0 = none, 1.0 = immune). Scales all
+## fire-typed damage through get_damage_multiplier; fully-resisted hits deal
+## nothing and trigger no hit reactions.
+@export var base_fire_resistance: float = 0.0
 
 ## Stat name -> Attribute. Built in _init so the API is safe before tree entry.
 var _stats: Dictionary = {}
@@ -204,6 +212,9 @@ func _apply_pool_effect(effect: GameplayEffect) -> StringName:
 	if effect.stacking == GameplayEffect.Stacking.STACK:
 		_stack_counter += 1
 		instance_id = StringName("%s_%d" % [effect.effect_name, _stack_counter])
+	# Fully-resisted damage never starts: no entry, no tick, no status visual.
+	if effect.total_damage > 0.0 and get_damage_multiplier(effect.damage_type) <= 0.0:
+		return &""
 	if effect.magnitude != 0.0:
 		push_warning("AttributeComponent: magnitude only applies to stat targets; ignored on '%s'." % effect.target_attribute)
 	if effect.duration > 0.0:
@@ -213,6 +224,7 @@ func _apply_pool_effect(effect: GameplayEffect) -> StringName:
 			"pool": effect.target_attribute,
 			"rate": effect.total_damage / effect.duration,
 			"remaining": effect.duration,
+			"dtype": effect.damage_type,
 		})
 		_update_processing()
 		_show_effect_vfx(instance_id, effect)
@@ -319,6 +331,32 @@ func damage_pool(pool_name: StringName, amount: float) -> void:
 		defeat.emit()
 
 
+## Maps a damage type to the resistance stat that scales it. Empty means the
+## type is unresisted. Add new mappings here when damage types grow.
+static func resistance_stat_for(damage_type: StringName) -> StringName:
+	if damage_type == &"fire":
+		return STAT_FIRE_RESISTANCE
+	return &""
+
+
+## Fraction of damage_type damage that lands after resistance (1.0 = full,
+## 0.0 = immune). Unknown or unresisted types always land fully.
+func get_damage_multiplier(damage_type: StringName) -> float:
+	var stat: StringName = resistance_stat_for(damage_type)
+	if stat == &"" or not _stats.has(stat):
+		return 1.0
+	return clampf(1.0 - get_current(stat), 0.0, 1.0)
+
+
+## damage_pool with a damage type: scales by resistance first. Fully-resisted
+## hits change nothing and never emit defeat, so callers can skip reactions.
+func damage_pool_typed(pool_name: StringName, amount: float, damage_type: StringName = &"physical") -> void:
+	var mult: float = get_damage_multiplier(damage_type)
+	if mult <= 0.0:
+		return
+	damage_pool(pool_name, amount * mult)
+
+
 ## Adds an instant delta to a pool (heal, mana restore), clamped to the linked
 ## max stat. Emits attribute_changed.
 func restore_pool(pool_name: StringName, amount: float) -> void:
@@ -370,8 +408,9 @@ func _tick_dots(delta: float) -> void:
 		var step: float = minf(delta, remaining)
 		var tick_amount: float = float(entry.get("rate", 0.0)) * step
 		var pool_name: StringName = StringName(entry.get("pool", POOL_HEALTH))
+		var dtype: StringName = StringName(entry.get("dtype", &"physical"))
 		if tick_amount >= 0.0:
-			damage_pool(pool_name, tick_amount)
+			damage_pool_typed(pool_name, tick_amount, dtype)
 		else:
 			restore_pool(pool_name, -tick_amount)
 		if remaining <= delta:
@@ -393,6 +432,7 @@ func _seed_from_exports() -> void:
 	_apply_export_base(STAT_DEFENSE, base_defense)
 	_apply_export_base(STAT_SPEED, base_speed)
 	_apply_export_base(STAT_ATTACK_SPEED, base_attack_speed)
+	_apply_export_base(STAT_FIRE_RESISTANCE, base_fire_resistance)
 	for pool_name: StringName in POOL_NAMES:
 		var max_stat: StringName = POOL_MAX_LINK[pool_name] as StringName
 		_pools[pool_name] = get_current(max_stat)

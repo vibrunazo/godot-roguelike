@@ -1,12 +1,11 @@
-[gd_scene format=3 uid="uid://pcmeckywmvuew"]
+[gd_scene format=3 uid="uid://dqerke75xa74m"]
 
 [ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/level_template.tscn" id="1_cb8d3"]
+[ext_resource type="Script" uid="uid://cslkv80eol3lh" path="res://Enemy/enemy_resource.gd" id="2_c30j6"]
 [ext_resource type="PackedScene" uid="uid://b8by0o2p8jju0" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Barrel_A.gltf" id="2_padch"]
 [ext_resource type="PackedScene" uid="uid://t4a6aocg2p7h" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Couch.gltf" id="3_uwxw1"]
 [ext_resource type="PackedScene" uid="uid://6txdxj7vtbjk" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Flag.gltf" id="4_ay5qi"]
 [ext_resource type="VoxelGIData" path="res://Levels/GlobalIlluminationData/boss_arena_1_voxel_gi_data.res" id="4_bossarena1"]
-[ext_resource type="PackedScene" uid="uid://c6v2j7y4p1mna" path="res://Hazards/spikes_hazard.tscn" id="6_spikes"]
-[ext_resource type="PackedScene" uid="uid://b1lh7k11b7hq8" path="res://Hazards/fire_trap.tscn" id="7_fire_trap"]
 [ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_akira_boss.tres" id="8_boss0"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_bossarena1"]
@@ -15,15 +14,10 @@ polygons = [PackedInt32Array(1, 0, 2), PackedInt32Array(2, 0, 3), PackedInt32Arr
 geometry_parsed_geometry_type = 1
 region_min_size = 6.0
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ersrp"]
-shading_mode = 0
-albedo_color = Color(0, 0, 0, 1)
-proximity_fade_enabled = true
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_kv2lc"]
-size = Vector2(8, 8)
-
 [node name="BossArena1" unique_id=1079320019 instance=ExtResource("1_cb8d3")]
+
+[node name="WaveObjective" parent="." index="2" unique_id=361626003]
+boss_resources = Array[ExtResource("2_c30j6")]([ExtResource("8_boss0")])
 
 [node name="NavigationRegion3D" parent="." index="3" unique_id=35119806]
 navigation_mesh = SubResource("NavigationMesh_bossarena1")
@@ -52,27 +46,6 @@ transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 14, 0, 26)
 [node name="BarrelA" parent="NavigationRegion3D/Litter" index="3" unique_id=249140517 instance=ExtResource("2_padch")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 30)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 [node name="Player" parent="." index="4" unique_id=602303743]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1, 18)
 
@@ -81,11 +54,5 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, 18)
 size = Vector3(44, 20, 44)
 data = ExtResource("4_bossarena1")
 
-[node name="WaveObjective" parent="."] index="2"
-boss_resources = Array[Resource("res://Enemy/enemy_resource.gd")]([ExtResource("8_boss0")])
-
 [node name="ExitPoint" parent="." index="8" unique_id=71757807]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 18)
-
-
-

@@ -60,6 +60,7 @@ autostart = true
 [node name="AttackComponent" type="Node" parent="." unique_id=321443246]
 script = ExtResource("3_td6rc")
 damage = 5.0
+damage_type = &"fire"
 effects_to_apply = Array[GameplayEffect]([ExtResource("4_fireburn")])
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=341094992]
