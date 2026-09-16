@@ -36,6 +36,7 @@ func _ready() -> void:
 	await test_part_9_scattered_enemy_spawning()
 	test_part_10_enemy_difficulty_and_wave_budget_spawning()
 	await test_part_11_ai_attack_aim_gate()
+	await test_part_12_pursue_aim_gate()
 
 	print("\n====================================================================")
 	print("  ALL CHARACTER & AI STATE MACHINE TESTS PASSED!                    ")
@@ -50,6 +51,7 @@ func _ready() -> void:
 	print("  9. Scattered enemy spawning on navmesh verified                  ")
 	print(" 10. Enemy difficulty ratings & budget wave spawning verified      ")
 	print(" 11. AIAttack aim gate (desired_angle) verified                      ")
+	print(" 12. AIPursue aim gate (melee turns before punching) verified        ")
 	print("====================================================================")
 	get_tree().quit(0)
 
@@ -1021,6 +1023,91 @@ func test_part_11_ai_attack_aim_gate() -> void:
 		get_tree().quit(1)
 		return
 	print("desired_angle 0 fires on perfect alignment verified.")
+
+	player.queue_free()
+	enemy.queue_free()
+	await get_tree().process_frame
+
+
+func test_part_12_pursue_aim_gate() -> void:
+	print("\n>>> PART 12: AIPursue Aim Gate (melee turns before punching)")
+	var enemy: Character = MeleeEnemyScene.instantiate() as Character
+	var player: Character = PlayerScene.instantiate() as Character
+	add_child(enemy)
+	add_child(player)
+	enemy.global_position = Vector3.ZERO
+	player.global_position = Vector3(1.5, 0.0, 0.0)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var mind: AIStateMachine = enemy.ai_state_machine
+	var body_sm: StateMachine = enemy.state_machine
+	var pursue: AIPursue = mind.get_node_or_null("AIPursue") as AIPursue
+	if mind == null or body_sm == null or pursue == null:
+		printerr("TEST FAILED: MeleeEnemy mind, body, or AIPursue missing.")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if mind.get_target() != player:
+		printerr("TEST FAILED: MeleeEnemy mind did not acquire the player as target.")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if mind.state != pursue:
+		printerr("TEST FAILED: MeleeEnemy mind should start in AIPursue.")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(pursue.desired_angle, 90.0):
+		printerr("TEST FAILED: AIPursue desired_angle default should be 90.0, got: ", pursue.desired_angle)
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("AIPursue desired_angle default 90.0 verified.")
+
+	# Facing away with the player in range: no punch over the next ticks.
+	_turn_to_face(enemy, Vector3(-1.0, 0.0, 0.0))
+	for i: int in range(10):
+		await get_tree().physics_frame
+	if body_sm.state.name == "EnemyAttack":
+		printerr("TEST FAILED: MeleeEnemy punched while facing away from the player!")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("Pursue gate held the punch while facing away verified.")
+
+	# Then it must turn and punch inside the cone. Pursue retries failed
+	# orders every tick without leaving, so a plain poll suffices here.
+	var order_alignment: float = -1.0
+	var punched := false
+	for i: int in range(120):
+		await get_tree().physics_frame
+		if body_sm.state.name == "EnemyAttack":
+			var facing_now: Vector3 = enemy.mesh_mount.global_basis.z
+			facing_now.y = 0.0
+			var to_player: Vector3 = player.global_position - enemy.global_position
+			to_player.y = 0.0
+			order_alignment = facing_now.normalized().dot(to_player.normalized())
+			punched = true
+			break
+	if not punched:
+		printerr("TEST FAILED: MeleeEnemy never punched after turning toward the player!")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	if order_alignment < 0.70:
+		printerr("TEST FAILED: MeleeEnemy punched outside the 90-degree cone (alignment: ", order_alignment, ")!")
+		player.queue_free()
+		enemy.queue_free()
+		get_tree().quit(1)
+		return
+	print("MeleeEnemy turned and punched inside the cone (alignment: ", order_alignment, ").")
 
 	player.queue_free()
 	enemy.queue_free()

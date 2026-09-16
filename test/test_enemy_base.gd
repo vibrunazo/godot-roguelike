@@ -1692,14 +1692,11 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	var first_icon: UpgradeIcon = shop.upgrade_container.get_child(0) as UpgradeIcon
-	shop.exit_shop(first_icon)
-	if not shop.exiting_shop:
-		printerr("TEST FAILED: UpgradeShop exiting_shop was not set to true after exit_shop.")
-		shop.queue_free()
-		get_tree().quit(1)
-		return
-	print("UpgradeShop exit_shop execution and exiting_shop flag verified.")
+	# NOTE: the live exit_shop() call is deferred to the very end of the suite
+	# (after the summary, before quit). exit_shop() starts a real
+	# SceneTransition level load whose deferred change_scene would otherwise
+	# free this suite ~1s later, mid-run.
+	print("UpgradeShop exit_shop live call deferred to suite end (see below).")
 
 	shop.queue_free()
 	await get_tree().process_frame
@@ -2363,7 +2360,17 @@ func _ready() -> void:
 	anim_enemy.queue_free()
 	await get_tree().process_frame
 
-	# 3. Verify MeleeEnemy StateMachine wiring & transitions
+	# 3. Verify MeleeEnemy StateMachine wiring & transitions. The earlier floors
+	# were freed with their sections, so lay a local one: the aim-gate poll below
+	# needs physics ticks with footing (a falling body cannot accept orders).
+	var pursue_floor := StaticBody3D.new()
+	var pf_col := CollisionShape3D.new()
+	var pf_box := BoxShape3D.new()
+	pf_box.size = Vector3(20.0, 1.0, 20.0)
+	pf_col.shape = pf_box
+	pf_col.position = Vector3(0.0, -0.5, 0.0)
+	pursue_floor.add_child(pf_col)
+	add_child(pursue_floor)
 	var test_melee: Character = melee_scene.instantiate() as Character
 	add_child(test_melee)
 	await get_tree().physics_frame
@@ -2397,15 +2404,26 @@ func _ready() -> void:
 	p_player.global_position = test_melee.global_position + Vector3(1.5, 0.0, 0.0) # within attack_range (3.0)
 	pursue_state.physics_update(0.1)
 	await get_tree().process_frame
-	if melee_sm_node.state != attack_node:
+	# The aim gate orders only inside the facing cone, so the body flips after
+	# physics ticks of aiming instead of synchronously. Pursue retries failed
+	# orders every tick without leaving, so a plain poll suffices here.
+	var pursued: bool = false
+	for i: int in range(180):
+		await get_tree().physics_frame
+		if melee_sm_node.state == attack_node:
+			pursued = true
+			break
+	if not pursued:
 		printerr("TEST FAILED: AIPursue did not transition body StateMachine to EnemyAttack when in range. Got: ", melee_sm_node.state.name if melee_sm_node.state else "null")
 		p_player.queue_free()
 		test_melee.queue_free()
+		pursue_floor.queue_free()
 		get_tree().quit(1)
 		return
 	print("AIPursue proximity transition to EnemyAttack verified.")
 	p_player.queue_free()
 	test_melee.queue_free()
+	pursue_floor.queue_free()
 	await get_tree().process_frame
 
 	# ---------------------------------------------------------
@@ -3112,5 +3130,36 @@ func _ready() -> void:
 	print("  35. Projectile corpse penetration & hurtbox deactivation verified ")
 	print("====================================================================")
 	
-	get_tree().quit(0)
+	# PART 11 (deferred): exit_shop() starts a real SceneTransition level load
+	# (1s fade, then change_scene frees this suite), so the live call runs
+	# here at the very end instead of in Part 11: the fade cannot land
+	# before quit(0) below, while calling it in Part 11 let the deferred
+	# scene change land mid-suite (~Part 34/35) and kill the run.
+	var exit_shop_scene: PackedScene = load("res://UserInterface/upgrade_shop.tscn") as PackedScene
+	if exit_shop_scene == null:
+		printerr("TEST FAILED: Could not reload res://UserInterface/upgrade_shop.tscn for exit_shop check.")
+		get_tree().quit(1)
+		return
+	var exit_shop_inst: Control = exit_shop_scene.instantiate() as Control
+	if exit_shop_inst == null:
+		printerr("TEST FAILED: exit_shop check instance is not a Control node.")
+		get_tree().quit(1)
+		return
+	add_child(exit_shop_inst)
+	await get_tree().process_frame
+	if exit_shop_inst.get("exiting_shop") != false:
+		printerr("TEST FAILED: UpgradeShop exiting_shop should initially be false.")
+		exit_shop_inst.queue_free()
+		get_tree().quit(1)
+		return
+	var exit_first_icon: Control = (exit_shop_inst.get("upgrade_container") as HBoxContainer).get_child(0) as Control
+	exit_shop_inst.call("exit_shop", exit_first_icon)
+	if exit_shop_inst.get("exiting_shop") != true:
+		printerr("TEST FAILED: UpgradeShop exiting_shop was not set to true after exit_shop.")
+		exit_shop_inst.queue_free()
+		get_tree().quit(1)
+		return
+	print("UpgradeShop exit_shop execution and exiting_shop flag verified.")
+	exit_shop_inst.queue_free()
 
+	get_tree().quit(0)

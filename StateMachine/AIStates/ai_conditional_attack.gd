@@ -142,44 +142,17 @@ func _try_order_attack(delta: float) -> void:
 		_finish_attack()
 		return
 	character.look_at_target(target.global_position, delta)
-	if not _is_within_cone(target):
+	if not is_facing_within_cone(target, desired_angle):
 		return
 	# The order only sets the desired facing; the body turns toward it at
 	# its rotation speed limit once the attack state snapshots this aim.
-	var order_data: Dictionary = {}
-	var to_target: Vector3 = target.global_position - character.global_position
-	to_target.y = 0.0
-	if not to_target.is_zero_approx():
-		order_data["aim"] = to_target.normalized()
+	var order_data: Dictionary = build_aim_order_data(target)
 	_attack_ordered = ai_state_machine.order_attack(attack_state_name, can_break_stun, order_data)
 	if not _attack_ordered:
 		# The body is unable to attack (e.g. stunned): leave like a finished
 		# attack. Already inside physics_update, so no deferral is needed for
 		# the transition.
 		_finish_attack()
-
-
-## True when the mount facing falls inside the desired_angle cone centered on
-## the target direction (360.0 = anywhere, 0.0 = perfect alignment only). A
-## target stacked exactly on the body has no defined direction and counts as
-## aligned so the mind can never stall waiting for an aim that cannot exist.
-func _is_within_cone(target: Character) -> bool:
-	if desired_angle >= 360.0:
-		return true
-	if character == null or character.mesh_mount == null:
-		return false
-	var facing: Vector3 = character.mesh_mount.global_transform.basis.z
-	facing.y = 0.0
-	if facing.is_zero_approx():
-		return false
-	var to_target: Vector3 = target.global_position - character.global_position
-	to_target.y = 0.0
-	if to_target.is_zero_approx():
-		return true
-	var angle: float = rad_to_deg(acos(clampf(facing.normalized().dot(to_target.normalized()), -1.0, 1.0)))
-	# The 0.05-degree hair covers float dust from the final exact step, so a
-	# 0.0 cone still opens on true alignment instead of stalling forever.
-	return angle <= maxf(desired_angle, 0.0) * 0.5 + 0.05
 
 
 func exit() -> void:
