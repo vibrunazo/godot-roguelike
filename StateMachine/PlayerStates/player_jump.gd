@@ -26,7 +26,7 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 	var speed: float = character.attribute_component.get_current(AttributeComponent.STAT_SPEED) if character.attribute_component != null else 8.0
 	_launch_velocity = Vector3(character.velocity.x, 0.0, character.velocity.z)
 	var direction: Vector3 = _data.get("direction", character.move_direction)
-	if _launch_velocity.is_zero_approx() and not direction.is_zero_approx():
+	if not direction.is_zero_approx():
 		_launch_velocity = direction * speed
 		character.velocity.x = _launch_velocity.x
 		character.velocity.z = _launch_velocity.z

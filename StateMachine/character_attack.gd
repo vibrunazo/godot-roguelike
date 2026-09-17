@@ -60,6 +60,7 @@ var attack_timer: SceneTreeTimer
 var aim_direction: Vector3 = Vector3.ZERO
 var lunging: bool = false
 var lunge_direction: Vector3 = Vector3.ZERO
+var _lunge_base_velocity: Vector3 = Vector3.ZERO
 var lunge_timer: SceneTreeTimer
 var lunge_slot: WeaponSlot
 ## Remaining self-hitstop time in seconds (real time). Above 0.0 means the
@@ -140,7 +141,7 @@ func physics_update(delta: float) -> void:
 	_update_hitstop(delta)
 	var motion_scale: float = clampf(self_hitstop_scale, 0.0, 1.0) if is_in_hitstop() else 1.0
 	if lunging:
-		character.velocity = lunge_direction * dash_speed * motion_scale
+		character.velocity = (_lunge_base_velocity + lunge_direction * dash_speed) * motion_scale
 	else:
 		character.velocity = character.move_direction * movement_speed * motion_scale
 	if not is_in_hitstop():
@@ -181,13 +182,17 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	attack_timer.timeout.connect(attempt_queue_attack)
 	character.is_attacking = true
 	var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
-	if input_comp != null:
+	if input_comp != null and input_comp.is_physics_processing():
 		input_comp.update_aim_intent()
 		aim_direction = character.aim_direction
+	elif not character.aim_direction.is_zero_approx():
+		aim_direction = character.aim_direction
 	elif _data.get("aim") is Vector3:
-		## AI-ordered facing intent (see AIAttack.enter): snapshot so the body
-		## turns toward the ordered target at the rotation speed limit.
 		aim_direction = _data["aim"]
+	elif not character.move_direction.is_zero_approx():
+		aim_direction = character.move_direction
+	elif character.mesh_mount != null:
+		aim_direction = character.mesh_mount.global_basis.z.normalized()
 	else:
 		aim_direction = Vector3.ZERO
 	_aim_at_current_target()
@@ -237,6 +242,7 @@ func _begin_lunge() -> void:
 	if lunge_direction.is_zero_approx():
 		lunge_direction = Vector3.FORWARD
 	lunge_direction = lunge_direction.normalized()
+	_lunge_base_velocity = Vector3(character.velocity.x, 0.0, character.velocity.z)
 	lunging = true
 	lunge_timer = get_tree().create_timer(dash_duration)
 	lunge_timer.timeout.connect(_end_lunge)
@@ -250,6 +256,7 @@ func _end_lunge() -> void:
 ## Clears all lunge state: motion flag, timer wiring, and slot signal wiring.
 func _clear_lunge() -> void:
 	lunging = false
+	_lunge_base_velocity = Vector3.ZERO
 	if lunge_timer != null:
 		disconnect_safe(lunge_timer.timeout, _end_lunge)
 		lunge_timer = null
@@ -372,6 +379,10 @@ func exit() -> void:
 	if attack_component != null:
 		disconnect_safe(attack_component.hit_landed, _on_hit_landed)
 		attack_component.reset_exceptions()
+		if attack_component.attack_area != null:
+			var slot: WeaponSlot = attack_component.attack_area.get_parent() as WeaponSlot
+			if slot != null and slot.enabled:
+				slot.enabled = false
 
 
 ## Transitions to a random pick of next_states when the attack animation finishes.

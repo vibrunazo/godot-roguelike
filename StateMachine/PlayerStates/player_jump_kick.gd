@@ -6,6 +6,12 @@ extends CharacterAttack
 @export var running_state: CharacterState
 
 
+func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
+	super.enter(_previous_state_path, _data)
+	if character != null:
+		_lunge_base_velocity = Vector3(character.velocity.x, 0.0, character.velocity.z)
+
+
 func physics_update(delta: float) -> void:
 	if character == null or not character.is_inside_tree():
 		return
@@ -13,6 +19,11 @@ func physics_update(delta: float) -> void:
 	if check_dash():
 		return
 	if check_jump():
+		return
+	check_attack()
+
+	if character.is_on_floor() and character.velocity.y <= 0.0:
+		_cancel_on_landing()
 		return
 
 	_update_hitstop(delta)
@@ -24,28 +35,46 @@ func physics_update(delta: float) -> void:
 		character.velocity.y = 0.0
 
 	if lunging:
-		character.velocity.x = lunge_direction.x * dash_speed * motion_scale
-		character.velocity.z = lunge_direction.z * dash_speed * motion_scale
-	elif movement_speed > 0.0:
-		character.velocity.x = move_toward(character.velocity.x, character.move_direction.x * movement_speed, 15.0 * delta)
-		character.velocity.z = move_toward(character.velocity.z, character.move_direction.z * movement_speed, 15.0 * delta)
+		character.velocity.x = (_lunge_base_velocity.x + lunge_direction.x * dash_speed) * motion_scale
+		character.velocity.z = (_lunge_base_velocity.z + lunge_direction.z * dash_speed) * motion_scale
+	else:
+		character.velocity.x = _lunge_base_velocity.x * motion_scale
+		character.velocity.z = _lunge_base_velocity.z * motion_scale
 
 	if not is_in_hitstop():
 		character.look_toward_direction(aim_direction, delta)
 
 	character.move_and_slide()
 
+	if character.is_on_floor() and character.velocity.y <= 0.0:
+		_cancel_on_landing()
+
+
+func _cancel_on_landing() -> void:
+	if character == null or character.state_machine == null:
+		return
+	var target_attack: CharacterState = attack_state
+	if target_attack == null and character.state_machine != null:
+		target_attack = character.state_machine.get_node_or_null("PlayerAttack") as CharacterState
+
+	var should_attack: bool = queued_attack or (character != null and character.consume_attack_request())
+	if should_attack and target_attack != null:
+		character.state_machine.request_state(target_attack.name, {"direction": character.move_direction})
+	elif running_state != null:
+		if character.animation_tree != null:
+			character.animation_tree.change_immediate("WalkSpace")
+		character.state_machine.request_state(running_state.name)
+	elif not next_states.is_empty():
+		var next: CharacterState = next_states.pick_random()
+		if next != null:
+			character.state_machine.request_state(next.name)
+
 
 func finish_attack(_animation_name: String) -> void:
 	if character == null or character.state_machine == null:
 		return
 	if character.is_on_floor():
-		if running_state != null:
-			character.state_machine.request_state(running_state.name)
-		elif not next_states.is_empty():
-			var next: CharacterState = next_states.pick_random()
-			if next != null:
-				character.state_machine.request_state(next.name)
+		_cancel_on_landing()
 	else:
 		if fall_state != null:
 			character.state_machine.request_state(fall_state.name)

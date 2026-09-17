@@ -104,6 +104,7 @@ func _ready() -> void:
 	sm._unhandled_input(jump_ev)
 
 	check(sm.state == player_jump, "Player transitioned to PlayerJump on jump action")
+	check(is_zero_approx(player.velocity.x) and is_zero_approx(player.velocity.z), "Neutral jump has zero horizontal velocity (vx == 0, vz == 0)")
 	var gravity_mag: float = player.get_gravity().length()
 	var expected_v0: float = sqrt(2.0 * gravity_mag * player_jump.jump_height)
 	check(is_equal_approx(player.velocity.y, expected_v0), "Initial upward velocity is sqrt(2*g*h) = %.2f m/s" % expected_v0)
@@ -133,6 +134,8 @@ func _ready() -> void:
 			break
 
 	check(landed, "Player landed back on floor and transitioned to PlayerRun")
+	var horizontal_drift: float = Vector2(player.global_position.x - spawn_pos.x, player.global_position.z - spawn_pos.z).length()
+	check(horizontal_drift < 0.05, "Neutral jump does not jump forward (horizontal drift: %.4fm < 0.05m)" % horizontal_drift)
 
 	# =========================================================================
 	# PART 4: Horizontal Control Ratio (0.0 vs 1.0)
@@ -320,9 +323,9 @@ func _ready() -> void:
 		sm.request_state("PlayerRun")
 
 	# =========================================================================
-	# PART 8: Airborne Jump Kick Execution
+	# PART 8: Airborne Jump Kick Execution, Lunge Speedup & Landing Cancel
 	# =========================================================================
-	print("\n>>> PART 8: Airborne Jump Kick Execution")
+	print("\n>>> PART 8: Airborne Jump Kick Execution, Lunge Speedup & Landing Cancel")
 	player.global_position = spawn_pos
 	player.velocity = Vector3.ZERO
 	player.move_direction = Vector3.ZERO
@@ -331,10 +334,15 @@ func _ready() -> void:
 		if player.is_on_floor() and sm.state == player_run:
 			break
 
+	# 8A: Jump forward with full speed (8 m/s) and jump kick
+	player.auto_aim_range = 0.0
+	player.current_target = null
+	player.aim_direction = Vector3(0.0, 0.0, 1.0)
+	player.move_direction = Vector3(0.0, 0.0, 1.0)
 	sm._unhandled_input(jump_ev)
 	check(sm.state == player_jump, "Jump started for JumpKick test")
-	await get_tree().physics_frame
-	await get_tree().physics_frame
+	var initial_jump_speed_z: float = player.velocity.z
+	check(initial_jump_speed_z >= 7.9, "Forward jump has full speed (vz: %.2f >= 7.9)" % initial_jump_speed_z)
 
 	# Mid-air attack order
 	var attack_ev: InputEventAction = InputEventAction.new()
@@ -345,12 +353,62 @@ func _ready() -> void:
 	check(sm.state == player_jump_kick, "Transitioned to PlayerJumpKick from mid-air jump")
 	check(player_jump_kick.attack_animation_name == "JumpKick", "PlayerJumpKick uses JumpKick animation")
 
-	# Let kick progress and land
+	# Wait for lunge to activate and verify dash_speed adds to jump velocity (speeds up, not slows down)
+	var saw_speedup: bool = false
+	var max_kick_speed_z: float = initial_jump_speed_z
+	for i: int in range(40):
+		await get_tree().physics_frame
+		if player.velocity.z > max_kick_speed_z:
+			max_kick_speed_z = player.velocity.z
+		if player_jump_kick.lunging and player.velocity.z > initial_jump_speed_z:
+			saw_speedup = true
+		if player.is_on_floor():
+			break
+
+	check(saw_speedup, "Jump kick dash speed adds to velocity (max vz: %.2f > %.2f, speeds up)" % [max_kick_speed_z, initial_jump_speed_z])
+
+	# Wait for landing: landing cancels jump kick instantly into PlayerRun
 	for i: int in range(120):
+		if player.is_on_floor() and sm.state == player_run:
+			break
+		await get_tree().physics_frame
+	check(sm.state == player_run, "Landing cancels JumpKick immediately into PlayerRun without waiting for animation")
+
+	# 8B: Landing cancel directly into ground attack
+	player.global_position = spawn_pos
+	player.velocity = Vector3.ZERO
+	player.move_direction = Vector3.ZERO
+	for i: int in range(15):
 		await get_tree().physics_frame
 		if player.is_on_floor() and sm.state == player_run:
 			break
-	check(sm.state == player_run, "Player safely landed and returned to PlayerRun after JumpKick")
+
+	# Jump and wait until descending
+	sm._unhandled_input(jump_ev)
+	for i: int in range(60):
+		await get_tree().physics_frame
+		if player.velocity.y < 0.0:
+			break
+
+	# Execute JumpKick during descent
+	sm._unhandled_input(attack_ev)
+	check(sm.state == player_jump_kick, "JumpKick started during descent for landing cancel test")
+
+	# Buffer ground attack intent while still mid-air in JumpKick
+	await get_tree().physics_frame
+	sm._unhandled_input(attack_ev)
+
+	# On landing, it should cancel JumpKick in mid-animation and immediately transition to PlayerAttack
+	var transitioned_to_ground_attack: bool = false
+	for i: int in range(60):
+		await get_tree().physics_frame
+		if sm.state == p_attack:
+			transitioned_to_ground_attack = true
+			break
+		if player.is_on_floor() and sm.state == player_run:
+			break
+
+	check(transitioned_to_ground_attack, "Landing cancels JumpKick and instantly transitions to ground PlayerAttack")
 	input_comp.set_physics_process(true)
 
 	print("\n====================================================================")

@@ -42,12 +42,7 @@ func check_jump() -> bool:
 		return false
 	if jump_state == null or not character.is_on_floor():
 		return false
-	var direction: Vector3 = character.move_direction
-	if direction.is_zero_approx() and character.mesh_mount != null:
-		direction = character.mesh_mount.global_basis.z.normalized()
-	if direction.is_zero_approx():
-		direction = Vector3.FORWARD
-	return character.state_machine.request_state(jump_state.name, {"direction": direction})
+	return character.state_machine.request_state(jump_state.name, {"direction": character.move_direction})
 
 
 ## Consumes a pending attack intent and transitions to attack_state if available.
