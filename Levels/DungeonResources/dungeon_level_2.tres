@@ -1,13 +1,13 @@
-[gd_resource type="Resource" script_class="DungeonResource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="DungeonResource" format=3 uid="uid://d3s03awl3374h"]
 
-[ext_resource type="Script" path="res://Levels/dungeon_resource.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://Levels/level_2.tscn" id="2_scene"]
+[ext_resource type="Script" uid="uid://ddn61phmec3x5" path="res://Levels/dungeon_resource.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://dxtkfp1w28vp0" path="res://Levels/level_2.tscn" id="2_scene"]
 
 [resource]
 script = ExtResource("1_script")
 name = "Level 2 - Sunken Pit Room"
 scene = ExtResource("2_scene")
 min_difficulty = 1
-max_difficulty = 6
+max_difficulty = 10
 min_enemies = 3
-max_enemies = 6
+max_enemies = 8

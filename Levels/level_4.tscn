@@ -12,14 +12,6 @@ polygons = [PackedInt32Array(2, 1, 0), PackedInt32Array(4, 3, 5), PackedInt32Arr
 geometry_parsed_geometry_type = 1
 region_min_size = 6.0
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ersrp"]
-shading_mode = 0
-albedo_color = Color(0, 0, 0, 1)
-proximity_fade_enabled = true
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_kv2lc"]
-size = Vector2(8, 8)
-
 [node name="Level4" unique_id=1079320019 instance=ExtResource("1_ll1bl")]
 
 [node name="NavigationRegion3D" parent="." index="3" unique_id=35119806]

@@ -21,6 +21,8 @@ extends CharacterState
 @export var uninterruptable: bool = true
 ## Name of the animation to trigger on the animation tree for the leap.
 @export var leap_animation_name: String = "Jump_Full_Short"
+## Audio player for the leap sound effect.
+@export var leap_audio: AudioStreamPlayer3D
 
 ## Starting position of the current leap in global 3D space.
 var start_position: Vector3 = Vector3.ZERO
@@ -68,6 +70,10 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	start_position = character.global_position
 	elapsed_time = 0.0
 	is_leaping = true
+
+	var audio: AudioStreamPlayer3D = _get_leap_audio()
+	if audio != null:
+		audio.play()
 
 	# Resolve target position
 	if _data.has("target_position") and _data["target_position"] is Vector3:
@@ -203,6 +209,9 @@ func physics_update(delta: float) -> void:
 	# Fall pit detection
 	if character.global_position.y < -3.0 and fall_state != null:
 		is_leaping = false
+		var audio: AudioStreamPlayer3D = _get_leap_audio()
+		if audio != null:
+			audio.stop()
 		finished.emit(fall_state.name)
 		return
 
@@ -243,3 +252,11 @@ func _trigger_animation() -> void:
 			character.animation_tree.change_immediate("Jump_Full_Short")
 		elif root_sm.has_node("LeapDodge"):
 			character.animation_tree.change_immediate("LeapDodge")
+
+
+func _get_leap_audio() -> AudioStreamPlayer3D:
+	if leap_audio != null:
+		return leap_audio
+	if character != null:
+		leap_audio = character.get_node_or_null("LeapAudio") as AudioStreamPlayer3D
+	return leap_audio

@@ -1,13 +1,12 @@
-[gd_resource type="Resource" script_class="DungeonResource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="DungeonResource" format=3 uid="uid://clqvkb6bqkfvf"]
 
-[ext_resource type="Script" path="res://Levels/dungeon_resource.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://Levels/level_6.tscn" id="2_scene"]
+[ext_resource type="Script" uid="uid://ddn61phmec3x5" path="res://Levels/dungeon_resource.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://cykgx6p27a8pp" path="res://Levels/level_6.tscn" id="2_scene"]
 
 [resource]
 script = ExtResource("1_script")
 name = "Level 6 - Two Rooms Bridge"
 scene = ExtResource("2_scene")
 min_difficulty = 3
-max_difficulty = 8
-min_enemies = 4
-max_enemies = 8
+min_enemies = 6
+max_enemies = 12

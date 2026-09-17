@@ -547,6 +547,28 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
+	var leap_audio: AudioStreamPlayer3D = leap_bomber.get_node_or_null("LeapAudio") as AudioStreamPlayer3D
+	if leap_audio == null:
+		printerr("TEST FAILED: LeapAudio node missing on FirebomberEnemy.")
+		get_tree().quit(1)
+		return
+	if leap_audio.stream == null:
+		printerr("TEST FAILED: LeapAudio stream is null.")
+		get_tree().quit(1)
+		return
+	if not leap_audio.stream.resource_path.ends_with("140867__juskiddink__boing.wav"):
+		printerr("TEST FAILED: Expected LeapAudio stream to be 140867__juskiddink__boing.wav, got: ", leap_audio.stream.resource_path)
+		get_tree().quit(1)
+		return
+	if leap_audio.bus != &"SFX":
+		printerr("TEST FAILED: Expected LeapAudio bus to be 'SFX', got: ", leap_audio.bus)
+		get_tree().quit(1)
+		return
+	if leap_dodge_state.leap_audio != leap_audio:
+		printerr("TEST FAILED: EnemyLeapingDodge.leap_audio is not wired to LeapAudio.")
+		get_tree().quit(1)
+		return
+
 	var ai_dodge_state: AILeapingDodge = leap_ai_sm.get_node_or_null("AILeapingDodge") as AILeapingDodge
 	if ai_dodge_state == null:
 		printerr("TEST FAILED: AILeapingDodge missing on Firebomber AIStateMachine.")
@@ -668,6 +690,12 @@ func _ready() -> void:
 		printerr("TEST FAILED: is_leaping is not true after enter().")
 		get_tree().quit(1)
 		return
+
+	if leap_dodge_state.leap_audio == null or not leap_dodge_state.leap_audio.playing:
+		printerr("TEST FAILED: leap_audio is not playing after entering EnemyLeapingDodge.")
+		get_tree().quit(1)
+		return
+	leap_dodge_state.leap_audio.stop()
 
 	# Initial vertical velocity must be positive (high in the air)
 	if leap_dodge_state.vertical_velocity <= 0.0:

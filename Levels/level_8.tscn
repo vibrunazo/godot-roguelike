@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://tjd1wukwh9xhg"]
+[gd_scene format=3 uid="uid://d2qkkmvv8hgge"]
 
 [ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/level_template.tscn" id="1_cb8d3"]
 [ext_resource type="PackedScene" uid="uid://b8by0o2p8jju0" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Barrel_A.gltf" id="2_padch"]
@@ -13,14 +13,6 @@ vertices = PackedVector3Array(52, 0.6, 20.25, 52.5, 0.6, 20, 50.5, 0.35, 17, 45.
 polygons = [PackedInt32Array(2, 1, 0), PackedInt32Array(4, 3, 5), PackedInt32Array(5, 3, 6), PackedInt32Array(0, 7, 2), PackedInt32Array(2, 7, 8), PackedInt32Array(8, 7, 9), PackedInt32Array(6, 3, 8), PackedInt32Array(9, 6, 8), PackedInt32Array(11, 10, 12), PackedInt32Array(12, 10, 13), PackedInt32Array(13, 10, 14), PackedInt32Array(15, 4, 5), PackedInt32Array(17, 16, 14), PackedInt32Array(13, 19, 12), PackedInt32Array(12, 19, 18), PackedInt32Array(14, 10, 17), PackedInt32Array(17, 10, 15), PackedInt32Array(17, 15, 5), PackedInt32Array(2, 15, 1), PackedInt32Array(1, 15, 10), PackedInt32Array(22, 21, 20), PackedInt32Array(23, 16, 17), PackedInt32Array(22, 20, 23), PackedInt32Array(25, 22, 24), PackedInt32Array(24, 22, 23), PackedInt32Array(24, 23, 17), PackedInt32Array(28, 27, 26), PackedInt32Array(26, 29, 28), PackedInt32Array(28, 29, 31), PackedInt32Array(28, 31, 30), PackedInt32Array(33, 32, 34), PackedInt32Array(34, 32, 35), PackedInt32Array(34, 35, 27), PackedInt32Array(34, 27, 28), PackedInt32Array(38, 37, 36), PackedInt32Array(40, 39, 37), PackedInt32Array(37, 39, 36), PackedInt32Array(36, 39, 29), PackedInt32Array(29, 39, 31), PackedInt32Array(43, 42, 41), PackedInt32Array(45, 44, 46), PackedInt32Array(46, 44, 47), PackedInt32Array(49, 48, 36), PackedInt32Array(36, 48, 38), PackedInt32Array(38, 48, 41), PackedInt32Array(52, 51, 50), PackedInt32Array(52, 50, 48), PackedInt32Array(48, 50, 41), PackedInt32Array(41, 50, 43), PackedInt32Array(54, 53, 55), PackedInt32Array(55, 53, 47), PackedInt32Array(48, 53, 52), PackedInt32Array(46, 47, 48), PackedInt32Array(48, 47, 53), PackedInt32Array(49, 35, 48), PackedInt32Array(48, 35, 32), PackedInt32Array(33, 34, 56), PackedInt32Array(56, 34, 57), PackedInt32Array(58, 44, 57), PackedInt32Array(57, 44, 56), PackedInt32Array(56, 44, 45), PackedInt32Array(61, 60, 59), PackedInt32Array(61, 59, 62), PackedInt32Array(62, 59, 63), PackedInt32Array(65, 64, 63), PackedInt32Array(63, 64, 66), PackedInt32Array(66, 64, 67), PackedInt32Array(67, 64, 68), PackedInt32Array(63, 59, 65), PackedInt32Array(67, 70, 66), PackedInt32Array(66, 70, 69), PackedInt32Array(60, 61, 71), PackedInt32Array(71, 61, 72), PackedInt32Array(74, 73, 75), PackedInt32Array(75, 73, 76), PackedInt32Array(72, 77, 71), PackedInt32Array(71, 77, 78), PackedInt32Array(78, 77, 79), PackedInt32Array(79, 77, 76), PackedInt32Array(79, 80, 78), PackedInt32Array(76, 73, 79), PackedInt32Array(83, 82, 81), PackedInt32Array(21, 22, 84), PackedInt32Array(86, 85, 87), PackedInt32Array(87, 85, 84), PackedInt32Array(21, 84, 19), PackedInt32Array(19, 84, 81), PackedInt32Array(81, 84, 83), PackedInt32Array(83, 84, 85), PackedInt32Array(81, 18, 19), PackedInt32Array(87, 69, 86), PackedInt32Array(86, 69, 70), PackedInt32Array(89, 88, 68), PackedInt32Array(90, 89, 68), PackedInt32Array(91, 90, 92), PackedInt32Array(92, 90, 68), PackedInt32Array(92, 68, 64), PackedInt32Array(92, 64, 93), PackedInt32Array(92, 93, 80), PackedInt32Array(80, 93, 78), PackedInt32Array(96, 95, 97), PackedInt32Array(97, 95, 94), PackedInt32Array(99, 98, 100), PackedInt32Array(100, 98, 101), PackedInt32Array(101, 98, 102), PackedInt32Array(102, 98, 7), PackedInt32Array(97, 94, 103), PackedInt32Array(104, 97, 103), PackedInt32Array(101, 104, 103), PackedInt32Array(102, 105, 101), PackedInt32Array(100, 101, 103), PackedInt32Array(100, 107, 99), PackedInt32Array(99, 107, 106), PackedInt32Array(98, 9, 7), PackedInt32Array(55, 106, 54), PackedInt32Array(54, 106, 107), PackedInt32Array(109, 108, 110), PackedInt32Array(110, 108, 111), PackedInt32Array(83, 85, 112), PackedInt32Array(111, 108, 113), PackedInt32Array(113, 114, 111), PackedInt32Array(111, 114, 115), PackedInt32Array(115, 114, 116), PackedInt32Array(116, 114, 112), PackedInt32Array(112, 114, 118), PackedInt32Array(112, 118, 117), PackedInt32Array(112, 117, 83), PackedInt32Array(95, 96, 119), PackedInt32Array(119, 121, 95), PackedInt32Array(95, 121, 120), PackedInt32Array(95, 120, 109), PackedInt32Array(95, 109, 110), PackedInt32Array(122, 101, 123), PackedInt32Array(123, 101, 105), PackedInt32Array(117, 118, 124), PackedInt32Array(123, 105, 121), PackedInt32Array(121, 105, 117), PackedInt32Array(121, 117, 124), PackedInt32Array(121, 124, 120), PackedInt32Array(127, 126, 125), PackedInt32Array(74, 75, 128), PackedInt32Array(128, 75, 125), PackedInt32Array(125, 75, 127), PackedInt32Array(91, 128, 90), PackedInt32Array(90, 128, 125), PackedInt32Array(39, 40, 129), PackedInt32Array(42, 43, 129), PackedInt32Array(129, 43, 130), PackedInt32Array(129, 130, 39)]
 geometry_parsed_geometry_type = 1
 region_min_size = 6.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ersrp"]
-shading_mode = 0
-albedo_color = Color(0, 0, 0, 1)
-proximity_fade_enabled = true
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_kv2lc"]
-size = Vector2(8, 8)
 
 [node name="Level8" unique_id=1079320019 instance=ExtResource("1_cb8d3")]
 
@@ -63,27 +55,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 94, 0, 34)
 [node name="CouchC" parent="NavigationRegion3D/Litter" index="7" unique_id=1730822186 instance=ExtResource("3_uwxw1")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 100, 0, 20)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 [node name="Player" parent="." index="4" unique_id=602303743]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1, 26)
 
@@ -98,17 +69,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 108, 0, 30)
 [node name="SpikesA" parent="." index="9" unique_id=567506750 instance=ExtResource("6_spikes")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, 26)
 
+[node name="FireC1" parent="." index="10" unique_id=508743816 instance=ExtResource("7_fire_trap")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34, 0, 30)
+
 [node name="SpikesC2a" parent="." index="11" unique_id=1948198910 instance=ExtResource("6_spikes")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 0, 24)
 
 [node name="SpikesC2b" parent="." index="12" unique_id=199867512 instance=ExtResource("6_spikes")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 86, 0, 24)
-
-[node name="SpikesC" parent="." index="15" unique_id=491310424 instance=ExtResource("6_spikes")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0, 22)
-
-[node name="FireC1" parent="." index="10" unique_id=508743816 instance=ExtResource("7_fire_trap")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34, 0, 30)
 
 [node name="FireB1" parent="." index="13" unique_id=822258404 instance=ExtResource("7_fire_trap")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 0, 26)
@@ -116,5 +84,5 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 0, 26)
 [node name="FireB2" parent="." index="14" unique_id=1907070754 instance=ExtResource("7_fire_trap")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 64, 0, 30)
 
-
-
+[node name="SpikesC" parent="." index="15" unique_id=491310424 instance=ExtResource("6_spikes")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0, 22)

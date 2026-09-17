@@ -1,13 +1,11 @@
-[gd_resource type="Resource" script_class="DungeonResource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="DungeonResource" format=3 uid="uid://nxpki221ppp0"]
 
-[ext_resource type="Script" path="res://Levels/dungeon_resource.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://Levels/level_5.tscn" id="2_scene"]
+[ext_resource type="Script" uid="uid://ddn61phmec3x5" path="res://Levels/dungeon_resource.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://cr10pxvapuokl" path="res://Levels/level_5.tscn" id="2_scene"]
 
 [resource]
 script = ExtResource("1_script")
 name = "Level 5 - Grand Hall"
 scene = ExtResource("2_scene")
-min_difficulty = 5
-max_difficulty = 0
-min_enemies = 6
-max_enemies = 0
+min_difficulty = 8
+min_enemies = 8

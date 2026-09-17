@@ -1,13 +1,13 @@
-[gd_resource type="Resource" script_class="DungeonResource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="DungeonResource" format=3 uid="uid://c8jtu0m8ljbge"]
 
-[ext_resource type="Script" path="res://Levels/dungeon_resource.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://Levels/level_8.tscn" id="2_scene"]
+[ext_resource type="Script" uid="uid://ddn61phmec3x5" path="res://Levels/dungeon_resource.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://d2qkkmvv8hgge" path="res://Levels/level_8.tscn" id="2_scene"]
 
 [resource]
 script = ExtResource("1_script")
 name = "Level 8 - Three Islands"
 scene = ExtResource("2_scene")
 min_difficulty = 4
-max_difficulty = 10
+max_difficulty = 15
 min_enemies = 5
-max_enemies = 10
+max_enemies = 12

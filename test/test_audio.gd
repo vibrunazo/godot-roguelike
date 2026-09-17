@@ -136,6 +136,33 @@ func _ready() -> void:
 		return
 	print("MeleeEnemy AttackAudio verified: found under WeaponSlot, weapon-swing.ogg assigned, SFX bus assigned, slash connected to play.")
 	
+	# Check Firebomber Leap Audio
+	var firebomber_scene: PackedScene = load("res://Enemy/firebomber_enemy.tscn") as PackedScene
+	if firebomber_scene == null:
+		printerr("TEST FAILED: Could not load res://Enemy/firebomber_enemy.tscn")
+		get_tree().quit(1)
+		return
+	var firebomber: Character = firebomber_scene.instantiate() as Character
+	add_child(firebomber)
+	var leap_audio: AudioStreamPlayer3D = firebomber.get_node_or_null("LeapAudio") as AudioStreamPlayer3D
+	if leap_audio == null:
+		printerr("TEST FAILED: LeapAudio node not found on Firebomber.")
+		get_tree().quit(1)
+		return
+	if leap_audio.stream == null:
+		printerr("TEST FAILED: Firebomber LeapAudio stream is null.")
+		get_tree().quit(1)
+		return
+	if not leap_audio.stream.resource_path.ends_with("140867__juskiddink__boing.wav"):
+		printerr("TEST FAILED: Expected Firebomber LeapAudio stream to be 140867__juskiddink__boing.wav, got: ", leap_audio.stream.resource_path)
+		get_tree().quit(1)
+		return
+	if leap_audio.bus != &"SFX":
+		printerr("TEST FAILED: Expected Firebomber LeapAudio bus to be 'SFX', got: ", leap_audio.bus)
+		get_tree().quit(1)
+		return
+	print("Firebomber LeapAudio verified: found, 140867__juskiddink__boing.wav assigned, SFX bus assigned.")
+	
 	# ---------------------------------------------------------
 	# PART 3: Audio Playback Triggers
 	# ---------------------------------------------------------
@@ -185,6 +212,18 @@ func _ready() -> void:
 		return
 	print("Melee enemy attack audio playback confirmed on WeaponSlot 'slash' signal emit.")
 	melee_attack_audio.stop()
+
+	# 5. Firebomber leap audio plays when entering EnemyLeapingDodge state
+	leap_audio.stop()
+	var fb_state_machine: StateMachine = firebomber.get_node("StateMachine") as StateMachine
+	fb_state_machine._transition_to_next_state("EnemyLeapingDodge", {"direction": Vector3.BACK})
+	await get_tree().process_frame
+	if not leap_audio.playing:
+		printerr("TEST FAILED: leap_audio is not playing after entering EnemyLeapingDodge state.")
+		get_tree().quit(1)
+		return
+	print("Firebomber leap audio playback confirmed on entering EnemyLeapingDodge state.")
+	leap_audio.stop()
 	
 	print("\n====================================================================")
 	print("  ALL AUDIO & SOUND EFFECTS TESTS PASSED!                           ")
@@ -193,9 +232,11 @@ func _ready() -> void:
 	print("  3. Hurtbox hit_audio configured to SFX, plays on damage          ")
 	print("  4. AttackAudio on WeaponSlot configured to SFX, plays on slash    ")
 	print("  5. MeleeEnemy AttackAudio configured to SFX weapon-swing.ogg      ")
+	print("  6. Firebomber LeapAudio configured to SFX boing.wav, plays on leap")
 	print("====================================================================")
 	
 	player.queue_free()
 	melee_enemy.queue_free()
+	firebomber.queue_free()
 	await get_tree().process_frame
 	get_tree().quit(0)
