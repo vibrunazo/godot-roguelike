@@ -41,6 +41,10 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 | `examples/level11_design.py` | Worked example: the Level 11 design (nine-room 3x3 grid with 8 bridges, central lake). |
 | `examples/level12_design.py` | Worked example: the Level 12 design ("The Broken Procession", six staggered rooms on a Z-route over a broad gulf, 5 mixed bridges, 2x2 shrine pit lake, a 3-tile dash-jump window between Gallery and Shrine, ordered stone-course bridge floors, `--finish` step for room spawn areas). |
 | `layout.py` | Composable floor-plan primitives: `room()` (solid block, optional holes and per-side tiers), `bridge()` (railed strip: `low`/`open`/`tall`, optional explicit `sides`), `corridor()` (tall-railed bridge), `touches()`/`compose()` junction checks, `paint()` floor-art variants. Edge letters are the generator's (`n`=min-z, `s`=max-z, `w`=min-x, `e`=max-x). Overrides apply only where derivation would already emit a wall, so part junctions (bridge mouths) stay wall-free automatically. |
+| `layered_layout.py` | Multi-floor design helpers on top of layout.py: `lift()` (2D room -> height layer), `stair()` (brush 2 flight), `landings()`/`validate()` (stair-contract + cross-elevation connectivity, rejects stacked footprints), `write_cells()` (y-preserving cell files), `scaffold()` (height-aware preview navmesh — replace with a real bake before shipping). |
+| `register_stairs.gd` | One-shot registration of the Prototype Bits `Primitive_Stairs` as Floormap brush item 2 (idempotent, asserts on id collision). Re-run only when adding further brushes; see "Multi-floor (stairs) levels" below for the collision/orientation contract. |
+| `build_level.py` | End-to-end runner: design -> pack (all wall layers) -> assemble -> navmesh bake -> splice via re-assemble -> GI bake -> final assemble with `gi_data`. Refuses to ship on any engine SCRIPT ERROR even with exit 0. Replaces the error-prone manual chain (which twice silently shipped a re-assembled level without its baked navmesh/GI reference). |
+| `examples/level13_design.py` | Worked example: the Level 13 design ("Twin Terrace", two combat floors at 0 m/2 m joined by two stair flights, per-layer wall GridMaps). The reference for any future multi-floor level. |
 
 The gate for every level is the committed test `test/test_level_rotation_nav.tscn`:
 it loads each `SceneTransition.levels` entry and checks core nodes, baked
@@ -273,6 +277,52 @@ Level 2's blue/grey mix follows no parity rule (checked), so
 distribution (`(0,10):17, (1,10):15, (1,0):8, (0,0):6`) by stable per-tile
 hash. Position-stable regardless of iteration order, reads as shipped.
 
+## Multi-floor (stairs) levels — read before designing height
+
+`Levels/Gridmap/floormap.tres` brush **item 2** is the Prototype Bits
+`Primitive_Stairs`, registered by `register_stairs.gd`. Contract, verified
+end-to-end on Level 13:
+
+- **Geometry**: native 4x4 m footprint, 8 risers, native height 4 m and
+  native ascent toward local **-X**. The library entry scales Y by 0.5 and
+  translates up 1 m, so a placed stair rises exactly **2 m** over its 4 m
+  run (one floor layer = 0.5 m of GridMap pitch, so 2 m = 4 layers).
+- **Orientation**: yaw indices decide ascent direction: `0` -> -X,
+  `10` -> +X, `16` -> +Z, `22` -> -Z. A flight placed at cell y=L lands on
+  floor cells y=L and y=L+4. `layered_layout.stair()`/`landings()` encode
+  this; `validate()` fails loudly on missing landings, stacked footprints
+  or a disconnected elevation graph.
+- **Collision is a smooth 2 m ramp, not the stepped mesh** (verified: the
+  native step risers block `CharacterBody3D`). Trade-off: the ramp surface
+  sits up to ~0.25 m below the visual treads, so feet sink slightly into
+  the mesh; the dedicated `test/test_level_13_stairs.tscn` pins the actual
+  climb (real `Player`, held input, both directions, no teleports).
+- **Floors are spaced by cell layer**: floor tops sit at `y_layer * 0.5` m
+  (wall pitch stays 4 m). A 2 m rise therefore leaves a **half-tier gap**
+  between wall layers — never round it into integer wall cells.
+  `assemble_level.py spec["wall_layers"]` adds per-layer Wallmap GridMaps
+  (`position.y = height - 1.9`) that participate in nav/GI bakes.
+- **Stair foundations**: stairs over a fissure need visible support, not just
+  ramp collision. The assembler accepts `supports` entries with `name`,
+  world-space `pos`, and `size`. Level 13 uses 4x4x4 m blue static foundations
+  centered at y=-2, with their tops touching the stair undersides at y=0.
+  They participate in collision and lighting bakes; keep their tops covered
+  by the stair footprint so they do not create extra walkable ledges.
+- **Spawn and hazard elevation**: test the authored player capsule for wall
+  overlap before physics can eject it. A successful nav path alone does not
+  prove the spawn is clear. `extra_hazards[].y` explicitly overrides the
+  template hazard's world height; omit it to keep the template default.
+- **Bakes handle the rest**: recast tiles the ramp into navmesh polygons
+  and connects both floors automatically (Level 13 bakes 90 polygons);
+  the scaffold from `layered_layout.scaffold()` is preview-only.
+- **Test-gate changes that make this possible** (do not regress them):
+  the rotation test's island check is per-vertex height-aware, pit-lining
+  is evaluated per floor layer, and `bake_level_gi.gd` queries navigation
+  with authored endpoint elevations instead of a hardcoded y=1.
+- **Known limitation**: the fissure between two floors is treated as
+  exterior void — under-stair rooms are unsupported (single-voxel
+  clearance validation; extend `layered_layout.validate()` first).
+
 ## Future tool ideas (not yet built)
 
 - **`new_level.py` scaffolder**: mint an empty inherited level (template nodes,
@@ -283,6 +333,12 @@ hash. Position-stable regardless of iteration order, reads as shipped.
   `set_gi_data.py` for the post-bake GI reference.
 - **Contact-sheet capture**: one command producing iso/top/side + a low orbit
   video for a level, for quick visual review without hand-posing cameras.
+- **Multi-floor tooling gaps** (found building Level 13): fold stair
+  collision-ramp registration into a general "brush from GLTF" tool with a
+  debug-rendered collision preview; extend `validate_layout` to per-layer
+  pits/clearances (currently only the rotation test catches these); teach
+  `dump_cells.gd`/`pack_cells.gd` to round-trip multi-GridMap scenes so
+  editing an existing multi-floor level starts from a faithful dump.
 - **Playthrough smoke test**: extend the rotation test to walk the player
   spawn→exit via the nav path and assert no falls/stalls, catching
   wall-gap escapes the static checks cannot see.

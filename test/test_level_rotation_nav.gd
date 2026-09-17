@@ -81,11 +81,13 @@ func _verify_level(level_path: String) -> bool:
 	var synced: bool = false
 	for i: int in range(120):
 		await get_tree().physics_frame
+		if NavigationServer3D.map_get_iteration_id(get_world_3d().get_navigation_map()) == 0:
+			continue
 		var probe: Node3D = level.find_child("Player", true, false) as Node3D
 		if probe != null:
 			var snap: Vector3 = NavigationServer3D.map_get_closest_point(
 				get_world_3d().get_navigation_map(),
-				Vector3(probe.global_position.x, 1.0, probe.global_position.z))
+				probe.global_position)
 			if snap != Vector3.ZERO:
 				synced = true
 				break
@@ -159,9 +161,7 @@ func _verify_navmesh_covers_level(level: Node3D, level_path: String) -> bool:
 		if gm == null or gm.name != "Floormap":
 			continue
 		for cell: Vector3i in gm.get_used_cells():
-			var world_pos: Vector3 = gm.to_global(gm.map_to_local(cell))
-			var pad: Vector3 = gm.cell_size * 0.5
-			var box: AABB = AABB(world_pos - pad, gm.cell_size)
+			var box: AABB = _floor_cell_box(gm, cell)
 			if not has_floor:
 				floor_box = box
 				has_floor = true
@@ -257,22 +257,58 @@ func _point_on_floor(sx: int, sz: int, floor: Dictionary) -> bool:
 	return false
 
 
-## Rejects walkable islands above the floor, such as sofa tops kept by a
-## wrong min-region-size setting. All rotation levels are single-story slabs
-## (floor top ~0.6); shipped meshes never exceed y 0.6 while furniture
-## islands sat at 1.35+, so 1.0 separates them with margin. Revisit this
-## bound if multi-story levels ever arrive.
+## Rejects furniture/unsupported nav islands relative to the floor beneath
+## each vertex, not a global height ceiling. Preserve the original 1m margin
+## above flat floor tops. Sloped stair cells need a collision surface probe:
+## their AABB top alone would incorrectly bless islands over the low end.
 func _verify_no_stray_islands(level: Node3D, level_path: String) -> bool:
 	var region: NavigationRegion3D = level.find_child("NavigationRegion3D", true, false) as NavigationRegion3D
 	if region == null or region.navigation_mesh == null:
 		printerr("TEST FAILED: NavigationRegion3D/mesh missing in ", level_path)
 		return false
+	var floor: GridMap = level.find_child("Floormap", true, false) as GridMap
+	if floor == null or floor.mesh_library == null:
+		printerr("TEST FAILED: floor geometry missing in ", level_path)
+		return false
+	var boxes: Array[AABB] = []
+	var stairs: Array[bool] = []
+	for cell: Vector3i in floor.get_used_cells():
+		boxes.append(_floor_cell_box(floor, cell))
+		stairs.append(floor.mesh_library.get_item_name(floor.get_cell_item(cell)) == "Primitive_Stairs")
 	for v: Vector3 in region.navigation_mesh.get_vertices():
-		if v.y > 1.0:
-			printerr("TEST FAILED: nav vertex above walkable height ", v, " (stray island?) in ", level_path)
+		var world_v: Vector3 = region.to_global(v)
+		var supported: bool = false
+		for index: int in range(boxes.size()):
+			var box: AABB = boxes[index]
+			# Recast rasterization can place rim vertices one voxel outside a
+			# mesh footprint (legacy level 4); never relax vertical rejection.
+			var rim: float = region.navigation_mesh.cell_size + 0.01
+			if world_v.x < box.position.x - rim or world_v.x > box.end.x + rim or world_v.z < box.position.z - rim or world_v.z > box.end.z + rim:
+				continue
+			var top: float = box.end.y
+			if stairs[index]:
+				var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(Vector3(world_v.x, box.end.y + 0.1, world_v.z), Vector3(world_v.x, box.position.y - 0.1, world_v.z), floor.collision_layer)
+				var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
+				if hit.is_empty() or hit.get("collider") != floor:
+					continue
+				top = (hit["position"] as Vector3).y
+			if world_v.y >= top - 0.1 and world_v.y <= top + 1.0:
+				supported = true
+				break
+		if not supported:
+			printerr("TEST FAILED: nav vertex unsupported/above local walkable height ", world_v, " (stray island?) in ", level_path)
 			return false
 	print("no stray nav islands in ", level_path)
 	return true
+
+
+## Real world-space bounds include cell centering, orientation, cell scale,
+## library item transform and the GridMap/parent transform (not cell pitch).
+func _floor_cell_box(grid: GridMap, cell: Vector3i) -> AABB:
+	var item: int = grid.get_cell_item(cell)
+	var mesh: Mesh = grid.mesh_library.get_item_mesh(item)
+	var cell_transform: Transform3D = Transform3D(grid.get_cell_item_basis(cell).scaled(Vector3.ONE * grid.cell_scale), grid.map_to_local(cell))
+	return (grid.global_transform * cell_transform * grid.mesh_library.get_item_mesh_transform(item)) * mesh.get_aabb()
 
 
 ## Checks every interior floor hole is ringed with shaft walls. Each wall mesh
@@ -291,13 +327,34 @@ func _verify_pit_lining(level: Node3D, level_path: String) -> bool:
 	if floor_gm == null or wall_gm == null:
 		printerr("TEST FAILED: Floormap/Wallmap missing in ", level_path)
 		return false
-	var floor: Dictionary = {}
+	# Flood-fill each flat floor elevation independently. Flattening upper
+	# terraces and stair bridges falsely closes the void beneath a bridge.
+	var layers: Dictionary[int, Dictionary] = {}
 	for cell: Vector3i in floor_gm.get_used_cells():
-		floor[Vector2i(cell.x, cell.z)] = true
-	var lined_below: Dictionary = {}
-	for cell: Vector3i in wall_gm.get_used_cells():
-		if cell.y == -1:
-			lined_below[Vector2i(cell.x, cell.z)] = true
+		if floor_gm.mesh_library.get_item_name(floor_gm.get_cell_item(cell)) == "Primitive_Stairs":
+			continue
+		if not layers.has(cell.y):
+			layers[cell.y] = {}
+		layers[cell.y][Vector2i(cell.x, cell.z)] = true
+	var ok: bool = true
+	for layer: int in layers:
+		var floor: Dictionary = layers[layer]
+		var lined_below: Dictionary = {}
+		var floor_height: float = _floor_cell_box(floor_gm, Vector3i((floor.keys()[0] as Vector2i).x, layer, (floor.keys()[0] as Vector2i).y)).end.y
+		for wall_node: Node in level.find_children("Wallmap*", "GridMap", true, false):
+			var walls: GridMap = wall_node as GridMap
+			for cell: Vector3i in walls.get_used_cells():
+				# Shaft wall top is flush with this floor; supports translated
+				# WallmapUpper too, without mistaking tall walls for lining.
+				if absf(_floor_cell_box(walls, cell).end.y - floor_height) < 0.2:
+					lined_below[Vector2i(cell.x, cell.z)] = true
+		if not _verify_pit_layer(floor, lined_below, level_path + " layer " + str(layer)):
+			ok = false
+	return ok
+
+
+## Original shaft-wall side gate, applied independently at each elevation.
+func _verify_pit_layer(floor: Dictionary, lined_below: Dictionary, level_path: String) -> bool:
 	var bad_sides: int = 0
 	var checked_sides: int = 0
 	for h: Vector2i in _interior_holes(floor):
@@ -487,14 +544,29 @@ func _interior_holes(floor: Dictionary) -> Array[Vector2i]:
 	return holes
 
 
+## Allow the existing half-tile wall inset horizontally, but not wrong floors.
+func _endpoint_close(authored: Vector3, snapped: Vector3) -> bool:
+	return absf(authored.y - snapped.y) <= 1.0 and Vector2(authored.x - snapped.x, authored.z - snapped.z).length() <= 2.0
+
+
 ## Checks a navigation path exists between two points on the level.
 func _verify_path(from_pos: Vector3, to_pos: Vector3, level_path: String) -> bool:
 	var nav_map: RID = get_world_3d().get_navigation_map()
-	var from_point: Vector3 = Vector3(from_pos.x, 1.0, from_pos.z)
-	var to_point: Vector3 = Vector3(to_pos.x, 1.0, to_pos.z)
+	var from_point: Vector3 = NavigationServer3D.map_get_closest_point(nav_map, from_pos)
+	var to_point: Vector3 = NavigationServer3D.map_get_closest_point(nav_map, to_pos)
+	# A nonempty path may be partial, or snap to a different storey. Keep
+	# endpoints close in 3D, including Y (the old y=1 projection hid this).
+	if not _endpoint_close(from_pos, from_point) or not _endpoint_close(to_pos, to_point):
+		printerr("TEST FAILED: nav endpoints miss authored spawn/exit heights in ", level_path, ": ", from_pos, " -> ", from_point, "; ", to_pos, " -> ", to_point)
+		return false
 	var path: PackedVector3Array = NavigationServer3D.map_get_path(nav_map, from_point, to_point, true, 1)
+	if level_path.ends_with("level_13.tscn"):
+		print("Level13 endpoint diagnostic: spawn_world=", from_pos, " target_world=", to_pos, " snapped_spawn=", from_point, " snapped_target=", to_point, " returned_path=", path)
 	if path.size() < 2:
 		printerr("TEST FAILED: no nav path from ", from_point, " to ", to_point, " in ", level_path)
+		return false
+	if path[0].distance_to(from_point) > 0.1 or path[path.size() - 1].distance_to(to_point) > 0.1:
+		printerr("TEST FAILED: partial nav path does not reach spawn/exit in ", level_path)
 		return false
 	print("nav path OK (", path.size(), " points) in ", level_path)
 	return true

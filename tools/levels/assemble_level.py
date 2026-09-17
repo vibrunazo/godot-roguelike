@@ -252,6 +252,7 @@ def main() -> int:
         pattern_name = haz_patterns[kind]
         pattern = next(n for n in parse_nodes(base_text) if n["name"] == pattern_name)
         _hx, hy, _hz = transform_origin(pattern["text"])
+        hy = float(haz.get("y", hy))  # Explicit world elevation for upper floors.
         if "ext_id" in haz:
             ext_id = haz["ext_id"]
         else:
@@ -415,6 +416,49 @@ def main() -> int:
         n = next(x for x in parse_nodes(out) if x["name"] == name)
         out = out.replace(n["text"], re.sub(r' index="\d+"', f' index="{pos}"',
                                             n["text"], count=1))
+
+    # Additional wall layers use independent GridMaps: the wall pitch is 4m,
+    # whereas stairs rise 2m. Preserve that half-tier offset in the transform,
+    # never round it into integer wall cells. All layers participate in baking.
+    if spec.get("wall_layers"):
+        ext = '[ext_resource type="MeshLibrary" path="res://Levels/Gridmap/wall_map.tres" id="layer_walls"]\n'
+        pos = out.index('[sub_resource')
+        out = out[:pos] + ext + '\n' + out[pos:]
+        for layer in spec["wall_layers"]:
+            arr = cells_after(open(layer["packed_cells"]).read(), '[node name="Wallmap"')
+            elevation = float(layer["height"])
+            name = layer["name"]
+            assert re.fullmatch(r"Wallmap[A-Za-z0-9_]+", name), "wall layer name must start Wallmap"
+            out += (f'\n[node name="{name}" type="GridMap" parent="NavigationRegion3D"]\n'
+                    f'position = Vector3(0, {elevation - 1.9:g}, 0)\n'
+                    'mesh_library = ExtResource("layer_walls")\n'
+                    'cell_size = Vector3(2, 4, 2)\ncell_center_x = false\ncell_center_z = false\n'
+                    'data = {\n"cells": PackedInt32Array(' + arr + ')\n}\n')
+
+    # Solid foundations below stairs: separate from playable floor cells so
+    # they do not introduce false room layers or change the stair contract.
+    for i, support in enumerate(spec.get("supports", [])):
+        name = support["name"]
+        assert re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name)
+        x, y, z = support["pos"]
+        sx, sy, sz = support["size"]
+        assert min(sx, sy, sz) > 0, "support dimensions must be positive"
+        resources = (
+            f'[sub_resource type="StandardMaterial3D" id="SupportMaterial_{i}"]\n'
+            'albedo_color = Color(0.08, 0.48, 0.7, 1)\nroughness = 0.8\n\n'
+            f'[sub_resource type="BoxMesh" id="SupportMesh_{i}"]\n'
+            f'material = SubResource("SupportMaterial_{i}")\nsize = Vector3({sx}, {sy}, {sz})\n\n'
+            f'[sub_resource type="BoxShape3D" id="SupportShape_{i}"]\n'
+            f'size = Vector3({sx}, {sy}, {sz})\n\n')
+        pos = out.index('[node ')
+        out = out[:pos] + resources + out[pos:]
+        parent = f'NavigationRegion3D/{name}'
+        out += (f'\n[node name="{name}" type="StaticBody3D" parent="NavigationRegion3D"]\n'
+                f'position = Vector3({x}, {y}, {z})\n'
+                f'\n[node name="Mesh" type="MeshInstance3D" parent="{parent}"]\n'
+                f'mesh = SubResource("SupportMesh_{i}")\ngi_mode = 1\n'
+                f'\n[node name="CollisionShape3D" type="CollisionShape3D" parent="{parent}"]\n'
+                f'shape = SubResource("SupportShape_{i}")\n')
 
     out_path = args.out or spec["out"]
     with open(out_path, "w") as f:
