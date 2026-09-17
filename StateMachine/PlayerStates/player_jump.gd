@@ -64,7 +64,7 @@ func physics_update(delta: float) -> void:
 		if not current_h.is_zero_approx():
 			character.look_toward_direction(current_h.normalized(), delta)
 
-	character.move_and_slide()
+	character.move_character()
 
 	if not character.is_on_floor():
 		_has_left_floor = true

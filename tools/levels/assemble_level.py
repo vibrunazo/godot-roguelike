@@ -287,8 +287,17 @@ def main() -> int:
     scene_nicknames = {"couch": "Couch", "barrel": "Barrel", "flag": "Flag"}
     for placed in spec.get("litter_placed", []):
         nick = placed["scene"]
-        assert nick in scene_nicknames, f"unknown litter scene {nick!r}"
-        ext_id = _ext_id_for(out, scene_nicknames[nick])
+        if nick.startswith("res://"):
+            # Explicit reusable decorator scenes need not appear in the
+            # source level; wrappers own their collision and model asset.
+            assert nick.endswith(".tscn"), "decorators must be PackedScene .tscn resources"
+            ext_id = f"decorator_{len(blocks)}"
+            assert f'id="{ext_id}"' not in out
+            pos = out.index('[sub_resource')
+            out = out[:pos] + f'[ext_resource type="PackedScene" path="{nick}" id="{ext_id}"]\n\n' + out[pos:]
+        else:
+            assert nick in scene_nicknames, f"unknown litter scene {nick!r}"
+            ext_id = _ext_id_for(out, scene_nicknames[nick])
         px, py, pz = placed["pos"]
         block = (f'[node name="{placed["name"]}" parent="NavigationRegion3D/Litter" index="0" '
                  f'unique_id={fresh_node_id(used_ids, rng)} instance=ExtResource("{ext_id}")]\n'

@@ -22,8 +22,10 @@ def main() -> None:
     ap.add_argument('--out-dir', default='tools/levels/out/l13')
     out = Path(ap.parse_args().out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    lower = room(-5, -1, -4, 4)
-    upper = room(1, 5, -4, 4)
+    # Widen both outer edges by one tile for furniture alcoves while
+    # preserving the clear central combat lanes and both stair approaches.
+    lower = room(-6, -1, -4, 4)
+    upper = room(1, 6, -4, 4)
     cells = lift(paint(lower.tiles), 0) | lift(paint(upper.tiles), 4)
     cells |= stair(0, 0, -2, 10) | stair(0, 0, 2, 10)
     validate(cells, (-4,0,0))
@@ -61,8 +63,12 @@ def main() -> None:
         litter_placed=[dict(name='LowerFlag',scene='flag',pos=[-14,0,14],rot_y=0),
                       dict(name='UpperFlag',scene='flag',pos=[18,2,10],rot_y=0),
                       dict(name='LowerBarrel',scene='barrel',pos=[-14,0,-10],rot_y=0),
-                      dict(name='UpperCouch',scene='couch',pos=[18,2,-10],rot_y=180)],
-        voxelgi=dict(pos=[2,2,2],size=[52,20,44]), gi_data=None,
+                      dict(name='UpperCouch',scene='couch',pos=[18,2,-10],rot_y=180),
+                      dict(name='LowerWorkTable',scene='res://Levels/Decorators/table_medium.tscn',pos=[-20,0,-6],rot_y=90),
+                      dict(name='LowerBanquetTable',scene='res://Levels/Decorators/table_medium_long.tscn',pos=[-20,0,10],rot_y=90),
+                      dict(name='UpperFeastTable',scene='res://Levels/Decorators/table_medium_Decorated.tscn',pos=[22,2,6],rot_y=90),
+                      dict(name='UpperLongTable',scene='res://Levels/Decorators/table_medium_long.tscn',pos=[22,2,-6],rot_y=90)],
+        voxelgi=dict(pos=[2,2,2],size=[60,20,44]), gi_data=None,
         gi_ext_id='4_level13',out='Levels/level_13.tscn',seed=20260918)
     (out/'spec.json').write_text(json.dumps(spec,indent=2))
     print(f'Twin Terrace: {len(cells)} cells, two stairs, floors 0m/2m')

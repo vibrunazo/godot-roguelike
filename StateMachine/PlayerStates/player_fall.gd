@@ -15,4 +15,4 @@ func physics_update(delta: float) -> void:
 	if character.is_on_floor() and run_state != null:
 		finished.emit(run_state.name)
 	character.velocity += character.get_gravity()
-	character.move_and_slide()
+	character.move_character()

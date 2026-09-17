@@ -57,6 +57,11 @@ signal alerted
 @export var target_retarget_cooldown: float = 0.3
 
 
+## Minimum outward speed when the player contacts an enemy's walkable top.
+## Keeps even a centered, neutral jump from balancing on an enemy capsule.
+@export var head_slide_speed: float = 6.0
+
+
 ## Desired movement direction vector (normalized), provided by PlayerInputComponent or AIStateMachine.
 var move_direction: Vector3 = Vector3.ZERO
 ## Aim direction vector in 3D world space.
@@ -149,6 +154,40 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if auto_aim_range > 0.0:
 		_update_auto_aim(delta)
+
+
+## Moves normally, except enemy tops are never usable floors for the player.
+## Retry a top-contact step in floating mode so Godot clears its floor flag as
+## well as sliding away. This keeps all landing/jump checks consistent, retains
+## solid side collisions, and leaves terrain slopes and enemy movement alone.
+func move_character() -> bool:
+	var start_transform: Transform3D = global_transform
+	var intended_velocity: Vector3 = velocity
+	var collided: bool = move_and_slide()
+	if not is_player() or not is_on_floor():
+		return collided
+	for index: int in range(get_slide_collision_count()):
+		var contact: KinematicCollision3D = get_slide_collision(index)
+		var enemy: Character = contact.get_collider() as Character
+		if enemy == null or not enemy.is_enemy():
+			continue
+		if contact.get_normal().dot(up_direction) < cos(floor_max_angle):
+			continue
+		var outward: Vector3 = (global_position - enemy.global_position).slide(up_direction)
+		if outward.is_zero_approx():
+			outward = intended_velocity.slide(up_direction)
+		if outward.is_zero_approx():
+			outward = Vector3.RIGHT
+		outward = outward.normalized()
+		global_transform = start_transform
+		velocity = intended_velocity
+		velocity += outward * maxf(0.0, head_slide_speed - velocity.dot(outward))
+		var saved_mode: MotionMode = motion_mode
+		motion_mode = MOTION_MODE_FLOATING
+		move_and_slide()
+		motion_mode = saved_mode
+		return true
+	return collided
 
 
 ## Advances auto-aim: drops invalid targets. If no target is currently held,

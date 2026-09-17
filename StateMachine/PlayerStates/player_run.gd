@@ -22,4 +22,4 @@ func physics_update(delta: float) -> void:
 			character.animation_tree.blend_target = -1.0
 	if not character.is_on_floor() and fall_state != null:
 		finished.emit(fall_state.name)
-	character.move_and_slide()
+	character.move_character()

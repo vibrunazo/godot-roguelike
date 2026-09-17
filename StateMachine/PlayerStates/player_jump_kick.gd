@@ -44,7 +44,7 @@ func physics_update(delta: float) -> void:
 	if not is_in_hitstop():
 		character.look_toward_direction(aim_direction, delta)
 
-	character.move_and_slide()
+	character.move_character()
 
 	if character.is_on_floor() and character.velocity.y <= 0.0:
 		_cancel_on_landing()

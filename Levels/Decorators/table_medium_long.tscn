@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/KayKit_Assets/KayKit_Prototype_Bits_1.1_FREE/Assets/gltf/table_medium_long.gltf" id="1_model"]
+
+[sub_resource type="BoxShape3D" id="Shape"]
+size = Vector3(3, 1, 1.5)
+
+[node name="TableMediumLong" type="StaticBody3D"]
+
+[node name="Model" parent="." instance=ExtResource("1_model")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.5, 0)
+shape = SubResource("Shape")

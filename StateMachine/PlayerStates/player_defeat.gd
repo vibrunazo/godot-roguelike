@@ -12,7 +12,7 @@ func physics_update(_delta: float) -> void:
 	character.velocity = Vector3.ZERO
 	character.move_direction = Vector3.ZERO
 	character.face_target = Vector3.ZERO
-	character.move_and_slide()
+	character.move_character()
 
 
 func enter(_previous_state_path: String, _data := {}) -> void:

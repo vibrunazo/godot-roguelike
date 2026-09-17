@@ -146,7 +146,7 @@ func physics_update(delta: float) -> void:
 		character.velocity = character.move_direction * movement_speed * motion_scale
 	if not is_in_hitstop():
 		character.look_toward_direction(aim_direction, delta)
-	character.move_and_slide()
+	character.move_character()
 
 
 func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
