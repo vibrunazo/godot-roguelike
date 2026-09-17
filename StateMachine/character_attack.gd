@@ -130,9 +130,12 @@ func _physics_process(delta: float) -> void:
 func physics_update(delta: float) -> void:
 	if character == null or not character.is_inside_tree():
 		return
-	# Same shared checks both controllers drive: dash-cancel is gated by the
-	# dash_cancel export below, attack intents queue the combo follow-up.
-	check_dash()
+	# Same shared checks both controllers drive: dash-cancel and jump-cancel
+	# are gated by the dash_cancel export below, attack intents queue the combo follow-up.
+	if check_dash():
+		return
+	if check_jump():
+		return
 	check_attack()
 	_update_hitstop(delta)
 	var motion_scale: float = clampf(self_hitstop_scale, 0.0, 1.0) if is_in_hitstop() else 1.0
@@ -332,6 +335,16 @@ func check_dash() -> bool:
 			character.consume_dash_request()
 		return false
 	return super.check_dash()
+
+
+## Jump-cancel gate: only attacks with dash_cancel set can be jump-cancelled.
+## The intent is consumed when gated off so the press never leaks into a later state.
+func check_jump() -> bool:
+	if not dash_cancel:
+		if character != null:
+			character.consume_jump_request()
+		return false
+	return super.check_jump()
 
 
 ## Queues a combo follow-up instead of transitioning (consumes the intent).

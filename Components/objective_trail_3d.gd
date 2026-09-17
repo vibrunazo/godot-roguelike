@@ -143,11 +143,10 @@ func _render_trail() -> void:
 	if _current_path.size() < 2:
 		return
 
-	_immediate_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-
 	var cycle_length: float = dash_length + gap_length
 	var half_w: float = ribbon_width * 0.5
 	var v_offset: Vector3 = Vector3(0.0, vertical_offset, 0.0)
+	var surface_started: bool = false
 
 	for i: int in range(_current_path.size() - 1):
 		var p1: Vector3 = _current_path[i] + v_offset
@@ -158,13 +157,21 @@ func _render_trail() -> void:
 			continue
 
 		var dir: Vector3 = seg_vec / seg_len
-		var perp: Vector3 = Vector3(-dir.z, 0.0, dir.x).normalized() * half_w
+		var perp: Vector3 = Vector3(-dir.z, 0.0, dir.x)
+		if perp.is_zero_approx():
+			perp = Vector3.RIGHT * half_w
+		else:
+			perp = perp.normalized() * half_w
 
-		var dist_along: float = _anim_offset
+		var dist_along: float = _anim_offset - cycle_length
 		while dist_along < seg_len:
-			var d_start: float = dist_along
+			var d_start: float = maxf(0.0, dist_along)
 			var d_end: float = minf(dist_along + dash_length, seg_len)
 			if d_end > d_start:
+				if not surface_started:
+					_immediate_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+					surface_started = true
+
 				var start_pt: Vector3 = p1 + dir * d_start
 				var end_pt: Vector3 = p1 + dir * d_end
 
@@ -184,4 +191,5 @@ func _render_trail() -> void:
 
 			dist_along += cycle_length
 
-	_immediate_mesh.surface_end()
+	if surface_started:
+		_immediate_mesh.surface_end()

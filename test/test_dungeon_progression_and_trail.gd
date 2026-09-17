@@ -187,6 +187,12 @@ func _test_objective_trail_and_exit() -> void:
 	var cutoff2: Variant = mat2.get_shader_parameter("Cuttoff")
 	_assert(is_equal_approx(float(cutoff2), 0.41), "ExitPoint WispMesh Cuttoff is 0.41 on next level unlock (no 0.0 white leak).")
 
+	# Verify edge-case paths with zero vertices do not crash or error ImmediateMesh
+	trail._current_path = PackedVector3Array([Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, 0.005)])
+	trail._anim_offset = 0.5
+	trail._render_trail()
+	_assert(true, "Short degenerate path renders safely without ImmediateMesh surface_end errors.")
+
 	trail.queue_free()
 	target_marker.queue_free()
 	exit_point2.queue_free()

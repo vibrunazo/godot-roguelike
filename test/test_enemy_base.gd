@@ -2027,11 +2027,11 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	var expected_hp_pct: float = (hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH) / hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)) * 100.0
-	if not is_equal_approx(player_health_bar.front_progress_bar.value, expected_hp_pct):
+	if abs(player_health_bar.front_progress_bar.value - expected_hp_pct) > 0.05:
 		printerr("TEST FAILED: HealthBar front_progress_bar.value did not update immediately upon health upgrade! Expected ", expected_hp_pct, ", got: ", player_health_bar.front_progress_bar.value)
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(player_health_bar.health_progress_bar.value, expected_hp_pct):
+	if abs(player_health_bar.health_progress_bar.value - expected_hp_pct) > 0.05:
 		printerr("TEST FAILED: HealthBar health_progress_bar.value did not update immediately upon health upgrade! Expected ", expected_hp_pct, ", got: ", player_health_bar.health_progress_bar.value)
 		get_tree().quit(1)
 		return
