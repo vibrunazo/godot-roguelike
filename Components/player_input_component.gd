@@ -125,6 +125,25 @@ func order_dash() -> bool:
 	return body_state.check_dash()
 
 
+## Raises an edge-triggered jump intent on the character for body states to consume.
+func command_jump() -> void:
+	if character != null:
+		character.jump_requested = true
+
+
+## PlayerController jump order: raises a jump intent and immediately drives the
+## current body state's shared check.
+func order_jump() -> bool:
+	if character == null or character.state_machine == null:
+		return false
+	command_jump()
+	var body_state: CharacterState = character.state_machine.state as CharacterState
+	if body_state == null:
+		character.jump_requested = false
+		return false
+	return body_state.check_jump()
+
+
 ## Flashes the red damage vignette when the character takes damage.
 func _on_character_health_changed(_value: float) -> void:
 	if damage_tint != null and is_inside_tree():

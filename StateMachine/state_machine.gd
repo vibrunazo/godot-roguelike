@@ -55,6 +55,8 @@ func _bridge_action_to_intent(event: InputEvent) -> void:
 		input_comp.order_attack()
 	elif event.is_action_pressed("dash"):
 		input_comp.order_dash()
+	elif event.is_action_pressed("jump"):
+		input_comp.order_jump()
 
 
 func _physics_process(delta: float) -> void:
@@ -87,3 +89,4 @@ func _clear_stale_intents() -> void:
 	if body_state != null and body_state.character != null:
 		body_state.character.attack_requested = false
 		body_state.character.dash_requested = false
+		body_state.character.jump_requested = false

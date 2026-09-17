@@ -29,6 +29,8 @@
 [ext_resource type="Script" uid="uid://d22g2x0h56xo2" path="res://Components/screen_shake_component.gd" id="25_shake"]
 [ext_resource type="Script" uid="uid://d1jynuos72fph" path="res://Components/attribute_component.gd" id="26_attr"]
 [ext_resource type="Script" uid="uid://clvrlbgacon8g" path="res://StateMachine/PlayerStates/player_defeat.gd" id="27_defeat"]
+[ext_resource type="Script" path="res://StateMachine/PlayerStates/player_jump.gd" id="28_jump"]
+[ext_resource type="AudioStream" uid="uid://d3e07sqj1r1v5" path="res://Assets/Audio/boing/140867__juskiddink__boing.wav" id="29_boing"]
 
 [sub_resource type="Gradient" id="Gradient_efx54"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -272,6 +274,16 @@ xfade_time = 0.5
 switch_mode = 2
 advance_mode = 2
 
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_jump"]
+animation = &"PlayerAnimations/Jump_Full_Short"
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_jump_in"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_jump_out"]
+xfade_time = 0.1
+switch_mode = 2
+advance_mode = 2
+
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_defeat"]
 
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_o28un"]
@@ -280,6 +292,8 @@ states/Defeat/position = Vector2(900, 184.44444)
 states/DodgeForward/node = SubResource("AnimationNodeAnimation_vtle1")
 states/DodgeForward/position = Vector2(274.6667, -145.33333)
 states/End/position = Vector2(1132, 184.44444)
+states/Jump/node = SubResource("AnimationNodeAnimation_jump")
+states/Jump/position = Vector2(400, -145.33333)
 states/PlayerAnimations_Hit_A/node = SubResource("AnimationNodeAnimation_od3ui")
 states/PlayerAnimations_Hit_A/position = Vector2(873.37036, 118.22223)
 states/PlayerAnimations_Spawn_Ground/node = SubResource("AnimationNodeAnimation_00tjw")
@@ -293,7 +307,7 @@ states/StabAttack/position = Vector2(867.3334, -170.33333)
 states/Start/position = Vector2(211.99998, 183.33333)
 states/WalkSpace/node = SubResource("AnimationNodeBlendSpace1D_5htga")
 states/WalkSpace/position = Vector2(606, 37.666668)
-transitions = ["Start", "PlayerAnimations_Spawn_Ground", SubResource("AnimationNodeStateMachineTransition_p5o4e"), "PlayerAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_gu6f8"), "WalkSpace", "DodgeForward", SubResource("AnimationNodeStateMachineTransition_dkpta"), "DodgeForward", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_lfmf2"), "WalkSpace", "PlayerAnimations_Hit_A", SubResource("AnimationNodeStateMachineTransition_pisgm"), "PlayerAnimations_Hit_A", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_b1ygp"), "WalkSpace", "SlashAttack", SubResource("AnimationNodeStateMachineTransition_7emwf"), "SlashAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_hshwv"), "WalkSpace", "StabAttack", SubResource("AnimationNodeStateMachineTransition_gpjlu"), "StabAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8mwp6"), "WalkSpace", "SpinAttack", SubResource("AnimationNodeStateMachineTransition_qemgg"), "SpinAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8viyr"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_defeat")]
+transitions = ["Start", "PlayerAnimations_Spawn_Ground", SubResource("AnimationNodeStateMachineTransition_p5o4e"), "PlayerAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_gu6f8"), "WalkSpace", "DodgeForward", SubResource("AnimationNodeStateMachineTransition_dkpta"), "DodgeForward", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_lfmf2"), "WalkSpace", "PlayerAnimations_Hit_A", SubResource("AnimationNodeStateMachineTransition_pisgm"), "PlayerAnimations_Hit_A", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_b1ygp"), "WalkSpace", "SlashAttack", SubResource("AnimationNodeStateMachineTransition_7emwf"), "SlashAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_hshwv"), "WalkSpace", "StabAttack", SubResource("AnimationNodeStateMachineTransition_gpjlu"), "StabAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8mwp6"), "WalkSpace", "SpinAttack", SubResource("AnimationNodeStateMachineTransition_qemgg"), "SpinAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8viyr"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_defeat"), "WalkSpace", "Jump", SubResource("AnimationNodeStateMachineTransition_jump_in"), "Jump", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_jump_out")]
 graph_offset = Vector2(41, -108)
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_l8h54"]
@@ -550,12 +564,13 @@ noise = SubResource("FastNoiseLite_dkpta")
 [node name="StateMachine" type="Node" parent="." unique_id=463787972]
 script = ExtResource("2_4ntmi")
 
-[node name="PlayerRun" type="Node" parent="StateMachine" unique_id=964045061 node_paths=PackedStringArray("character", "fall_state", "dash_state", "attack_state")]
+[node name="PlayerRun" type="Node" parent="StateMachine" unique_id=964045061 node_paths=PackedStringArray("character", "fall_state", "dash_state", "attack_state", "jump_state")]
 script = ExtResource("3_btcbx")
 character = NodePath("../..")
 fall_state = NodePath("../PlayerFall")
 dash_state = NodePath("../PlayerDash")
 attack_state = NodePath("../PlayerAttack")
+jump_state = NodePath("../PlayerJump")
 metadata/_custom_type_script = "uid://b5csf0k51tkb5"
 
 [node name="PlayerFall" type="Node" parent="StateMachine" unique_id=770344299 node_paths=PackedStringArray("run_state", "character")]
@@ -573,6 +588,14 @@ metadata/_custom_type_script = "uid://21pflv2d1drw"
 [node name="DashDuration" type="Timer" parent="StateMachine/PlayerDash" unique_id=793371820]
 wait_time = 0.1
 one_shot = true
+
+[node name="PlayerJump" type="Node" parent="StateMachine" unique_id=1966261832 node_paths=PackedStringArray("running_state", "character", "jump_audio")]
+script = ExtResource("28_jump")
+jump_height = 2.5
+control_ratio = 1.0
+running_state = NodePath("../PlayerRun")
+character = NodePath("../..")
+jump_audio = NodePath("../../JumpAudio")
 
 [node name="PlayerDefeat" type="Node" parent="StateMachine" unique_id=1340022835 node_paths=PackedStringArray("character")]
 script = ExtResource("27_defeat")
@@ -648,6 +671,10 @@ bus = &"SFX"
 
 [node name="DashAudio" type="AudioStreamPlayer3D" parent="." unique_id=1206433322]
 stream = ExtResource("17_dash")
+bus = &"SFX"
+
+[node name="JumpAudio" type="AudioStreamPlayer3D" parent="." unique_id=1206433323]
+stream = ExtResource("29_boing")
 bus = &"SFX"
 
 [node name="DashRoot" type="Node3D" parent="." unique_id=1987016137]

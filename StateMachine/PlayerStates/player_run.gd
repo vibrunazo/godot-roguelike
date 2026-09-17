@@ -10,6 +10,8 @@ func physics_update(delta: float) -> void:
 	# intent transitions synchronously, so the old state's motion must not run.
 	if check_dash():
 		return
+	if check_jump():
+		return
 	if check_attack():
 		return
 	core_movement(delta, character.attribute_component.get_current(AttributeComponent.STAT_SPEED), character.move_direction)

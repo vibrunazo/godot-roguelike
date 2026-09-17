@@ -69,6 +69,8 @@ var attack_requested: bool = false
 ## Edge-triggered dash request, raised by either controller (PlayerInputComponent
 ## polling or AIStateMachine commands) and consumed exactly once by body states.
 var dash_requested: bool = false
+## Edge-triggered jump request, raised by PlayerInputComponent (or AI) and consumed exactly once by body states.
+var jump_requested: bool = false
 ## Current auto-aim target for attacks and the player reticle. Null when no
 ## valid target exists. Written by the auto-aim tick; read by attack states.
 var current_target: Node3D = null
@@ -381,6 +383,14 @@ func consume_dash_request() -> bool:
 	return true
 
 
+## Consumes a pending jump request, returning true exactly once per request.
+func consume_jump_request() -> bool:
+	if not jump_requested:
+		return false
+	jump_requested = false
+	return true
+
+
 ## Returns true if this character is in the "player" group.
 func is_player() -> bool:
 	return is_in_group("player")
@@ -486,6 +496,7 @@ func cancel_movement_and_abilities() -> void:
 	face_target = Vector3.ZERO
 	attack_requested = false
 	dash_requested = false
+	jump_requested = false
 	is_attacking = false
 	_set_current_target(null)
 	velocity = Vector3.ZERO
@@ -522,6 +533,7 @@ func on_defeat() -> void:
 	move_direction = Vector3.ZERO
 	aim_direction = Vector3.ZERO
 	face_target = Vector3.ZERO
+	jump_requested = false
 	_set_current_target(null)
 	is_attacking = false
 	velocity = Vector3.ZERO

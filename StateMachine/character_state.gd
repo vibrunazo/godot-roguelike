@@ -11,6 +11,8 @@ extends State
 @export var dash_state: CharacterState
 ## State to transition to when an attack intent is consumed.
 @export var attack_state: CharacterState
+## State to transition to when a jump intent is consumed.
+@export var jump_state: CharacterState
 
 
 ## Consumes a pending dash intent and transitions to dash_state if available.
@@ -29,6 +31,23 @@ func check_dash() -> bool:
 	if direction.is_zero_approx():
 		direction = Vector3.FORWARD
 	return character.state_machine.request_state(dash_state.name, {"direction": direction})
+
+
+## Consumes a pending jump intent and transitions to jump_state if available and on floor.
+## Returns true when the intent was consumed and acted upon.
+func check_jump() -> bool:
+	if character == null or character.state_machine == null:
+		return false
+	if not character.consume_jump_request():
+		return false
+	if jump_state == null or not character.is_on_floor():
+		return false
+	var direction: Vector3 = character.move_direction
+	if direction.is_zero_approx() and character.mesh_mount != null:
+		direction = character.mesh_mount.global_basis.z.normalized()
+	if direction.is_zero_approx():
+		direction = Vector3.FORWARD
+	return character.state_machine.request_state(jump_state.name, {"direction": direction})
 
 
 ## Consumes a pending attack intent and transitions to attack_state if available.
