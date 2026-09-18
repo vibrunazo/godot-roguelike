@@ -6,10 +6,31 @@ extends CharacterState
 @export var jump_height: float = 2.5
 ## Ratio of horizontal movement control in mid-air (1.0 = full control, 0.0 = no air control).
 @export_range(0.0, 1.0) var control_ratio: float = 1.0
+## Ratio of horizontal movement speed during jump relative to character walk speed (1.0 = full walk speed, 0.5 = half walk speed).
+@export var movement_speed_ratio: float = 1.0
 ## State to transition to after landing on the floor.
 @export var running_state: CharacterState
 ## Optional audio stream player for jump sound effects.
 @export var jump_audio: AudioStreamPlayer3D
+
+## Convenience aliases matching attack states and potential naming variations.
+var movement_speed: float:
+	get:
+		return movement_speed_ratio
+	set(val):
+		movement_speed_ratio = val
+
+var movement_ratio: float:
+	get:
+		return movement_speed_ratio
+	set(val):
+		movement_speed_ratio = val
+
+var movement_speed_ration: float:
+	get:
+		return movement_speed_ratio
+	set(val):
+		movement_speed_ratio = val
 
 var _launch_velocity: Vector3 = Vector3.ZERO
 var _has_left_floor: bool = false
@@ -24,10 +45,19 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 		jump_audio.play()
 
 	var speed: float = character.attribute_component.get_current(AttributeComponent.STAT_SPEED) if character.attribute_component != null else 8.0
+	var max_jump_speed: float = maxf(0.0, speed * movement_speed_ratio)
 	_launch_velocity = Vector3(character.velocity.x, 0.0, character.velocity.z)
 	var direction: Vector3 = _data.get("direction", character.move_direction)
-	if not direction.is_zero_approx():
-		_launch_velocity = direction * speed
+	if not direction.is_zero_approx() and max_jump_speed > 0.0:
+		_launch_velocity = direction * max_jump_speed
+		character.velocity.x = _launch_velocity.x
+		character.velocity.z = _launch_velocity.z
+	elif max_jump_speed <= 0.0:
+		_launch_velocity = Vector3.ZERO
+		character.velocity.x = 0.0
+		character.velocity.z = 0.0
+	elif _launch_velocity.length() > max_jump_speed:
+		_launch_velocity = _launch_velocity.normalized() * max_jump_speed
 		character.velocity.x = _launch_velocity.x
 		character.velocity.z = _launch_velocity.z
 
@@ -56,7 +86,8 @@ func physics_update(delta: float) -> void:
 	else:
 		if control_ratio > 0.0 and not character.move_direction.is_zero_approx():
 			var speed: float = character.attribute_component.get_current(AttributeComponent.STAT_SPEED) if character.attribute_component != null else 8.0
-			var target_velocity: Vector3 = character.move_direction * speed
+			var max_jump_speed: float = maxf(0.0, speed * movement_speed_ratio)
+			var target_velocity: Vector3 = character.move_direction * max_jump_speed
 			var accel: float = speed * 6.0 * control_ratio
 			character.velocity.x = move_toward(character.velocity.x, target_velocity.x, accel * delta)
 			character.velocity.z = move_toward(character.velocity.z, target_velocity.z, accel * delta)

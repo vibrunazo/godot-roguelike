@@ -443,7 +443,7 @@ func _ready() -> void:
 			break
 	var foe: Character = MeleeEnemyScene.instantiate() as Character
 	level.add_child(foe)
-	foe.global_position = player.global_position + Vector3(0.0, 0.0, 1.6)
+	foe.global_position = player.global_position + Vector3(0.0, 0.0, 1.2)
 	foe.velocity = Vector3.ZERO
 	if foe.ai_state_machine != null:
 		foe.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
@@ -485,6 +485,61 @@ func _ready() -> void:
 	player.move_direction = Vector3.ZERO
 	input_comp.set_physics_process(true)
 	foe.queue_free()
+
+	# =========================================================================
+	# PART 10: Horizontal Movement Speed Ratio (movement_speed_ratio)
+	# =========================================================================
+	print("\n>>> PART 10: Horizontal Movement Speed Ratio (movement_speed_ratio)")
+	player.global_position = spawn_pos
+	player.velocity = Vector3.ZERO
+	player.move_direction = Vector3.ZERO
+	for i: int in range(15):
+		await get_tree().physics_frame
+		if player.is_on_floor() and sm.state == player_run:
+			break
+
+	# Check default ratio and aliases
+	check(is_equal_approx(player_jump.movement_speed_ratio, 1.0), "movement_speed_ratio defaults to 1.0")
+	check(is_equal_approx(player_jump.movement_speed, 1.0), "movement_speed alias defaults to 1.0")
+	check(is_equal_approx(player_jump.movement_ratio, 1.0), "movement_ratio alias defaults to 1.0")
+	check(is_equal_approx(player_jump.movement_speed_ration, 1.0), "movement_speed_ration alias defaults to 1.0")
+
+	input_comp.set_physics_process(false)
+	var walk_speed: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED) if player.attribute_component != null else 6.0
+
+	# Test movement_speed_ratio = 0.5 (half speed during jump)
+	player_jump.movement_speed_ratio = 0.5
+	player_jump.control_ratio = 1.0
+	player.move_direction = Vector3(0.0, 0.0, 1.0)
+	player.velocity = Vector3.ZERO
+
+	sm._unhandled_input(jump_ev)
+	check(sm.state == player_jump, "Jump started with movement_speed_ratio = 0.5")
+	var expected_half_speed: float = walk_speed * 0.5
+	check(is_equal_approx(player.velocity.z, expected_half_speed), "Forward jump launch speed reduced to half walk speed (vz: %.2f == %.2f)" % [player.velocity.z, expected_half_speed])
+
+	# Mid-air steering with ratio 0.5 should cap horizontal speed at half walk speed
+	player.move_direction = Vector3(1.0, 0.0, 0.0)
+	for i: int in range(20):
+		await get_tree().physics_frame
+		if player.is_on_floor():
+			break
+
+	var mid_air_speed: float = Vector2(player.velocity.x, player.velocity.z).length()
+	check(mid_air_speed <= expected_half_speed + 0.05, "Mid-air steering speed is capped at half walk speed (%.2f <= %.2f)" % [mid_air_speed, expected_half_speed + 0.05])
+
+	# Land and reset
+	player.velocity = Vector3.ZERO
+	player.move_direction = Vector3.ZERO
+	for i: int in range(90):
+		await get_tree().physics_frame
+		if player.is_on_floor() and sm.state == player_run:
+			break
+
+	# Test alias setter
+	player_jump.movement_speed_ration = 1.0
+	check(is_equal_approx(player_jump.movement_speed_ratio, 1.0), "Setting movement_speed_ration alias updates movement_speed_ratio to 1.0")
+	input_comp.set_physics_process(true)
 
 	print("\n====================================================================")
 	if failures == 0:
