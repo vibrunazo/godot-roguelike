@@ -1,64 +1,148 @@
-## Minimal real-physics regression for enemy top contacts and terrain landing.
+## Regression suite: enemy tops are never usable floors for the player.
+##
+## Mechanism: the player's states move via `Character.move_character()`, which
+## retries any enemy-top floor contact in floating mode, so landing on a head
+## can never report `is_on_floor()`, transition to PlayerRun, or launch the
+## player (wall-like contact; momentum preserved). Uses the real Player and
+## melee enemy scenes to exercise the live wiring.
 extends Node3D
+
+const PlayerRun := preload("res://StateMachine/PlayerStates/player_run.gd")
+const MeleeEnemyScene := preload("res://Enemy/melee_enemy.tscn")
+const LEVEL_PATH: String = "res://Levels/level_template.tscn"
+## Drop height above the enemy capsule top, in meters.
+const DROP_HEIGHT: float = 1.0
+## Horizontal offset from the enemy center for the drop, in meters, so the
+## contact starts on the dome slope instead of the degenerate apex point.
+const DROP_OFFSET: float = 0.25
+## Physics frames to wait for a landing after the drop starts.
+const LANDING_FRAMES: int = 240
+## Upper bound for horizontal speed during the enemy contact (no spring).
+const MAX_SLIDE_SPEED: float = 3.5
 
 var failures: int = 0
 
 
 func check(condition: bool, message: String) -> void:
-	if not condition:
+	if condition:
+		print("  ok: ", message)
+	else:
 		failures += 1
 		printerr("TEST FAILED: ", message)
-	else:
-		print("  ok: ", message)
 
 
-func add_shape(body: CollisionObject3D, shape: Shape3D) -> void:
-	var collider: CollisionShape3D = CollisionShape3D.new()
-	collider.shape = shape
-	body.add_child(collider)
+## Freeze an enemy's AI so it stands still for deterministic geometry.
+func freeze_ai(enemy: Character) -> void:
+	if enemy.ai_state_machine != null:
+		enemy.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+
+
+## Spawns a real melee enemy under the level, freezes it, and waits for it to
+## settle on the floor. Returns null if it never settles.
+func spawn_settled_enemy(level: Node3D, position: Vector3) -> Character:
+	var enemy: Character = MeleeEnemyScene.instantiate() as Character
+	level.add_child(enemy)
+	enemy.global_position = position
+	enemy.velocity = Vector3.ZERO
+	freeze_ai(enemy)
+	for frame: int in range(60):
+		await get_tree().physics_frame
+		if enemy.is_on_floor():
+			return enemy
+	return null
 
 
 func _ready() -> void:
-	var floor_body: StaticBody3D = StaticBody3D.new()
-	var floor_shape: BoxShape3D = BoxShape3D.new()
-	floor_shape.size = Vector3(30.0, 1.0, 30.0)
-	add_shape(floor_body, floor_shape)
-	floor_body.position.y = -0.5
-	add_child(floor_body)
+	print("--- RUNNING ENEMY HEAD LANDING REGRESSION TEST ---")
+	var level: Node3D = (load(LEVEL_PATH) as PackedScene).instantiate() as Node3D
+	add_child(level)
+	var player: Character = level.get_node("Player") as Character
+	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
+	var run_state: PlayerRun = sm.get_node("PlayerRun") as PlayerRun
 
-	var enemy: Character = Character.new()
-	enemy.add_to_group("enemy")
-	var enemy_shape: BoxShape3D = BoxShape3D.new()
-	enemy_shape.size = Vector3(2.0, 2.0, 2.0)
-	add_shape(enemy, enemy_shape)
-	enemy.position.y = 1.0
-	add_child(enemy)
-
-	var player: Character = Character.new()
-	player.add_to_group("player")
-	add_shape(player, CapsuleShape3D.new())
-	player.position.y = 5.0
-	add_child(player)
-	var false_landing: bool = false
-	var terrain_landing: bool = false
-	for frame: int in range(240):
+	# PART 1: Baseline landing on real terrain still works.
+	print("\n>>> PART 1: Baseline terrain landing (unchanged behavior)")
+	player.move_direction = Vector3.ZERO
+	for frame: int in range(30):
 		await get_tree().physics_frame
-		player.velocity += player.get_gravity() * get_physics_process_delta_time()
-		player.move_character()
-		if player.is_on_floor():
-			if player.position.y > 1.1:
-				false_landing = true
-			else:
-				terrain_landing = true
-				break
-	check(not false_landing, "Enemy top never counts as floor")
-	check(terrain_landing, "Player slides off and lands on terrain")
-	check(absf(player.position.x) > 1.0, "Centered drop gets outward motion")
-
-	player.position = Vector3(4.0, 1.01, 0.0)
-	for frame: int in range(90):
+		if sm.state == run_state and player.is_on_floor():
+			break
+	check(sm.state == run_state and player.is_on_floor(), "Player is grounded in PlayerRun on level floor")
+	var terrain_y: float = player.global_position.y
+	var spawn_xz: Vector2 = Vector2(player.global_position.x, player.global_position.z)
+	player.global_position = player.global_position + Vector3(0.0, 1.0, 0.0)
+	player.velocity = Vector3.ZERO
+	var baseline_landed: bool = false
+	for frame: int in range(LANDING_FRAMES):
 		await get_tree().physics_frame
-		player.velocity = Vector3(-3.0, -1.0, 0.0)
-		player.move_character()
-	check(player.position.x > 1.0, "Enemy still blocks a ground-level side approach")
-	get_tree().quit(0 if failures == 0 else 1)
+		if player.is_on_floor() and player.global_position.y <= terrain_y + 0.2 and sm.state == run_state:
+			baseline_landed = true
+			break
+	check(baseline_landed, "Player lands on terrain from a 1m drop and returns to PlayerRun")
+	for frame: int in range(10):
+		await get_tree().physics_frame
+
+	# PART 2: Dropping onto an enemy head: wall-like, never a floor, no launch.
+	print("\n>>> PART 2: Player drop onto enemy head")
+	var anchor: Vector2 = spawn_xz
+	var enemy: Character = await spawn_settled_enemy(level, Vector3(anchor.x, player.global_position.y + 1.0, anchor.y))
+	check(enemy != null, "Melee enemy spawned and settled on the floor")
+	if enemy == null:
+		get_tree().quit(1)
+		return
+	var enemy_top: float = enemy.global_position.y + 1.0
+	var ever_floor: bool = false
+	var max_horizontal: float = 0.0
+	var landed_on_terrain: bool = false
+	player.global_position = Vector3(anchor.x + DROP_OFFSET, enemy_top + DROP_HEIGHT, anchor.y)
+	player.velocity = Vector3.ZERO
+	for frame: int in range(LANDING_FRAMES):
+		await get_tree().physics_frame
+		var over_enemy: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0
+		if player.is_on_floor() and over_enemy:
+			ever_floor = true
+		max_horizontal = maxf(max_horizontal, Vector2(player.velocity.x, player.velocity.z).length())
+		if player.is_on_floor() and player.global_position.y <= terrain_y + 0.2 and sm.state == run_state:
+			landed_on_terrain = true
+			break
+	check(not ever_floor, "Enemy top never reports floor contact for the player")
+	check(landed_on_terrain, "Player slides off the enemy and lands on terrain")
+	check(max_horizontal < MAX_SLIDE_SPEED, "Top contact is wall-like, no spring launch (max horizontal %.2f m/s < %.1f)" % [max_horizontal, MAX_SLIDE_SPEED])
+	for frame: int in range(10):
+		await get_tree().physics_frame
+
+	# PART 3: Enemy body still blocks ground-level side movement.
+	print("\n>>> PART 3: Side approach is still blocked (no pass-through)")
+	var side_start: Vector3 = enemy.global_position + Vector3(2.0, 0.0, 0.0)
+	side_start.y = player.global_position.y
+	player.global_position = side_start
+	player.velocity = Vector3.ZERO
+	var input_comp: PlayerInputComponent = player.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
+	if input_comp != null:
+		input_comp.set_physics_process(false)
+	var closest_radial: float = INF
+	player.move_direction = Vector3.LEFT
+	for frame: int in range(60):
+		await get_tree().physics_frame
+		var offset: Vector3 = player.global_position - enemy.global_position
+		closest_radial = minf(closest_radial, Vector2(offset.x, offset.z).length())
+	player.move_direction = Vector3.ZERO
+	if input_comp != null:
+		input_comp.set_physics_process(true)
+	check(closest_radial < 1.9, "Player actually approaches the enemy (closest radial %.2fm)" % closest_radial)
+	check(closest_radial > 0.8, "Player cannot walk through the enemy body (closest radial %.2fm)" % closest_radial)
+
+	# PART 4: Enemies still treat other enemies as floors (regression guard).
+	print("\n>>> PART 4: Enemy-to-enemy standing is unaffected")
+	var rider: Character = await spawn_settled_enemy(level, Vector3(anchor.x, enemy_top + 0.5, anchor.y))
+	check(rider != null, "Second enemy spawned above the first")
+	if rider != null:
+		check(rider.is_on_floor(), "Enemy lands and rests on another enemy's capsule (is_on_floor true)")
+
+	if failures > 0:
+		printerr("ENEMY HEAD LANDING TEST FAILED with %d failure(s)" % failures)
+		get_tree().quit(1)
+		return
+	print("ALL ENEMY HEAD LANDING TESTS PASSED")
+	get_tree().quit(0)
+

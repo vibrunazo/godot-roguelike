@@ -57,9 +57,10 @@ signal alerted
 @export var target_retarget_cooldown: float = 0.3
 
 
-## Minimum outward speed when the player contacts an enemy's walkable top.
-## Keeps even a centered, neutral jump from balancing on an enemy capsule.
-@export var head_slide_speed: float = 6.0
+## Gentle anti-perch nudge speed, used only when the player comes to rest on
+## an enemy's head with no remaining momentum. Normal top contacts keep their
+## impact momentum untouched (wall-like); this only breaks a parked hover.
+@export var head_slide_speed: float = 1.5
 
 
 ## Desired movement direction vector (normalized), provided by PlayerInputComponent or AIStateMachine.
@@ -157,9 +158,13 @@ func _physics_process(delta: float) -> void:
 
 
 ## Moves normally, except enemy tops are never usable floors for the player.
-## Retry a top-contact step in floating mode so Godot clears its floor flag as
-## well as sliding away. This keeps all landing/jump checks consistent, retains
-## solid side collisions, and leaves terrain slopes and enemy movement alone.
+## A top contact behaves like hitting a wall: the impact momentum is kept
+## as-is (no bounce, no launch), and the step is retried in floating mode so
+## Godot clears its floor flag while the surface still blocks the fall. The
+## curved capsule tops let the player slide off naturally. The gentle nudge
+## only fires as an anti-perch fallback when the player would otherwise hover
+## parked on a head with zero momentum. Side collisions and terrain slopes
+## are untouched.
 func move_character() -> bool:
 	var start_transform: Transform3D = global_transform
 	var intended_velocity: Vector3 = velocity
@@ -173,19 +178,30 @@ func move_character() -> bool:
 			continue
 		if contact.get_normal().dot(up_direction) < cos(floor_max_angle):
 			continue
-		var outward: Vector3 = (global_position - enemy.global_position).slide(up_direction)
-		if outward.is_zero_approx():
-			outward = intended_velocity.slide(up_direction)
-		if outward.is_zero_approx():
-			outward = Vector3.RIGHT
-		outward = outward.normalized()
 		global_transform = start_transform
+		# Lift out of margin contact first: starting the sweep while touching
+		# makes move_and_slide spend its step on penetration recovery and skip
+		# the actual motion, wedging the player against the surface.
+		global_position += contact.get_normal() * 0.01
 		velocity = intended_velocity
-		velocity += outward * maxf(0.0, head_slide_speed - velocity.dot(outward))
 		var saved_mode: MotionMode = motion_mode
 		motion_mode = MOTION_MODE_FLOATING
 		move_and_slide()
 		motion_mode = saved_mode
+		var horizontal_speed: float = Vector2(velocity.x, velocity.z).length()
+		# Parked on a head: the floating retry traveled only a fraction of what
+		# its velocity demanded (blocked straight down) with no horizontal
+		# motion. Zero the accumulated fall and nudge gently outward so the
+		# player slides off instead of hovering. A real slide or free fall
+		# travels most of its intended distance and never qualifies.
+		var intended_travel: float = intended_velocity.length() * get_physics_process_delta_time()
+		var actual_travel: float = (global_position - start_transform.origin).length()
+		if horizontal_speed < 0.1 and intended_travel > 0.02 and actual_travel < intended_travel * 0.25:
+			var outward: Vector3 = (global_position - enemy.global_position).slide(up_direction)
+			if outward.is_zero_approx():
+				outward = Vector3.RIGHT
+			velocity.y = 0.0
+			velocity += outward.normalized() * head_slide_speed
 		return true
 	return collided
 
