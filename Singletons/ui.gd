@@ -77,6 +77,8 @@ var _current_pause_menu: PauseMenu = null
 ## True while the game-over screen owns the pause state. The pause toggle is
 ## disabled then: there is nothing to resume to, only restart or quit.
 var _is_game_over: bool = false
+## True while in the main menu, disabling the in-game pause toggle.
+var is_in_main_menu: bool = false
 
 ## Pause menu scene override. When null, uses GlobalVars.pause_menu_scene or DEFAULT_PAUSE_MENU_SCENE.
 @export var pause_menu_scene: PackedScene = null
@@ -167,9 +169,9 @@ func show_game_over() -> void:
 
 
 ## Toggles pause state between paused and unpaused. Does nothing on the
-## game-over screen, where resume is unavailable.
+## game-over screen or in the main menu, where resume is unavailable.
 func toggle_pause() -> void:
-	if _is_game_over:
+	if _is_game_over or is_in_main_menu:
 		return
 	if is_paused():
 		resume_game()

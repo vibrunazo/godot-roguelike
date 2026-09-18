@@ -1,0 +1,80 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Player/animated_player.tscn" id="1_anim_player"]
+[ext_resource type="Script" path="res://Player/menu_player.gd" id="2_menu_player"]
+[ext_resource type="Shader" uid="uid://b81ujloplemnj" path="res://Shaders/character_palette.gdshader" id="3_shader"]
+[ext_resource type="Texture2D" uid="uid://dhidi6ygdbiys" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Character/GamedevTV_Mannequin_Medium_character_texture.png" id="4_texture"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_player_palette"]
+render_priority = 0
+shader = ExtResource("3_shader")
+shader_parameter/albedo_texture = ExtResource("4_texture")
+shader_parameter/palette_mode = 1
+shader_parameter/enable_palette = true
+shader_parameter/gradient_mask = 0
+shader_parameter/global_tint = Color(1, 1, 1, 1)
+shader_parameter/roughness = 0.3
+shader_parameter/metallic = 0.0
+
+[sub_resource type="Gradient" id="Gradient_sword"]
+offsets = PackedFloat32Array(0, 0.25247526, 0.7574257)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_sword_albedo"]
+gradient = SubResource("Gradient_sword")
+fill_to = Vector2(0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_sword_emission"]
+gradient = SubResource("Gradient_sword")
+fill_to = Vector2(0, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_sword"]
+albedo_texture = SubResource("GradientTexture2D_sword_albedo")
+emission_enabled = true
+emission_energy_multiplier = 4.0
+emission_texture = SubResource("GradientTexture2D_sword_emission")
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_blade"]
+top_radius = 0.1
+bottom_radius = 0.1
+cap_top = false
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_handle"]
+top_radius = 0.05
+bottom_radius = 0.05
+height = 0.5
+
+[node name="MenuPlayer" instance=ExtResource("1_anim_player")]
+script = ExtResource("2_menu_player")
+
+[node name="GamedevTV_Mannequin_Medium_ArmLeft" parent="Rig_Medium/Skeleton3D" index="0"]
+material_override = SubResource("ShaderMaterial_player_palette")
+
+[node name="GamedevTV_Mannequin_Medium_ArmRight" parent="Rig_Medium/Skeleton3D" index="1"]
+material_override = SubResource("ShaderMaterial_player_palette")
+
+[node name="GamedevTV_Mannequin_Medium_Body" parent="Rig_Medium/Skeleton3D" index="2"]
+material_override = SubResource("ShaderMaterial_player_palette")
+
+[node name="GamedevTV_Mannequin_Medium_Head" parent="Rig_Medium/Skeleton3D" index="3"]
+material_override = SubResource("ShaderMaterial_player_palette")
+
+[node name="GamedevTV_Mannequin_Medium_LegLeft" parent="Rig_Medium/Skeleton3D" index="4"]
+material_override = SubResource("ShaderMaterial_player_palette")
+
+[node name="GamedevTV_Mannequin_Medium_LegRight" parent="Rig_Medium/Skeleton3D" index="5"]
+material_override = SubResource("ShaderMaterial_player_palette")
+
+[node name="LazerSword" type="MeshInstance3D" parent="Rig_Medium/Skeleton3D/WeaponSlot" index="0"]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, -1.25, 0, 0)
+material_override = SubResource("StandardMaterial3D_sword")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_blade")
+
+[node name="Handle" type="MeshInstance3D" parent="Rig_Medium/Skeleton3D/WeaponSlot" index="1"]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_handle")
+
+[node name="FeetSlot" type="Node3D" parent="Rig_Medium/Skeleton3D" index="9"]
+

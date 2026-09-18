@@ -1,0 +1,170 @@
+[gd_scene format=3 uid="uid://cbmainmenu01"]
+
+[ext_resource type="Script" path="res://UserInterface/main_menu.gd" id="1_main_menu"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_focus"]
+draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.4, 0.8, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+bg_color = Color(0.192157, 0.282353, 0.380392, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.309804, 0.658824, 0.803922, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+bg_color = Color(0.141176, 0.172549, 0.219608, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.243137, 0.34902, 0.45098, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+bg_color = Color(0.0980392, 0.203922, 0.282353, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.309804, 0.658824, 0.803922, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="Theme" id="Theme_menu_buttons"]
+Button/font_sizes/font_size = 18
+Button/styles/focus = SubResource("StyleBoxFlat_btn_focus")
+Button/styles/hover = SubResource("StyleBoxFlat_btn_hover")
+Button/styles/normal = SubResource("StyleBoxFlat_btn_normal")
+Button/styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 32.0
+content_margin_top = 28.0
+content_margin_right = 32.0
+content_margin_bottom = 28.0
+bg_color = Color(0.101961, 0.101961, 0.121569, 0.960784)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.309804, 0.658824, 0.803922, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_sep"]
+color = Color(0.309804, 0.658824, 0.803922, 0.501961)
+thickness = 2
+
+[node name="MainMenu" type="CanvasLayer"]
+process_mode = 3
+layer = 100
+script = ExtResource("1_main_menu")
+
+[node name="TopMarginContainer" type="MarginContainer" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 120.0
+grow_horizontal = 2
+theme_override_constants/margin_top = 40
+
+[node name="Title" type="RichTextLabel" parent="TopMarginContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0.03, 0.06, 0.12, 1)
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/normal_font_size = 52
+bbcode_enabled = true
+text = "[center][wave amp=25.0 freq=3.0][color=#4fa8cd]Tutorial Hell[/color][/wave][/center]"
+fit_content = true
+
+[node name="RightMarginContainer" type="MarginContainer" parent="."]
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -380.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_constants/margin_right = 60
+
+[node name="CenterBox" type="BoxContainer" parent="RightMarginContainer"]
+layout_mode = 2
+alignment = 1
+vertical = true
+
+[node name="PanelContainer" type="PanelContainer" parent="RightMarginContainer/CenterBox"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme = SubResource("Theme_menu_buttons")
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="RightMarginContainer/CenterBox/PanelContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="MenuHeader" type="Label" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.75, 0.88, 1)
+theme_override_font_sizes/font_size = 20
+text = "MAIN MENU"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_styles/separator = SubResource("StyleBoxLine_sep")
+
+[node name="ButtonsVBox" type="VBoxContainer" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="StartButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 42)
+layout_mode = 2
+text = "Start Game"
+
+[node name="FullscreenButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 42)
+layout_mode = 2
+text = "Toggle Fullscreen"
+
+[node name="QuitButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 42)
+layout_mode = 2
+text = "Quit Game"
