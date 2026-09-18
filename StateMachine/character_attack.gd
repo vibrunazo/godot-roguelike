@@ -23,6 +23,11 @@ extends CharacterState
 @export var attack_animation_name: String = "SlashAttack"
 ## Reference to the AttackComponent handling damage dealing and hit collision exceptions.
 @export var attack_component: AttackComponent
+## Weapon slot this attack strikes with (sword, feet, ...). When assigned, the
+## AttackComponent is resolved from the slot's hitbox and the slot drives the
+## hit window; the legacy attack_component export above is used only when no
+## slot is assigned, so existing sword attacks and enemies need no rewiring.
+@export var weapon_slot: WeaponSlot = null
 ## Minimum interval (in seconds) before the same target can be hit again during this attack state.
 @export var rehit_interval: float = 0.0
 ## Forward lunge speed applied from the attack's active phase. Leave at 0.0 to disable the lunge.
@@ -161,17 +166,18 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 		return
 	if uninterruptable and character.knockback_component != null:
 		character.knockback_component.magnitude = Vector3.ZERO
-	if attack_component != null:
-		attack_component.reset_exceptions()
-		attack_component.damage = damage * character.get_damage_modifier()
+	var resolved_component: AttackComponent = get_attack_component()
+	if resolved_component != null:
+		resolved_component.reset_exceptions()
+		resolved_component.damage = damage * character.get_damage_modifier()
 		if character.mesh_mount != null:
-			attack_component.knockback = character.mesh_mount.global_basis.z * knockback
+			resolved_component.knockback = character.mesh_mount.global_basis.z * knockback
 		else:
-			attack_component.knockback = character.global_basis.z * knockback
-		attack_component.rehit_interval = rehit_interval
-		attack_component.effects_to_apply = effects_to_apply
-		if not attack_component.hit_landed.is_connected(_on_hit_landed):
-			attack_component.hit_landed.connect(_on_hit_landed)
+			resolved_component.knockback = character.global_basis.z * knockback
+		resolved_component.rehit_interval = rehit_interval
+		resolved_component.effects_to_apply = effects_to_apply
+		if not resolved_component.hit_landed.is_connected(_on_hit_landed):
+			resolved_component.hit_landed.connect(_on_hit_landed)
 
 	if character.animation_tree != null:
 		character.animation_tree.change_immediate(attack_animation_name)
@@ -217,15 +223,36 @@ func _aim_at_current_target() -> void:
 	character.aim_direction = aim_direction
 
 
+## Resolves the AttackComponent for this attack: the weapon slot's hitbox
+## component when a slot is assigned, otherwise the legacy attack_component
+## export (possibly null). Warns when an assigned slot has no component.
+func get_attack_component() -> AttackComponent:
+	if weapon_slot != null and weapon_slot.hitbox != null:
+		var slot_component: AttackComponent = weapon_slot.hitbox.get_node_or_null("AttackComponent") as AttackComponent
+		if slot_component != null:
+			return slot_component
+		push_warning("CharacterAttack '%s' has weapon_slot '%s' without an AttackComponent child; falling back to attack_component." % [name, weapon_slot.name])
+	return attack_component
+
+
+## Resolves the WeaponSlot driving this attack's hit window: the assigned slot,
+## otherwise the slot parenting the legacy attack component's hitbox. Returns
+## null for slot-less hitboxes, which then skip lunge timing and slot cleanup.
+func get_weapon_slot() -> WeaponSlot:
+	if weapon_slot != null:
+		return weapon_slot
+	if attack_component != null and attack_component.attack_area != null:
+		return attack_component.attack_area.get_parent() as WeaponSlot
+	return null
+
+
 ## Arms the forward lunge when dash exports are set. The lunge starts when the
 ## weapon slot signals the attack's active phase via its slash signal (emitted
 ## exactly when the slot enables the hitbox), so no polling or hub is needed.
 func _arm_lunge() -> void:
 	if dash_speed <= 0.0 or dash_duration <= 0.0:
 		return
-	if attack_component == null or attack_component.attack_area == null:
-		return
-	lunge_slot = attack_component.attack_area.get_parent() as WeaponSlot
+	lunge_slot = get_weapon_slot()
 	if lunge_slot != null:
 		connect_one_shot(lunge_slot.slash, _begin_lunge)
 
@@ -376,13 +403,13 @@ func exit() -> void:
 		disconnect_safe(attack_timer.timeout, attempt_queue_attack)
 	if character != null and character.animation_tree != null:
 		disconnect_safe(character.animation_tree.animation_finished, finish_attack)
-	if attack_component != null:
-		disconnect_safe(attack_component.hit_landed, _on_hit_landed)
-		attack_component.reset_exceptions()
-		if attack_component.attack_area != null:
-			var slot: WeaponSlot = attack_component.attack_area.get_parent() as WeaponSlot
-			if slot != null and slot.enabled:
-				slot.enabled = false
+	var exit_component: AttackComponent = get_attack_component()
+	if exit_component != null:
+		disconnect_safe(exit_component.hit_landed, _on_hit_landed)
+		exit_component.reset_exceptions()
+	var exit_slot: WeaponSlot = get_weapon_slot()
+	if exit_slot != null and exit_slot.enabled:
+		exit_slot.enabled = false
 
 
 ## Transitions to a random pick of next_states when the attack animation finishes.

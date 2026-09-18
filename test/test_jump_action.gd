@@ -2,6 +2,7 @@ extends Node
 
 const PlayerJump = preload("res://StateMachine/PlayerStates/player_jump.gd")
 const PlayerJumpKick = preload("res://StateMachine/PlayerStates/player_jump_kick.gd")
+const MeleeEnemyScene := preload("res://Enemy/melee_enemy.tscn")
 
 var failures: int = 0
 
@@ -410,6 +411,74 @@ func _ready() -> void:
 
 	check(transitioned_to_ground_attack, "Landing cancels JumpKick and instantly transitions to ground PlayerAttack")
 	input_comp.set_physics_process(true)
+
+	# =========================================================================
+	# PART 9: JumpKick Strikes With the Feet Slot, Never the Sword
+	# =========================================================================
+	print("\n>>> PART 9: JumpKick FeetSlot Hitbox")
+	var sword_slot: WeaponSlot = player.get_node("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot") as WeaponSlot
+	var feet_slot: WeaponSlot = player.get_node_or_null("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/FeetSlot") as WeaponSlot
+	check(feet_slot != null, "FeetSlot exists on the player rig")
+	var sword_comp: AttackComponent = null
+	if sword_slot != null:
+		sword_comp = sword_slot.hitbox.get_node_or_null("AttackComponent") as AttackComponent
+	check(player_jump_kick.weapon_slot == feet_slot, "PlayerJumpKick strikes with FeetSlot")
+	var kick_comp: AttackComponent = player_jump_kick.get_attack_component()
+	check(kick_comp != null and kick_comp != sword_comp, "Kick resolves a non-sword AttackComponent")
+	check(p_attack.get_attack_component() == sword_comp, "Sword attacks still resolve the sword component (legacy path)")
+
+	# Live kick against a frozen enemy: only the feet window may open and hit.
+	player.global_position = spawn_pos
+	player.velocity = Vector3.ZERO
+	player.move_direction = Vector3.ZERO
+	for i: int in range(15):
+		await get_tree().physics_frame
+		if player.is_on_floor() and sm.state == player_run:
+			break
+	var foe: Character = MeleeEnemyScene.instantiate() as Character
+	level.add_child(foe)
+	foe.global_position = player.global_position + Vector3(0.0, 0.0, 1.6)
+	foe.velocity = Vector3.ZERO
+	if foe.ai_state_machine != null:
+		foe.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+	input_comp.set_physics_process(false)
+	player.move_direction = Vector3(0.0, 0.0, 1.0)
+	sm._unhandled_input(jump_ev)
+	check(sm.state == player_jump, "Jump started for feet-hitbox test")
+	sm._unhandled_input(attack_ev)
+	check(sm.state == player_jump_kick, "JumpKick started for feet-hitbox test")
+	var sword_area: Area3D = sword_slot.hitbox
+	var feet_area: Area3D = feet_slot.hitbox
+	var foe_hp_before: float = foe.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	var saw_feet_window: bool = false
+	var sword_ever_on: bool = false
+	for i: int in range(60):
+		# Read after the step: test-driven transitions happen mid-physics-step,
+		# so pre-step reads can still see the canceled attack's hitbox before
+		# its deferred disable flushes. Post-step reads observe settled state.
+		await get_tree().physics_frame
+		if sm.state != player_jump_kick:
+			break
+		if feet_area.monitoring:
+			saw_feet_window = true
+			foe.global_position = feet_area.global_position
+		if sword_area.monitoring:
+			sword_ever_on = true
+	check(saw_feet_window, "Feet hitbox opens during the kick strike window")
+	check(not sword_ever_on, "Sword hitbox never opens during the kick")
+	var foe_hp_after: float = foe.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	var expected_kick: float = player_jump_kick.damage * player.get_damage_modifier() * foe.attribute_component.get_damage_multiplier(&"physical")
+	check(is_equal_approx(foe_hp_before - foe_hp_after, expected_kick), "Kick damages the enemy through the feet hitbox (dealt %.1f)" % expected_kick)
+
+	# Landing cancel must leave no hitbox stuck on.
+	for i: int in range(90):
+		await get_tree().physics_frame
+		if player.is_on_floor() and sm.state == player_run:
+			break
+	check(not feet_area.monitoring and not sword_area.monitoring, "Landing cancel leaves both hitboxes off")
+	player.move_direction = Vector3.ZERO
+	input_comp.set_physics_process(true)
+	foe.queue_free()
 
 	print("\n====================================================================")
 	if failures == 0:
