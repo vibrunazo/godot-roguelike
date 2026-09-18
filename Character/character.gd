@@ -57,9 +57,11 @@ signal alerted
 @export var target_retarget_cooldown: float = 0.3
 
 
-## Gentle anti-perch nudge speed, used only when the player comes to rest on
-## an enemy's head with no remaining momentum. Normal top contacts keep their
-## impact momentum untouched (wall-like); this only breaks a parked hover.
+## Minimum outward drift speed enforced while the player is supported by an
+## enemy head. Applied every contact frame as retry velocity and banked as
+## distance, so neither standing still nor steering back onto the crown can
+## balance on the apex. Normal top contacts keep their impact momentum
+## untouched (wall-like); this only guarantees the slide-off.
 @export var head_slide_speed: float = 1.5
 
 
@@ -161,49 +163,73 @@ func _physics_process(delta: float) -> void:
 ## A top contact behaves like hitting a wall: the impact momentum is kept
 ## as-is (no bounce, no launch), and the step is retried in floating mode so
 ## Godot clears its floor flag while the surface still blocks the fall. The
-## curved capsule tops let the player slide off naturally. The gentle nudge
-## only fires as an anti-perch fallback when the player would otherwise hover
-## parked on a head with zero momentum. Side collisions and terrain slopes
-## are untouched.
+## retry strips any steering back onto the crown and enforces a minimum
+## outward drift (also banked as distance, since next frame's input re-derives
+## velocity), so the apex is an unstable perch the player always slides off,
+## whether dropping neutrally, parked with zero momentum, or steering inward.
+## Side collisions and terrain slopes are untouched.
 func move_character() -> bool:
 	var start_transform: Transform3D = global_transform
 	var intended_velocity: Vector3 = velocity
 	var collided: bool = move_and_slide()
-	if not is_player() or not is_on_floor():
+	if not is_player():
 		return collided
+	var enemy: Character = _get_enemy_head_support()
+	if enemy == null:
+		return collided
+	var support_normal: Vector3 = get_floor_normal()
+	if support_normal.is_zero_approx():
+		support_normal = up_direction
+	global_transform = start_transform
+	# Lift out of margin contact first: starting the sweep while touching
+	# makes move_and_slide spend its step on penetration recovery and skip
+	# the actual motion, wedging the player against the surface.
+	global_position += support_normal * 0.01
+	var outward: Vector3 = (global_position - enemy.global_position).slide(up_direction)
+	if outward.is_zero_approx():
+		outward = intended_velocity.slide(up_direction)
+	if outward.is_zero_approx():
+		outward = Vector3.RIGHT
+	outward = outward.normalized()
+	# Strip steering back onto the crown and enforce minimum outward drift, so
+	# holding toward the head cannot balance on the apex from frame to frame.
+	var flat: Vector3 = Vector3(intended_velocity.x, 0.0, intended_velocity.z)
+	flat += outward * maxf(0.0, flat.dot(outward * -1.0))
+	flat += outward * maxf(0.0, head_slide_speed - flat.dot(outward))
+	# Keep falling (never rest or launch) so landing checks stay airborne.
+	velocity = Vector3(flat.x, minf(intended_velocity.y, -0.5), flat.z)
+	var saved_mode: MotionMode = motion_mode
+	motion_mode = MOTION_MODE_FLOATING
+	move_and_slide()
+	motion_mode = saved_mode
+	# Bank the drift as distance: velocity is re-derived from input next frame,
+	# so a velocity-only push would be erased before it ever moves the body.
+	global_position += outward * head_slide_speed * get_physics_process_delta_time()
+	if velocity.y > -0.5:
+		velocity.y = -0.5
+	return true
+
+
+## Returns the enemy currently supporting the player from below, or null.
+## Checks top-like slide contacts first, then a short downward probe that
+## covers snap-held rests with no fresh slide.
+func _get_enemy_head_support() -> Character:
+	if not is_on_floor():
+		return null
 	for index: int in range(get_slide_collision_count()):
 		var contact: KinematicCollision3D = get_slide_collision(index)
-		var enemy: Character = contact.get_collider() as Character
-		if enemy == null or not enemy.is_enemy():
+		var contact_enemy: Character = contact.get_collider() as Character
+		if contact_enemy == null or not contact_enemy.is_enemy():
 			continue
 		if contact.get_normal().dot(up_direction) < cos(floor_max_angle):
 			continue
-		global_transform = start_transform
-		# Lift out of margin contact first: starting the sweep while touching
-		# makes move_and_slide spend its step on penetration recovery and skip
-		# the actual motion, wedging the player against the surface.
-		global_position += contact.get_normal() * 0.01
-		velocity = intended_velocity
-		var saved_mode: MotionMode = motion_mode
-		motion_mode = MOTION_MODE_FLOATING
-		move_and_slide()
-		motion_mode = saved_mode
-		var horizontal_speed: float = Vector2(velocity.x, velocity.z).length()
-		# Parked on a head: the floating retry traveled only a fraction of what
-		# its velocity demanded (blocked straight down) with no horizontal
-		# motion. Zero the accumulated fall and nudge gently outward so the
-		# player slides off instead of hovering. A real slide or free fall
-		# travels most of its intended distance and never qualifies.
-		var intended_travel: float = intended_velocity.length() * get_physics_process_delta_time()
-		var actual_travel: float = (global_position - start_transform.origin).length()
-		if horizontal_speed < 0.1 and intended_travel > 0.02 and actual_travel < intended_travel * 0.25:
-			var outward: Vector3 = (global_position - enemy.global_position).slide(up_direction)
-			if outward.is_zero_approx():
-				outward = Vector3.RIGHT
-			velocity.y = 0.0
-			velocity += outward.normalized() * head_slide_speed
-		return true
-	return collided
+		return contact_enemy
+	var probe: KinematicCollision3D = KinematicCollision3D.new()
+	if test_move(global_transform, Vector3.DOWN * 0.12, probe):
+		var under: Character = probe.get_collider() as Character
+		if under != null and under.is_enemy() and probe.get_normal().dot(up_direction) >= cos(floor_max_angle):
+			return under
+	return null
 
 
 ## Advances auto-aim: drops invalid targets. If no target is currently held,

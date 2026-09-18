@@ -3,8 +3,8 @@
 ## Mechanism: the player's states move via `Character.move_character()`, which
 ## retries any enemy-top floor contact in floating mode, so landing on a head
 ## can never report `is_on_floor()`, transition to PlayerRun, or launch the
-## player (wall-like contact; momentum preserved). Uses the real Player and
-## melee enemy scenes to exercise the live wiring.
+## player (wall-like contact; momentum preserved, steering off the crown stripped,
+## drift banked as distance). Uses the real Player and melee enemy scenes to exercise the live wiring.
 extends Node3D
 
 const PlayerRun := preload("res://StateMachine/PlayerStates/player_run.gd")
@@ -131,6 +131,76 @@ func _ready() -> void:
 		input_comp.set_physics_process(true)
 	check(closest_radial < 1.9, "Player actually approaches the enemy (closest radial %.2fm)" % closest_radial)
 	check(closest_radial > 0.8, "Player cannot walk through the enemy body (closest radial %.2fm)" % closest_radial)
+
+	# PART 5: Centered neutral drop onto the crown: the apex is never a perch.
+	print("\n>>> PART 5: Centered neutral drop (apex perch)")
+	player.global_position = Vector3(enemy.global_position.x, enemy_top + DROP_HEIGHT, enemy.global_position.z)
+	player.velocity = Vector3.ZERO
+	player.move_direction = Vector3.ZERO
+	var ever_head_floor5: bool = false
+	var ever_head_run5: bool = false
+	var landed5: bool = false
+	var run_streak5: int = 0
+	for frame: int in range(LANDING_FRAMES):
+		await get_tree().physics_frame
+		var head5: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0 and player.global_position.y > terrain_y + 0.5
+		if player.is_on_floor() and head5:
+			ever_head_floor5 = true
+		var perched5: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0 and player.global_position.y > terrain_y + 0.5
+		if perched5 and sm.state == run_state:
+			run_streak5 += 1
+			if run_streak5 >= 5:
+				ever_head_run5 = true
+		else:
+			run_streak5 = 0
+		if player.is_on_floor() and player.global_position.y <= terrain_y + 0.2 and sm.state == run_state:
+			landed5 = true
+			break
+	check(not ever_head_floor5, "Apex never supports the player as a floor")
+	check(not ever_head_run5, "Player never enters the grounded run state while over the enemy crown")
+	check(landed5, "Player slides off the crown and lands on terrain")
+	for frame: int in range(10):
+		await get_tree().physics_frame
+
+	# PART 6: Insistent drop while steering back onto the crown every frame.
+	print("\n>>> PART 6: Centered drop while steering onto the crown")
+	if input_comp != null:
+		input_comp.set_physics_process(false)
+	player.global_position = Vector3(enemy.global_position.x, enemy_top + DROP_HEIGHT, enemy.global_position.z)
+	player.velocity = Vector3.ZERO
+	var ever_head_floor6: bool = false
+	var ever_head_run6: bool = false
+	var landed6: bool = false
+	var run_streak6: int = 0
+	for frame: int in range(LANDING_FRAMES):
+		var to_enemy6: Vector3 = enemy.global_position - player.global_position
+		to_enemy6.y = 0.0
+		if to_enemy6.is_zero_approx():
+			player.move_direction = Vector3.ZERO
+		else:
+			player.move_direction = to_enemy6.normalized()
+		await get_tree().physics_frame
+		var head6: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0 and player.global_position.y > terrain_y + 0.5
+		if player.is_on_floor() and head6:
+			ever_head_floor6 = true
+		var perched6: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0 and player.global_position.y > terrain_y + 0.5
+		if perched6 and sm.state == run_state:
+			run_streak6 += 1
+			if run_streak6 >= 5:
+				ever_head_run6 = true
+		else:
+			run_streak6 = 0
+		if player.is_on_floor() and player.global_position.y <= terrain_y + 0.2 and sm.state == run_state:
+			landed6 = true
+			break
+	player.move_direction = Vector3.ZERO
+	if input_comp != null:
+		input_comp.set_physics_process(true)
+	check(not ever_head_floor6, "Steering onto the crown never makes it a floor")
+	check(not ever_head_run6, "Steering onto the crown never enters the grounded run state")
+	check(landed6, "Insistent player still slides off and lands on terrain")
+	for frame: int in range(10):
+		await get_tree().physics_frame
 
 	# PART 4: Enemies still treat other enemies as floors (regression guard).
 	print("\n>>> PART 4: Enemy-to-enemy standing is unaffected")
