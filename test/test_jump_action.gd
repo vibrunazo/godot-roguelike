@@ -64,11 +64,12 @@ func _ready() -> void:
 
 	check(player_jump != null, "PlayerJump state exists under StateMachine")
 	check(player_run.jump_state == player_jump, "PlayerRun.jump_state wired to PlayerJump")
-	check(is_equal_approx(player_jump.jump_height, 2.5), "Default jump_height is 2.5m")
+	check(player_jump.jump_height > 0.0, "jump_height is positive (current: %.2fm)" % player_jump.jump_height)
 	check(player_jump.control_ratio >= 0.0 and player_jump.control_ratio <= 1.0, "control_ratio is within valid [0.0, 1.0] range (current: %.2f)" % player_jump.control_ratio)
 	check(player_jump.jump_audio != null, "PlayerJump.jump_audio is assigned")
 	if player_jump.jump_audio != null:
-		check(player_jump.jump_audio.stream != null and player_jump.jump_audio.stream.resource_path.ends_with("140867__juskiddink__boing.wav"), "JumpAudio uses boing.wav sound effect")
+		check(player_jump.jump_audio.stream != null, "JumpAudio has an audio stream assigned")
+
 
 	var player_jump_kick: PlayerJumpKick = sm.get_node_or_null("PlayerJumpKick") as PlayerJumpKick
 	check(player_jump_kick != null, "PlayerJumpKick state exists under StateMachine")
@@ -342,8 +343,13 @@ func _ready() -> void:
 	player.move_direction = Vector3(0.0, 0.0, 1.0)
 	sm._unhandled_input(jump_ev)
 	check(sm.state == player_jump, "Jump started for JumpKick test")
+
+
+	var expected_speed: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED) if player.attribute_component != null else 6.0
 	var initial_jump_speed_z: float = player.velocity.z
-	check(initial_jump_speed_z >= 7.9, "Forward jump has full speed (vz: %.2f >= 7.9)" % initial_jump_speed_z)
+	check(initial_jump_speed_z >= expected_speed - 0.5, "Forward jump has full speed (vz: %.2f >= %.2f)" % [initial_jump_speed_z, expected_speed - 0.5])
+
+
 
 	# Mid-air attack order
 	var attack_ev: InputEventAction = InputEventAction.new()

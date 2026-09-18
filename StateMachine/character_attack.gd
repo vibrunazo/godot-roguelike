@@ -4,7 +4,7 @@
 class_name CharacterAttack
 extends CharacterState
 
-## Speed at which the character can move while executing this attack (0.0 = stationary).
+## Ratio of speed at which the character can move while executing this attack (0.0 = stationary, 1 = full speed).
 @export var movement_speed: float = 0.0
 ## Whether this attack state can be cancelled early by dashing.
 @export var dash_cancel: bool = false

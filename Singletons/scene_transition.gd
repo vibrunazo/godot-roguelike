@@ -56,12 +56,14 @@ func fade_in(tween: Tween) -> void:
 func load_scene_path(path_in: String, args: Dictionary = {}) -> void:
 	var player: Character = get_tree().get_first_node_in_group("player") as Character
 	if player:
-		# Cancel upfront so movement, abilities, SFX, and the damage flash
-		# stop the moment the fade starts (not only after the new level
-		# adopts the player). LevelTemplate re-applies the same cancel on
-		# restore as a safety net.
+		# Cancel upfront so movement, abilities, SFX, damage flash, fire,
+		# and temporary status effects stop the moment the fade starts
+		# (not only after the new level adopts the player). LevelTemplate
+		# re-applies the same cancel on restore as a safety net.
 		player.cancel_movement_and_abilities()
 		player.process_mode = Node.PROCESS_MODE_DISABLED
+	if VfxManager != null and VfxManager.has_method("clear_temporary_effects"):
+		VfxManager.clear_temporary_effects()
 	var tween: Tween = create_tween()
 	fade_in(tween)
 	tween.tween_callback(

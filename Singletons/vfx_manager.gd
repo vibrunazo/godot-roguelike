@@ -66,3 +66,10 @@ func spawn_damage_number(source: Node3D, damage: float) -> void:
 	add_child(damage_number)
 	damage_number.set_damage_text(damage)
 	damage_number.target_position = source.global_position
+
+
+## Clears all transient combat visual effects (floating damage numbers).
+func clear_temporary_effects() -> void:
+	for child: Node in get_children():
+		if child is DamageNumber or child.name.begins_with("NumberRoot") or child.name.to_lower().contains("damagenumber"):
+			child.queue_free()

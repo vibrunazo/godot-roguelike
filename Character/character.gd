@@ -563,14 +563,15 @@ func alert() -> void:
 		ai_state_machine.alert()
 
 
-## Cancels all transient movement and ability state: motion vectors, pending
-## intents, knockback momentum, the auto-aim lock, the attacking flag, live
-## weapon hitboxes, any active dash/attack/fall body state (returned to the
-## machine's home state via its normal exit path, so attack timers, lunges, and
-## hitstop are cleaned up), all in-flight character SFX (dash, damage, attack,
-## footsteps), and the damage vignette flash. Called when this character is
-## carried into a new level so a dash, attack, sound, or red flash never leaks
-## across the transition.
+## Cancels all transient movement, ability, and combat status state: motion vectors,
+## pending intents, knockback momentum, the auto-aim lock, the attacking flag, live
+## weapon hitboxes, active weapon VFX modes, any active dash/attack/fall body state
+## (returned to the machine's home state via its normal exit path, so attack timers,
+## lunges, and hitstop are cleaned up), all in-flight character SFX (dash, damage,
+## attack, footsteps), the damage vignette flash, camera shake trauma, and all
+## temporary status effects (fire/burn DoTs, timed stat modifiers, status visual effects).
+## Called when this character is carried into a new level so no dash, attack, sound,
+## red flash, camera shake, or fire leak across the transition.
 func cancel_movement_and_abilities() -> void:
 	move_direction = Vector3.ZERO
 	aim_direction = Vector3.ZERO
@@ -591,7 +592,10 @@ func cancel_movement_and_abilities() -> void:
 			state_machine.request_state(home.name)
 	for slot: Node in find_children("*", "WeaponSlot"):
 		if slot is WeaponSlot:
-			(slot as WeaponSlot).enabled = false
+			var ws: WeaponSlot = slot as WeaponSlot
+			ws.enabled = false
+			ws.attack_mode = WeaponSlot.mode.NONE
+			ws.vfx_threshold = 1.0
 	for audio_3d: Node in find_children("*", "AudioStreamPlayer3D"):
 		(audio_3d as AudioStreamPlayer3D).stop()
 	for audio_2d: Node in find_children("*", "AudioStreamPlayer"):
@@ -603,6 +607,17 @@ func cancel_movement_and_abilities() -> void:
 		var tint: ColorRect = get_node_or_null("DamageTint") as ColorRect
 		if tint != null:
 			tint.color = Color(Color.RED, 0.0)
+	var camera: ShakeCamera3D = get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
+	if camera != null:
+		camera.trauma = 0.0
+	if attribute_component != null:
+		attribute_component.clear_temporary_effects()
+	for child: Node in get_children():
+		if child.name.begins_with("Status") or child.name.to_lower().contains("burning"):
+			if child is Node3D:
+				(child as Node3D).visible = false
+			child.queue_free()
+
 
 
 ## Centralized idempotent defeat handler that halts motion, disables AI & input, and enters defeat state.

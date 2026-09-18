@@ -182,13 +182,138 @@ func _ready() -> void:
 		return
 	print("Physics-flush cancel verified: quiet, hitbox fully disabled.")
 
+	# PART 4: Fire, DoT, status VFX, temporary modifiers, and camera shake
+	# cleaned up on level transition.
+	print("\n>>> PART 4: Fire & temporary effects cleanup on level transition")
+	var burn_effect: GameplayEffect = load("res://Components/effect_fire_burn.tres") as GameplayEffect
+	if burn_effect == null:
+		printerr("TEST FAILED: Could not load effect_fire_burn.tres")
+		SceneTransition.player_cache = null
+		get_tree().quit(1)
+		return
+
+	# Apply fire burn to player
+	var burn_id: StringName = player.attribute_component.apply_effect(burn_effect)
+	if burn_id == &"":
+		printerr("TEST FAILED: Failed to apply fire burn effect to player.")
+		SceneTransition.player_cache = null
+		get_tree().quit(1)
+		return
+
+	# Apply temporary slow modifier to speed
+	var base_spd: float = player.attribute_component.get_base(AttributeComponent.STAT_SPEED)
+	player.attribute_component.apply_modifier(AttributeComponent.STAT_SPEED, &"test_enemy_slow", Attribute.Op.MULT_ADD, -0.5, 5.0)
+	var slowed_spd: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
+	if is_equal_approx(slowed_spd, base_spd):
+		printerr("TEST FAILED: Speed was not reduced by temporary slow modifier.")
+		SceneTransition.player_cache = null
+		get_tree().quit(1)
+		return
+
+	# Set camera trauma
+	var player_cam: ShakeCamera3D = player.get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
+	if player_cam != null:
+		player_cam.trauma = 0.8
+
+	# Spawn floating combat text in VfxManager
+	VfxManager.spawn_damage_number(player, 10.0)
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	# Verify burning VFX node attached
+	var burning_node: Node = player.get_node_or_null("StatusBurning")
+	if burning_node == null:
+		printerr("TEST FAILED: StatusBurning visual effect not found on player before transition.")
+		SceneTransition.player_cache = null
+		get_tree().quit(1)
+		return
+
+	# Transition: cache player and adopt into new level_d
+	SceneTransition.player_cache = player
+	if VfxManager != null and VfxManager.has_method("clear_temporary_effects"):
+		VfxManager.clear_temporary_effects()
+	var level_d: Node3D = level_scene.instantiate() as Node3D
+	add_child(level_d)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	var carried_fire: Character = (level_d as LevelTemplate).player
+	if carried_fire != player:
+		printerr("TEST FAILED: Restored player in level_d is not the cached player.")
+		SceneTransition.player_cache = null
+		get_tree().quit(1)
+		return
+
+	# Assert that fire DoT is cleared
+	if not carried_fire.attribute_component._dots.is_empty():
+		printerr("TEST FAILED: Active DoT survived level transition!")
+		SceneTransition.player_cache = null
+		get_tree().quit(1)
+		return
+
+	# Assert that StatusBurning visual node is completely freed/removed
+	var remaining_burning: Node = carried_fire.get_node_or_null("StatusBurning")
+	if remaining_burning != null and is_instance_valid(remaining_burning) and not remaining_burning.is_queued_for_deletion():
+		printerr("TEST FAILED: StatusBurning visual node survived level transition!")
+		SceneTransition.player_cache = null
+		get_tree().quit(1)
+		return
+
+
+	# Assert that temporary speed slow modifier was removed and speed is restored
+	var restored_spd: float = carried_fire.attribute_component.get_current(AttributeComponent.STAT_SPEED)
+	if not is_equal_approx(restored_spd, base_spd):
+		printerr("TEST FAILED: Speed not restored to base value. Got: ", restored_spd, " expected: ", base_spd)
+		SceneTransition.player_cache = null
+		get_tree().quit(1)
+		return
+
+	# Assert camera shake trauma is reset
+	var carried_cam: ShakeCamera3D = carried_fire.get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
+	if carried_cam != null and carried_cam.trauma > 0.0:
+		printerr("TEST FAILED: Camera trauma survived level transition. Trauma: ", carried_cam.trauma)
+		SceneTransition.player_cache = null
+		get_tree().quit(1)
+		return
+
+	# Assert VfxManager damage numbers were cleaned up
+	for child: Node in VfxManager.get_children():
+		if child is DamageNumber and is_instance_valid(child) and not child.is_queued_for_deletion():
+			printerr("TEST FAILED: Floating damage number survived transition!")
+			SceneTransition.player_cache = null
+			get_tree().quit(1)
+			return
+
+	# Assert that over several frames, no fire ticks damage the player
+	var health_before: float = carried_fire.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	for i: int in range(30):
+		await get_tree().physics_frame
+	var health_after: float = carried_fire.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	if not is_equal_approx(health_before, health_after):
+		printerr("TEST FAILED: Player continued taking fire damage after level transition!")
+		SceneTransition.player_cache = null
+		get_tree().quit(1)
+		return
+
+	print("Fire & temporary effects cleanup verified: DoT cleared, flames removed, speed restored, camera quiet, damage numbers gone, no passive damage.")
+
 	SceneTransition.player_cache = null
 	level_a.queue_free()
 	level_b.queue_free()
 	level_c.queue_free()
+	level_d.queue_free()
 
-	print("LEVEL TRANSITION RESET TEST PASSED!")
+	print("\n====================================================")
+	print("  ALL LEVEL TRANSITION RESET TESTS PASSED!")
+	print("  1. Transition-start cancel stops SFX and tint synchronously")
+	print("  2. Mid-dash cancel across restore")
+	print("  3. Mid-attack combo intent & hitbox cancel across restore")
+	print("  4. Physics-flush cancel safety")
+	print("  5. Fire, DoTs, status visuals, modifiers & camera shake cleared")
+	print("====================================================")
 	get_tree().quit(0)
+
 
 
 ## Set by _on_probe_body_entered once the flush-context cancel has run.

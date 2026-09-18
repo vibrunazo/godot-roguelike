@@ -454,6 +454,37 @@ func _has_effect_instance(instance_id: StringName) -> bool:
 	return false
 
 
+## Clears all temporary/timed gameplay effects from this component:
+## - All damage-over-time (DoTs) such as fire burn and poison.
+## - All timed stat modifiers (e.g. slows, temporary buffs/debuffs).
+## - All timed gameplay tag effects and their granted tags.
+## - All status visual effects (e.g. burning fire particles/lights).
+## Permanent base stats and permanent modifiers remain intact.
+func clear_temporary_effects() -> void:
+	for dot: Dictionary in _dots:
+		var instance_id: StringName = StringName(dot.get("id", &""))
+		_unregister_granted_tags(instance_id)
+	_dots.clear()
+
+	for timed_tag: Dictionary in _timed_tag_effects:
+		var instance_id: StringName = StringName(timed_tag.get("id", &""))
+		_unregister_granted_tags(instance_id)
+	_timed_tag_effects.clear()
+
+	for stat_name: StringName in STAT_NAMES:
+		var attr: Attribute = _stats[stat_name] as Attribute
+		if attr != null:
+			for mod_id: StringName in attr.get_timed_modifier_ids():
+				_unregister_granted_tags(mod_id)
+			if attr.clear_timed_modifiers():
+				attribute_changed.emit(stat_name, attr.current_value)
+				_clamp_pool_to_max(stat_name)
+
+	_reap_effect_tags()
+	_reap_effect_vfx()
+	_update_processing()
+
+
 ## Frees status visuals whose effect instance expired or was removed.
 ## Refreshes keep their id alive, so their visual survives untouched.
 func _reap_effect_vfx() -> void:
@@ -465,7 +496,12 @@ func _reap_effect_vfx() -> void:
 		var fx: Node = _effect_vfx[instance_id] as Node
 		_effect_vfx.erase(instance_id)
 		if fx != null and is_instance_valid(fx):
+			if fx is Node3D:
+				(fx as Node3D).visible = false
+			elif fx is CanvasItem:
+				(fx as CanvasItem).visible = false
 			fx.queue_free()
+
 
 
 ## Subtracts an instant delta from a pool (damage, mana spend), clamped at

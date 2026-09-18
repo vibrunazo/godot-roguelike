@@ -76,6 +76,29 @@ func has_timed_modifiers() -> bool:
 	return false
 
 
+## Returns an array of instance IDs for all active timed (duration > 0.0) modifiers.
+func get_timed_modifier_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for entry: Dictionary in _modifiers:
+		if float(entry.get("duration", 0.0)) > 0.0:
+			ids.append(StringName(entry.get("id", &"")))
+	return ids
+
+
+## Removes all timed modifiers (duration > 0.0). Returns true if any were removed.
+func clear_timed_modifiers() -> bool:
+	var removed: bool = false
+	for i: int in range(_modifiers.size() - 1, -1, -1):
+		var entry: Dictionary = _modifiers[i]
+		if float(entry.get("duration", 0.0)) > 0.0:
+			_modifiers.remove_at(i)
+			removed = true
+	if removed:
+		recalculate()
+	return removed
+
+
+
 ## Advances timed modifiers by delta, dropping expired entries. Returns true
 ## when at least one entry expired (callers should emit change signals then).
 func tick(delta: float) -> bool:
