@@ -42,7 +42,25 @@ func check_jump() -> bool:
 		return false
 	if jump_state == null or not character.is_on_floor():
 		return false
-	return character.state_machine.request_state(jump_state.name, {"direction": character.move_direction})
+	return character.state_machine.request_state(jump_state.name, {"direction": get_jump_launch_direction()})
+
+
+## Resolves the horizontal launch direction for a jump. While a target is
+## locked, any held movement input snaps the leap to the exact ground direction
+## towards that target (forward or strafing presses alike), so jump attacks
+## cannot miss the locked enemy laterally. Neutral input stays neutral: the
+## jump preserves whatever momentum the character already has.
+func get_jump_launch_direction() -> Vector3:
+	if character == null or character.move_direction.is_zero_approx():
+		return Vector3.ZERO
+	var target: Node3D = character.current_target
+	if target == null or not is_instance_valid(target):
+		return character.move_direction
+	var to_target: Vector3 = target.global_position - character.global_position
+	to_target.y = 0.0
+	if to_target.is_zero_approx():
+		return character.move_direction
+	return to_target.normalized()
 
 
 ## Consumes a pending attack intent and transitions to attack_state if available.

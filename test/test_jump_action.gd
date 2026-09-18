@@ -310,8 +310,7 @@ func _ready() -> void:
 	check(sm.state == p_attack, "Entered PlayerAttack")
 	await get_tree().physics_frame
 
-	# Press jump while attacking (neutral movement + no combat lock = jump).
-	TestUtils.clear_lock_and_hold_facing(player)
+	# Press jump while attacking (neutral input + locked target = jump).
 	sm._unhandled_input(jump_ev)
 	check(sm.state == player_jump, "PlayerAttack successfully cancelled into PlayerJump")
 
@@ -335,9 +334,8 @@ func _ready() -> void:
 	check(sm.state == p_attack3, "Entered PlayerAttack3")
 	await get_tree().physics_frame
 
-	# Press jump while attacking Attack 3 (neutral + unlocked = jump, but
+	# Press jump while attacking Attack 3 (neutral + locked = jump, but
 	# PlayerAttack3 forbids cancels, so it must be ignored).
-	TestUtils.clear_lock_and_hold_facing(player)
 	sm._unhandled_input(jump_ev)
 	check(sm.state == p_attack3, "PlayerAttack3 cannot be cancelled by jump (remains in PlayerAttack3)")
 
@@ -361,18 +359,33 @@ func _ready() -> void:
 		if player.is_on_floor() and sm.state == player_run:
 			break
 
-	# 8A: Jump forward with full speed (8 m/s) and jump kick
-	player.auto_aim_range = 0.0
-	player.current_target = null
+	# 8A: Jump neutrally (input must be neutral: a held direction with a combat
+	# lock snaps the leap onto the locked foe) and jump kick mid-air. The jump
+	# must be ordered straight out of PlayerRun, before any attack-cancel
+	# residue can stall the attack chain window. The staged lock foe stays
+	# alive: out of combat Space dashes by design, so this part jumps in
+	# combat, with the foe's bearing as the kick's aim.
+	var reset_8a := func() -> void:
+		player.global_position = spawn_pos
+		player.velocity = Vector3.ZERO
+		player.move_direction = Vector3.ZERO
+		if sm.state != player_run:
+			sm.request_state(player_run.name)
+	reset_8a.call()
+	for i: int in range(15):
+		await get_tree().physics_frame
+		if player.is_on_floor() and sm.state == player_run:
+			break
+	reset_8a.call()
+	check(sm.state == player_run, "Back in PlayerRun before the JumpKick test (state: %s)" % sm.state.name)
+	player.current_target = jump_lock_foe
 	player.aim_direction = Vector3(0.0, 0.0, 1.0)
-	player.move_direction = Vector3(0.0, 0.0, 1.0)
+	player.move_direction = Vector3.ZERO
 	sm._unhandled_input(jump_ev)
 	check(sm.state == player_jump, "Jump started for JumpKick test")
 
 
 	var expected_speed: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED) if player.attribute_component != null else 6.0
-	var initial_jump_speed_z: float = player.velocity.z
-	check(initial_jump_speed_z >= expected_speed - 0.5, "Forward jump has full speed (vz: %.2f >= %.2f)" % [initial_jump_speed_z, expected_speed - 0.5])
 
 
 
@@ -385,19 +398,21 @@ func _ready() -> void:
 	check(sm.state == player_jump_kick, "Transitioned to PlayerJumpKick from mid-air jump")
 	check(player_jump_kick.attack_animation_name == "JumpKick", "PlayerJumpKick uses JumpKick animation")
 
-	# Wait for lunge to activate and verify dash_speed adds to jump velocity (speeds up, not slows down)
+	# Wait for the lunge to activate and verify dash_speed adds horizontal kick
+	# velocity on top of the (here neutral) jump carry (speeds up, never stalls).
 	var saw_speedup: bool = false
-	var max_kick_speed_z: float = initial_jump_speed_z
+	var max_kick_speed_h: float = 0.0
 	for i: int in range(40):
 		await get_tree().physics_frame
-		if player.velocity.z > max_kick_speed_z:
-			max_kick_speed_z = player.velocity.z
-		if player_jump_kick.lunging and player.velocity.z > initial_jump_speed_z:
+		var h_speed: float = Vector2(player.velocity.x, player.velocity.z).length()
+		if h_speed > max_kick_speed_h:
+			max_kick_speed_h = h_speed
+		if player_jump_kick.lunging and h_speed > 0.1:
 			saw_speedup = true
 		if player.is_on_floor():
 			break
 
-	check(saw_speedup, "Jump kick dash speed adds to velocity (max vz: %.2f > %.2f, speeds up)" % [max_kick_speed_z, initial_jump_speed_z])
+	check(saw_speedup, "Jump kick dash speed adds to velocity (max horizontal: %.2f, speeds up from neutral)" % max_kick_speed_h)
 
 	# Wait for landing: landing cancels jump kick instantly into PlayerRun
 	for i: int in range(120):
@@ -473,7 +488,7 @@ func _ready() -> void:
 	if foe.ai_state_machine != null:
 		foe.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
 	input_comp.set_physics_process(false)
-	player.move_direction = Vector3(0.0, 0.0, 1.0)
+	player.move_direction = Vector3.ZERO
 	sm._unhandled_input(jump_ev)
 	check(sm.state == player_jump, "Jump started for feet-hitbox test")
 	sm._unhandled_input(attack_ev)
@@ -561,6 +576,11 @@ func _ready() -> void:
 		if player.is_on_floor() and sm.state == player_run:
 			break
 
+	# Part 10 is done with locks: free the staged foe so only Part 11's own
+	# lock setup drives dispatch from here on.
+	jump_lock_foe.queue_free()
+	player.current_target = null
+
 	# Test alias setter
 	player_jump.movement_speed_ration = 1.0
 
@@ -624,17 +644,19 @@ func _ready() -> void:
 				break
 		check(sm.state == player_run, "Out-of-combat dash returned to PlayerRun")
 
-	# 11B: In combat with a locked target to the north (camera-relative forward),
-	# the button follows the example matrix: neutral/W jump, A/D/S dash. A frozen
-	# melee enemy acts as the locked target. The aim bubble is tightened so only
-	# the staged foe qualifies for the lock.
+	# 11B: In combat with a locked target to the north (+Z at the spawn point),
+	# the button follows the example matrix: neutral/towards jumps, sideways/
+	# backwards dashes. A frozen melee enemy acts as the locked target and the
+	# aim bubble is tightened so only it qualifies. Input vectors are expressed
+	# as raw world directions (input polling is disabled, so the camera is
+	# irrelevant here): (0,0,-1) means holding -Z, i.e. "backwards".
 	player.auto_aim_range = 2.5
 	var lock_foe: Character = MeleeEnemyScene.instantiate() as Character
 	level.add_child(lock_foe)
 	if lock_foe.ai_state_machine != null:
 		lock_foe.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
-	## Lock-on offset placing the foe "north": along camera-relative forward (W).
-	var north: Vector3 = (to_world.call(Vector2(0.0, -1.0)) as Vector3) * 2.0
+	## Lock-on offset placing the foe dead ahead of the held "forward" axis (+Z).
+	var north: Vector3 = Vector3(0.0, 0.0, 2.0)
 
 	## Teleports the foe to the given world offset from the player and waits one
 	## physics tick so the auto-aim lock lands on it.
@@ -644,17 +666,17 @@ func _ready() -> void:
 		player.force_retarget()
 		await get_tree().physics_frame
 
-	## Holds the given camera-relative input, presses Space, and returns the
-	## resulting state name. Resets the player into a clean PlayerRun first.
-	var press_space := func(input_vec: Vector2) -> String:
+	## Holds the given world-space input direction, presses Space, and returns
+	## the resulting state name. Resets the player into a clean PlayerRun first.
+	var press_space := func(input_dir: Vector3) -> String:
 		reset_run.call(true)
 		await await_run.call()
 		reset_run.call(true)
 		await lock_target.call(north)
 		if player.current_target != lock_foe:
-			printerr("TEST FAILED: lost the staged foe lock before pressing Space (input %s)." % str(input_vec))
+			printerr("TEST FAILED: lost the staged foe lock before pressing Space (input %s)." % str(input_dir))
 			return "<no-lock>"
-		player.move_direction = (to_world.call(input_vec) as Vector3) if input_vec != Vector2.ZERO else Vector3.ZERO
+		player.move_direction = input_dir
 		sm._unhandled_input(jump_ev)
 		return sm.state.name
 
@@ -664,24 +686,52 @@ func _ready() -> void:
 	await lock_target.call(north)
 	check(player.current_target == lock_foe, "In-combat setup: auto-aim locks onto the staged foe")
 
-	var neutral_state: String = await press_space.call(Vector2.ZERO)
+	var neutral_state: String = await press_space.call(Vector3.ZERO)
 	check(neutral_state == player_jump.name, "In combat: neutral Space jumps (state: %s)" % neutral_state)
+	if neutral_state == player_jump.name:
+		var neutral_h: Vector2 = Vector2(player.velocity.x, player.velocity.z)
+		check(neutral_h.length() < 0.1, "Neutral jump stays neutral (horizontal speed: %.2f)" % neutral_h.length())
 
-	var forward_state: String = await press_space.call(Vector2(0.0, -1.0))
-	check(forward_state == player_jump.name, "In combat: W + Space jumps towards the target (state: %s)" % forward_state)
-	check(player.velocity.y > 0.0, "In-combat W jump gains upward velocity (vy: %.2f)" % player.velocity.y)
+	var forward_state: String = await press_space.call(Vector3(0.0, 0.0, 1.0))
+	check(forward_state == player_jump.name, "In combat: towards-target + Space jumps (state: %s)" % forward_state)
+	if forward_state == player_jump.name:
+		check(player.velocity.y > 0.0, "In-combat forward jump gains upward velocity (vy: %.2f)" % player.velocity.y)
 
-	for side_vec: Vector2 in [Vector2(-1.0, 0.0), Vector2(1.0, 0.0), Vector2(0.0, 1.0)]:
-		var dash_result: String = await press_space.call(side_vec)
-		check(dash_result == dash_state_node.name, "In combat: %s + Space dashes (state: %s)" % [str(side_vec), dash_result])
+	for side_dir: Vector3 in [Vector3(-1.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0)]:
+		var dash_result: String = await press_space.call(side_dir)
+		check(dash_result == dash_state_node.name, "In combat: sideways/backwards %s + Space dashes (state: %s)" % [str(side_dir), dash_result])
 		if dash_result == dash_state_node.name:
-			var expected_dash: Vector3 = to_world.call(side_vec) as Vector3
 			var actual_dash: Vector3 = dash_state_node.get("direction") as Vector3
-			check(actual_dash.dot(expected_dash) > 0.99, "Dodge dash follows the held direction (dot: %.3f)" % actual_dash.dot(expected_dash))
+			check(actual_dash.dot(side_dir) > 0.99, "Dodge dash follows the held direction (dot: %.3f)" % actual_dash.dot(side_dir))
 		for i: int in range(90):
 			await get_tree().physics_frame
 			if sm.state == player_run:
 				break
+
+	# 11C: A towards-target press snaps the leap onto the exact direction of the
+	# locked foe. With the foe parked 30 degrees off the forward axis, W + Space
+	# launches along the foe's bearing (so the follow-up kick cannot miss), not
+	# along the raw input axis.
+	var angled_offset: Vector3 = Vector3(0.0, 0.0, 2.0).rotated(Vector3.UP, deg_to_rad(30.0))
+	var expected_snap: Vector3 = angled_offset.normalized()
+	reset_run.call(true)
+	await await_run.call()
+	reset_run.call(true)
+	await lock_target.call(angled_offset)
+	check(player.current_target == lock_foe, "Snap setup: auto-aim locks the angled foe")
+	player.move_direction = Vector3(0.0, 0.0, 1.0)
+	sm._unhandled_input(jump_ev)
+	check(sm.state == player_jump, "Snap setup: angled W + Space jumps (state: %s)" % sm.state.name)
+	if sm.state == player_jump:
+		var launch_h: Vector3 = Vector3(player.velocity.x, 0.0, player.velocity.z)
+		check(not launch_h.is_zero_approx(), "Angled forward jump launches horizontally towards the foe")
+		var launch_dir: Vector3 = launch_h.normalized() if not launch_h.is_zero_approx() else Vector3.ZERO
+		check(launch_dir.dot(expected_snap) > 0.99, "Forward jump snaps to the locked target (dot: %.3f vs 30deg off-axis)" % launch_dir.dot(expected_snap))
+	# Let the snap jump land before wrapping up.
+	for i: int in range(120):
+		await get_tree().physics_frame
+		if player.is_on_floor() and sm.state == player_run:
+			break
 
 	# Cleanup: restore input polling and auto-aim, hold the facing, drop the foe.
 	input_comp.set_physics_process(true)
