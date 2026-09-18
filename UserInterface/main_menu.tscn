@@ -85,10 +85,6 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[sub_resource type="StyleBoxLine" id="StyleBoxLine_sep"]
-color = Color(0.309804, 0.658824, 0.803922, 0.501961)
-thickness = 2
-
 [node name="MainMenu" type="CanvasLayer"]
 process_mode = 3
 layer = 100
@@ -132,39 +128,25 @@ layout_mode = 2
 theme = SubResource("Theme_menu_buttons")
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="RightMarginContainer/CenterBox/PanelContainer"]
+[node name="ButtonsVBox" type="VBoxContainer" parent="RightMarginContainer/CenterBox/PanelContainer"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 14
 
-[node name="MenuHeader" type="Label" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.75, 0.88, 1)
-theme_override_font_sizes/font_size = 20
-text = "MAIN MENU"
-horizontal_alignment = 1
-
-[node name="HSeparator" type="HSeparator" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_styles/separator = SubResource("StyleBoxLine_sep")
-
-[node name="ButtonsVBox" type="VBoxContainer" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="StartButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox"]
+[node name="StartButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/ButtonsVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 42)
 layout_mode = 2
 text = "Start Game"
 
-[node name="FullscreenButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox"]
+[node name="FullscreenButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/ButtonsVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 42)
 layout_mode = 2
 text = "Toggle Fullscreen"
 
-[node name="QuitButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox"]
+[node name="QuitButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/ButtonsVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 42)
 layout_mode = 2
 text = "Quit Game"
+

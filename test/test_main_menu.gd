@@ -51,6 +51,16 @@ func _ready() -> void:
 		return
 	print("Verified initial focus on StartButton.")
 
+	# Verify that no label or UI node displays "main menu"
+	for child in menu.find_children("*", "Label", true, false):
+		var lbl: Label = child as Label
+		if lbl != null and lbl.text.to_lower().contains("main menu"):
+			printerr("TEST FAILED: Found prohibited 'main menu' text in Label: ", lbl.name)
+			get_tree().quit(1)
+			return
+	print("Verified that 'main menu' text does not appear anywhere in menu labels.")
+
+
 	# ---------------------------------------------------------
 	# PART 2: Fullscreen Button Toggle Logic
 	# ---------------------------------------------------------
