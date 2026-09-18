@@ -183,11 +183,14 @@ func _ready() -> void:
 	if not hit_again or not slash.is_in_hitstop():
 		_fail("Second attack did not reach hitstop for the cancel test.")
 		return
+	# Dash-cancel via the shared jump/dash button: with the lock cleared the
+	# button commands a dash even mid-attack.
 	Input.action_press("move_forward")
 	await get_tree().physics_frame
 	var dash_event := InputEventAction.new()
-	dash_event.action = "dash"
+	dash_event.action = "jump"
 	dash_event.pressed = true
+	TestUtils.clear_lock_and_hold_facing(player)
 	sm._unhandled_input(dash_event)
 	Input.action_release("move_forward")
 	if sm.state.name != "PlayerDash":

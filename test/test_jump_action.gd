@@ -3,6 +3,7 @@ extends Node
 const PlayerJump = preload("res://StateMachine/PlayerStates/player_jump.gd")
 const PlayerJumpKick = preload("res://StateMachine/PlayerStates/player_jump_kick.gd")
 const MeleeEnemyScene := preload("res://Enemy/melee_enemy.tscn")
+const TestUtils = preload("res://test/test_utils.gd")
 
 var failures: int = 0
 
@@ -98,6 +99,27 @@ func _ready() -> void:
 	check(player.is_on_floor() and sm.state == player_run, "Player settled on floor in PlayerRun")
 	var start_y: float = player.global_position.y
 	var spawn_pos: Vector3 = player.global_position
+
+	# Space is the shared jump/dash button: out of combat it always dashes, so
+	# the jump-only parts below pin a deterministic combat lock instead. All
+	# wave-spawned roamers are removed and a single frozen foe is staged in the
+	# +Z direction these parts treat as "forward", so neutral or +Z movement
+	# resolves to jump no matter where the camera or enemies happen to be.
+	for roamers: Node in get_tree().get_nodes_in_group("enemy"):
+		roamers.queue_free()
+	var wave_gate: Node = level.get_node_or_null("WaveObjective")
+	if wave_gate != null:
+		wave_gate.process_mode = Node.PROCESS_MODE_DISABLED
+	var jump_lock_foe: Character = MeleeEnemyScene.instantiate() as Character
+	level.add_child(jump_lock_foe)
+	jump_lock_foe.global_position = spawn_pos + Vector3(0.0, 0.0, 3.0)
+	if jump_lock_foe.ai_state_machine != null:
+		jump_lock_foe.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+	for i: int in range(5):
+		await get_tree().physics_frame
+		if player.current_target == jump_lock_foe:
+			break
+	check(player.current_target == jump_lock_foe, "Jump-only setup: auto-aim locks the staged foe")
 
 	# Dispatch jump action
 	var jump_ev: InputEventAction = InputEventAction.new()
@@ -288,7 +310,8 @@ func _ready() -> void:
 	check(sm.state == p_attack, "Entered PlayerAttack")
 	await get_tree().physics_frame
 
-	# Press jump while attacking
+	# Press jump while attacking (neutral movement + no combat lock = jump).
+	TestUtils.clear_lock_and_hold_facing(player)
 	sm._unhandled_input(jump_ev)
 	check(sm.state == player_jump, "PlayerAttack successfully cancelled into PlayerJump")
 
@@ -312,7 +335,9 @@ func _ready() -> void:
 	check(sm.state == p_attack3, "Entered PlayerAttack3")
 	await get_tree().physics_frame
 
-	# Press jump while attacking
+	# Press jump while attacking Attack 3 (neutral + unlocked = jump, but
+	# PlayerAttack3 forbids cancels, so it must be ignored).
+	TestUtils.clear_lock_and_hold_facing(player)
 	sm._unhandled_input(jump_ev)
 	check(sm.state == p_attack3, "PlayerAttack3 cannot be cancelled by jump (remains in PlayerAttack3)")
 
@@ -538,8 +563,133 @@ func _ready() -> void:
 
 	# Test alias setter
 	player_jump.movement_speed_ration = 1.0
+
+
 	check(is_equal_approx(player_jump.movement_speed_ratio, 1.0), "Setting movement_speed_ration alias updates movement_speed_ratio to 1.0")
 	input_comp.set_physics_process(true)
+
+
+	# =========================================================================
+	# PART 11: Situational Jump/Dash Dispatch (single Space button)
+	# =========================================================================
+	print("\n>>> PART 11: Situational Jump/Dash Dispatch (shared Space button)")
+	var dash_state_node: CharacterState = sm.get_node_or_null("PlayerDash") as CharacterState
+	check(dash_state_node != null, "PlayerDash state exists under StateMachine")
+	var camera: Camera3D = player.get_viewport().get_camera_3d()
+	var cam_yaw: float = camera.global_rotation.y if camera != null else 0.0
+
+	## Rotates a camera-relative WASD input vector (x = right, y = back) into a
+	## world-space direction, mirroring PlayerInputComponent.update_movement_intent.
+	var to_world := func(input_vec: Vector2) -> Vector3:
+		return Vector3(input_vec.x, 0.0, input_vec.y).rotated(Vector3.UP, cam_yaw).normalized()
+
+	## Puts the player back on the spawn floor in PlayerRun with clean motion and
+	## a fresh dash cooldown, holding a facing snapshot while physics ticks.
+	var reset_run := func(stop_cooldown: bool) -> void:
+		player.global_position = spawn_pos
+		player.velocity = Vector3.ZERO
+		if stop_cooldown:
+			var dash_cd: Timer = player.get_node_or_null("DashCooldown") as Timer
+			if dash_cd != null:
+				dash_cd.stop()
+		if sm.state != player_run:
+			sm.request_state(player_run.name)
+		TestUtils.clear_lock_and_hold_facing(player)
+
+	## Waits until the player lands back in PlayerRun.
+	var await_run := func() -> bool:
+		for i: int in range(120):
+			await get_tree().physics_frame
+			if player.is_on_floor() and sm.state == player_run:
+				return true
+		return false
+
+	input_comp.set_physics_process(false)
+
+	# 11A: Out of combat (no locked target), Space always dashes - even standing
+	# still or moving in any direction. Auto-aim acquisition is disabled so a
+	# roaming level enemy can never roll a surprise lock mid-press.
+	player.auto_aim_range = 0.0
+	for dir_vec: Vector2 in [Vector2.ZERO, Vector2(0.0, -1.0), Vector2(1.0, 0.0)]:
+		reset_run.call(true)
+		await await_run.call()
+		reset_run.call(true)
+		player.current_target = null
+		player.move_direction = (to_world.call(dir_vec) as Vector3) if dir_vec != Vector2.ZERO else Vector3.ZERO
+		sm._unhandled_input(jump_ev)
+		check(sm.state == dash_state_node, "Out of combat: Space dashes with held input %s (state: %s)" % [str(dir_vec), sm.state.name])
+		for i: int in range(90):
+			await get_tree().physics_frame
+			if sm.state == player_run:
+				break
+		check(sm.state == player_run, "Out-of-combat dash returned to PlayerRun")
+
+	# 11B: In combat with a locked target to the north (camera-relative forward),
+	# the button follows the example matrix: neutral/W jump, A/D/S dash. A frozen
+	# melee enemy acts as the locked target. The aim bubble is tightened so only
+	# the staged foe qualifies for the lock.
+	player.auto_aim_range = 2.5
+	var lock_foe: Character = MeleeEnemyScene.instantiate() as Character
+	level.add_child(lock_foe)
+	if lock_foe.ai_state_machine != null:
+		lock_foe.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+	## Lock-on offset placing the foe "north": along camera-relative forward (W).
+	var north: Vector3 = (to_world.call(Vector2(0.0, -1.0)) as Vector3) * 2.0
+
+	## Teleports the foe to the given world offset from the player and waits one
+	## physics tick so the auto-aim lock lands on it.
+	var lock_target := func(offset: Vector3) -> void:
+		lock_foe.velocity = Vector3.ZERO
+		lock_foe.global_position = player.global_position + offset
+		player.force_retarget()
+		await get_tree().physics_frame
+
+	## Holds the given camera-relative input, presses Space, and returns the
+	## resulting state name. Resets the player into a clean PlayerRun first.
+	var press_space := func(input_vec: Vector2) -> String:
+		reset_run.call(true)
+		await await_run.call()
+		reset_run.call(true)
+		await lock_target.call(north)
+		if player.current_target != lock_foe:
+			printerr("TEST FAILED: lost the staged foe lock before pressing Space (input %s)." % str(input_vec))
+			return "<no-lock>"
+		player.move_direction = (to_world.call(input_vec) as Vector3) if input_vec != Vector2.ZERO else Vector3.ZERO
+		sm._unhandled_input(jump_ev)
+		return sm.state.name
+
+	reset_run.call(false)
+	await await_run.call()
+	reset_run.call(false)
+	await lock_target.call(north)
+	check(player.current_target == lock_foe, "In-combat setup: auto-aim locks onto the staged foe")
+
+	var neutral_state: String = await press_space.call(Vector2.ZERO)
+	check(neutral_state == player_jump.name, "In combat: neutral Space jumps (state: %s)" % neutral_state)
+
+	var forward_state: String = await press_space.call(Vector2(0.0, -1.0))
+	check(forward_state == player_jump.name, "In combat: W + Space jumps towards the target (state: %s)" % forward_state)
+	check(player.velocity.y > 0.0, "In-combat W jump gains upward velocity (vy: %.2f)" % player.velocity.y)
+
+	for side_vec: Vector2 in [Vector2(-1.0, 0.0), Vector2(1.0, 0.0), Vector2(0.0, 1.0)]:
+		var dash_result: String = await press_space.call(side_vec)
+		check(dash_result == dash_state_node.name, "In combat: %s + Space dashes (state: %s)" % [str(side_vec), dash_result])
+		if dash_result == dash_state_node.name:
+			var expected_dash: Vector3 = to_world.call(side_vec) as Vector3
+			var actual_dash: Vector3 = dash_state_node.get("direction") as Vector3
+			check(actual_dash.dot(expected_dash) > 0.99, "Dodge dash follows the held direction (dot: %.3f)" % actual_dash.dot(expected_dash))
+		for i: int in range(90):
+			await get_tree().physics_frame
+			if sm.state == player_run:
+				break
+
+	# Cleanup: restore input polling and auto-aim, hold the facing, drop the foe.
+	input_comp.set_physics_process(true)
+	player.auto_aim_range = input_comp.auto_aim_range
+	reset_run.call(false)
+	await await_run.call()
+	reset_run.call(false)
+	lock_foe.queue_free()
 
 	print("\n====================================================================")
 	if failures == 0:

@@ -1,6 +1,20 @@
 class_name TestUtils
 extends RefCounted
 
+## Clears the character's auto-aim lock and holds a facing snapshot (mesh-forward)
+## while physics ticks. Level enemies wander into auto-aim range, so tests that
+## need deterministic jump/dash routing call this before pressing the jump
+## button: no lock means the button always commands a dash, while the facing
+## snapshot keeps stationary dash directions stable regardless of roaming enemies.
+static func clear_lock_and_hold_facing(character: Character) -> void:
+	var facing: Vector3 = Vector3.FORWARD
+	if character.mesh_mount != null:
+		facing = character.mesh_mount.global_basis.z.normalized()
+	character.current_target = null
+	character.move_direction = Vector3.ZERO
+	character.face_target = facing
+
+
 ## Finds the first damageable collision object (dummy/enemy) in the level, excluding the player.
 static func find_dummy(level: Node, exclude: Node = null) -> CollisionObject3D:
 	for child: Node in level.get_children():

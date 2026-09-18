@@ -219,10 +219,12 @@ func _ready() -> void:
 		return
 	print("Entered PlayerAttack...")
 	
-	# Immediately send dash input
+	# Immediately send jump input (the shared jump/dash button); with no target
+	# locked in combat, the button commands a dash.
 	var dash_event := InputEventAction.new()
-	dash_event.action = "dash"
+	dash_event.action = "jump"
 	dash_event.pressed = true
+	TestUtils.clear_lock_and_hold_facing(player)
 	sm._unhandled_input(dash_event)
 	
 	if sm.state.name != "PlayerDash":
@@ -516,14 +518,16 @@ func _ready() -> void:
 		if input_comp.can_dash() and sm.state.name == "PlayerRun":
 			break
 
-	# 1. Test stationary dash (no WASD pressed)
+	# 1. Test stationary dash (no WASD pressed): out of combat the shared
+	# jump/dash button commands a dash in the facing direction.
 	if not input_comp.can_dash():
 		printerr("TEST FAILED: input_comp.can_dash() returned false when stationary with cooldown stopped.")
 		get_tree().quit(1)
 		return
 	var stationary_dash := InputEventAction.new()
-	stationary_dash.action = "dash"
+	stationary_dash.action = "jump"
 	stationary_dash.pressed = true
+	TestUtils.clear_lock_and_hold_facing(player)
 	sm._unhandled_input(stationary_dash)
 
 	if sm.state.name != "PlayerDash":
@@ -572,7 +576,9 @@ func _ready() -> void:
 		return
 	print("Attack 3 successfully queued in PlayerAttack2 (queued_attack = true).")
 
-	# Dash cancel out of Attack 2 before it reaches Attack 3
+	# Dash cancel out of Attack 2 before it reaches Attack 3: out of combat the
+	# shared jump/dash button commands a dash even mid-attack.
+	TestUtils.clear_lock_and_hold_facing(player)
 	sm._unhandled_input(stationary_dash)
 
 	if sm.state.name != "PlayerDash":

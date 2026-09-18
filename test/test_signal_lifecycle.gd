@@ -95,12 +95,14 @@ func _part2_no_stale_attack_callback() -> void:
 	check(sm.state.name == "PlayerAttack", "click entered PlayerAttack")
 	check(anim_tree.animation_finished.is_connected(attack_state.finish_attack), "enter() wired animation_finished via one-shot")
 
-	# Dash-cancel out of the attack (movement held so can_dash() passes).
+	# Dash-cancel out of the attack via the shared jump/dash button: clearing the
+	# auto-aim lock makes the button command a dash (out-of-combat rule).
 	Input.action_press("move_forward")
 	await get_tree().physics_frame
 	var dash_event := InputEventAction.new()
-	dash_event.action = "dash"
+	dash_event.action = "jump"
 	dash_event.pressed = true
+	TestUtils.clear_lock_and_hold_facing(player)
 	sm._unhandled_input(dash_event)
 	check(sm.state.name == "PlayerDash", "dash cancel interrupted into PlayerDash")
 	check(not anim_tree.animation_finished.is_connected(attack_state.finish_attack), "exit() removed animation_finished wiring")

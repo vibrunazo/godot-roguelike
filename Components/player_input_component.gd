@@ -12,6 +12,10 @@ extends Node
 @export var damage_tint: ColorRect
 ## Range in meters for auto-aim target acquisition (<= 0.0 disables auto-aim).
 @export var auto_aim_range: float = 5.0
+## Minimum dot product between the held movement direction and the direction
+## towards the locked auto-aim target for a jump order to stay a jump. Lower
+## alignment (sideways or backwards movement) turns the order into a dash.
+@export var jump_dash_alignment: float = 0.5
 
 ## Active damage vignette tween, tracked so a scene transition (or any other
 ## cancel source) can kill a mid-flash tween instead of letting it resume later.
@@ -126,22 +130,48 @@ func order_dash() -> bool:
 
 
 ## Raises an edge-triggered jump intent on the character for body states to consume.
-func command_jump() -> void:
-	if character != null:
-		character.jump_requested = true
-
-
-## PlayerController jump order: raises a jump intent and immediately drives the
-## current body state's shared check.
+## PlayerController jump order: the jump button is context-sensitive. Out of
+## combat (no auto-aim target locked) it always commands a dash; in combat it
+## commands a jump when the held movement is neutral or towards the locked
+## target, and a dash when strafing sideways or retreating backwards. Raises
+## the chosen intent and immediately drives the current body state's shared
+## check, so event-driven orders transition synchronously.
 func order_jump() -> bool:
 	if character == null or character.state_machine == null:
 		return false
+	if _should_jump_command_dash():
+		return order_dash()
 	command_jump()
 	var body_state: CharacterState = character.state_machine.state as CharacterState
 	if body_state == null:
 		character.jump_requested = false
 		return false
 	return body_state.check_jump()
+
+
+## Returns true when a jump order must be routed to the dash command instead:
+## always while out of combat (no locked auto-aim target), or in combat when
+## the held movement direction is not aligned with the direction towards the
+## locked target (sideways/backwards dodge). Neutral combat input stays a jump.
+func _should_jump_command_dash() -> bool:
+	if character == null:
+		return false
+	var target: Node3D = character.current_target
+	if target == null or not is_instance_valid(target):
+		return true
+	if character.move_direction.is_zero_approx():
+		return false
+	var to_target: Vector3 = target.global_position - character.global_position
+	to_target.y = 0.0
+	if to_target.is_zero_approx():
+		return false
+	return character.move_direction.normalized().dot(to_target.normalized()) < jump_dash_alignment
+
+
+## Raises an edge-triggered jump intent on the character for body states to consume.
+func command_jump() -> void:
+	if character != null:
+		character.jump_requested = true
 
 
 ## Flashes the red damage vignette when the character takes damage.

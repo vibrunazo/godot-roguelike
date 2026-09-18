@@ -40,10 +40,12 @@ func request_state(target_state_path: String, data: Dictionary = {}) -> bool:
 	return true
 
 
-## Test/live-input bridge: routes click/dash events through the PlayerController's
+## Test/live-input bridge: routes click/jump events through the PlayerController's
 ## orders, so existing sm._unhandled_input(...) drivers (and live input) keep the
 ## exact synchronous transition timing raw state input had. States additionally
-## consume intents in physics_update for AI-raised flags.
+## consume intents in physics_update for AI-raised flags. Dash and jump share the
+## single "jump" button: PlayerInputComponent.order_jump() picks between them
+## based on combat lock-on and held movement direction.
 func _bridge_action_to_intent(event: InputEvent) -> void:
 	var body_state: CharacterState = state as CharacterState
 	if body_state == null or body_state.character == null:
@@ -53,8 +55,6 @@ func _bridge_action_to_intent(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("click"):
 		input_comp.order_attack()
-	elif event.is_action_pressed("dash"):
-		input_comp.order_dash()
 	elif event.is_action_pressed("jump"):
 		input_comp.order_jump()
 
