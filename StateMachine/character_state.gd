@@ -34,15 +34,21 @@ func check_dash() -> bool:
 
 
 ## Consumes a pending jump intent and transitions to jump_state if available and on floor.
-## Returns true when the intent was consumed and acted upon.
-func check_jump() -> bool:
+## Returns true when the intent was consumed and acted upon. The optional
+## launch_ratio overrides the jump state's default movement_speed_ratio for the
+## leap (values < 0.0 keep the default); the state restores its own default on
+## exit so the override never leaks into later jumps.
+func check_jump(launch_ratio: float = -1.0) -> bool:
 	if character == null or character.state_machine == null:
 		return false
 	if not character.consume_jump_request():
 		return false
 	if jump_state == null or not character.is_on_floor():
 		return false
-	return character.state_machine.request_state(jump_state.name, {"direction": get_jump_launch_direction()})
+	var data: Dictionary = {"direction": get_jump_launch_direction()}
+	if launch_ratio >= 0.0:
+		data["movement_speed_ratio"] = launch_ratio
+	return character.state_machine.request_state(jump_state.name, data)
 
 
 ## Resolves the horizontal launch direction for a jump. While a target is

@@ -16,6 +16,16 @@ extends Node
 ## towards the locked auto-aim target for a jump order to stay a jump. Lower
 ## alignment (sideways or backwards movement) turns the order into a dash.
 @export var jump_dash_alignment: float = 0.5
+## Desired landing offset in front of the locked target, in meters. The input
+## controller sizes a forward jump's movement speed ratio so the leap lands
+## this far short of the target, leaving room for the striking kick.
+@export var jump_landing_gap: float = 1.0
+## Minimum clamped movement speed ratio applied by the dynamic forward-jump
+## sizing below (the jump always drifts at least this fast).
+@export var min_forward_jump_ratio: float = 0.2
+## Maximum clamped movement speed ratio applied by the dynamic forward-jump
+## sizing below (the jump never exceeds full walk speed horizontally).
+@export var max_forward_jump_ratio: float = 1.0
 
 ## Active damage vignette tween, tracked so a scene transition (or any other
 ## cancel source) can kill a mid-flash tween instead of letting it resume later.
@@ -146,7 +156,7 @@ func order_jump() -> bool:
 	if body_state == null:
 		character.jump_requested = false
 		return false
-	return body_state.check_jump()
+	return body_state.check_jump(get_forward_jump_ratio())
 
 
 ## Returns true when a jump order must be routed to the dash command instead:
@@ -172,6 +182,51 @@ func _should_jump_command_dash() -> bool:
 func command_jump() -> void:
 	if character != null:
 		character.jump_requested = true
+
+
+## Computes the dynamic movement speed ratio for a combat forward jump so the
+## leap lands jump_landing_gap meters short of the locked auto-aim target.
+## Derives the ballistic air time from the state's jump_height (same launch
+## speed/impulse/gravity), predicts the landing distance at full walk speed,
+## then scales down to stop at (target distance - gap), clamped between
+## min/max_forward_jump_ratio. Returns -1.0 when no ratio should apply: no
+## locked target, neutral input, or a backward dodge (those keep the state's
+## default ratio).
+func get_forward_jump_ratio() -> float:
+	if character == null or character.state_machine == null:
+		return -1.0
+	if character.move_direction.is_zero_approx():
+		return -1.0
+	var target: Node3D = character.current_target
+	if target == null or not is_instance_valid(target):
+		return -1.0
+	var to_target: Vector3 = target.global_position - character.global_position
+	to_target.y = 0.0
+	var distance: float = to_target.length()
+	if is_zero_approx(distance):
+		return -1.0
+	if character.move_direction.normalized().dot(to_target / distance) < jump_dash_alignment:
+		return -1.0
+	var body_state: CharacterState = character.state_machine.state as CharacterState
+	if body_state == null or body_state.jump_state == null:
+		return -1.0
+	var jump_height: float = 0.0
+	if body_state.jump_state.get("jump_height") != null:
+		jump_height = float(body_state.jump_state.get("jump_height"))
+	if jump_height <= 0.0:
+		return -1.0
+	var speed: float = character.attribute_component.get_current(AttributeComponent.STAT_SPEED) if character.attribute_component != null else 8.0
+	if speed <= 0.0:
+		return -1.0
+	var gravity_mag: float = character.get_gravity().length()
+	if is_zero_approx(gravity_mag):
+		gravity_mag = 9.8
+	var air_time: float = 2.0 * sqrt(2.0 * jump_height / gravity_mag)
+	var full_range: float = speed * air_time
+	if full_range <= 0.0:
+		return -1.0
+	var desired_range: float = distance - jump_landing_gap
+	return clampf(desired_range / full_range, min_forward_jump_ratio, max_forward_jump_ratio)
 
 
 ## Flashes the red damage vignette when the character takes damage.

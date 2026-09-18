@@ -373,12 +373,12 @@ func check_dash() -> bool:
 
 ## Jump-cancel gate: only attacks with dash_cancel set can be jump-cancelled.
 ## The intent is consumed when gated off so the press never leaks into a later state.
-func check_jump() -> bool:
+func check_jump(launch_ratio: float = -1.0) -> bool:
 	if not dash_cancel:
 		if character != null:
 			character.consume_jump_request()
 		return false
-	return super.check_jump()
+	return super.check_jump(launch_ratio)
 
 
 ## Queues a combo follow-up instead of transitioning (consumes the intent).

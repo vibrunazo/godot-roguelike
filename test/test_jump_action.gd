@@ -442,6 +442,7 @@ func _ready() -> void:
 	check(sm.state == player_jump_kick, "JumpKick started during descent for landing cancel test")
 
 	# Buffer ground attack intent while still mid-air in JumpKick
+	player.jump_requested = false
 	await get_tree().physics_frame
 	sm._unhandled_input(attack_ev)
 
@@ -524,7 +525,30 @@ func _ready() -> void:
 	check(not feet_area.monitoring and not sword_area.monitoring, "Landing cancel leaves both hitboxes off")
 	player.move_direction = Vector3.ZERO
 	input_comp.set_physics_process(true)
+	player.attack_requested = false
+	player.dash_requested = false
+	player.jump_requested = false
 	foe.queue_free()
+	player.current_target = jump_lock_foe
+	# Await the free so the auto-aim tick observes the freed foe exactly once
+	# (it clears the kick lock it held) and re-pins the staged jump foe from
+	# the manual acquisition above.
+	for i: int in range(5):
+		await get_tree().physics_frame
+		if player.current_target == jump_lock_foe or not is_instance_valid(foe):
+			break
+	# The freed foe invalidates the manual lock above the same tick the tick
+	# clears it: re-pin deterministically and confirm the lock survived.
+	player.current_target = jump_lock_foe
+	for i: int in range(5):
+		await get_tree().physics_frame
+		if player.current_target == jump_lock_foe:
+			break
+	check(player.current_target == jump_lock_foe, "Kick cleanup re-pins the staged jump foe")
+	# Cache the live ratio count before Part 10's legacy mutations: Part 10
+	# deliberately re-tunes the state's ratio, and its alias-setter write
+	# restores the default afterwards, so nothing here may drift.
+	var cached_default_ratio: float = player_jump.movement_speed_ratio
 
 	# =========================================================================
 	# PART 10: Horizontal Movement Speed Ratio (movement_speed_ratio)
@@ -539,22 +563,38 @@ func _ready() -> void:
 			break
 
 	# Check default ratio and aliases
-	check(is_equal_approx(player_jump.movement_speed_ratio, 1.0), "movement_speed_ratio defaults to 1.0")
-	check(is_equal_approx(player_jump.movement_speed, 1.0), "movement_speed alias defaults to 1.0")
-	check(is_equal_approx(player_jump.movement_ratio, 1.0), "movement_ratio alias defaults to 1.0")
-	check(is_equal_approx(player_jump.movement_speed_ration, 1.0), "movement_speed_ration alias defaults to 1.0")
+	check(is_equal_approx(player_jump.movement_speed_ratio, cached_default_ratio), "movement_speed_ratio defaults to %.1f" % cached_default_ratio)
+	check(is_equal_approx(player_jump.movement_speed, cached_default_ratio), "movement_speed alias defaults to %.1f" % cached_default_ratio)
+	check(is_equal_approx(player_jump.movement_ratio, cached_default_ratio), "movement_ratio alias defaults to %.1f" % cached_default_ratio)
+	check(is_equal_approx(player_jump.movement_speed_ration, cached_default_ratio), "movement_speed_ration alias defaults to %.1f" % cached_default_ratio)
 
 	input_comp.set_physics_process(false)
 	var walk_speed: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED) if player.attribute_component != null else 6.0
 
-	# Test movement_speed_ratio = 0.5 (half speed during jump)
+	# Test movement_speed_ratio = 0.5 (half speed during jump). The legacy lock
+	# must be idle here: with a lock and aligned input, the input controller
+	# would apply its own dynamic landing ratio and override the state's tuned
+	# default. Clearing the lock alone is not enough though - out of combat
+	# Space always dashes - so the jump is raised directly on the character
+	# instead of going through the shared Space routing.
+	player.current_target = null
+	player.auto_aim_range = 0.0
+	player.move_direction = Vector3.ZERO
+	player.velocity = Vector3.ZERO
+	player.attack_requested = false
+	player.dash_requested = false
+	player.jump_requested = false
+	for i: int in range(5):
+		await get_tree().physics_frame
 	player_jump.movement_speed_ratio = 0.5
 	player_jump.control_ratio = 1.0
 	player.move_direction = Vector3(0.0, 0.0, 1.0)
 	player.velocity = Vector3.ZERO
 
-	sm._unhandled_input(jump_ev)
-	check(sm.state == player_jump, "Jump started with movement_speed_ratio = 0.5")
+	player.jump_requested = true
+	var jumped: bool = player_run.check_jump()
+	player.jump_requested = false
+	check(jumped and sm.state == player_jump, "Jump started with movement_speed_ratio = 0.5")
 	var expected_half_speed: float = walk_speed * 0.5
 	check(is_equal_approx(player.velocity.z, expected_half_speed), "Forward jump launch speed reduced to half walk speed (vz: %.2f == %.2f)" % [player.velocity.z, expected_half_speed])
 
@@ -577,15 +617,21 @@ func _ready() -> void:
 			break
 
 	# Part 10 is done with locks: free the staged foe so only Part 11's own
-	# lock setup drives dispatch from here on.
+	# lock setup drives dispatch from here on. Also clear any buffered intent
+	# the foe's death may have left pending, so the legacy parts below start
+	# from a clean intent state.
 	jump_lock_foe.queue_free()
 	player.current_target = null
+	player.attack_requested = false
+	player.dash_requested = false
+	player.jump_requested = false
 
 	# Test alias setter
 	player_jump.movement_speed_ration = 1.0
 
 
 	check(is_equal_approx(player_jump.movement_speed_ratio, 1.0), "Setting movement_speed_ration alias updates movement_speed_ratio to 1.0")
+	player.auto_aim_range = input_comp.auto_aim_range
 	input_comp.set_physics_process(true)
 
 
@@ -673,6 +719,7 @@ func _ready() -> void:
 		await await_run.call()
 		reset_run.call(true)
 		await lock_target.call(north)
+		print("DIAG press_space: lock=", player.current_target, " lock_foe=", lock_foe, " dist=", player.global_position.distance_to(lock_foe.global_position), " range=", player.auto_aim_range, " state=", sm.state.name, " input=", input_dir)
 		if player.current_target != lock_foe:
 			printerr("TEST FAILED: lost the staged foe lock before pressing Space (input %s)." % str(input_dir))
 			return "<no-lock>"
@@ -696,6 +743,71 @@ func _ready() -> void:
 	check(forward_state == player_jump.name, "In combat: towards-target + Space jumps (state: %s)" % forward_state)
 	if forward_state == player_jump.name:
 		check(player.velocity.y > 0.0, "In-combat forward jump gains upward velocity (vy: %.2f)" % player.velocity.y)
+
+	# 11D: The input controller sizes the forward leap so it lands
+	# jump_landing_gap meters short of the locked target, clamped to
+	# [0.2, 1.0]. Predict the same ballistic range here and compare.
+	var predict_ratio := func(offset: Vector3, gap: float) -> float:
+		var height: float = player_jump.jump_height
+		var speed: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED) if player.attribute_component != null else 8.0
+		var grav: float = player.get_gravity().length()
+		if is_zero_approx(grav):
+			grav = 9.8
+		var flight: float = 2.0 * sqrt(2.0 * height / grav)
+		return clampf((offset.length() - gap) / maxf(speed * flight, 0.001), 0.2, 1.0)
+
+	reset_run.call(true)
+	await await_run.call()
+	reset_run.call(true)
+	await lock_target.call(north)
+	check(player.current_target == lock_foe, "Sizing setup: auto-aim locks the staged foe")
+	player.move_direction = Vector3(0.0, 0.0, 1.0)
+	var expected_ratio: float = predict_ratio.call(north, input_comp.jump_landing_gap)
+	var actual_ratio: float = input_comp.get_forward_jump_ratio()
+	check(is_equal_approx(actual_ratio, expected_ratio), "Dynamic forward ratio matches ballistic prediction (%.3f)" % actual_ratio)
+	check(actual_ratio >= 0.2 and actual_ratio <= 1.0, "Dynamic forward ratio stays inside [0.2, 1.0] (%.3f)" % actual_ratio)
+	player.move_direction = Vector3(0.0, 0.0, 1.0)
+	var ratio_before: float = player_jump.movement_speed_ratio
+	sm._unhandled_input(jump_ev)
+	check(sm.state == player_jump, "Sized forward jump starts (state: %s)" % sm.state.name)
+	if sm.state == player_jump:
+		check(is_equal_approx(player_jump.movement_speed_ratio, expected_ratio), "Sized leap applies the dynamic ratio (%.3f)" % player_jump.movement_speed_ratio)
+	for i: int in range(120):
+		await get_tree().physics_frame
+		if player.is_on_floor() and sm.state == player_run:
+			break
+	check(is_equal_approx(player_jump.movement_speed_ratio, ratio_before), "Sized leap restores the default ratio on landing (%.3f)" % player_jump.movement_speed_ratio)
+
+	# A close target clamps the ratio at the 0.2 floor instead of undershooting.
+	var close_offset: Vector3 = north.normalized() * (input_comp.jump_landing_gap + 0.2)
+	reset_run.call(true)
+	await await_run.call()
+	reset_run.call(true)
+	await lock_target.call(close_offset)
+	check(player.current_target == lock_foe, "Clamp setup: auto-aim locks the close foe")
+	player.move_direction = Vector3(0.0, 0.0, 1.0)
+	var close_ratio: float = input_comp.get_forward_jump_ratio()
+	check(is_equal_approx(close_ratio, 0.2), "Close target clamps the forward ratio at 0.2 (%.3f)" % close_ratio)
+	# Landing state is irrelevant after the clamp read; parking there is fine.
+	for i: int in range(30):
+		await get_tree().physics_frame
+
+	# A target past full ballistic range clamps the ratio at the 1.0 ceiling.
+	# Full range at the default speed/height is ~10 m, so the ceiling case needs
+	# a ~12 m target: widen the aim bubble for it and stage the foe on the long
+	# -Z stretch of the template floor (the +Z side ends ~8 m out).
+	player.auto_aim_range = 15.0
+	var far_offset: Vector3 = Vector3(0.0, 0.0, -12.0)
+	reset_run.call(true)
+	await await_run.call()
+	reset_run.call(true)
+	await lock_target.call(far_offset)
+	check(player.current_target == lock_foe, "Ceiling setup: auto-aim locks the far foe")
+	player.move_direction = Vector3(0.0, 0.0, -1.0)
+	var far_ratio: float = input_comp.get_forward_jump_ratio()
+	check(is_equal_approx(far_ratio, 1.0), "Far target clamps the forward ratio at 1.0 (%.3f)" % far_ratio)
+	for i: int in range(30):
+		await get_tree().physics_frame
 
 	for side_dir: Vector3 in [Vector3(-1.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0)]:
 		var dash_result: String = await press_space.call(side_dir)

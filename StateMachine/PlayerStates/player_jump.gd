@@ -34,6 +34,10 @@ var movement_speed_ration: float:
 
 var _launch_velocity: Vector3 = Vector3.ZERO
 var _has_left_floor: bool = false
+## Default movement_speed_ratio captured on enter and restored on exit, so a
+## per-leap override passed through the transition data never leaks into the
+## next jump.
+var _default_speed_ratio: float = 1.0
 
 
 func enter(_previous_state_path: String, _data := {}) -> void:
@@ -43,6 +47,11 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 		jump_audio = character.get_node_or_null("JumpAudio") as AudioStreamPlayer3D
 	if jump_audio != null:
 		jump_audio.play()
+
+	_default_speed_ratio = movement_speed_ratio
+	var ratio_override: Variant = _data.get("movement_speed_ratio", -1.0)
+	if (ratio_override is float or ratio_override is int) and float(ratio_override) >= 0.0:
+		movement_speed_ratio = float(ratio_override)
 
 	var speed: float = character.attribute_component.get_current(AttributeComponent.STAT_SPEED) if character.attribute_component != null else 8.0
 	var max_jump_speed: float = maxf(0.0, speed * movement_speed_ratio)
@@ -102,3 +111,9 @@ func physics_update(delta: float) -> void:
 	elif _has_left_floor and character.velocity.y <= 0.0:
 		if running_state != null:
 			finished.emit(running_state.name)
+
+
+## Restores the state's default movement_speed_ratio so a per-leap override
+## from the transition data never leaks into the next jump.
+func exit() -> void:
+	movement_speed_ratio = _default_speed_ratio
