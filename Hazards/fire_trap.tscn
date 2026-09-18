@@ -3,18 +3,20 @@
 [ext_resource type="Script" uid="uid://cfgi8w6pg64rp" path="res://Hazards/fire_trap.gd" id="1_fire_trap"]
 [ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="2_attack"]
 [ext_resource type="AudioStream" uid="uid://d0fcu71wibih8" path="res://Assets/Audio/fire.ogg" id="3_audio"]
-[ext_resource type="Resource" path="res://Components/effect_fire_burn.tres" id="4_burn"]
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="3_n1qsk"]
+[ext_resource type="Resource" uid="uid://cygg3rno4258g" path="res://Components/effect_fire_burn.tres" id="4_burn"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plate"]
 albedo_color = Color(0.12, 0.11, 0.13, 1)
 metallic = 0.5
 roughness = 0.7
 
-[sub_resource type="BoxMesh" id="BoxMesh_0mtp1"]
+[sub_resource type="BoxMesh" id="BoxMesh_d2wrg"]
 material = SubResource("StandardMaterial3D_plate")
 size = Vector3(1, 0.02, 1)
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_s41no"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_84mk6"]
+size = Vector3(1, 0.5, 1)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_particle"]
 shading_mode = 0
@@ -34,7 +36,7 @@ point_count = 3
 [sub_resource type="CurveTexture" id="CurveTexture_scale"]
 curve = SubResource("Curve_scale")
 
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_n1qsk"]
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_odks4"]
 emission_shape = 3
 emission_box_extents = Vector3(0.42, 0.05, 0.42)
 gravity = Vector3(0, 2.5, 0)
@@ -55,28 +57,28 @@ script = ExtResource("1_fire_trap")
 [node name="GroundMesh" type="MeshInstance3D" parent="." unique_id=162351569]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
 gi_mode = 0
-mesh = SubResource("BoxMesh_0mtp1")
+mesh = SubResource("BoxMesh_d2wrg")
 
 [node name="DamageHitbox" type="Area3D" parent="." unique_id=229634504]
 collision_layer = 0
 collision_mask = 192
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="DamageHitbox" unique_id=90678820]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
-shape = SubResource("BoxShape3D_s41no")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25528818, 0)
+shape = SubResource("BoxShape3D_84mk6")
 
 [node name="AttackComponent" type="Node" parent="DamageHitbox" unique_id=1483325997]
 script = ExtResource("2_attack")
 damage = 5.0
 damage_type = &"fire"
 rehit_interval = 2.0
-effects_to_apply = Array[GameplayEffect]([ExtResource("4_burn")])
+effects_to_apply = Array[ExtResource("3_n1qsk")]([ExtResource("4_burn")])
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=2026722003]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
 material_override = SubResource("StandardMaterial3D_particle")
 lifetime = 0.55
-process_material = SubResource("ParticleProcessMaterial_n1qsk")
+process_material = SubResource("ParticleProcessMaterial_odks4")
 draw_pass_1 = SubResource("SphereMesh_particle")
 
 [node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=122857354]
