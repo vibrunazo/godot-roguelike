@@ -83,45 +83,63 @@ func get_stat_summary(character: Character) -> String:
 		var line: String = _format_effect_summary(eff, character)
 		if not line.is_empty():
 			lines.append(line)
-	if instant_heal > 0.0:
-		lines.append("[color='7fffd4']+%s[/color] HP" % _format_amount(instant_heal))
-	if heal_percent > 0.0:
-		lines.append("[color='7fffd4']Heals %s%%[/color] Max HP" % _format_amount(heal_percent))
-	if instant_damage > 0.0:
-		lines.append("[color='ff8888']-%s[/color] HP" % _format_amount(instant_damage))
+	if instant_heal > 0.0 or heal_percent > 0.0 or instant_damage > 0.0:
+		var attrs: AttributeComponent = character.attribute_component if character != null and is_instance_valid(character) else null
+		if attrs != null:
+			# Show the explicit current -> projected health for this use,
+			# exactly as taking the item would change it right now.
+			var current_hp: float = attrs.get_current(AttributeComponent.POOL_HEALTH)
+			var max_hp: float = attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)
+			var heal_amount: float = instant_heal
+			if heal_percent > 0.0:
+				var ratio: float = heal_percent / 100.0 if heal_percent > 1.0 else heal_percent
+				heal_amount += max_hp * ratio
+			if heal_amount > 0.0:
+				lines.append("HP: %s -> [color='7fffd4']%s[/color]" % [_format_amount(current_hp), _format_amount(minf(max_hp, current_hp + heal_amount))])
+			if instant_damage > 0.0:
+				lines.append("HP: %s -> [color='ff8888']%s[/color]" % [_format_amount(current_hp), _format_amount(maxf(0.0, current_hp - instant_damage))])
+		else:
+			# No character to preview against; fall back to generic amounts.
+			if instant_heal > 0.0:
+				lines.append("HP: [color='7fffd4']+%s[/color]" % _format_amount(instant_heal))
+			if heal_percent > 0.0:
+				lines.append("HP: [color='7fffd4']Heals %s%%[/color] Max HP" % _format_amount(heal_percent))
+			if instant_damage > 0.0:
+				lines.append("HP: [color='ff8888']-%s[/color]" % _format_amount(instant_damage))
 	return "\n".join(lines)
 
 
-## Formats one GameplayEffect as a human-readable stat change line.
-## Stat targets show the delta (ADD) or percentage (MULT_*); pool targets
-## show the damage/heal amount, spread over time when the effect is timed.
+## Formats one GameplayEffect as a human-readable stat change line in the
+## form "Label: current -> projected" (stat targets) or "Label: amount"
+## (pool targets). Percent operations show deltas relative to the label.
 func _format_effect_summary(eff: GameplayEffect, character: Character) -> String:
 	if AttributeComponent.POOL_NAMES.has(eff.target_attribute):
 		if is_equal_approx(eff.total_damage, 0.0):
 			return ""
-		var prefix: String = "+" if eff.total_damage < 0.0 else "-"
+		var pool_label: String = _stat_display_name(eff.target_attribute)
 		var amount: float = absf(eff.total_damage)
+		var sign_prefix: String = "+" if eff.total_damage < 0.0 else "-"
 		if eff.duration > 0.0:
-			return "%s[color='7fffd4']%s[/color] HP over %ss" % [prefix, _format_amount(amount), _format_amount(eff.duration)]
-		return "%s[color='7fffd4']%s[/color] HP" % [prefix, _format_amount(amount)]
+			return "%s: %s[color='7fffd4']%s[/color] over %ss" % [pool_label, sign_prefix, _format_amount(amount), _format_amount(eff.duration)]
+		return "%s: %s[color='7fffd4']%s[/color]" % [pool_label, sign_prefix, _format_amount(amount)]
 	if not AttributeComponent.STAT_NAMES.has(eff.target_attribute):
 		return ""
 	var label: String = _stat_display_name(eff.target_attribute)
 	var timed_suffix: String = ""
 	if eff.duration > 0.0:
-		timed_suffix = " for %ss" % _format_amount(eff.duration)
+		timed_suffix = " (for %ss)" % _format_amount(eff.duration)
 	match eff.operation:
 		0: # ADD
 			var attrs: AttributeComponent = character.attribute_component if character != null and is_instance_valid(character) else null
 			if attrs != null:
 				var current: float = attrs.get_current(eff.target_attribute)
 				var projected: float = current + eff.magnitude
-				return "%s -> [color='7fffd4']%s[/color] %s%s" % [_format_amount(current), _format_amount(projected), label, timed_suffix]
-			return "[color='7fffd4']+%s[/color] %s%s" % [_format_amount(eff.magnitude), label, timed_suffix]
+				return "%s: %s -> [color='7fffd4']%s[/color]%s" % [label, _format_amount(current), _format_amount(projected), timed_suffix]
+			return "%s: [color='7fffd4']+%s[/color]%s" % [label, _format_amount(eff.magnitude), timed_suffix]
 		1: # MULT_ADD
-			return "[color='7fffd4']+%s%%[/color] %s%s" % [_format_amount(eff.magnitude * 100.0), label, timed_suffix]
+			return "%s: [color='7fffd4']+%s%%[/color]%s" % [label, _format_amount(eff.magnitude * 100.0), timed_suffix]
 		2: # MULT_COMP
-			return "[color='7fffd4']x%s[/color] %s%s" % [_format_amount(eff.magnitude), label, timed_suffix]
+			return "%s: [color='7fffd4']x%s[/color]%s" % [label, _format_amount(eff.magnitude), timed_suffix]
 	return ""
 
 
