@@ -27,3 +27,4 @@ func _on_gold_changed(new_amount: int) -> void:
 func _update_gold_display(amount: int) -> void:
 	if gold_label != null:
 		gold_label.text = "Gold: %d" % amount
+		gold_label.visible = amount > 0
