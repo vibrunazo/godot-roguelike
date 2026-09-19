@@ -10,11 +10,22 @@ extends CanvasLayer
 @export var gold_bounce_up_duration: float = 0.1
 ## Seconds the gold label takes to settle back down after the peak.
 @export var gold_bounce_down_duration: float = 0.22
+## Pixels the gold label drops below its resting position when gold is lost.
+@export var gold_dip_distance: float = 10.0
+## Seconds the gold label takes to sink down during a gold-loss dip.
+@export var gold_dip_down_duration: float = 0.12
+## Seconds the gold label takes to rise back up after a gold-loss dip.
+@export var gold_dip_up_duration: float = 0.2
 
 ## Last gold amount rendered, used to detect gains (vs. spends/resets).
 var _last_gold_amount: int = -1
-## Active bounce tween, killed and restarted when gold is gained again mid-bounce.
+## Active gain-bounce tween, killed and restarted when gold is gained again mid-bounce.
 var _gold_bounce_tween: Tween = null
+## Active loss-dip tween, killed and restarted when gold is lost again mid-dip.
+var _gold_dip_tween: Tween = null
+## The gold label's unanimated Y position, captured lazily so repeated dips
+## triggered mid-dip cannot accumulate a permanent offset.
+var _gold_resting_y: float = -1.0
 
 
 func _ready() -> void:
@@ -44,6 +55,8 @@ func _update_gold_display(amount: int) -> void:
 		gold_label.visible = amount > 0
 		if amount > previous_amount and amount > 0:
 			_play_gold_bounce()
+		elif amount < previous_amount and amount > 0:
+			_play_gold_dip()
 
 
 ## Plays a quick up-and-down bounce on the gold label whenever gold is gained.
@@ -57,3 +70,18 @@ func _play_gold_bounce() -> void:
 	_gold_bounce_tween = create_tween()
 	_gold_bounce_tween.tween_property(gold_label, "scale", gold_bounce_peak_scale, gold_bounce_up_duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_gold_bounce_tween.tween_property(gold_label, "scale", Vector2.ONE, gold_bounce_down_duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## Plays a quick dip-and-recover animation on the gold label whenever gold is
+## lost: the label sinks down, then rises back to its resting position.
+## Restarting the tween (instead of queueing) keeps rapid spends responsive.
+func _play_gold_dip() -> void:
+	if _gold_dip_tween != null and _gold_dip_tween.is_valid():
+		_gold_dip_tween.kill()
+	else:
+		# Only re-capture the resting position while the label is actually at
+		# rest; mid-dip retriggering must reuse the cached value to avoid drift.
+		_gold_resting_y = gold_label.position.y
+	_gold_dip_tween = create_tween()
+	_gold_dip_tween.tween_property(gold_label, "position:y", _gold_resting_y + gold_dip_distance, gold_dip_down_duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_gold_dip_tween.tween_property(gold_label, "position:y", _gold_resting_y, gold_dip_up_duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

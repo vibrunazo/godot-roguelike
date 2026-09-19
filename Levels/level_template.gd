@@ -16,4 +16,8 @@ func _ready() -> void:
 
 	var current_level: int = ProgressionState.dungeon_level if ProgressionState != null else 1
 	if UI != null:
+		# Show the persistent HUD overlay. The HUD is owned by the UI autoload
+		# (not this scene) so the same instance — including its gold count —
+		# stays on screen across level and shop transitions.
+		UI.show_hud()
 		UI.show_level_title(current_level)

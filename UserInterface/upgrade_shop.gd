@@ -1,5 +1,10 @@
 extends Control
 
+## Shop overlay shown between levels. The gold count is intentionally NOT
+## rendered here: the HUD (owned by the UI autoload) persists across the
+## level -> shop -> level transitions, so its gold label is the single,
+## continuous gold display for the whole run.
+
 ## Scene used to instantiate item/upgrade cards. Falls back to GlobalVars.upgrade_icon_scene if unset.
 @export var upgrade_card_scene: PackedScene
 
@@ -14,7 +19,6 @@ var available_upgrades: Array[ItemResource]:
 		available_items = val
 
 @onready var upgrade_container: HBoxContainer = $MarginContainer/VBoxContainer/HBoxContainer
-@onready var gold_label: RichTextLabel = get_node_or_null("MarginContainer/VBoxContainer/GoldLabel") as RichTextLabel
 @onready var leave_button: Button = get_node_or_null("MarginContainer/VBoxContainer/LeaveButton") as Button
 
 var exiting_shop: bool = false
@@ -23,11 +27,6 @@ var exiting_shop: bool = false
 func _ready() -> void:
 	if leave_button != null:
 		leave_button.pressed.connect(leave_shop)
-
-	if ProgressionState != null:
-		if not ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
-			ProgressionState.currency_gold_changed.connect(_on_gold_changed)
-		_update_gold_label(ProgressionState.currency_gold)
 
 	var card_scene: PackedScene = upgrade_card_scene
 	if card_scene == null and GlobalVars != null:
@@ -48,24 +47,10 @@ func _ready() -> void:
 		current_card.upgrade_taken.connect(exit_shop)
 
 
-func _exit_tree() -> void:
-	if ProgressionState != null and ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
-		ProgressionState.currency_gold_changed.disconnect(_on_gold_changed)
-
-
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		leave_shop()
 		get_viewport().set_input_as_handled()
-
-
-func _on_gold_changed(amount: int) -> void:
-	_update_gold_label(amount)
-
-
-func _update_gold_label(amount: int) -> void:
-	if gold_label != null:
-		gold_label.text = "[center]Gold: [color=gold]%d[/color][/center]" % amount
 
 
 ## Cancels out of shop without selecting an upgrade.

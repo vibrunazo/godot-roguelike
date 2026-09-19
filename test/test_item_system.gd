@@ -273,11 +273,11 @@ func _ready() -> void:
 	print("ok: UpgradeShop LeaveButton present.")
 
 	var shop_gold_lbl: RichTextLabel = shop_inst.get_node_or_null("MarginContainer/VBoxContainer/GoldLabel") as RichTextLabel
-	if shop_gold_lbl == null:
-		printerr("TEST FAILED: UpgradeShop missing GoldLabel.")
+	if shop_gold_lbl != null:
+		printerr("TEST FAILED: UpgradeShop must not keep its own gold label; the persistent HUD is the single gold count.")
 		get_tree().quit(1)
 		return
-	print("ok: UpgradeShop GoldLabel present.")
+	print("ok: UpgradeShop has no separate gold label (persistent HUD is the single gold count).")
 
 	if shop_inst.get("exiting_shop") != false:
 		printerr("TEST FAILED: UpgradeShop exiting_shop should be false initially.")
@@ -303,12 +303,13 @@ func _ready() -> void:
 	add_child(level_inst)
 	await get_tree().process_frame
 
-	var hud_node: HUD = level_inst.get_node_or_null("HUD") as HUD
+	var huds: Array[Node] = get_tree().get_nodes_in_group("hud")
+	var hud_node: HUD = huds[0] as HUD if not huds.is_empty() else null
 	if hud_node == null:
-		printerr("TEST FAILED: LevelTemplate missing child HUD node.")
+		printerr("TEST FAILED: LevelTemplate did not register the persistent HUD overlay.")
 		get_tree().quit(1)
 		return
-	print("ok: LevelTemplate has instantiated child HUD node.")
+	print("ok: LevelTemplate registers the persistent HUD overlay (owned by UI autoload).")
 
 	var test_gold_val: int = 42
 	ProgressionState.currency_gold = test_gold_val
