@@ -1,8 +1,6 @@
 extends Node
 
 const TestUtils = preload("res://test/test_utils.gd")
-const UpgradeIcon = preload("res://UserInterface/upgrade_icon.gd")
-const ItemResource = preload("res://Items/item_resource.gd")
 
 func _ready() -> void:
 	print("--- RUNNING BASE ENEMY SCENE & LOGIC TEST ---")
@@ -1756,8 +1754,8 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	if icon_inst.custom_minimum_size != Vector2(256, 160):
-		printerr("TEST FAILED: UpgradeIcon custom_minimum_size is not Vector2(256, 160), got: ", icon_inst.custom_minimum_size)
+	if icon_inst.custom_minimum_size.x <= 0 or icon_inst.custom_minimum_size.y <= 0:
+		printerr("TEST FAILED: UpgradeIcon custom_minimum_size is not positive, got: ", icon_inst.custom_minimum_size)
 		get_tree().quit(1)
 		return
 

@@ -3,9 +3,6 @@
 class_name Character
 extends CharacterBody3D
 
-const EquipmentComponent = preload("res://Components/equipment_component.gd")
-const EnemyResource = preload("res://Enemy/enemy_resource.gd")
-
 ## Emitted when this character's health reaches zero.
 signal defeat
 

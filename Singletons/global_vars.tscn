@@ -35,6 +35,8 @@
 [ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_11.tres" id="31_d11"]
 [ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_12.tres" id="32_d12"]
 [ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_13.tres" id="33_d13"]
+[ext_resource type="PackedScene" path="res://UserInterface/hud.tscn" id="34_hud"]
+[ext_resource type="PackedScene" uid="uid://cb5n2k7a6q32y" path="res://UserInterface/level_title_overlay.tscn" id="35_level_title"]
 
 [node name="GlobalVars" type="Node"]
 script = ExtResource("1_vars")
@@ -55,3 +57,5 @@ damage_number_scene = ExtResource("9_dmgnum")
 target_reticle_scene = ExtResource("11_reticle")
 upgrade_shop_scene = ExtResource("10_shop")
 pause_menu_scene = ExtResource("19_pause_menu")
+hud_scene = ExtResource("34_hud")
+level_title_overlay_scene = ExtResource("35_level_title")

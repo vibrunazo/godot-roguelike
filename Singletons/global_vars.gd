@@ -10,9 +10,6 @@
 ## `VfxManager`, `SceneTransition`), never here.
 extends Node
 
-const ItemResource = preload("res://Items/item_resource.gd")
-const EnemyResource = preload("res://Enemy/enemy_resource.gd")
-
 ## Legacy difficulty scaling curve.
 @export var difficulty_curve: Curve
 ## Base item card icon scene used to display item cards in the UpgradeShop.
@@ -62,6 +59,10 @@ var upgrade_potion: ItemResource:
 @export var upgrade_shop_scene: PackedScene
 ## Pause menu overlay scene displayed when the game is paused.
 @export var pause_menu_scene: PackedScene
+## HUD overlay scene displayed during gameplay levels.
+@export var hud_scene: PackedScene
+## Level title overlay scene displayed when entering a level.
+@export var level_title_overlay_scene: PackedScene
 
 ## Item resources offered by the UpgradeShop, built from the exported item resources.
 var items: Array[ItemResource] = []

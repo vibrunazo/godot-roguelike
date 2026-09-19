@@ -3,13 +3,6 @@
 ## purchase limits, and visual bone attachments without asserting hardcoded balance numbers.
 extends Node
 
-const ItemResource = preload("res://Items/item_resource.gd")
-const GearItemResource = preload("res://Items/gear_item_resource.gd")
-const ConsumableItemResource = preload("res://Items/consumable_item_resource.gd")
-const ItemVisual = preload("res://Items/item_visual.gd")
-const EquipmentComponent = preload("res://Components/equipment_component.gd")
-const EnemyResource = preload("res://Enemy/enemy_resource.gd")
-
 
 func _ready() -> void:
 	print("--- RUNNING ITEM SYSTEM BEHAVIORAL TEST ---")
@@ -97,7 +90,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	if player.equipment_component.is_equipped(test_potion as Variant):
+	if player.equipment_component.is_equipped(test_potion):
 		printerr("TEST FAILED: Consumable should not be retained in equipped_gear.")
 		get_tree().quit(1)
 		return
@@ -199,8 +192,7 @@ func _ready() -> void:
 	print("\n>>> PART 6: Visual Scene Bone Attachment & Cleanup")
 	var visual_gear: GearItemResource = GearItemResource.new()
 	visual_gear.id = &"visual_hat"
-	var visual_script: GDScript = preload("res://Items/item_visual.gd")
-	var custom_visual: ItemVisual = visual_script.new() as ItemVisual
+	var custom_visual: ItemVisual = ItemVisual.new()
 	custom_visual.target_bone = "hand.r"
 
 	# Package into PackedScene dynamically for test

@@ -2,10 +2,6 @@
 class_name EquipmentComponent
 extends Node
 
-const ItemResource = preload("res://Items/item_resource.gd")
-const GearItemResource = preload("res://Items/gear_item_resource.gd")
-const ConsumableItemResource = preload("res://Items/consumable_item_resource.gd")
-
 ## Emitted when a gear item is equipped.
 signal gear_equipped(gear: GearItemResource)
 ## Emitted when a gear item is unequipped.

@@ -3,10 +3,8 @@
 class_name UpgradeIcon
 extends PanelContainer
 
-const ItemResource = preload("res://Items/item_resource.gd")
-
 ## Emitted when this upgrade/item card is selected and taken by the player.
-signal upgrade_taken(this: UpgradeIcon)
+signal upgrade_taken(card: UpgradeIcon)
 
 ## Item resource defining this card's title, formatting, cost, and gameplay effect.
 @export var item_resource: ItemResource:
@@ -22,7 +20,7 @@ var upgrade_resource: ItemResource:
 		item_resource = value
 
 ## Fallback text template used if item_resource is not set.
-@export_multiline() var text_template: String = "%.1f -> [color='7fffd4']%.1f[/color] m/s"
+@export_multiline var text_template: String = "%.1f -> [color='7fffd4']%.1f[/color] m/s"
 ## Fallback attribute name on AttributeComponent used if item_resource is not set.
 @export var stat_name: String = ""
 ## Fallback stat bonus used if item_resource is not set.
@@ -120,11 +118,11 @@ func setup_label() -> void:
 		var extra_info: String = ""
 
 		if item_resource.cost > 0:
-			extra_info += "\n[color=gold]Cost: %d Gold[/color]" % item_resource.cost
+			extra_info += "\n\n[color=gold]Cost: %d Gold[/color]" % item_resource.cost
 
 		if player != null and player.equipment_component != null and item_resource.max_purchases > 0:
 			var owned: int = player.equipment_component.get_purchase_count(item_resource)
-			extra_info += " [color=gray](%d/%d owned)[/color]" % [owned, item_resource.max_purchases]
+			extra_info += "  [color=gray](%d/%d owned)[/color]" % [owned, item_resource.max_purchases]
 
 		description.text = desc_text + extra_info
 

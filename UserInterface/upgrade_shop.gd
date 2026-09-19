@@ -1,8 +1,5 @@
 extends Control
 
-const ItemResource = preload("res://Items/item_resource.gd")
-const UpgradeIcon = preload("res://UserInterface/upgrade_icon.gd")
-
 ## Scene used to instantiate item/upgrade cards. Falls back to GlobalVars.upgrade_icon_scene if unset.
 @export var upgrade_card_scene: PackedScene
 
@@ -33,8 +30,10 @@ func _ready() -> void:
 		_update_gold_label(ProgressionState.currency_gold)
 
 	var card_scene: PackedScene = upgrade_card_scene
-	if card_scene == null:
+	if card_scene == null and GlobalVars != null:
 		card_scene = GlobalVars.upgrade_icon_scene
+	if card_scene == null:
+		return
 
 	var pool: Array[ItemResource] = available_items
 	if pool.is_empty() and GlobalVars != null:

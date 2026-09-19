@@ -69,11 +69,6 @@ func toggle_fullscreen() -> void:
 		go_fullscreen()
 
 
-const LEVEL_TITLE_OVERLAY_SCENE: PackedScene = preload("res://UserInterface/level_title_overlay.tscn")
-const DEFAULT_PAUSE_MENU_SCENE: PackedScene = preload("res://UserInterface/pause_menu.tscn")
-const HUD_SCENE: PackedScene = preload("res://UserInterface/hud.tscn")
-const HUD = preload("res://UserInterface/hud.gd")
-
 var _current_level_overlay: LevelTitleOverlay = null
 var _current_pause_menu: PauseMenu = null
 var _current_hud: HUD = null
@@ -83,8 +78,12 @@ var _is_game_over: bool = false
 ## True while in the main menu, disabling the in-game pause toggle.
 var is_in_main_menu: bool = false
 
-## Pause menu scene override. When null, uses GlobalVars.pause_menu_scene or DEFAULT_PAUSE_MENU_SCENE.
+## Pause menu scene override. When null, uses GlobalVars.pause_menu_scene.
 @export var pause_menu_scene: PackedScene = null
+## HUD scene override. When null, uses GlobalVars.hud_scene.
+@export var hud_scene: PackedScene = null
+## Level title overlay scene override. When null, uses GlobalVars.level_title_overlay_scene.
+@export var level_title_overlay_scene: PackedScene = null
 
 
 ## Globally enables or disables UI overlays. When set to false, existing overlays are freed immediately.
@@ -109,7 +108,12 @@ func show_hud() -> HUD:
 		return null
 	if _current_hud != null and is_instance_valid(_current_hud):
 		return _current_hud
-	var hud: HUD = HUD_SCENE.instantiate() as HUD
+	var scene: PackedScene = hud_scene
+	if scene == null and GlobalVars != null:
+		scene = GlobalVars.hud_scene
+	if scene == null:
+		return null
+	var hud: HUD = scene.instantiate() as HUD
 	add_child(hud)
 	_current_hud = hud
 	return hud
@@ -135,7 +139,12 @@ func show_level_title(level_number: int, duration: float = 2.0) -> LevelTitleOve
 		_current_level_overlay.queue_free()
 		_current_level_overlay = null
 
-	var overlay: LevelTitleOverlay = LEVEL_TITLE_OVERLAY_SCENE.instantiate() as LevelTitleOverlay
+	var scene: PackedScene = level_title_overlay_scene
+	if scene == null and GlobalVars != null:
+		scene = GlobalVars.level_title_overlay_scene
+	if scene == null:
+		return null
+	var overlay: LevelTitleOverlay = scene.instantiate() as LevelTitleOverlay
 	add_child(overlay)
 	_current_level_overlay = overlay
 	overlay.display_level(level_number, duration)
@@ -157,6 +166,8 @@ func pause_game() -> void:
 		_current_pause_menu = null
 
 	var menu: PauseMenu = _spawn_menu()
+	if menu == null:
+		return
 	add_child(menu)
 	_current_pause_menu = menu
 	pause_state_changed.emit(true)
@@ -166,10 +177,10 @@ func pause_game() -> void:
 ## per-use-case exports before adding it to the tree (its _ready applies them).
 func _spawn_menu() -> PauseMenu:
 	var scene: PackedScene = pause_menu_scene
-	if scene == null and GlobalVars != null and GlobalVars.pause_menu_scene != null:
+	if scene == null and GlobalVars != null:
 		scene = GlobalVars.pause_menu_scene
 	if scene == null:
-		scene = DEFAULT_PAUSE_MENU_SCENE
+		return null
 	return scene.instantiate() as PauseMenu
 
 
@@ -193,6 +204,8 @@ func show_game_over() -> void:
 	get_tree().paused = true
 	_is_game_over = true
 	var menu: PauseMenu = _spawn_menu()
+	if menu == null:
+		return
 	menu.title_text = "GAME OVER"
 	menu.title_color = Color(0.85, 0.2, 0.2)
 	menu.backdrop_color = Color(0.25, 0.03, 0.03, 0.78)

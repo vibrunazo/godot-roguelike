@@ -58,8 +58,8 @@ func equip(character: Character) -> Dictionary:
 func unequip(character: Character, active_effect_ids: Array[StringName], visual_node: Node3D) -> void:
 	if character != null and is_instance_valid(character) and character.attribute_component != null:
 		var attrs: AttributeComponent = character.attribute_component
-		for id: StringName in active_effect_ids:
-			attrs.remove_effect(id)
+		for eff_id: StringName in active_effect_ids:
+			attrs.remove_effect(eff_id)
 
 	if visual_node != null and is_instance_valid(visual_node):
 		visual_node.queue_free()
