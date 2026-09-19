@@ -7,7 +7,7 @@
 script = ExtResource("1_script")
 id = &"item_potion"
 title = "[wave]Health Potion[/wave]"
-description_template = "%d -> [color='7fffd4']%d[/color] HP"
+description = "A crimson brew that knits flesh and spirit back together. Best served warm."
 cost = 10
 max_purchases = -1
 heal_percent = 50.0

@@ -9,6 +9,7 @@ script = ExtResource("1_script")
 slot_tag = &"feet"
 id = &"item_wing_boots"
 title = "[wave]Winged Boots[/wave]"
-description_template = "%.1f -> [color='7fffd4']%.1f[/color] m/s"
+description = "Featherlight boots stitched from a griffin's moult. The ground barely notices you pass."
 cost = 10
+max_purchases = 1
 gameplay_effects = Array[ExtResource("1_ma4gn")]([ExtResource("2_effect")])

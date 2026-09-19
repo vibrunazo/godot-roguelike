@@ -114,7 +114,12 @@ func setup_label() -> void:
 		if not item_resource.title.is_empty():
 			title.text = item_resource.title
 
-		var desc_text: String = item_resource.format_description(player)
+		# Flavor text first, then the stat changes auto-calculated from the
+		# item's actual effects (descriptions carry no stat numbers).
+		var desc_text: String = item_resource.description
+		var stat_text: String = item_resource.get_stat_summary(player)
+		if not stat_text.is_empty():
+			desc_text += "\n\n" + stat_text
 		var extra_info: String = ""
 
 		if item_resource.cost > 0:

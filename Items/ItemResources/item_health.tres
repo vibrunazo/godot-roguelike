@@ -9,7 +9,7 @@ script = ExtResource("1_script")
 slot_tag = &"relic"
 id = &"item_health"
 title = "[wave]Colossus Sigil[/wave]"
-description_template = "%d -> [color='7fffd4']%d[/color] HP"
+description = "An ancient sigil that thickens the blood and mends old wounds. Its bearer walks a little taller."
 cost = 10
 max_purchases = 3
 gameplay_effects = Array[ExtResource("1_glxdw")]([ExtResource("2_effect")])

@@ -9,7 +9,7 @@ script = ExtResource("1_script")
 slot_tag = &"weapon"
 id = &"item_damage"
 title = "[wave]Laser sword[/wave]"
-description_template = "%d%% -> [color='7fffd4']%d%%[/color] damage"
+description = "A humming blade of pure light. Cleaves through armor, notions, and anything else standing in the way."
 cost = 10
 max_purchases = 3
 gameplay_effects = Array[ExtResource("1_vhlf7")]([ExtResource("2_effect")])

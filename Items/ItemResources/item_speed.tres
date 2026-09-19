@@ -9,7 +9,7 @@ script = ExtResource("1_script")
 slot_tag = &"back"
 id = &"item_speed"
 title = "[wave]Speed cloak[/wave]"
-description_template = "%.1f -> [color='7fffd4']%.1f[/color] m/s"
+description = "A weightless cloak that catches every breeze and turns it into momentum."
 cost = 10
 max_purchases = 3
 gameplay_effects = Array[ExtResource("1_y6064")]([ExtResource("2_effect")])
