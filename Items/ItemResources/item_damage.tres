@@ -1,14 +1,15 @@
-[gd_resource type="Resource" script_class="GearItemResource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="GearItemResource" format=3 uid="uid://ibdvk8mp3ht7"]
 
-[ext_resource type="Script" path="res://Items/gear_item_resource.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://cntwbvi2o6i01" path="res://Items/gear_item_resource.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="1_vhlf7"]
 [ext_resource type="Resource" path="res://Items/GameplayEffects/effect_item_attack.tres" id="2_effect"]
 
 [resource]
 script = ExtResource("1_script")
+slot_tag = &"weapon"
 id = &"item_damage"
-title = "[wave]Warrior's Whetstone[/wave]"
+title = "[wave]Laser sword[/wave]"
 description_template = "%d%% -> [color='7fffd4']%d%%[/color] damage"
 cost = 10
 max_purchases = 3
-gameplay_effects = [ExtResource("2_effect")]
-slot_tag = &"weapon"
+gameplay_effects = Array[ExtResource("1_vhlf7")]([ExtResource("2_effect")])

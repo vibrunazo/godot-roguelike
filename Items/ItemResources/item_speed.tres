@@ -1,14 +1,15 @@
-[gd_resource type="Resource" script_class="GearItemResource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="GearItemResource" format=3 uid="uid://c6hu7u2jmby0a"]
 
-[ext_resource type="Script" path="res://Items/gear_item_resource.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://cntwbvi2o6i01" path="res://Items/gear_item_resource.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="1_y6064"]
 [ext_resource type="Resource" path="res://Items/GameplayEffects/effect_item_speed.tres" id="2_effect"]
 
 [resource]
 script = ExtResource("1_script")
+slot_tag = &"back"
 id = &"item_speed"
-title = "[wave]Windstrider Greaves[/wave]"
+title = "[wave]Speed cloak[/wave]"
 description_template = "%.1f -> [color='7fffd4']%.1f[/color] m/s"
 cost = 10
 max_purchases = 3
-gameplay_effects = [ExtResource("2_effect")]
-slot_tag = &"feet"
+gameplay_effects = Array[ExtResource("1_y6064")]([ExtResource("2_effect")])

@@ -1548,23 +1548,33 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	print("\n>>> PART 11: UpgradeShop Scene & UI Verification")
-	# Verify GlobalVars registry exports and array
-	if GlobalVars.upgrade_icon_scene == null or GlobalVars.item_damage == null or GlobalVars.item_health == null or GlobalVars.item_speed == null or GlobalVars.item_potion == null:
-		printerr("TEST FAILED: GlobalVars item exports missing or null.")
+	# Verify GlobalVars registry exports and items array
+	if GlobalVars.items.is_empty():
+		printerr("TEST FAILED: GlobalVars.items is empty.")
 		get_tree().quit(1)
 		return
-	if not (GlobalVars.item_damage is ItemResource) or not (GlobalVars.item_health is ItemResource) or not (GlobalVars.item_speed is ItemResource) or not (GlobalVars.item_potion is ItemResource):
-		printerr("TEST FAILED: GlobalVars items are not ItemResource instances.")
-		get_tree().quit(1)
-		return
-	if GlobalVars.items.size() != 4:
-		printerr("TEST FAILED: GlobalVars.items does not contain 4 items. Size: ", GlobalVars.items.size())
-		get_tree().quit(1)
-		return
-	if not GlobalVars.items.has(GlobalVars.item_damage) or not GlobalVars.items.has(GlobalVars.item_health) or not GlobalVars.items.has(GlobalVars.item_speed) or not GlobalVars.items.has(GlobalVars.item_potion):
-		printerr("TEST FAILED: GlobalVars.items array missing required item resources.")
-		get_tree().quit(1)
-		return
+	for entry: ItemResource in GlobalVars.items:
+		if entry == null:
+			printerr("TEST FAILED: GlobalVars.items contains a null entry.")
+			get_tree().quit(1)
+			return
+	var expected_item_paths: Array[String] = [
+		"res://Items/ItemResources/item_damage.tres",
+		"res://Items/ItemResources/item_health.tres",
+		"res://Items/ItemResources/item_speed.tres",
+		"res://Items/ItemResources/item_potion.tres",
+		"res://Items/ItemResources/item_wing_boots.tres",
+	]
+	for item_path: String in expected_item_paths:
+		var expected_res: ItemResource = load(item_path) as ItemResource
+		if expected_res == null:
+			printerr("TEST FAILED: Could not load expected item resource: ", item_path)
+			get_tree().quit(1)
+			return
+		if not GlobalVars.items.has(expected_res):
+			printerr("TEST FAILED: GlobalVars.items is missing expected item: ", item_path)
+			get_tree().quit(1)
+			return
 	if GlobalVars.difficulty_curve == null or GlobalVars.enemies.is_empty() or GlobalVars.enemy_projectile_scene == null or GlobalVars.fireball_hit_scene == null or GlobalVars.damage_number_scene == null or GlobalVars.upgrade_shop_scene == null:
 		printerr("TEST FAILED: GlobalVars registry exports missing or null.")
 		get_tree().quit(1)
@@ -3002,7 +3012,7 @@ func _ready() -> void:
 	print("  22. Level 2 inherited scene, litter props, and navmesh verified   ")
 	print("  23. Level 3 inherited scene, litter props, and navmesh verified   ")
 	print("  24. Level shuffling & difficulty curve enemy scaling verified     ")
-	print("  25. UpgradeShop dynamic random selection (GlobalVars.upgrades) & exit ok")
+	print("  25. UpgradeShop dynamic random selection (GlobalVars.items) & exit ok")
 	print("  26. Window scaling & ui_toggle_fullscreen autoload verified       ")
 	print("  27. Base UpgradeIcon scene, styling, and UpgradeShop placement ok ")
 	print("  28. MeleeEnemy scene, StateMachine & EnemyPursue state verified   ")

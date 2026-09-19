@@ -1,15 +1,16 @@
-[gd_resource type="Resource" script_class="GearItemResource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="GearItemResource" format=3 uid="uid://bc2itbe6o66d6"]
 
-[ext_resource type="Script" path="res://Items/gear_item_resource.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="1_glxdw"]
+[ext_resource type="Script" uid="uid://cntwbvi2o6i01" path="res://Items/gear_item_resource.gd" id="1_script"]
 [ext_resource type="Resource" path="res://Items/GameplayEffects/effect_item_max_health.tres" id="2_effect"]
 
 [resource]
 script = ExtResource("1_script")
+slot_tag = &"relic"
 id = &"item_health"
 title = "[wave]Colossus Sigil[/wave]"
 description_template = "%d -> [color='7fffd4']%d[/color] HP"
 cost = 10
 max_purchases = 3
-gameplay_effects = [ExtResource("2_effect")]
+gameplay_effects = Array[ExtResource("1_glxdw")]([ExtResource("2_effect")])
 instant_heal = 20.0
-slot_tag = &"relic"

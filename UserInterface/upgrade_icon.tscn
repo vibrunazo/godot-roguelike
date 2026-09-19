@@ -15,9 +15,9 @@ border_width_bottom = 1
 border_color = Color(0.30980393, 0.65882355, 0.8039216, 1)
 
 [node name="UpgradeIcon" type="PanelContainer" unique_id=596441973]
-custom_minimum_size = Vector2(340, 250)
-offset_right = 40.0
-offset_bottom = 40.0
+custom_minimum_size = Vector2(340, 200)
+offset_right = 340.0
+offset_bottom = 200.0
 size_flags_horizontal = 6
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_ie3pj")
@@ -57,7 +57,6 @@ mouse_filter = 2
 theme_override_font_sizes/normal_font_size = 16
 bbcode_enabled = true
 text = "A description of the upgrade."
-fit_content = false
 scroll_active = false
 autowrap_mode = 2
 horizontal_alignment = 1

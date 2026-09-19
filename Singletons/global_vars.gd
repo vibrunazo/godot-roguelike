@@ -1,6 +1,6 @@
 ## Default global asset references, registered as the `GlobalVars` autoload (scene
 ## `Singletons/global_vars.tscn`) in `project.godot`. Access from anywhere via
-## `GlobalVars`, e.g. `GlobalVars.upgrade_damage`.
+## `GlobalVars`, e.g. `GlobalVars.items`.
 ##
 ## Unique responsibility: hold default global references to scenes and resources
 ## used elsewhere in the game. Individual nodes may override these locally via
@@ -14,33 +14,9 @@ extends Node
 @export var difficulty_curve: Curve
 ## Base item card icon scene used to display item cards in the UpgradeShop.
 @export var upgrade_icon_scene: PackedScene
-## Damage gear item resource offered by the UpgradeShop.
-@export var item_damage: ItemResource
-## Health gear item resource offered by the UpgradeShop.
-@export var item_health: ItemResource
-## Speed gear item resource offered by the UpgradeShop.
-@export var item_speed: ItemResource
-## Health potion consumable item resource offered by the UpgradeShop.
-@export var item_potion: ItemResource
-## Winged Boots gear item resource offered by the UpgradeShop (buy once).
-@export var item_wing_boots: ItemResource
-
-## Convenience aliases for item exports
-var upgrade_damage: ItemResource:
-	get: return item_damage
-	set(val): item_damage = val
-var upgrade_health: ItemResource:
-	get: return item_health
-	set(val): item_health = val
-var upgrade_speed: ItemResource:
-	get: return item_speed
-	set(val): item_speed = val
-var upgrade_potion: ItemResource:
-	get: return item_potion
-	set(val): item_potion = val
-var upgrade_wing_boots: ItemResource:
-	get: return item_wing_boots
-	set(val): item_wing_boots = val
+## Item resources offered by the UpgradeShop (e.g. damage, health, speed, potion,
+## wing boots). Add or remove entries here to change the shop's item pool.
+@export var items: Array[ItemResource] = []
 
 ## Enemy resources available for spawning, each defining an enemy scene and difficulty level.
 @export var enemies: Array[EnemyResource] = []
@@ -68,18 +44,6 @@ var upgrade_wing_boots: ItemResource:
 @export var hud_scene: PackedScene
 ## Level title overlay scene displayed when entering a level.
 @export var level_title_overlay_scene: PackedScene
-
-## Item resources offered by the UpgradeShop, built from the exported item resources.
-var items: Array[ItemResource] = []
-
-## Array of items offered by the shop (alias for items).
-var upgrades: Array[ItemResource]:
-	get: return items
-	set(val): items = val
-
-
-func _ready() -> void:
-	items = [item_damage, item_health, item_speed, item_potion, item_wing_boots]
 
 
 ## Finds the registered EnemyResource for a given PackedScene or null if not registered.

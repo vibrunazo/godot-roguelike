@@ -1,55 +1,54 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://duruhl04r1wr0"]
 
 [ext_resource type="Script" uid="uid://dm0w52r0j3l1r" path="res://Singletons/global_vars.gd" id="1_vars"]
 [ext_resource type="PackedScene" uid="uid://3lgqbvbvyeg8" path="res://UserInterface/upgrade_icon.tscn" id="2_icon"]
-[ext_resource type="Resource" path="res://Items/ItemResources/item_damage.tres" id="3_dmg"]
-[ext_resource type="Resource" path="res://Items/ItemResources/item_health.tres" id="4_hp"]
-[ext_resource type="Resource" path="res://Items/ItemResources/item_speed.tres" id="5_spd"]
-[ext_resource type="Resource" path="res://Items/ItemResources/item_potion.tres" id="12_pot"]
-[ext_resource type="Resource" path="res://Items/ItemResources/item_wing_boots.tres" id="40_wb"]
+[ext_resource type="Resource" uid="uid://ibdvk8mp3ht7" path="res://Items/ItemResources/item_damage.tres" id="3_dmg"]
+[ext_resource type="Script" uid="uid://bxygsr0cqc42q" path="res://Items/item_resource.gd" id="4_6kt6d"]
+[ext_resource type="Resource" uid="uid://bc2itbe6o66d6" path="res://Items/ItemResources/item_health.tres" id="4_hp"]
 [ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_melee.tres" id="5_melee_res"]
+[ext_resource type="Resource" uid="uid://c6hu7u2jmby0a" path="res://Items/ItemResources/item_speed.tres" id="5_spd"]
 [ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_ranged.tres" id="6_ranged_res"]
-[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_firebomber.tres" id="14_firebomber_res"]
-[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_brute.tres" id="13_brute_res"]
-[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_thunder_mage.tres" id="16_thunder_mage_res"]
-[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_akira_boss.tres" id="20_akira_res"]
-[ext_resource type="PackedScene" path="res://Enemy/firebomb_projectile.tscn" id="15_firebomb_proj"]
 [ext_resource type="PackedScene" uid="uid://0qtans3shtxh" path="res://Enemy/enemy_projectile.tscn" id="7_proj"]
 [ext_resource type="PackedScene" uid="uid://olax7oyumfwu" path="res://Enemy/fireball_hit.tscn" id="8_hit"]
 [ext_resource type="PackedScene" uid="uid://bfih8h7cuu5va" path="res://Singletons/VFX/damage_number.tscn" id="9_dmgnum"]
-[ext_resource type="PackedScene" uid="uid://bdd6qt1dd2vr8" path="res://Singletons/VFX/target_reticle.tscn" id="11_reticle"]
+[ext_resource type="Script" uid="uid://cslkv80eol3lh" path="res://Enemy/enemy_resource.gd" id="10_1bkuy"]
 [ext_resource type="PackedScene" uid="uid://dx5vp0if7ta30" path="res://UserInterface/upgrade_shop.tscn" id="10_shop"]
 [ext_resource type="Curve" uid="uid://cxfev6iu2f3e0" path="res://Singletons/difficulty_curve.tres" id="11_curve"]
+[ext_resource type="PackedScene" uid="uid://bdd6qt1dd2vr8" path="res://Singletons/VFX/target_reticle.tscn" id="11_reticle"]
+[ext_resource type="Resource" uid="uid://b5acdx7mjfwcp" path="res://Items/ItemResources/item_potion.tres" id="12_pot"]
+[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_brute.tres" id="13_brute_res"]
+[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_firebomber.tres" id="14_firebomber_res"]
+[ext_resource type="PackedScene" uid="uid://cmh0ygmsujl6r" path="res://Enemy/firebomb_projectile.tscn" id="15_firebomb_proj"]
+[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_thunder_mage.tres" id="16_thunder_mage_res"]
 [ext_resource type="PackedScene" path="res://Enemy/lightning_bolt_projectile.tscn" id="17_lightning_proj"]
-[ext_resource type="PackedScene" path="res://Enemy/lightning_hit.tscn" id="18_lightning_hit"]
-[ext_resource type="PackedScene" path="res://UserInterface/pause_menu.tscn" id="19_pause_menu"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_1.tres" id="21_d1"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_2.tres" id="22_d2"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_3.tres" id="23_d3"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_4.tres" id="24_d4"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_5.tres" id="25_d5"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_6.tres" id="26_d6"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_7.tres" id="27_d7"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_8.tres" id="28_d8"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_9.tres" id="29_d9"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_10.tres" id="30_d10"]
+[ext_resource type="Script" uid="uid://ddn61phmec3x5" path="res://Levels/dungeon_resource.gd" id="17_na113"]
+[ext_resource type="PackedScene" uid="uid://c6lghtnthit01" path="res://Enemy/lightning_hit.tscn" id="18_lightning_hit"]
+[ext_resource type="PackedScene" uid="uid://dfpausemenu01" path="res://UserInterface/pause_menu.tscn" id="19_pause_menu"]
+[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_akira_boss.tres" id="20_akira_res"]
+[ext_resource type="Resource" uid="uid://b35vkxr3hnt2e" path="res://Levels/DungeonResources/dungeon_level_1.tres" id="21_d1"]
+[ext_resource type="Resource" uid="uid://d3s03awl3374h" path="res://Levels/DungeonResources/dungeon_level_2.tres" id="22_d2"]
+[ext_resource type="Resource" uid="uid://dgj8q5qnc7icn" path="res://Levels/DungeonResources/dungeon_level_3.tres" id="23_d3"]
+[ext_resource type="Resource" uid="uid://cad6pd5a65fld" path="res://Levels/DungeonResources/dungeon_level_4.tres" id="24_d4"]
+[ext_resource type="Resource" uid="uid://nxpki221ppp0" path="res://Levels/DungeonResources/dungeon_level_5.tres" id="25_d5"]
+[ext_resource type="Resource" uid="uid://clqvkb6bqkfvf" path="res://Levels/DungeonResources/dungeon_level_6.tres" id="26_d6"]
+[ext_resource type="Resource" uid="uid://bhmum7vqq4xdo" path="res://Levels/DungeonResources/dungeon_level_7.tres" id="27_d7"]
+[ext_resource type="Resource" uid="uid://c8jtu0m8ljbge" path="res://Levels/DungeonResources/dungeon_level_8.tres" id="28_d8"]
+[ext_resource type="Resource" uid="uid://dfnxw5kwvyb1t" path="res://Levels/DungeonResources/dungeon_level_9.tres" id="29_d9"]
+[ext_resource type="Resource" uid="uid://dqbe6v8fdblfs" path="res://Levels/DungeonResources/dungeon_level_10.tres" id="30_d10"]
 [ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_11.tres" id="31_d11"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_12.tres" id="32_d12"]
-[ext_resource type="Resource" path="res://Levels/DungeonResources/dungeon_level_13.tres" id="33_d13"]
+[ext_resource type="Resource" uid="uid://bc5e64hbimao" path="res://Levels/DungeonResources/dungeon_level_12.tres" id="32_d12"]
+[ext_resource type="Resource" uid="uid://cmdp2fdbl55ny" path="res://Levels/DungeonResources/dungeon_level_13.tres" id="33_d13"]
 [ext_resource type="PackedScene" path="res://UserInterface/hud.tscn" id="34_hud"]
 [ext_resource type="PackedScene" uid="uid://cb5n2k7a6q32y" path="res://UserInterface/level_title_overlay.tscn" id="35_level_title"]
+[ext_resource type="Resource" uid="uid://d1fbycu80dfbf" path="res://Items/ItemResources/item_wing_boots.tres" id="40_wb"]
 
-[node name="GlobalVars" type="Node"]
+[node name="GlobalVars" type="Node" unique_id=1670957482]
 script = ExtResource("1_vars")
 difficulty_curve = ExtResource("11_curve")
 upgrade_icon_scene = ExtResource("2_icon")
-item_damage = ExtResource("3_dmg")
-item_health = ExtResource("4_hp")
-item_speed = ExtResource("5_spd")
-item_potion = ExtResource("12_pot")
-item_wing_boots = ExtResource("40_wb")
-enemies = [ExtResource("5_melee_res"), ExtResource("6_ranged_res"), ExtResource("14_firebomber_res"), ExtResource("13_brute_res"), ExtResource("16_thunder_mage_res"), ExtResource("20_akira_res")]
-dungeons = [ExtResource("21_d1"), ExtResource("22_d2"), ExtResource("23_d3"), ExtResource("24_d4"), ExtResource("25_d5"), ExtResource("26_d6"), ExtResource("27_d7"), ExtResource("28_d8"), ExtResource("29_d9"), ExtResource("30_d10"), ExtResource("31_d11"), ExtResource("32_d12"), ExtResource("33_d13")]
+items = Array[ExtResource("4_6kt6d")]([ExtResource("3_dmg"), ExtResource("4_hp"), ExtResource("5_spd"), ExtResource("12_pot"), ExtResource("40_wb")])
+enemies = Array[ExtResource("10_1bkuy")]([ExtResource("5_melee_res"), ExtResource("6_ranged_res"), ExtResource("14_firebomber_res"), ExtResource("13_brute_res"), ExtResource("16_thunder_mage_res"), ExtResource("20_akira_res")])
+dungeons = Array[ExtResource("17_na113")]([ExtResource("21_d1"), ExtResource("22_d2"), ExtResource("23_d3"), ExtResource("24_d4"), ExtResource("25_d5"), ExtResource("26_d6"), ExtResource("27_d7"), ExtResource("28_d8"), ExtResource("29_d9"), ExtResource("30_d10"), ExtResource("31_d11"), ExtResource("32_d12"), ExtResource("33_d13")])
 enemy_projectile_scene = ExtResource("7_proj")
 firebomb_projectile_scene = ExtResource("15_firebomb_proj")
 lightning_bolt_scene = ExtResource("17_lightning_proj")

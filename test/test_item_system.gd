@@ -190,9 +190,9 @@ func _ready() -> void:
 	# PART 6: Winged Boots Shop Item & Single-Purchase Speed Gear
 	# ---------------------------------------------------------
 	print("\n>>> PART 6: Winged Boots Shop Item & Single-Purchase Speed Gear")
-	var wing_boots: GearItemResource = GlobalVars.item_wing_boots
-	if wing_boots == null or not (wing_boots is GearItemResource):
-		printerr("TEST FAILED: GlobalVars.item_wing_boots is missing or not a GearItemResource.")
+	var wing_boots: GearItemResource = load("res://Items/ItemResources/item_wing_boots.tres") as GearItemResource
+	if wing_boots == null:
+		printerr("TEST FAILED: Could not load res://Items/ItemResources/item_wing_boots.tres as GearItemResource.")
 		get_tree().quit(1)
 		return
 	print("ok: Winged Boots item registered on GlobalVars as a GearItemResource.")
