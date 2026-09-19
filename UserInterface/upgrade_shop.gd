@@ -1,36 +1,80 @@
-## Shop screen presenting dynamic data-driven upgrade choices to the player.
 extends Control
 
-## Scene used to instantiate upgrade cards. Falls back to GlobalVars.upgrade_icon_scene if unset.
+const ItemResource = preload("res://Items/item_resource.gd")
+const UpgradeIcon = preload("res://UserInterface/upgrade_icon.gd")
+
+## Scene used to instantiate item/upgrade cards. Falls back to GlobalVars.upgrade_icon_scene if unset.
 @export var upgrade_card_scene: PackedScene
 
-## Upgrade resources offered by this shop. Falls back to GlobalVars.upgrades if empty.
-@export var available_upgrades: Array[UpgradeResource] = []
+## Item resources offered by this shop. Falls back to GlobalVars.items if empty.
+@export var available_items: Array[ItemResource] = []
+
+## Compatibility alias for available_items.
+var available_upgrades: Array[ItemResource]:
+	get:
+		return available_items
+	set(val):
+		available_items = val
 
 @onready var upgrade_container: HBoxContainer = $MarginContainer/VBoxContainer/HBoxContainer
+@onready var gold_label: RichTextLabel = get_node_or_null("MarginContainer/VBoxContainer/GoldLabel") as RichTextLabel
+@onready var leave_button: Button = get_node_or_null("MarginContainer/VBoxContainer/LeaveButton") as Button
 
 var exiting_shop: bool = false
 
 
 func _ready() -> void:
+	if leave_button != null:
+		leave_button.pressed.connect(leave_shop)
+
+	if ProgressionState != null:
+		if not ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
+			ProgressionState.currency_gold_changed.connect(_on_gold_changed)
+		_update_gold_label(ProgressionState.currency_gold)
+
 	var card_scene: PackedScene = upgrade_card_scene
 	if card_scene == null:
 		card_scene = GlobalVars.upgrade_icon_scene
 
-	var pool: Array[UpgradeResource] = available_upgrades
-	if pool.is_empty():
-		pool = GlobalVars.upgrades
+	var pool: Array[ItemResource] = available_items
+	if pool.is_empty() and GlobalVars != null:
+		pool = GlobalVars.items
 
-	var upgrade_options: Array[UpgradeResource] = pool.duplicate()
-	upgrade_options.shuffle()
-	for resource: UpgradeResource in upgrade_options.slice(0, 2):
-		var current_upgrade: UpgradeIcon = card_scene.instantiate() as UpgradeIcon
-		upgrade_container.add_child(current_upgrade)
-		current_upgrade.set_upgrade_resource(resource)
-		current_upgrade.upgrade_taken.connect(exit_shop)
+	var item_options: Array[ItemResource] = pool.duplicate()
+	item_options.shuffle()
+	for resource: ItemResource in item_options.slice(0, 2):
+		var current_card: UpgradeIcon = card_scene.instantiate() as UpgradeIcon
+		upgrade_container.add_child(current_card)
+		current_card.set_item_resource(resource)
+		current_card.upgrade_taken.connect(exit_shop)
 
 
-func exit_shop(upgrade_in: UpgradeIcon) -> void:
+func _exit_tree() -> void:
+	if ProgressionState != null and ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
+		ProgressionState.currency_gold_changed.disconnect(_on_gold_changed)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		leave_shop()
+		get_viewport().set_input_as_handled()
+
+
+func _on_gold_changed(amount: int) -> void:
+	_update_gold_label(amount)
+
+
+func _update_gold_label(amount: int) -> void:
+	if gold_label != null:
+		gold_label.text = "[center]Gold: [color=gold]%d[/color][/center]" % amount
+
+
+## Cancels out of shop without selecting an upgrade.
+func leave_shop() -> void:
+	exit_shop(null)
+
+
+func exit_shop(_item_in: UpgradeIcon = null) -> void:
 	if exiting_shop:
 		return
 	exiting_shop = true

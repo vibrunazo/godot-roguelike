@@ -3,6 +3,9 @@
 class_name Character
 extends CharacterBody3D
 
+const EquipmentComponent = preload("res://Components/equipment_component.gd")
+const EnemyResource = preload("res://Enemy/enemy_resource.gd")
+
 ## Emitted when this character's health reaches zero.
 signal defeat
 
@@ -46,6 +49,10 @@ signal alerted
 @export var stun_state: State
 ## State entered when this character is defeated.
 @export var defeat_state: State
+## Optional EquipmentComponent for inventory and gear management.
+@export var equipment_component: EquipmentComponent
+## Optional EnemyResource defining enemy archetype properties (such as gold drop).
+@export var enemy_resource: EnemyResource
 ## Optional cooldown timer preventing dash spamming. Wired on the player;
 ## characters without one (enemies) are always ready and rely on AI gating.
 @export var dash_cooldown: Timer
@@ -127,6 +134,15 @@ func _ready() -> void:
 			mesh_mount = get_node_or_null("GamedevTV_Mannequin_Medium") as Node3D
 	if animation_tree == null:
 		animation_tree = find_child("AnimationTree", true, false) as AnimationTree
+	if equipment_component == null:
+		equipment_component = get_node_or_null("EquipmentComponent") as EquipmentComponent
+	if equipment_component == null:
+		for child: Node in get_children():
+			if child is EquipmentComponent:
+				equipment_component = child as EquipmentComponent
+				break
+	if equipment_component != null:
+		equipment_component.character = self
 	if is_enemy():
 		if stun_state == null:
 			push_warning("Character '%s' in 'enemy' group has no stun_state assigned." % name)
@@ -626,6 +642,17 @@ func on_defeat() -> void:
 		return
 	_is_defeated = true
 	defeat.emit()
+
+	if is_enemy() and ProgressionState != null:
+		var gold: int = 5
+		if enemy_resource != null:
+			gold = enemy_resource.gold_drop
+		elif GlobalVars != null and not scene_file_path.is_empty():
+			for er: EnemyResource in GlobalVars.enemies:
+				if er != null and er.scene != null and er.scene.resource_path == scene_file_path:
+					gold = er.gold_drop
+					break
+		ProgressionState.add_gold(gold)
 	move_direction = Vector3.ZERO
 	aim_direction = Vector3.ZERO
 	face_target = Vector3.ZERO

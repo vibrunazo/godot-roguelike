@@ -8,6 +8,7 @@
 [ext_resource type="MeshLibrary" uid="uid://bi5ncfx68rvoc" path="res://Levels/Gridmap/floormap.tres" id="7_vjhoh"]
 [ext_resource type="MeshLibrary" uid="uid://10ib4mm1ty30" path="res://Levels/Gridmap/wall_map.tres" id="8_g8k58"]
 [ext_resource type="PackedScene" uid="uid://dfx801p3nbkl3" path="res://Levels/exit_point.tscn" id="9_exit_point"]
+[ext_resource type="PackedScene" path="res://UserInterface/hud.tscn" id="10_hud"]
 
 [sub_resource type="Gradient" id="Gradient_g8k58"]
 colors = PackedColorArray(0.19607843, 0.46666667, 0.65882355, 1, 0.61960787, 0.8039216, 0.9490196, 1)
@@ -105,5 +106,7 @@ data = ExtResource("6_voxel_gi")
 
 [node name="ExitPoint" parent="." unique_id=71757807 instance=ExtResource("9_exit_point")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -30)
+
+[node name="HUD" parent="." instance=ExtResource("10_hud")]
 
 [connection signal="finished" from="WaveObjective" to="ExitPoint" method="unlock"]

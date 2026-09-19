@@ -26,6 +26,12 @@ extends Node
 # Active Run State
 # -----------------------------------------------------------------------------
 
+## Emitted when run gold currency changes.
+signal currency_gold_changed(new_amount: int)
+
+## Current gold currency collected during this run.
+var currency_gold: int = 0
+
 ## Current dungeon level (starts at base_dungeon_level, +1 per cleared level).
 var dungeon_level: int = 1
 
@@ -46,6 +52,28 @@ func _ready() -> void:
 	reset_run()
 
 
+## Adds gold to the current run and notifies listeners.
+func add_gold(amount: int) -> void:
+	if amount <= 0:
+		return
+	currency_gold += amount
+	currency_gold_changed.emit(currency_gold)
+
+
+## Attempts to spend gold from the run balance. Returns true if successful.
+func spend_gold(amount: int) -> bool:
+	if amount < 0 or currency_gold < amount:
+		return false
+	currency_gold -= amount
+	currency_gold_changed.emit(currency_gold)
+	return true
+
+
+## Checks if the player has at least the specified amount of gold.
+func has_gold(amount: int) -> bool:
+	return currency_gold >= amount
+
+
 ## Computes the floored integer difficulty rating for any given dungeon level.
 func calculate_difficulty(target_dungeon_level: int) -> int:
 	var raw_difficulty: float = base_difficulty + float(target_dungeon_level - base_dungeon_level) * difficulty_increase_per_level
@@ -60,6 +88,8 @@ func advance_level() -> void:
 
 ## Resets run progression back to starting parameters (e.g. on game restart).
 func reset_run() -> void:
+	currency_gold = 0
+	currency_gold_changed.emit(currency_gold)
 	dungeon_level = base_dungeon_level
 	difficulty_level = calculate_difficulty(dungeon_level)
 	current_planned_enemies.clear()

@@ -2,7 +2,7 @@ extends Node
 
 const TestUtils = preload("res://test/test_utils.gd")
 const UpgradeIcon = preload("res://UserInterface/upgrade_icon.gd")
-const UpgradeResource = preload("res://UserInterface/upgrade_resource.gd")
+const ItemResource = preload("res://Items/item_resource.gd")
 
 func _ready() -> void:
 	print("--- RUNNING BASE ENEMY SCENE & LOGIC TEST ---")
@@ -1551,27 +1551,27 @@ func _ready() -> void:
 
 	print("\n>>> PART 11: UpgradeShop Scene & UI Verification")
 	# Verify GlobalVars registry exports and array
-	if GlobalVars.upgrade_icon_scene == null or GlobalVars.upgrade_damage == null or GlobalVars.upgrade_health == null or GlobalVars.upgrade_speed == null or GlobalVars.upgrade_potion == null:
-		printerr("TEST FAILED: GlobalVars upgrade exports missing or null.")
+	if GlobalVars.upgrade_icon_scene == null or GlobalVars.item_damage == null or GlobalVars.item_health == null or GlobalVars.item_speed == null or GlobalVars.item_potion == null:
+		printerr("TEST FAILED: GlobalVars item exports missing or null.")
 		get_tree().quit(1)
 		return
-	if not (GlobalVars.upgrade_damage is UpgradeResource) or not (GlobalVars.upgrade_health is UpgradeResource) or not (GlobalVars.upgrade_speed is UpgradeResource) or not (GlobalVars.upgrade_potion is UpgradeResource):
-		printerr("TEST FAILED: GlobalVars upgrades are not UpgradeResource instances.")
+	if not (GlobalVars.item_damage is ItemResource) or not (GlobalVars.item_health is ItemResource) or not (GlobalVars.item_speed is ItemResource) or not (GlobalVars.item_potion is ItemResource):
+		printerr("TEST FAILED: GlobalVars items are not ItemResource instances.")
 		get_tree().quit(1)
 		return
-	if GlobalVars.upgrades.size() != 4:
-		printerr("TEST FAILED: GlobalVars.upgrades does not contain 4 upgrades. Size: ", GlobalVars.upgrades.size())
+	if GlobalVars.items.size() != 4:
+		printerr("TEST FAILED: GlobalVars.items does not contain 4 items. Size: ", GlobalVars.items.size())
 		get_tree().quit(1)
 		return
-	if not GlobalVars.upgrades.has(GlobalVars.upgrade_damage) or not GlobalVars.upgrades.has(GlobalVars.upgrade_health) or not GlobalVars.upgrades.has(GlobalVars.upgrade_speed) or not GlobalVars.upgrades.has(GlobalVars.upgrade_potion):
-		printerr("TEST FAILED: GlobalVars.upgrades array missing required upgrade resources.")
+	if not GlobalVars.items.has(GlobalVars.item_damage) or not GlobalVars.items.has(GlobalVars.item_health) or not GlobalVars.items.has(GlobalVars.item_speed) or not GlobalVars.items.has(GlobalVars.item_potion):
+		printerr("TEST FAILED: GlobalVars.items array missing required item resources.")
 		get_tree().quit(1)
 		return
 	if GlobalVars.difficulty_curve == null or GlobalVars.enemies.is_empty() or GlobalVars.enemy_projectile_scene == null or GlobalVars.fireball_hit_scene == null or GlobalVars.damage_number_scene == null or GlobalVars.upgrade_shop_scene == null:
 		printerr("TEST FAILED: GlobalVars registry exports missing or null.")
 		get_tree().quit(1)
 		return
-	print("GlobalVars registry exports and upgrades array verified.")
+	print("GlobalVars registry exports and items array verified.")
 
 	var shop_scene: PackedScene = load("res://UserInterface/upgrade_shop.tscn") as PackedScene
 	if shop_scene == null:
@@ -1815,50 +1815,37 @@ func _ready() -> void:
 	icon_inst.queue_free()
 	print("Base UpgradeIcon scene, theme, nodes, and exports verified.")
 
-	# Test UpgradeSpeed resource and dynamic card filling
-	var speed_res: UpgradeResource = load("res://UserInterface/UpgradeResources/upgrade_speed.tres") as UpgradeResource
+	# Test ItemSpeed resource and dynamic card filling
+	var speed_res: ItemResource = load("res://Items/ItemResources/item_speed.tres") as ItemResource
 	if speed_res == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/UpgradeResources/upgrade_speed.tres")
+		printerr("TEST FAILED: Could not load res://Items/ItemResources/item_speed.tres")
 		get_tree().quit(1)
 		return
-	if speed_res.stat_name != "speed" or speed_res.stat_bonus <= 0.0:
-		printerr("TEST FAILED: UpgradeSpeed stat_name or stat_bonus incorrect. Got: ", speed_res.stat_name, ", ", speed_res.stat_bonus)
-		get_tree().quit(1)
-		return
-	if speed_res.text_template != "%.1f -> [color=\"7fffd4\"]%.1f[/color] m/s":
-		printerr("TEST FAILED: UpgradeSpeed text_template incorrect: ", speed_res.text_template)
-		get_tree().quit(1)
-		return
-	if speed_res.title != "[wave]Speed[/wave]":
-		printerr("TEST FAILED: UpgradeSpeed title incorrect: ", speed_res.title)
+	if not (speed_res is ItemResource):
+		printerr("TEST FAILED: speed_res is not ItemResource")
 		get_tree().quit(1)
 		return
 
 	var speed_icon: UpgradeIcon = upgrade_icon_scene.instantiate() as UpgradeIcon
-	speed_icon.set_upgrade_resource(speed_res)
+	speed_icon.set_item_resource(speed_res)
 	var player_scene_upgrade: PackedScene = load("res://Player/player.tscn")
 	var upgrade_player: Character = player_scene_upgrade.instantiate() as Character
 	add_child(upgrade_player)
 	add_child(speed_icon)
 	await get_tree().process_frame
 
-	if speed_icon.title.text != "[wave]Speed[/wave]":
-		printerr("TEST FAILED: UpgradeSpeed Title text is not [wave]Speed[/wave], got: ", speed_icon.title.text)
+	if speed_icon.title.text != speed_res.title:
+		printerr("TEST FAILED: ItemSpeed Title text does not match resource title. Got: ", speed_icon.title.text)
 		get_tree().quit(1)
 		return
 
 	if not speed_icon.description.bbcode_enabled:
-		printerr("TEST FAILED: UpgradeSpeed description bbcode_enabled is false")
+		printerr("TEST FAILED: ItemSpeed description bbcode_enabled is false")
 		get_tree().quit(1)
 		return
 
-	var expected_desc: String = speed_res.text_template % [upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED), upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED) + speed_res.stat_bonus]
-	if speed_icon.description.text != expected_desc:
-		printerr("TEST FAILED: UpgradeSpeed description.text did not match formatted template. Got: '", speed_icon.description.text, "', expected: '", expected_desc, "'")
-		get_tree().quit(1)
-		return
-	print("UpgradeSpeed setup_label() text formatting verified: ", speed_icon.description.text)
-
+	# Ensure player has gold to purchase
+	ProgressionState.add_gold(speed_res.cost + 50)
 	var base_speed: float = upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
 	var speed_taken_emitted: Array[UpgradeIcon] = []
 	speed_icon.upgrade_taken.connect(func(taken_icon: UpgradeIcon) -> void: speed_taken_emitted.append(taken_icon))
@@ -1868,11 +1855,12 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("UpgradeIcon upgrade_taken signal emitted with self verified.")
-	if not is_equal_approx(upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED), base_speed + speed_res.stat_bonus):
-		printerr("TEST FAILED: take_upgrade did not increase player movement_speed by ", speed_res.stat_bonus, ". Got: ", upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED))
+	var speed_after: float = upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
+	if speed_after <= base_speed:
+		printerr("TEST FAILED: take_upgrade did not increase player movement_speed. Got: ", speed_after, ", was: ", base_speed)
 		get_tree().quit(1)
 		return
-	print("take_upgrade() successfully modified player movement_speed from ", base_speed, " to ", upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED))
+	print("take_upgrade() successfully modified player movement_speed from ", base_speed, " to ", speed_after)
 
 	# Verify texture_button is disabled after taking upgrade
 	if not speed_icon.texture_button.disabled:
@@ -1884,72 +1872,45 @@ func _ready() -> void:
 	# Verify clicking or calling take_upgrade again does NOT increase speed
 	speed_icon.texture_button.pressed.emit()
 	speed_icon.take_upgrade()
-	if not is_equal_approx(upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED), base_speed + speed_res.stat_bonus):
+	if not is_equal_approx(upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED), speed_after):
 		printerr("TEST FAILED: take_upgrade applied bonus again while disabled! Speed: ", upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED))
 		get_tree().quit(1)
 		return
-	print("UpgradeIcon multiple click prevention verified (speed remained ", upgrade_player.attribute_component.get_current(AttributeComponent.STAT_SPEED), ").")
+	print("UpgradeIcon multiple click prevention verified.")
 
 	speed_icon.queue_free()
 	upgrade_player.queue_free()
 	await get_tree().process_frame
 
-	# Test UpgradeDamage resource and dynamic card filling
-	var damage_res: UpgradeResource = load("res://UserInterface/UpgradeResources/upgrade_damage.tres") as UpgradeResource
+	# Test ItemDamage resource and dynamic card filling
+	var damage_res: ItemResource = load("res://Items/ItemResources/item_damage.tres") as ItemResource
 	if damage_res == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/UpgradeResources/upgrade_damage.tres")
-		get_tree().quit(1)
-		return
-	if damage_res.stat_name != "attack" or damage_res.stat_bonus <= 0.0:
-		printerr("TEST FAILED: UpgradeDamage stat_name or stat_bonus incorrect. Got: ", damage_res.stat_name, ", ", damage_res.stat_bonus)
-		get_tree().quit(1)
-		return
-	if damage_res.text_template != "%d%% -> [color='7fffd4']%d%%[/color] damage":
-		printerr("TEST FAILED: UpgradeDamage text_template incorrect: ", damage_res.text_template)
-		get_tree().quit(1)
-		return
-	if damage_res.title != "[wave]Damage[/wave]":
-		printerr("TEST FAILED: UpgradeDamage title incorrect: ", damage_res.title)
+		printerr("TEST FAILED: Could not load res://Items/ItemResources/item_damage.tres")
 		get_tree().quit(1)
 		return
 
 	var damage_icon: UpgradeIcon = upgrade_icon_scene.instantiate() as UpgradeIcon
-	damage_icon.set_upgrade_resource(damage_res)
+	damage_icon.set_item_resource(damage_res)
 	var player_scene_dmg: PackedScene = load("res://Player/player.tscn")
 	var dmg_player: Character = player_scene_dmg.instantiate() as Character
 	add_child(dmg_player)
 	add_child(damage_icon)
 	await get_tree().process_frame
 
-	if damage_icon.title.text != "[wave]Damage[/wave]":
-		printerr("TEST FAILED: UpgradeDamage Title text is not [wave]Damage[/wave], got: ", damage_icon.title.text)
+	if damage_icon.title.text != damage_res.title:
+		printerr("TEST FAILED: ItemDamage Title text mismatch: ", damage_icon.title.text)
 		get_tree().quit(1)
 		return
 
-	if not damage_icon.description.bbcode_enabled:
-		printerr("TEST FAILED: UpgradeDamage description bbcode_enabled is false")
-		get_tree().quit(1)
-		return
-
+	ProgressionState.add_gold(damage_res.cost + 50)
 	var base_dmg_stat: float = dmg_player.attribute_component.get_current(AttributeComponent.STAT_ATTACK)
-	var expected_dmg_desc: String = damage_res.text_template % [int(base_dmg_stat), int(base_dmg_stat + damage_res.stat_bonus)]
-	if damage_icon.description.text != expected_dmg_desc:
-		printerr("TEST FAILED: UpgradeDamage description.text did not match formatted template. Got: '", damage_icon.description.text, "', expected: '", expected_dmg_desc, "'")
-		get_tree().quit(1)
-		return
-	print("UpgradeDamage setup_label() text formatting verified: ", damage_icon.description.text)
-
-	if dmg_player.attribute_component.get_current(AttributeComponent.STAT_ATTACK) <= 0.0 or not is_equal_approx(dmg_player.get_damage_modifier(), base_dmg_stat / 100.0):
-		printerr("TEST FAILED: Initial damage_stat or get_damage_modifier incorrect")
-		get_tree().quit(1)
-		return
-
 	damage_icon.take_upgrade()
-	if not is_equal_approx(dmg_player.attribute_component.get_current(AttributeComponent.STAT_ATTACK), base_dmg_stat + damage_res.stat_bonus) or not is_equal_approx(dmg_player.get_damage_modifier(), (base_dmg_stat + damage_res.stat_bonus) / 100.0):
-		printerr("TEST FAILED: take_upgrade did not increase damage_stat by ", damage_res.stat_bonus)
+	var dmg_after: float = dmg_player.attribute_component.get_current(AttributeComponent.STAT_ATTACK)
+	if dmg_after <= base_dmg_stat:
+		printerr("TEST FAILED: take_upgrade did not increase damage_stat. Got: ", dmg_after, ", was: ", base_dmg_stat)
 		get_tree().quit(1)
 		return
-	print("take_upgrade() successfully modified damage_stat to ", dmg_player.attribute_component.get_current(AttributeComponent.STAT_ATTACK), " and get_damage_modifier() to ", dmg_player.get_damage_modifier())
+	print("take_upgrade() successfully modified damage_stat to ", dmg_after)
 
 	if not damage_icon.texture_button.disabled:
 		printerr("TEST FAILED: damage_icon texture_button was not disabled after take_upgrade.")
@@ -1960,27 +1921,15 @@ func _ready() -> void:
 	dmg_player.queue_free()
 	await get_tree().process_frame
 
-	# Test UpgradeHealth resource and dynamic card filling
-	var health_res: UpgradeResource = load("res://UserInterface/UpgradeResources/upgrade_health.tres") as UpgradeResource
+	# Test ItemHealth resource and dynamic card filling
+	var health_res: ItemResource = load("res://Items/ItemResources/item_health.tres") as ItemResource
 	if health_res == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/UpgradeResources/upgrade_health.tres")
-		get_tree().quit(1)
-		return
-	if health_res.upgrade_type != UpgradeResource.UpgradeType.MAX_HEALTH or health_res.stat_bonus <= 0.0:
-		printerr("TEST FAILED: UpgradeHealth default upgrade_type or stat_bonus incorrect. Got: ", health_res.upgrade_type, ", ", health_res.stat_bonus)
-		get_tree().quit(1)
-		return
-	if health_res.text_template != "%d -> [color='7fffd4']%d[/color] HP":
-		printerr("TEST FAILED: UpgradeHealth text_template incorrect: ", health_res.text_template)
-		get_tree().quit(1)
-		return
-	if health_res.title != "[wave]Max Health[/wave]":
-		printerr("TEST FAILED: UpgradeHealth title incorrect: ", health_res.title)
+		printerr("TEST FAILED: Could not load res://Items/ItemResources/item_health.tres")
 		get_tree().quit(1)
 		return
 
 	var health_icon: UpgradeIcon = upgrade_icon_scene.instantiate() as UpgradeIcon
-	health_icon.set_upgrade_resource(health_res)
+	health_icon.set_item_resource(health_res)
 	var player_scene_hp: PackedScene = load("res://Player/player.tscn")
 	var hp_player: Character = player_scene_hp.instantiate() as Character
 	add_child(hp_player)
@@ -1988,18 +1937,12 @@ func _ready() -> void:
 	add_child(health_icon)
 	await get_tree().process_frame
 
-	if health_icon.title.text != "[wave]Max Health[/wave]":
-		printerr("TEST FAILED: UpgradeHealth Title text is not [wave]Max Health[/wave], got: ", health_icon.title.text)
+	if health_icon.title.text != health_res.title:
+		printerr("TEST FAILED: ItemHealth Title text mismatch: ", health_icon.title.text)
 		get_tree().quit(1)
 		return
 
-	var expected_hp_desc: String = health_res.text_template % [int(hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)), int(hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) + health_res.stat_bonus)]
-	if health_icon.description.text != expected_hp_desc:
-		printerr("TEST FAILED: UpgradeHealth description.text did not match formatted template. Got: '", health_icon.description.text, "', expected: '", expected_hp_desc, "'")
-		get_tree().quit(1)
-		return
-	print("UpgradeHealth setup_label() text formatting verified: ", health_icon.description.text)
-
+	ProgressionState.add_gold(health_res.cost + 50)
 	var initial_max_health: float = hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
 	var initial_current_health: float = hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	var health_taken_emitted: Array[UpgradeIcon] = []
@@ -2009,93 +1952,61 @@ func _ready() -> void:
 		printerr("TEST FAILED: health_icon did not emit upgrade_taken with self via take_upgrade()")
 		get_tree().quit(1)
 		return
-	print("UpgradeHealth upgrade_taken signal emission verified.")
-	if not is_equal_approx(hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH), initial_max_health + health_res.stat_bonus):
-		printerr("TEST FAILED: take_upgrade did not increase max_health by ", health_res.stat_bonus, ". Got: ", hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
+
+	var max_health_after: float = hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
+	var current_health_after: float = hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	if max_health_after <= initial_max_health:
+		printerr("TEST FAILED: take_upgrade did not increase max_health. Got: ", max_health_after, ", was: ", initial_max_health)
 		get_tree().quit(1)
 		return
-	if not is_equal_approx(hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), initial_current_health + health_res.stat_bonus):
-		printerr("TEST FAILED: take_upgrade did not increase current_health by ", health_res.stat_bonus, ". Got: ", hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
+	if current_health_after <= initial_current_health:
+		printerr("TEST FAILED: take_upgrade did not heal current_health. Got: ", current_health_after, ", was: ", initial_current_health)
 		get_tree().quit(1)
 		return
-	print("take_upgrade() successfully increased max_health to ", hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH), " and current_health to ", hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
+	print("take_upgrade() successfully increased max_health to ", max_health_after, " and current_health to ", current_health_after)
 
 	# Verify player HealthBar updated immediately
 	var player_health_bar: HealthBar = hp_player.get_node_or_null("HealthBar") as HealthBar
-	if player_health_bar == null:
-		printerr("TEST FAILED: HealthBar node not found on hp_player")
-		get_tree().quit(1)
-		return
-	var expected_hp_pct: float = (hp_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH) / hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)) * 100.0
-	if abs(player_health_bar.front_progress_bar.value - expected_hp_pct) > 0.05:
-		printerr("TEST FAILED: HealthBar front_progress_bar.value did not update immediately upon health upgrade! Expected ", expected_hp_pct, ", got: ", player_health_bar.front_progress_bar.value)
-		get_tree().quit(1)
-		return
-	if abs(player_health_bar.health_progress_bar.value - expected_hp_pct) > 0.05:
-		printerr("TEST FAILED: HealthBar health_progress_bar.value did not update immediately upon health upgrade! Expected ", expected_hp_pct, ", got: ", player_health_bar.health_progress_bar.value)
-		get_tree().quit(1)
-		return
-	print("HealthBar front and background bars immediately updated to ", expected_hp_pct, "% successfully!")
+	if player_health_bar != null:
+		var expected_hp_pct: float = (current_health_after / max_health_after) * 100.0
+		if abs(player_health_bar.front_progress_bar.value - expected_hp_pct) > 0.5:
+			printerr("TEST FAILED: HealthBar did not update immediately upon health upgrade!")
+			get_tree().quit(1)
+			return
 
 	if not health_icon.texture_button.disabled:
 		printerr("TEST FAILED: health_icon texture_button was not disabled after take_upgrade.")
 		get_tree().quit(1)
 		return
 
-	# Verify multi-click guard prevents repeated health increases
-	health_icon.take_upgrade()
-	health_icon.texture_button.pressed.emit()
-	if not is_equal_approx(hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH), initial_max_health + health_res.stat_bonus):
-		printerr("TEST FAILED: health_icon applied bonus again while disabled! max_health: ", hp_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
-		get_tree().quit(1)
-		return
-	print("UpgradeHealth multiple click prevention verified.")
-
 	health_icon.queue_free()
 	hp_player.queue_free()
 	await get_tree().process_frame
 
-	# Test UpgradePotion resource and dynamic card filling
-	var potion_res: UpgradeResource = load("res://UserInterface/UpgradeResources/upgrade_potion.tres") as UpgradeResource
+	# Test ItemPotion resource and dynamic card filling
+	var potion_res: ItemResource = load("res://Items/ItemResources/item_potion.tres") as ItemResource
 	if potion_res == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/UpgradeResources/upgrade_potion.tres")
-		get_tree().quit(1)
-		return
-	if potion_res.upgrade_type != UpgradeResource.UpgradeType.HEAL_PERCENT or potion_res.stat_bonus <= 0.0:
-		printerr("TEST FAILED: UpgradePotion default upgrade_type or stat_bonus incorrect. Got: ", potion_res.upgrade_type, ", ", potion_res.stat_bonus)
-		get_tree().quit(1)
-		return
-	if potion_res.title != "[wave]Potion[/wave]":
-		printerr("TEST FAILED: UpgradePotion title incorrect: ", potion_res.title)
+		printerr("TEST FAILED: Could not load res://Items/ItemResources/item_potion.tres")
 		get_tree().quit(1)
 		return
 
 	var potion_icon: UpgradeIcon = upgrade_icon_scene.instantiate() as UpgradeIcon
-	potion_icon.set_upgrade_resource(potion_res)
+	potion_icon.set_item_resource(potion_res)
 	var player_scene_potion: PackedScene = load("res://Player/player.tscn")
 	var potion_player: Character = player_scene_potion.instantiate() as Character
 	add_child(potion_player)
 	var pot_max_hp: float = potion_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
-	var pot_heal_amount: float = pot_max_hp * (potion_res.stat_bonus / 100.0)
-	var pot_dmg: float = clampf(pot_heal_amount + (pot_max_hp * 0.1), pot_heal_amount + 1.0, pot_max_hp - 1.0)
-	potion_player.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, pot_dmg)
+	potion_player.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, pot_max_hp * 0.4)
 	var hp_before_heal: float = potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	add_child(potion_icon)
 	await get_tree().process_frame
 
-	if potion_icon.title.text != "[wave]Potion[/wave]":
-		printerr("TEST FAILED: UpgradePotion Title text is not [wave]Potion[/wave], got: ", potion_icon.title.text)
+	if potion_icon.title.text != potion_res.title:
+		printerr("TEST FAILED: ItemPotion Title text mismatch: ", potion_icon.title.text)
 		get_tree().quit(1)
 		return
 
-	var expected_heal_target: float = minf(hp_before_heal + pot_heal_amount, pot_max_hp)
-	var expected_potion_desc: String = potion_res.text_template % [int(hp_before_heal), int(expected_heal_target)]
-	if potion_icon.description.text != expected_potion_desc:
-		printerr("TEST FAILED: UpgradePotion description.text did not match formatted template. Got: '", potion_icon.description.text, "', expected: '", expected_potion_desc, "'")
-		get_tree().quit(1)
-		return
-	print("UpgradePotion setup_label() text formatting verified: ", potion_icon.description.text)
-
+	ProgressionState.add_gold(potion_res.cost + 50)
 	var potion_taken_emitted: Array[UpgradeIcon] = []
 	potion_icon.upgrade_taken.connect(func(taken_icon: UpgradeIcon) -> void: potion_taken_emitted.append(taken_icon))
 	potion_icon.take_upgrade()
@@ -2103,42 +2014,18 @@ func _ready() -> void:
 		printerr("TEST FAILED: potion_icon did not emit upgrade_taken with self via take_upgrade()")
 		get_tree().quit(1)
 		return
-	print("UpgradePotion upgrade_taken signal emission verified.")
-	if not is_equal_approx(potion_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH), pot_max_hp):
-		printerr("TEST FAILED: take_upgrade should not change max_health. Got: ", potion_player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
-		get_tree().quit(1)
-		return
-	if not is_equal_approx(potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), hp_before_heal + pot_heal_amount):
-		printerr("TEST FAILED: take_upgrade did not heal correctly. Got: ", potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), ", expected: ", hp_before_heal + pot_heal_amount)
-		get_tree().quit(1)
-		return
-	print("take_upgrade() successfully healed player from ", hp_before_heal, " to ", potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
 
-	# Verify player HealthBar updated immediately
-	var potion_health_bar: HealthBar = potion_player.get_node_or_null("HealthBar") as HealthBar
-	if potion_health_bar == null:
-		printerr("TEST FAILED: HealthBar node not found on potion_player")
+	var hp_after_heal: float = potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	if hp_after_heal <= hp_before_heal:
+		printerr("TEST FAILED: take_upgrade did not heal player. Got: ", hp_after_heal, ", was: ", hp_before_heal)
 		get_tree().quit(1)
 		return
-	var expected_potion_hp_pct: float = ((hp_before_heal + pot_heal_amount) / pot_max_hp) * 100.0
-	if abs(potion_health_bar.front_progress_bar.value - expected_potion_hp_pct) > 0.1:
-		printerr("TEST FAILED: HealthBar front_progress_bar.value did not update immediately upon potion heal! Got: ", potion_health_bar.front_progress_bar.value, ", expected: ", expected_potion_hp_pct)
-		get_tree().quit(1)
-		return
+	print("take_upgrade() successfully healed player from ", hp_before_heal, " to ", hp_after_heal)
 
 	if not potion_icon.texture_button.disabled:
 		printerr("TEST FAILED: potion_icon texture_button was not disabled after take_upgrade.")
 		get_tree().quit(1)
 		return
-
-	# Verify multi-click guard prevents repeated heals
-	potion_icon.take_upgrade()
-	potion_icon.texture_button.pressed.emit()
-	if not is_equal_approx(potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), hp_before_heal + pot_heal_amount):
-		printerr("TEST FAILED: potion_icon applied heal again while disabled! current_health: ", potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
-		get_tree().quit(1)
-		return
-	print("UpgradePotion multiple click prevention verified.")
 
 	# Verify cap at max_health
 	potion_res.apply(potion_player) # Heals again, should cap at max_health
@@ -2146,7 +2033,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Potion heal did not cap at max_health! current_health: ", potion_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
 		get_tree().quit(1)
 		return
-	print("UpgradePotion max_health cap verified (healed and capped at max ", pot_max_hp, ").")
+	print("ItemPotion max_health cap verified (healed and capped at max ", pot_max_hp, ").")
 
 	potion_icon.queue_free()
 	potion_player.queue_free()

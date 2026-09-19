@@ -71,9 +71,12 @@ func toggle_fullscreen() -> void:
 
 const LEVEL_TITLE_OVERLAY_SCENE: PackedScene = preload("res://UserInterface/level_title_overlay.tscn")
 const DEFAULT_PAUSE_MENU_SCENE: PackedScene = preload("res://UserInterface/pause_menu.tscn")
+const HUD_SCENE: PackedScene = preload("res://UserInterface/hud.tscn")
+const HUD = preload("res://UserInterface/hud.gd")
 
 var _current_level_overlay: LevelTitleOverlay = null
 var _current_pause_menu: PauseMenu = null
+var _current_hud: HUD = null
 ## True while the game-over screen owns the pause state. The pause toggle is
 ## disabled then: there is nothing to resume to, only restart or quit.
 var _is_game_over: bool = false
@@ -87,9 +90,40 @@ var is_in_main_menu: bool = false
 ## Globally enables or disables UI overlays. When set to false, existing overlays are freed immediately.
 func set_overlays_visible(p_visible: bool) -> void:
 	overlays_enabled = p_visible
-	if not overlays_enabled and _current_level_overlay != null and is_instance_valid(_current_level_overlay):
-		_current_level_overlay.queue_free()
-		_current_level_overlay = null
+	if not overlays_enabled:
+		if _current_level_overlay != null and is_instance_valid(_current_level_overlay):
+			_current_level_overlay.queue_free()
+			_current_level_overlay = null
+		if _current_hud != null and is_instance_valid(_current_hud):
+			_current_hud.queue_free()
+			_current_hud = null
+	if is_inside_tree():
+		for hud: Node in get_tree().get_nodes_in_group("hud"):
+			if hud is CanvasLayer:
+				(hud as CanvasLayer).visible = overlays_enabled
+
+
+## Displays the HUD overlay on screen.
+func show_hud() -> HUD:
+	if not overlays_enabled:
+		return null
+	if _current_hud != null and is_instance_valid(_current_hud):
+		return _current_hud
+	var hud: HUD = HUD_SCENE.instantiate() as HUD
+	add_child(hud)
+	_current_hud = hud
+	return hud
+
+
+## Hides and removes the current HUD overlay.
+func hide_hud() -> void:
+	if _current_hud != null and is_instance_valid(_current_hud):
+		_current_hud.queue_free()
+		_current_hud = null
+	if is_inside_tree():
+		for hud: Node in get_tree().get_nodes_in_group("hud"):
+			if hud is CanvasLayer:
+				(hud as CanvasLayer).visible = false
 
 
 ## Displays a text overlay on screen indicating the current level number.

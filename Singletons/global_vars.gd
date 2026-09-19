@@ -10,18 +10,36 @@
 ## `VfxManager`, `SceneTransition`), never here.
 extends Node
 
+const ItemResource = preload("res://Items/item_resource.gd")
+const EnemyResource = preload("res://Enemy/enemy_resource.gd")
+
 ## Legacy difficulty scaling curve.
 @export var difficulty_curve: Curve
-## Base upgrade icon scene used to display upgrade cards in the UpgradeShop.
+## Base item card icon scene used to display item cards in the UpgradeShop.
 @export var upgrade_icon_scene: PackedScene
-## Upgrade resource offered by the UpgradeShop.
-@export var upgrade_damage: UpgradeResource
-## Upgrade resource offered by the UpgradeShop.
-@export var upgrade_health: UpgradeResource
-## Upgrade resource offered by the UpgradeShop.
-@export var upgrade_speed: UpgradeResource
-## Upgrade resource offered by the UpgradeShop.
-@export var upgrade_potion: UpgradeResource
+## Damage gear item resource offered by the UpgradeShop.
+@export var item_damage: ItemResource
+## Health gear item resource offered by the UpgradeShop.
+@export var item_health: ItemResource
+## Speed gear item resource offered by the UpgradeShop.
+@export var item_speed: ItemResource
+## Health potion consumable item resource offered by the UpgradeShop.
+@export var item_potion: ItemResource
+
+## Convenience aliases for item exports
+var upgrade_damage: ItemResource:
+	get: return item_damage
+	set(val): item_damage = val
+var upgrade_health: ItemResource:
+	get: return item_health
+	set(val): item_health = val
+var upgrade_speed: ItemResource:
+	get: return item_speed
+	set(val): item_speed = val
+var upgrade_potion: ItemResource:
+	get: return item_potion
+	set(val): item_potion = val
+
 ## Enemy resources available for spawning, each defining an enemy scene and difficulty level.
 @export var enemies: Array[EnemyResource] = []
 ## Dungeon resources available for progression, each defining a level scene and eligibility constraints.
@@ -45,12 +63,17 @@ extends Node
 ## Pause menu overlay scene displayed when the game is paused.
 @export var pause_menu_scene: PackedScene
 
-## Upgrade resources offered by the UpgradeShop, built from the exported upgrade resources.
-var upgrades: Array[UpgradeResource] = []
+## Item resources offered by the UpgradeShop, built from the exported item resources.
+var items: Array[ItemResource] = []
+
+## Array of items offered by the shop (alias for items).
+var upgrades: Array[ItemResource]:
+	get: return items
+	set(val): items = val
 
 
 func _ready() -> void:
-	upgrades = [upgrade_damage, upgrade_health, upgrade_speed, upgrade_potion]
+	items = [item_damage, item_health, item_speed, item_potion]
 
 
 ## Finds the registered EnemyResource for a given PackedScene or null if not registered.

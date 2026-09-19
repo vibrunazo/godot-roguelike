@@ -63,6 +63,20 @@ bbcode_enabled = true
 text = "[center][wave]Upgrade Shop[/wave][/center]"
 fit_content = true
 
+[node name="GoldLabel" type="RichTextLabel" parent="MarginContainer/VBoxContainer" unique_id=892341234]
+layout_mode = 2
+theme_override_font_sizes/normal_font_size = 22
+bbcode_enabled = true
+text = "[center]Gold: [color=gold]0[/color][/center]"
+fit_content = true
+
 [node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=324626823]
 layout_mode = 2
 size_flags_vertical = 6
+
+[node name="LeaveButton" type="Button" parent="MarginContainer/VBoxContainer" unique_id=987654321]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 20
+text = "Leave Shop"
+

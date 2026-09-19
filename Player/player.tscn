@@ -33,6 +33,7 @@
 [ext_resource type="Script" uid="uid://ds6n4b4jgo5jk" path="res://StateMachine/PlayerStates/player_jump_kick.gd" id="30_kick"]
 [ext_resource type="Script" uid="uid://btugq3clpmbs4" path="res://Player/weapon_slot.gd" id="31_feet"]
 [ext_resource type="AudioStream" uid="uid://berff6qe7j1yi" path="res://Assets/Audio/boing/540790__magnuswaker__boing-2.ogg" id="32_i4o1l"]
+[ext_resource type="Script" path="res://Components/equipment_component.gd" id="33_equip"]
 
 [sub_resource type="Gradient" id="Gradient_i4o1l"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -777,6 +778,9 @@ autoplay = &"RESET"
 script = ExtResource("26_attr")
 base_speed = 7.0
 base_rotation_speed = 720.0
+
+[node name="EquipmentComponent" type="Node" parent="." unique_id=284918274]
+script = ExtResource("33_equip")
 
 [connection signal="slash" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone/AudioStreamPlayer3D" method="play"]

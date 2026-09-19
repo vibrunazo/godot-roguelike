@@ -160,6 +160,14 @@ func _ready() -> void:
 		return
 	print("Verified MenuPlayer: isolated from 'player' group, has Idle_A animation.")
 
+	# Verify HUD is NOT present in MainMenu / MenuLevel
+	var huds: Array[Node] = get_tree().get_nodes_in_group("hud")
+	if not huds.is_empty():
+		printerr("TEST FAILED: HUD overlay should NOT be present in main menu or menu level!")
+		get_tree().quit(1)
+		return
+	print("Verified HUD is absent in main menu.")
+
 	menu_level.queue_free()
 
 	print("\n====================================================")

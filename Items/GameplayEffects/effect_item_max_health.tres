@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GameplayEffect" format=3]
+
+[ext_resource type="Script" path="res://Components/gameplay_effect.gd" id="1_effect"]
+
+[resource]
+script = ExtResource("1_effect")
+effect_name = "item_max_health"
+stacking = 1
+target_attribute = &"max_health"
+operation = 0
+magnitude = 20.0
+duration = 0.0
+description = "Gear max health bonus: +20 maximum health."

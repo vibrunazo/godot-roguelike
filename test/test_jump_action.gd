@@ -238,13 +238,13 @@ func _ready() -> void:
 	var expected_v0_4: float = sqrt(2.0 * gravity_mag * 4.0)
 	check(is_equal_approx(player.velocity.y, expected_v0_4), "Higher jump calculates proportional upward velocity (%.2f m/s)" % expected_v0_4)
 
-	# Wait for landing
-	for i: int in range(120):
-		await get_tree().physics_frame
-		if player.is_on_floor() and sm.state == player_run:
-			break
+	# Restore defaults and position
+	player.global_position = spawn_pos
+	player.velocity = Vector3.ZERO
+	if sm.state != player_run:
+		sm.request_state(player_run.name)
+	await get_tree().physics_frame
 
-	# Restore defaults
 	player_jump.jump_height = 2.5
 	player_jump.control_ratio = 1.0
 

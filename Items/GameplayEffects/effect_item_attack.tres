@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GameplayEffect" format=3]
+
+[ext_resource type="Script" path="res://Components/gameplay_effect.gd" id="1_effect"]
+
+[resource]
+script = ExtResource("1_effect")
+effect_name = "item_attack"
+stacking = 1
+target_attribute = &"attack"
+operation = 0
+magnitude = 50.0
+duration = 0.0
+description = "Gear attack bonus: +50 base attack stat."
