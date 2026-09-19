@@ -22,6 +22,8 @@ extends Node
 @export var item_speed: ItemResource
 ## Health potion consumable item resource offered by the UpgradeShop.
 @export var item_potion: ItemResource
+## Winged Boots gear item resource offered by the UpgradeShop (buy once).
+@export var item_wing_boots: ItemResource
 
 ## Convenience aliases for item exports
 var upgrade_damage: ItemResource:
@@ -36,6 +38,9 @@ var upgrade_speed: ItemResource:
 var upgrade_potion: ItemResource:
 	get: return item_potion
 	set(val): item_potion = val
+var upgrade_wing_boots: ItemResource:
+	get: return item_wing_boots
+	set(val): item_wing_boots = val
 
 ## Enemy resources available for spawning, each defining an enemy scene and difficulty level.
 @export var enemies: Array[EnemyResource] = []
@@ -74,7 +79,7 @@ var upgrades: Array[ItemResource]:
 
 
 func _ready() -> void:
-	items = [item_damage, item_health, item_speed, item_potion]
+	items = [item_damage, item_health, item_speed, item_potion, item_wing_boots]
 
 
 ## Finds the registered EnemyResource for a given PackedScene or null if not registered.

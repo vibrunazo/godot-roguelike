@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="GearItemResource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Items/gear_item_resource.gd" id="1_script"]
+[ext_resource type="Resource" path="res://Items/GameplayEffects/effect_item_wing_boots.tres" id="2_effect"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"item_wing_boots"
+title = "[wave]Winged Boots[/wave]"
+description_template = "%.1f -> [color='7fffd4']%.1f[/color] m/s"
+cost = 10
+max_purchases = 1
+gameplay_effects = [ExtResource("2_effect")]
+slot_tag = &"feet"

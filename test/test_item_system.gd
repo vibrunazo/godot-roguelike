@@ -187,7 +187,53 @@ func _ready() -> void:
 	print("ok: Stackable purchase limit (3 stacks) enforced.")
 
 	# ---------------------------------------------------------
-	# PART 6: Visual Scene Bone Attachment & Cleanup
+	# PART 6: Winged Boots Shop Item & Single-Purchase Speed Gear
+	# ---------------------------------------------------------
+	print("\n>>> PART 6: Winged Boots Shop Item & Single-Purchase Speed Gear")
+	var wing_boots: GearItemResource = GlobalVars.item_wing_boots
+	if wing_boots == null or not (wing_boots is GearItemResource):
+		printerr("TEST FAILED: GlobalVars.item_wing_boots is missing or not a GearItemResource.")
+		get_tree().quit(1)
+		return
+	print("ok: Winged Boots item registered on GlobalVars as a GearItemResource.")
+
+	if wing_boots.max_purchases != 1:
+		printerr("TEST FAILED: Winged Boots max_purchases should be 1 (buy once). Got: ", wing_boots.max_purchases)
+		get_tree().quit(1)
+		return
+	print("ok: Winged Boots is a buy-once item (max_purchases == 1).")
+
+	if not GlobalVars.items.has(wing_boots):
+		printerr("TEST FAILED: Winged Boots not present in GlobalVars.items shop pool.")
+		get_tree().quit(1)
+		return
+	print("ok: Winged Boots offered in the UpgradeShop item pool.")
+
+	# Apply it via the equipment component and verify a relative speed delta.
+	var initial_speed: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
+	var apply_success: bool = player.equipment_component.apply_item(wing_boots)
+	if not apply_success or not player.equipment_component.is_equipped(wing_boots):
+		printerr("TEST FAILED: Winged Boots did not equip via EquipmentComponent.")
+		get_tree().quit(1)
+		return
+
+	var speed_after: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
+	if not is_equal_approx(speed_after, initial_speed + wing_boots.gameplay_effects[0].magnitude):
+		printerr("TEST FAILED: Winged Boots did not raise speed by its relative magnitude. Expected: ", initial_speed + wing_boots.gameplay_effects[0].magnitude, ", got: ", speed_after)
+		get_tree().quit(1)
+		return
+	print("ok: Winged Boots raised movement speed by its relative magnitude.")
+
+	player.equipment_component.unequip_gear(wing_boots)
+	var speed_restored: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
+	if not is_equal_approx(speed_restored, initial_speed):
+		printerr("TEST FAILED: Unequipping Winged Boots did not restore baseline speed. Expected: ", initial_speed, ", got: ", speed_restored)
+		get_tree().quit(1)
+		return
+	print("ok: Unequipping Winged Boots cleanly restored baseline speed.")
+
+	# ---------------------------------------------------------
+	# PART 7: Visual Scene Bone Attachment & Cleanup
 	# ---------------------------------------------------------
 	print("\n>>> PART 6: Visual Scene Bone Attachment & Cleanup")
 	var visual_gear: GearItemResource = GearItemResource.new()
