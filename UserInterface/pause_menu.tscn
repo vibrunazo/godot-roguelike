@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://dfpausemenu01"]
 
 [ext_resource type="Script" uid="uid://bxkqntaegir5p" path="res://UserInterface/pause_menu.gd" id="1_pause"]
+[ext_resource type="PackedScene" path="res://UserInterface/inventory_menu.tscn" id="2_inv"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_focus"]
 draw_center = false
@@ -103,24 +104,51 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.0392157, 0.0470588, 0.0784314, 0.745098)
 
-[node name="CenterContainer" type="CenterContainer" parent="." unique_id=1745892357]
-anchors_preset = 15
+[node name="LeftMarginContainer" type="MarginContainer" parent="." unique_id=412000001]
+anchors_preset = 9
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_right = 760.0
+grow_vertical = 2
+theme_override_constants/margin_left = 60
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_bottom = 40
+
+[node name="CenterBox" type="BoxContainer" parent="LeftMarginContainer" unique_id=412000002]
+layout_mode = 2
+alignment = 1
+vertical = true
+
+[node name="InventoryMenu" parent="LeftMarginContainer/CenterBox" instance=ExtResource("2_inv")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="RightMarginContainer" type="MarginContainer" parent="." unique_id=412000003]
+anchors_preset = 11
+anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
+offset_left = -380.0
+grow_horizontal = 0
 grow_vertical = 2
+theme_override_constants/margin_right = 60
 
-[node name="PanelContainer" type="PanelContainer" parent="CenterContainer" unique_id=1481113343]
+[node name="CenterBox" type="BoxContainer" parent="RightMarginContainer" unique_id=412000004]
+layout_mode = 2
+alignment = 1
+vertical = true
+
+[node name="PanelContainer" type="PanelContainer" parent="RightMarginContainer/CenterBox" unique_id=1481113343]
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 theme = SubResource("Theme_pause_buttons")
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/PanelContainer" unique_id=1005503090]
+[node name="VBoxContainer" type="VBoxContainer" parent="RightMarginContainer/CenterBox/PanelContainer" unique_id=1005503090]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Title" type="RichTextLabel" parent="CenterContainer/PanelContainer/VBoxContainer" unique_id=258489376]
+[node name="Title" type="RichTextLabel" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer" unique_id=258489376]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/normal_font_size = 36
@@ -128,33 +156,33 @@ bbcode_enabled = true
 text = "[center][wave amp=25.0 freq=3.0][color=#4fa8cd]PAUSED[/color][/wave][/center]"
 fit_content = true
 
-[node name="HSeparator" type="HSeparator" parent="CenterContainer/PanelContainer/VBoxContainer" unique_id=1610988965]
+[node name="HSeparator" type="HSeparator" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer" unique_id=1610988965]
 layout_mode = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_sep")
 
-[node name="ButtonsVBox" type="VBoxContainer" parent="CenterContainer/PanelContainer/VBoxContainer" unique_id=1595115592]
+[node name="ButtonsVBox" type="VBoxContainer" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer" unique_id=1595115592]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="ResumeButton" type="Button" parent="CenterContainer/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=1122407728]
+[node name="ResumeButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=1122407728]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 42)
 layout_mode = 2
 text = "Resume"
 
-[node name="RestartButton" type="Button" parent="CenterContainer/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=1887453591]
+[node name="RestartButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=1887453591]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 42)
 layout_mode = 2
 text = "Restart Run"
 
-[node name="FullscreenButton" type="Button" parent="CenterContainer/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=718854622]
+[node name="FullscreenButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=718854622]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 42)
 layout_mode = 2
 text = "Toggle Fullscreen"
 
-[node name="QuitButton" type="Button" parent="CenterContainer/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=1065157693]
+[node name="QuitButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=1065157693]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 42)
 layout_mode = 2

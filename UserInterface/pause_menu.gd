@@ -2,6 +2,8 @@
 ## screen: UI.show_game_over() reuses this scene with a red backdrop, a
 ## "GAME OVER" title, and the resume button hidden.
 ## Handles resume, restart run, fullscreen toggle, and game quit actions.
+## Hosts the InventoryMenu (equipped gear list with inspect card) on the left
+## and the pause buttons panel on the right.
 class_name PauseMenu
 extends CanvasLayer
 
@@ -28,6 +30,8 @@ signal restart_requested
 @onready var restart_button: Button = %RestartButton
 @onready var fullscreen_button: Button = %FullscreenButton
 @onready var quit_button: Button = %QuitButton
+## Equipped-gear inventory panel on the left side of the menu.
+@onready var inventory_menu: InventoryMenu = get_node_or_null("%InventoryMenu") as InventoryMenu
 
 
 func _ready() -> void:
@@ -35,6 +39,9 @@ func _ready() -> void:
 	layer = 100
 
 	_apply_configuration()
+
+	if inventory_menu != null:
+		inventory_menu.refresh()
 
 	if resume_button != null:
 		resume_button.pressed.connect(_on_resume_pressed)

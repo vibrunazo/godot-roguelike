@@ -151,8 +151,10 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	# Verify BBCode title with wave effect
-	var title_label: RichTextLabel = menu_instance.find_child("Title", true, false) as RichTextLabel
+	# Verify BBCode title with wave effect (unique-name lookup: the menu now
+	# hosts other titled panels, e.g. the inventory, so a recursive name
+	# search is no longer specific enough).
+	var title_label: RichTextLabel = menu_instance.get_node_or_null("%Title") as RichTextLabel
 	if title_label == null:
 		printerr("TEST FAILED: Title RichTextLabel not found in PauseMenu.")
 		get_tree().quit(1)
@@ -231,7 +233,7 @@ func _ready() -> void:
 	add_child(gameover_menu)
 	await get_tree().process_frame
 
-	var gameover_title: RichTextLabel = gameover_menu.find_child("Title", true, false) as RichTextLabel
+	var gameover_title: RichTextLabel = gameover_menu.get_node_or_null("%Title") as RichTextLabel
 	if gameover_title == null or not gameover_title.text.contains("GAME OVER"):
 		printerr("TEST FAILED: Game-over title should read GAME OVER, got: ", gameover_title.text if gameover_title != null else "null")
 		get_tree().quit(1)
@@ -329,7 +331,8 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	var defeat_menu: PauseMenu = UI._current_pause_menu
-	if defeat_menu == null or not (defeat_menu.find_child("Title", true, false) as RichTextLabel).text.contains("GAME OVER"):
+	var defeat_title: RichTextLabel = defeat_menu.get_node_or_null("%Title") as RichTextLabel if defeat_menu != null else null
+	if defeat_title == null or not defeat_title.text.contains("GAME OVER"):
 		player.queue_free()
 		UI.resume_game()
 		printerr("TEST FAILED: Defeat menu should read GAME OVER.")

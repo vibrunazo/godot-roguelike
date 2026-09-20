@@ -9,6 +9,11 @@ extends PanelContainer
 ## Emitted when this upgrade/item card is selected and taken by the player.
 signal upgrade_taken(card: UpgradeIcon)
 
+## Card usage context. SHOP cards can be purchased (gold deducted, stock
+## recorded, upgrade_taken emitted). INSPECT cards are display-only, for
+## contexts like the inventory menu where the item is already owned.
+enum CardMode { SHOP, INSPECT }
+
 ## Item resource defining this card's title, formatting, cost, and gameplay effect.
 ## Assigning a new resource refreshes the card immediately, including in the
 ## editor inspector for live preview purposes.
@@ -18,6 +23,10 @@ signal upgrade_taken(card: UpgradeIcon)
 		item_resource = value
 		_connect_resource_signal()
 		setup_label()
+
+## Usage context for this card instance. INSPECT disables purchasing and
+## hides the cost footer.
+@export var card_mode: CardMode = CardMode.SHOP
 
 ## Unique-name references so the card survives scene reparenting.
 @onready var texture_button: TextureButton = %TextureButton
@@ -86,9 +95,12 @@ func set_item_resource(resource: ItemResource) -> void:
 
 
 ## Applies the item effect to the player, deducts cost, and signals completion.
-## Never runs in the editor: preview cards are not purchasable.
+## Never runs in the editor, on cards without an item, or in INSPECT mode:
+## preview and inventory cards are not purchasable.
 func take_upgrade() -> void:
 	if Engine.is_editor_hint():
+		return
+	if card_mode != CardMode.SHOP:
 		return
 	if item_resource == null:
 		return
@@ -143,23 +155,27 @@ func setup_label() -> void:
 	# Flavor text stays in its own fixed scrolling region; the stat changes
 	# auto-calculated from the item's actual effects (descriptions carry no
 	# stat numbers) go in the pinned readout below so long flavor can never
-	# push them out of view.
+	# push them out of view. Stats are always shown flat (what the item
+	# gives, e.g. "Attack: +50"), never as a projected character preview,
+	# so the card reads the same in the shop and in the inventory.
 	description.text = item_resource.description
-	var stat_text: String = item_resource.get_stat_summary(player)
+	var stat_text: String = item_resource.get_stat_summary(null)
 	stats_label.visible = not stat_text.is_empty()
 	stats_label.text = stat_text
 
 	# Cost and stock live in the pinned footer so they stay readable no
-	# matter how long the description above grows.
+	# matter how long the description above grows. Inspect contexts hide
+	# the footer: the item is already owned, so cost is meaningless.
 	var footer_text: String = ""
-	if item_resource.cost > 0:
-		footer_text += "[color=gold]Cost: %d Gold[/color]" % item_resource.cost
+	if card_mode == CardMode.SHOP:
+		if item_resource.cost > 0:
+			footer_text += "[color=gold]Cost: %d Gold[/color]" % item_resource.cost
 
-	if player != null and player.equipment_component != null and item_resource.max_purchases > 0:
-		var owned: int = player.equipment_component.get_purchase_count(item_resource)
-		if not footer_text.is_empty():
-			footer_text += "  "
-		footer_text += "[color=gray](%d/%d owned)[/color]" % [owned, item_resource.max_purchases]
+		if player != null and player.equipment_component != null and item_resource.max_purchases > 0:
+			var owned: int = player.equipment_component.get_purchase_count(item_resource)
+			if not footer_text.is_empty():
+				footer_text += "  "
+			footer_text += "[color=gray](%d/%d owned)[/color]" % [owned, item_resource.max_purchases]
 
 	cost_label.visible = not footer_text.is_empty()
 	cost_label.text = footer_text
