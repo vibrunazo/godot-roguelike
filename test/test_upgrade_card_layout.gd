@@ -268,6 +268,22 @@ func _ready() -> void:
 	shopper.queue_free()
 	await get_tree().process_frame
 
+	# ---------------------------------------------------------
+	# PART 7: Card is thin enough for the pause four-column layout
+	# ---------------------------------------------------------
+	print("\n>>> PART 7: Thin card fits the pause columns")
+	var thin_card: UpgradeIcon = card_scene.instantiate() as UpgradeIcon
+	add_child(thin_card)
+	await get_tree().process_frame
+	var thin_min: Vector2 = (thin_card as PanelContainer).get_combined_minimum_size()
+	if thin_min.x > 260.0:
+		printerr("TEST FAILED: Upgrade card is too wide for the 4-column pause menu. Min width: ", thin_min.x)
+		get_tree().quit(1)
+		return
+	print("ok: Card minimum width (", thin_min.x, ") fits a pause column.")
+	thin_card.queue_free()
+	await get_tree().process_frame
+
 	print("\n====================================================")
 	print("  ALL UPGRADE CARD LAYOUT TESTS PASSED!              ")
 	print("====================================================")

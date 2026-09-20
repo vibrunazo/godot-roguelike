@@ -1,94 +1,26 @@
 [gd_scene format=3 uid="uid://dfpausemenu01"]
 
-[ext_resource type="Script" uid="uid://bxkqntaegir5p" path="res://UserInterface/pause_menu.gd" id="1_pause"]
-[ext_resource type="PackedScene" path="res://UserInterface/inventory_menu.tscn" id="2_inv"]
+[ext_resource type="Script" path="res://UserInterface/pause_menu.gd" id="1_pause"]
+[ext_resource type="PackedScene" path="res://UserInterface/item_list_panel.tscn" id="2_list"]
+[ext_resource type="PackedScene" path="res://UserInterface/item_detail_panel.tscn" id="3_detail"]
+[ext_resource type="PackedScene" path="res://UserInterface/character_stats_panel.tscn" id="4_stats"]
+[ext_resource type="PackedScene" path="res://UserInterface/menu_buttons_panel.tscn" id="5_btns"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_focus"]
-draw_center = false
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.4, 0.8, 1, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
-content_margin_left = 12.0
-content_margin_top = 8.0
-content_margin_right = 12.0
-content_margin_bottom = 8.0
-bg_color = Color(0.192157, 0.282353, 0.380392, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.309804, 0.658824, 0.803922, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
-content_margin_left = 12.0
-content_margin_top = 8.0
-content_margin_right = 12.0
-content_margin_bottom = 8.0
-bg_color = Color(0.141176, 0.172549, 0.219608, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.243137, 0.34902, 0.45098, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
-content_margin_left = 12.0
-content_margin_top = 8.0
-content_margin_right = 12.0
-content_margin_bottom = 8.0
-bg_color = Color(0.0980392, 0.203922, 0.282353, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.309804, 0.658824, 0.803922, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="Theme" id="Theme_pause_buttons"]
-Button/font_sizes/font_size = 18
-Button/styles/focus = SubResource("StyleBoxFlat_btn_focus")
-Button/styles/hover = SubResource("StyleBoxFlat_btn_hover")
-Button/styles/normal = SubResource("StyleBoxFlat_btn_normal")
-Button/styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-content_margin_left = 32.0
-content_margin_top = 28.0
-content_margin_right = 32.0
-content_margin_bottom = 28.0
-bg_color = Color(0.101961, 0.101961, 0.121569, 0.960784)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_outer"]
+content_margin_left = 28.0
+content_margin_top = 24.0
+content_margin_right = 28.0
+content_margin_bottom = 24.0
+bg_color = Color(0.0705882, 0.101961, 0.160784, 0.972549)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.309804, 0.658824, 0.803922, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="StyleBoxLine" id="StyleBoxLine_sep"]
-color = Color(0.309804, 0.658824, 0.803922, 0.501961)
-thickness = 2
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 
 [node name="PauseMenu" type="CanvasLayer" unique_id=1758846311]
 process_mode = 3
@@ -104,86 +36,62 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.0392157, 0.0470588, 0.0784314, 0.745098)
 
-[node name="LeftMarginContainer" type="MarginContainer" parent="." unique_id=412000001]
-anchors_preset = 9
-anchor_right = 0.0
-anchor_bottom = 1.0
-offset_right = 760.0
-grow_vertical = 2
-theme_override_constants/margin_left = 60
-theme_override_constants/margin_top = 40
-theme_override_constants/margin_bottom = 40
-
-[node name="CenterBox" type="BoxContainer" parent="LeftMarginContainer" unique_id=412000002]
-layout_mode = 2
-alignment = 1
-vertical = true
-
-[node name="InventoryMenu" parent="LeftMarginContainer/CenterBox" instance=ExtResource("2_inv")]
+[node name="GoldLabel" type="Label" parent="." unique_id=412000010]
 unique_name_in_owner = true
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 0
+offset_left = 48.0
+offset_top = 24.0
+offset_right = 240.0
+offset_bottom = 56.0
+theme_override_colors/font_color = Color(0.83, 0.69, 0.37, 1)
+theme_override_font_sizes/font_size = 24
+text = "Gold: 0"
 
-[node name="RightMarginContainer" type="MarginContainer" parent="." unique_id=412000003]
-anchors_preset = 11
-anchor_left = 1.0
+[node name="MainMargin" type="MarginContainer" parent="." unique_id=412000011]
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -380.0
-grow_horizontal = 0
+grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_right = 60
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 64
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 24
 
-[node name="CenterBox" type="BoxContainer" parent="RightMarginContainer" unique_id=412000004]
+[node name="MainVBox" type="VBoxContainer" parent="MainMargin" unique_id=412000012]
 layout_mode = 2
-alignment = 1
-vertical = true
+theme_override_constants/separation = 12
 
-[node name="PanelContainer" type="PanelContainer" parent="RightMarginContainer/CenterBox" unique_id=1481113343]
-custom_minimum_size = Vector2(280, 0)
+[node name="Title" type="RichTextLabel" parent="MainMargin/MainVBox" unique_id=258489376]
+unique_name_in_owner = true
 layout_mode = 2
-theme = SubResource("Theme_pause_buttons")
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+theme_override_font_sizes/normal_font_size = 48
+bbcode_enabled = true
+text = "[center][wave amp=25.0 freq=3.0][color=#d4af5e]PAUSED[/color][/wave][/center]"
+fit_content = true
 
-[node name="VBoxContainer" type="VBoxContainer" parent="RightMarginContainer/CenterBox/PanelContainer" unique_id=1005503090]
+[node name="OuterPanel" type="PanelContainer" parent="MainMargin/MainVBox" unique_id=1481113343]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outer")
+
+[node name="Columns" type="HBoxContainer" parent="MainMargin/MainVBox/OuterPanel" unique_id=1005503090]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Title" type="RichTextLabel" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer" unique_id=258489376]
+[node name="InventoryPanel" parent="MainMargin/MainVBox/OuterPanel/Columns" instance=ExtResource("2_list")]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/normal_font_size = 36
-bbcode_enabled = true
-text = "[center][wave amp=25.0 freq=3.0][color=#4fa8cd]PAUSED[/color][/wave][/center]"
-fit_content = true
 
-[node name="HSeparator" type="HSeparator" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer" unique_id=1610988965]
-layout_mode = 2
-theme_override_styles/separator = SubResource("StyleBoxLine_sep")
-
-[node name="ButtonsVBox" type="VBoxContainer" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer" unique_id=1595115592]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="ResumeButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=1122407728]
+[node name="ItemDetailPanel" parent="MainMargin/MainVBox/OuterPanel/Columns" instance=ExtResource("3_detail")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 42)
 layout_mode = 2
-text = "Resume"
 
-[node name="RestartButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=1887453591]
+[node name="CharacterStatsPanel" parent="MainMargin/MainVBox/OuterPanel/Columns" instance=ExtResource("4_stats")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 42)
 layout_mode = 2
-text = "Restart Run"
 
-[node name="FullscreenButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=718854622]
+[node name="MenuButtonsPanel" parent="MainMargin/MainVBox/OuterPanel/Columns" instance=ExtResource("5_btns")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 42)
 layout_mode = 2
-text = "Toggle Fullscreen"
-
-[node name="QuitButton" type="Button" parent="RightMarginContainer/CenterBox/PanelContainer/VBoxContainer/ButtonsVBox" unique_id=1065157693]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 42)
-layout_mode = 2
-text = "Quit Game"

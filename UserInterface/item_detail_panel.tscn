@@ -1,0 +1,26 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://UserInterface/item_detail_panel.gd" id="1_detail"]
+[ext_resource type="PackedScene" path="res://UserInterface/upgrade_icon.tscn" id="2_card"]
+
+[node name="ItemDetailPanel" type="VBoxContainer"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+script = ExtResource("1_detail")
+
+[node name="Header" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "ITEM DETAILS"
+horizontal_alignment = 1
+
+[node name="DetailsCard" parent="." instance=ExtResource("2_card")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+card_mode = 1

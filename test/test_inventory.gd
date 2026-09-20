@@ -1,8 +1,10 @@
 ## Behavioral suite for the inventory menu, the inspect-mode upgrade card,
-## and the pause menu two-panel layout.
+## and the pause menu four-column concept layout.
 ## Covers: flat stat readout with a player present, INSPECT cards never
 ## charging gold or emitting purchase, gear list tracking equipped gear with
-## click-to-details, and pause buttons docked right with inventory left.
+## click-to-details, and pause hosting the four reusable panels (inventory
+## list, item details, character stats, menu buttons) with list-to-details
+## wiring and bullet styling.
 extends Node
 
 
@@ -167,9 +169,9 @@ func _ready() -> void:
 	print("ok: Unequip refreshes the list with a valid selection.")
 
 	# ---------------------------------------------------------
-	# PART 4: Pause menu hosts inventory left, buttons right
+	# PART 4: Pause menu hosts the four reusable concept columns
 	# ---------------------------------------------------------
-	print("\n>>> PART 4: Pause two-panel layout")
+	print("\n>>> PART 4: Pause four-column layout")
 	var pause_scene: PackedScene = load("res://UserInterface/pause_menu.tscn") as PackedScene
 	if pause_scene == null:
 		printerr("TEST FAILED: Could not load res://UserInterface/pause_menu.tscn.")
@@ -179,33 +181,79 @@ func _ready() -> void:
 	add_child(pause_menu)
 	await get_tree().process_frame
 
-	if pause_menu.inventory_menu == null:
-		printerr("TEST FAILED: PauseMenu has no inventory panel reference.")
+	if pause_menu.list_panel == null or not (pause_menu.list_panel is ItemListPanel):
+		printerr("TEST FAILED: PauseMenu has no reusable ItemListPanel (column 1).")
 		get_tree().quit(1)
 		return
-	var left_side: MarginContainer = pause_menu.get_node_or_null("LeftMarginContainer") as MarginContainer
-	var right_side: MarginContainer = pause_menu.get_node_or_null("RightMarginContainer") as MarginContainer
-	if left_side == null or left_side.anchor_right != 0.0:
-		printerr("TEST FAILED: Inventory is not docked to the left side.")
+	if pause_menu.detail_panel == null or not (pause_menu.detail_panel is ItemDetailPanel):
+		printerr("TEST FAILED: PauseMenu has no reusable ItemDetailPanel (column 2).")
 		get_tree().quit(1)
 		return
-	if right_side == null or right_side.anchor_left != 1.0:
-		printerr("TEST FAILED: Buttons panel is not docked to the right side.")
+	if pause_menu.stats_panel == null or not (pause_menu.stats_panel is CharacterStatsPanel):
+		printerr("TEST FAILED: PauseMenu has no reusable CharacterStatsPanel (column 3).")
 		get_tree().quit(1)
 		return
-	if not left_side.is_ancestor_of(pause_menu.inventory_menu):
-		printerr("TEST FAILED: Inventory panel is not inside the left container.")
+	if pause_menu.buttons_panel == null or not (pause_menu.buttons_panel is MenuButtonsPanel):
+		printerr("TEST FAILED: PauseMenu has no reusable MenuButtonsPanel (column 4).")
+		get_tree().quit(1)
+		return
+	var columns: HBoxContainer = pause_menu.get_node_or_null("MainMargin/MainVBox/OuterPanel/Columns") as HBoxContainer
+	if columns == null or columns.get_child_count() != 4:
+		printerr("TEST FAILED: Pause columns container must host exactly 4 panels.")
 		get_tree().quit(1)
 		return
 	if pause_menu.resume_button == null or pause_menu.quit_button == null:
 		printerr("TEST FAILED: Pause buttons missing after re-layout.")
 		get_tree().quit(1)
 		return
-	if pause_menu.inventory_menu.gear_list.item_count != 1:
-		printerr("TEST FAILED: Pause inventory did not pick up equipped gear. Got: ", pause_menu.inventory_menu.gear_list.item_count)
+	if pause_menu.controls_button == null or pause_menu.exit_menu_button == null:
+		printerr("TEST FAILED: Pause is missing the concept Controls / Exit to Main Menu buttons.")
 		get_tree().quit(1)
 		return
-	print("ok: Pause shows inventory left, buttons right, both wired.")
+	if pause_menu.gear_list.item_count != 1:
+		printerr("TEST FAILED: Pause inventory did not pick up equipped gear. Got: ", pause_menu.gear_list.item_count)
+		get_tree().quit(1)
+		return
+	print("ok: Pause hosts inventory, details, stats, and buttons columns with all 6 buttons.")
+
+	# Re-equip the first gear so the list has two rows: selecting one row
+	# must drive the details card and move the bullet prefix to the other.
+	if not player.equipment_component.equip_gear(gear_a):
+		printerr("TEST FAILED: Could not re-equip test gear A for the pause wiring check.")
+		get_tree().quit(1)
+		return
+	pause_menu.list_panel.refresh()
+	await get_tree().process_frame
+	if pause_menu.gear_list.item_count != 2:
+		printerr("TEST FAILED: Pause list should show 2 rows after re-equip. Got: ", pause_menu.gear_list.item_count)
+		get_tree().quit(1)
+		return
+	pause_menu.list_panel.select_row(1)
+	if pause_menu.list_panel.get_selected_gear() != gear_a:
+		printerr("TEST FAILED: Selecting pause row 1 did not select the second gear.")
+		get_tree().quit(1)
+		return
+	if pause_menu.details_card.item_resource != gear_a:
+		printerr("TEST FAILED: Pause details card did not follow the list selection.")
+		get_tree().quit(1)
+		return
+	if pause_menu.gear_list.get_item_text(1).begins_with("•"):
+		printerr("TEST FAILED: Selected pause row must read plain. Got: ", pause_menu.gear_list.get_item_text(1))
+		get_tree().quit(1)
+		return
+	if not pause_menu.gear_list.get_item_text(0).begins_with("•"):
+		printerr("TEST FAILED: Unselected pause rows must carry a bullet prefix. Got: ", pause_menu.gear_list.get_item_text(0))
+		get_tree().quit(1)
+		return
+	if pause_menu.stats_panel.level_row == null or pause_menu.stats_panel.hp_row == null:
+		printerr("TEST FAILED: Stats panel is missing its stat rows.")
+		get_tree().quit(1)
+		return
+	if not pause_menu.stats_panel.hp_row.text.contains("Max HP"):
+		printerr("TEST FAILED: Stats panel HP row did not render. Got: ", pause_menu.stats_panel.hp_row.text)
+		get_tree().quit(1)
+		return
+	print("ok: Pause list selection drives details with bullets; stats panel renders.")
 
 	pause_menu.queue_free()
 	inventory.queue_free()

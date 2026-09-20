@@ -150,6 +150,42 @@ func _ready() -> void:
 		printerr("TEST FAILED: quit_button is null in PauseMenu.")
 		get_tree().quit(1)
 		return
+	if menu_instance.controls_button == null:
+		printerr("TEST FAILED: controls_button is null in PauseMenu.")
+		get_tree().quit(1)
+		return
+	if menu_instance.exit_menu_button == null:
+		printerr("TEST FAILED: exit_menu_button is null in PauseMenu.")
+		get_tree().quit(1)
+		return
+
+	# Concept layout: gold counter plus the four reusable columns.
+	var gold_label: Label = menu_instance.get_node_or_null("%GoldLabel") as Label
+	if gold_label == null or not gold_label.text.contains("Gold:"):
+		printerr("TEST FAILED: PauseMenu gold counter missing. Got: ", gold_label.text if gold_label != null else "null")
+		get_tree().quit(1)
+		return
+	if menu_instance.list_panel == null or not (menu_instance.list_panel is ItemListPanel):
+		printerr("TEST FAILED: PauseMenu is missing the reusable ItemListPanel.")
+		get_tree().quit(1)
+		return
+	if menu_instance.detail_panel == null or not (menu_instance.detail_panel is ItemDetailPanel):
+		printerr("TEST FAILED: PauseMenu is missing the reusable ItemDetailPanel.")
+		get_tree().quit(1)
+		return
+	if menu_instance.stats_panel == null or not (menu_instance.stats_panel is CharacterStatsPanel):
+		printerr("TEST FAILED: PauseMenu is missing the reusable CharacterStatsPanel.")
+		get_tree().quit(1)
+		return
+	if menu_instance.buttons_panel == null or not (menu_instance.buttons_panel is MenuButtonsPanel):
+		printerr("TEST FAILED: PauseMenu is missing the reusable MenuButtonsPanel.")
+		get_tree().quit(1)
+		return
+	var columns: HBoxContainer = menu_instance.get_node_or_null("MainMargin/MainVBox/OuterPanel/Columns") as HBoxContainer
+	if columns == null or columns.get_child_count() != 4:
+		printerr("TEST FAILED: PauseMenu must host exactly 4 columns.")
+		get_tree().quit(1)
+		return
 
 	# Verify BBCode title with wave effect (unique-name lookup: the menu now
 	# hosts other titled panels, e.g. the inventory, so a recursive name
@@ -167,7 +203,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Title RichTextLabel does not contain [wave] BBCode tag or PAUSED text: ", title_label.text)
 		get_tree().quit(1)
 		return
-	print("PauseMenu node structure verified: Title has [wave] BBCode, all 4 buttons present.")
+	print("PauseMenu node structure verified: Title has [wave] BBCode, all 6 buttons plus gold and 4 columns present.")
 
 	menu_instance.queue_free()
 	await get_tree().process_frame
