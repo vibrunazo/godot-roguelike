@@ -1,7 +1,9 @@
 ## Regression suite for the UpgradeShop card layout.
 ## Covers: cost/stock render in the pinned footer (never inside the scrolling
-## description), long descriptions keep the footer inside the card bounds,
-## and editor-only mock preview cards are stripped before real cards appear.
+## description), stats render in their own pinned readout (never mixed into
+## the flavor text), long flavor keeps stats and footer inside the card
+## bounds, and editor-only mock preview cards are stripped before real cards
+## appear.
 extends Node
 
 
@@ -47,6 +49,11 @@ func _ready() -> void:
 		printerr("TEST FAILED: UpgradeIcon missing Description label.")
 		get_tree().quit(1)
 		return
+	var stats: RichTextLabel = card.get_node_or_null("%StatsLabel") as RichTextLabel
+	if stats == null:
+		printerr("TEST FAILED: UpgradeIcon missing StatsLabel readout.")
+		get_tree().quit(1)
+		return
 	if not footer.visible:
 		printerr("TEST FAILED: CostLabel footer hidden for a priced item.")
 		get_tree().quit(1)
@@ -55,27 +62,36 @@ func _ready() -> void:
 		printerr("TEST FAILED: CostLabel footer does not show the cost. Got: ", footer.text)
 		get_tree().quit(1)
 		return
-	if desc.text.contains("Cost"):
-		printerr("TEST FAILED: Cost text leaked into the scrolling description.")
+	if desc.text != long_res.description:
+		printerr("TEST FAILED: Description must hold flavor text only. Got: ", desc.text)
+		get_tree().quit(1)
+		return
+	if not stats.visible or not stats.text.contains("Attack"):
+		printerr("TEST FAILED: Stats readout missing or not showing the stat change. Got: ", stats.text)
 		get_tree().quit(1)
 		return
 	if not desc.scroll_active:
 		printerr("TEST FAILED: Description must scroll so long text cannot push the footer out.")
 		get_tree().quit(1)
 		return
-	print("ok: Cost renders in the pinned footer; description carries no cost text and scrolls.")
+	print("ok: Flavor, stats readout, and cost footer each render in their own label.")
 
 	# ---------------------------------------------------------
 	# PART 2: Worst-case text keeps the footer inside the card
 	# ---------------------------------------------------------
-	print("\n>>> PART 2: Footer stays inside card bounds")
+	print("\n>>> PART 2: Pinned rows stay inside card bounds")
 	var card_rect: Rect2 = (card as PanelContainer).get_global_rect()
+	var stats_rect: Rect2 = stats.get_global_rect()
 	var footer_rect: Rect2 = footer.get_global_rect()
+	if stats_rect.end.y > card_rect.end.y + 1.0:
+		printerr("TEST FAILED: Stats readout extends below the card. Card end: ", card_rect.end.y, ", stats end: ", stats_rect.end.y)
+		get_tree().quit(1)
+		return
 	if footer_rect.end.y > card_rect.end.y + 1.0:
 		printerr("TEST FAILED: Cost footer extends below the card. Card end: ", card_rect.end.y, ", footer end: ", footer_rect.end.y)
 		get_tree().quit(1)
 		return
-	print("ok: Cost footer bottom (", footer_rect.end.y, ") inside card bottom (", card_rect.end.y, ").")
+	print("ok: Stats bottom (", stats_rect.end.y, ") and footer bottom (", footer_rect.end.y, ") inside card bottom (", card_rect.end.y, ").")
 	card.queue_free()
 	await get_tree().process_frame
 
@@ -169,6 +185,41 @@ func _ready() -> void:
 		return
 	print("ok: In-place resource edits refresh the card; free items hide the footer.")
 	live_card.queue_free()
+	await get_tree().process_frame
+
+	# ---------------------------------------------------------
+	# PART 5: Extreme flavor cannot push stats or footer out
+	# ---------------------------------------------------------
+	print("\n>>> PART 5: Extreme flavor keeps pinned rows readable")
+	var extreme_card: UpgradeIcon = card_scene.instantiate() as UpgradeIcon
+	add_child(extreme_card)
+	var extreme_res: GearItemResource = GearItemResource.new()
+	extreme_res.id = &"test_extreme_flavor"
+	extreme_res.title = "Extreme Flavor"
+	extreme_res.description = "The blade hums. ".repeat(60)
+	extreme_res.cost = 7
+	extreme_res.gameplay_effects.append(test_effect)
+	extreme_card.set_item_resource(extreme_res)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var extreme_stats: RichTextLabel = extreme_card.get_node_or_null("%StatsLabel") as RichTextLabel
+	var extreme_footer: RichTextLabel = extreme_card.get_node_or_null("%CostLabel") as RichTextLabel
+	var extreme_rect: Rect2 = (extreme_card as PanelContainer).get_global_rect()
+	if not extreme_stats.visible or not extreme_stats.text.contains("Attack"):
+		printerr("TEST FAILED: Extreme flavor hid the stats readout. Got: ", extreme_stats.text)
+		get_tree().quit(1)
+		return
+	if extreme_stats.get_global_rect().end.y > extreme_rect.end.y + 1.0:
+		printerr("TEST FAILED: Extreme flavor pushed stats below the card.")
+		get_tree().quit(1)
+		return
+	if not extreme_footer.visible or extreme_footer.get_global_rect().end.y > extreme_rect.end.y + 1.0:
+		printerr("TEST FAILED: Extreme flavor pushed the cost footer below the card.")
+		get_tree().quit(1)
+		return
+	print("ok: Stats and footer stay readable no matter how long the flavor grows.")
+	extreme_card.queue_free()
 	await get_tree().process_frame
 
 	print("\n====================================================")

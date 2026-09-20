@@ -36,7 +36,11 @@ var upgrade_resource: ItemResource:
 ## Unique-name references so the card survives scene reparenting.
 @onready var texture_button: TextureButton = %TextureButton
 @onready var title: RichTextLabel = %Title
+## Flavor text only. Fixed-size scrolling region: long flavor never resizes
+## this label, so the stats readout below is never pushed out of view.
 @onready var description: RichTextLabel = %Description
+## Auto-calculated stat changes, pinned below the flavor text.
+@onready var stats_label: RichTextLabel = get_node_or_null("%StatsLabel") as RichTextLabel
 ## Footer label pinning cost/stock to the bottom of the card so long
 ## descriptions scroll in the middle instead of pushing the cost off-panel.
 @onready var cost_label: RichTextLabel = get_node_or_null("%CostLabel") as RichTextLabel
@@ -144,7 +148,8 @@ func take_upgrade() -> void:
 	upgrade_taken.emit(self)
 
 
-## Populates the title and description labels from item_resource or fallback properties.
+## Populates the title, flavor, stats readout, and cost footer from
+## item_resource or fallback properties.
 func setup_label() -> void:
 	if not is_inside_tree() or title == null or description == null:
 		return
@@ -155,13 +160,12 @@ func setup_label() -> void:
 		if not item_resource.title.is_empty():
 			title.text = item_resource.title
 
-		# Flavor text first, then the stat changes auto-calculated from the
-		# item's actual effects (descriptions carry no stat numbers).
-		var desc_text: String = item_resource.description
-		var stat_text: String = item_resource.get_stat_summary(player)
-		if not stat_text.is_empty():
-			desc_text += "\n\n" + stat_text
-		description.text = desc_text
+		# Flavor text stays in its own fixed scrolling region; the stat
+		# changes auto-calculated from the item's actual effects
+		# (descriptions carry no stat numbers) go in the pinned readout
+		# below so long flavor can never push them out of view.
+		description.text = item_resource.description
+		_set_stats_text(item_resource.get_stat_summary(player))
 
 		# Cost and stock live in the pinned footer so they stay readable no
 		# matter how long the description above grows.
@@ -190,8 +194,21 @@ func setup_label() -> void:
 
 	elif stat_bonus != 0.0 and player != null and player.attribute_component != null and not stat_name.is_empty():
 		var label_attrs: AttributeComponent = player.attribute_component
-		description.text = text_template % [label_attrs.get_current(StringName(stat_name)), label_attrs.get_current(StringName(stat_name)) + stat_bonus]
+		description.text = ""
+		_set_stats_text(text_template % [label_attrs.get_current(StringName(stat_name)), label_attrs.get_current(StringName(stat_name)) + stat_bonus])
 		_set_cost_footer("")
+
+
+## Writes the pinned stats readout below the flavor text. Falls back to
+## appending onto the description when the stats node is missing (e.g. an
+## outdated card scene).
+func _set_stats_text(stats_text: String) -> void:
+	if stats_label == null:
+		if not stats_text.is_empty():
+			description.text += "\n\n" + stats_text
+		return
+	stats_label.visible = not stats_text.is_empty()
+	stats_label.text = stats_text
 
 
 ## Writes the pinned cost/stock footer. Falls back to appending onto the
