@@ -159,12 +159,29 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	# Concept layout: gold counter plus the four reusable columns.
-	var gold_label: Label = menu_instance.get_node_or_null("%GoldLabel") as Label
-	if gold_label == null or not gold_label.text.contains("Gold:"):
-		printerr("TEST FAILED: PauseMenu gold counter missing. Got: ", gold_label.text if gold_label != null else "null")
+	# Concept layout: the four reusable columns. The run gold counter must NOT
+	# live here: the HUD scene owns the single gold display and stays visible
+	# under the pause menu, so a pause-side label would double-render.
+	if menu_instance.get_node_or_null("%GoldLabel") != null:
+		printerr("TEST FAILED: PauseMenu must not carry its own GoldLabel; gold lives in the HUD scene.")
 		get_tree().quit(1)
 		return
+	var hud_scene: PackedScene = load("res://UserInterface/hud.tscn") as PackedScene
+	if hud_scene == null:
+		printerr("TEST FAILED: Could not load res://UserInterface/hud.tscn.")
+		get_tree().quit(1)
+		return
+	var hud_probe: HUD = hud_scene.instantiate() as HUD
+	add_child(hud_probe)
+	await get_tree().process_frame
+	var hud_gold: Label = hud_probe.get_node_or_null("MarginContainer/HBoxContainer/GoldLabel") as Label
+	if hud_gold == null:
+		printerr("TEST FAILED: HUD scene is missing the single GoldLabel.")
+		hud_probe.queue_free()
+		get_tree().quit(1)
+		return
+	hud_probe.queue_free()
+	await get_tree().process_frame
 	if menu_instance.list_panel == null or not (menu_instance.list_panel is ItemListPanel):
 		printerr("TEST FAILED: PauseMenu is missing the reusable ItemListPanel.")
 		get_tree().quit(1)
@@ -203,7 +220,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Title RichTextLabel does not contain [wave] BBCode tag or PAUSED text: ", title_label.text)
 		get_tree().quit(1)
 		return
-	print("PauseMenu node structure verified: Title has [wave] BBCode, all 6 buttons plus gold and 4 columns present.")
+	print("PauseMenu node structure verified: Title has [wave] BBCode, all 6 buttons and 4 columns present, no duplicate gold label.")
 
 	menu_instance.queue_free()
 	await get_tree().process_frame

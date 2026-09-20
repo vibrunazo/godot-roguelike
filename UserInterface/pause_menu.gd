@@ -1,10 +1,11 @@
 ## Pause menu overlay presented when pausing gameplay. Doubles as the game-over
 ## screen: UI.show_game_over() reuses this scene with a red backdrop, a
 ## "GAME OVER" title, and the resume button hidden.
-## Concept layout: gold counter top-left, gold PAUSED title, and one outer
-## panel with four reusable columns - ItemListPanel (inventory), ItemDetailPanel
-## (item details), CharacterStatsPanel (character stats), MenuButtonsPanel
-## (menu options). Each column is a standalone scene reusable elsewhere.
+## Concept layout: gold PAUSED title and one outer panel with four reusable
+## columns - ItemListPanel (inventory), ItemDetailPanel (item details),
+## CharacterStatsPanel (character stats), MenuButtonsPanel (menu options).
+## Each column is a standalone scene reusable elsewhere. The run gold counter
+## lives only in the HUD scene, which stays visible under this menu.
 class_name PauseMenu
 extends CanvasLayer
 
@@ -27,7 +28,6 @@ signal restart_requested
 
 @onready var title_label: RichTextLabel = %Title
 @onready var backdrop_rect: ColorRect = %Backdrop
-@onready var gold_label: Label = %GoldLabel
 ## Inventory list column (concept column 1).
 @onready var list_panel: ItemListPanel = %InventoryPanel
 ## Item details column (concept column 2).
@@ -93,10 +93,6 @@ func _ready() -> void:
 
 	_apply_configuration()
 
-	if ProgressionState != null and not ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
-		ProgressionState.currency_gold_changed.connect(_on_gold_changed)
-	_update_gold_label()
-
 	if list_panel != null:
 		if not list_panel.gear_selected.is_connected(_on_list_gear_selected):
 			list_panel.gear_selected.connect(_on_list_gear_selected)
@@ -110,11 +106,6 @@ func _ready() -> void:
 		if not buttons_panel.restart_requested.is_connected(_on_panel_restart):
 			buttons_panel.restart_requested.connect(_on_panel_restart)
 		buttons_panel.focus_default()
-
-
-func _exit_tree() -> void:
-	if ProgressionState != null and ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
-		ProgressionState.currency_gold_changed.disconnect(_on_gold_changed)
 
 
 ## Applies the exported title, backdrop, and resume-button configuration to
@@ -171,16 +162,3 @@ func _show_selected_details() -> void:
 	if list_panel == null or detail_panel == null:
 		return
 	detail_panel.set_item(list_panel.get_selected_gear())
-
-
-func _on_gold_changed(_new_amount: int) -> void:
-	_update_gold_label()
-
-
-func _update_gold_label() -> void:
-	if gold_label == null:
-		return
-	var amount: int = 0
-	if ProgressionState != null:
-		amount = ProgressionState.currency_gold
-	gold_label.text = "Gold: %d" % amount

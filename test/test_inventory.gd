@@ -4,7 +4,7 @@
 ## charging gold or emitting purchase, gear list tracking equipped gear with
 ## click-to-details, and pause hosting the four reusable panels (inventory
 ## list, item details, character stats, menu buttons) with list-to-details
-## wiring and bullet styling.
+## wiring and plain row text.
 extends Node
 
 
@@ -217,7 +217,7 @@ func _ready() -> void:
 	print("ok: Pause hosts inventory, details, stats, and buttons columns with all 6 buttons.")
 
 	# Re-equip the first gear so the list has two rows: selecting one row
-	# must drive the details card and move the bullet prefix to the other.
+	# must drive the details card. All rows read plain (no bullet prefixes).
 	if not player.equipment_component.equip_gear(gear_a):
 		printerr("TEST FAILED: Could not re-equip test gear A for the pause wiring check.")
 		get_tree().quit(1)
@@ -237,12 +237,12 @@ func _ready() -> void:
 		printerr("TEST FAILED: Pause details card did not follow the list selection.")
 		get_tree().quit(1)
 		return
-	if pause_menu.gear_list.get_item_text(1).begins_with("•"):
+	if pause_menu.gear_list.get_item_text(1) != "Alpha Gear x2":
 		printerr("TEST FAILED: Selected pause row must read plain. Got: ", pause_menu.gear_list.get_item_text(1))
 		get_tree().quit(1)
 		return
-	if not pause_menu.gear_list.get_item_text(0).begins_with("•"):
-		printerr("TEST FAILED: Unselected pause rows must carry a bullet prefix. Got: ", pause_menu.gear_list.get_item_text(0))
+	if pause_menu.gear_list.get_item_text(0) != "Beta Gear":
+		printerr("TEST FAILED: Unselected pause rows must read plain with no prefix. Got: ", pause_menu.gear_list.get_item_text(0))
 		get_tree().quit(1)
 		return
 	if pause_menu.stats_panel.level_row == null or pause_menu.stats_panel.hp_row == null:
@@ -253,7 +253,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Stats panel HP row did not render. Got: ", pause_menu.stats_panel.hp_row.text)
 		get_tree().quit(1)
 		return
-	print("ok: Pause list selection drives details with bullets; stats panel renders.")
+	print("ok: Pause list selection drives details with plain rows; stats panel renders.")
 
 	pause_menu.queue_free()
 	inventory.queue_free()

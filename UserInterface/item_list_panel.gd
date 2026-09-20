@@ -40,7 +40,6 @@ func refresh() -> void:
 	var restore_idx: int = _find_gear_index(selected_gear)
 	var show_idx: int = restore_idx if restore_idx >= 0 else 0
 	gear_list.select(show_idx)
-	_update_bullets(show_idx)
 	gear_selected.emit(show_idx)
 
 
@@ -62,7 +61,6 @@ func select_row(index: int) -> void:
 	if index < 0 or index >= gear_list.item_count:
 		return
 	gear_list.select(index)
-	_update_bullets(index)
 	gear_list.item_selected.emit(index)
 
 
@@ -89,25 +87,7 @@ func _read_equipped_gear(equipment: EquipmentComponent) -> Array[GearItemResourc
 
 
 func _on_item_selected(index: int) -> void:
-	_update_bullets(index)
 	gear_selected.emit(index)
-
-
-## Rewrites row texts so the selected row reads plain while every other row
-## carries a bullet prefix, matching the pause concept layout.
-func _update_bullets(selected_idx: int) -> void:
-	if gear_list == null:
-		return
-	var equipment: EquipmentComponent = _read_player_equipment()
-	for idx: int in gear_list.item_count:
-		var gear: GearItemResource = gear_list.get_item_metadata(idx) as GearItemResource
-		if gear == null:
-			continue
-		var base: String = _display_name(gear, equipment)
-		if idx == selected_idx:
-			gear_list.set_item_text(idx, base)
-		else:
-			gear_list.set_item_text(idx, "• " + base)
 
 
 ## Finds a gear resource in the current list, or -1 when absent.
