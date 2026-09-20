@@ -97,7 +97,7 @@ func _ready() -> void:
 		if not list_panel.gear_selected.is_connected(_on_list_gear_selected):
 			list_panel.gear_selected.connect(_on_list_gear_selected)
 		list_panel.refresh()
-		_show_selected_details()
+		_show_selected_gear()
 	if stats_panel != null:
 		stats_panel.refresh()
 	if buttons_panel != null:
@@ -154,11 +154,16 @@ func _on_panel_restart() -> void:
 
 
 func _on_list_gear_selected(_index: int) -> void:
-	_show_selected_details()
+	_show_selected_gear()
 
 
-## Shows the list column's selected gear in the details column.
-func _show_selected_details() -> void:
-	if list_panel == null or detail_panel == null:
+## Shows the list column's selected gear in the details column and previews
+## its stat contribution as arrows in the stats column.
+func _show_selected_gear() -> void:
+	if list_panel == null:
 		return
-	detail_panel.set_item(list_panel.get_selected_gear())
+	var gear: GearItemResource = list_panel.get_selected_gear()
+	if detail_panel != null:
+		detail_panel.set_item(gear)
+	if stats_panel != null:
+		stats_panel.set_selected_item(gear)

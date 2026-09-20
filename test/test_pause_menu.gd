@@ -203,6 +203,10 @@ func _ready() -> void:
 		printerr("TEST FAILED: PauseMenu must host exactly 4 columns.")
 		get_tree().quit(1)
 		return
+	if menu_instance.stats_panel.attack_row.text.contains("->"):
+		printerr("TEST FAILED: Stat arrows need a selected item; the playerless preview must show none.")
+		get_tree().quit(1)
+		return
 
 	# Verify BBCode title with wave effect (unique-name lookup: the menu now
 	# hosts other titled panels, e.g. the inventory, so a recursive name

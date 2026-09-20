@@ -255,6 +255,46 @@ func _ready() -> void:
 		return
 	print("ok: Pause list selection drives details with plain rows; stats panel renders.")
 
+	# An equipped effect-bearing item previews its contribution as arrows:
+	# attack touched by flat_res shows without -> with, the rest stay plain.
+	if not player.equipment_component.equip_gear(flat_res):
+		printerr("TEST FAILED: Could not equip the effect test gear.")
+		get_tree().quit(1)
+		return
+	pause_menu.list_panel.refresh()
+	await get_tree().process_frame
+	if pause_menu.gear_list.item_count != 3:
+		printerr("TEST FAILED: Pause list should show 3 rows after equipping the effect gear. Got: ", pause_menu.gear_list.item_count)
+		get_tree().quit(1)
+		return
+	pause_menu.list_panel.select_row(2)
+	if pause_menu.list_panel.get_selected_gear() != flat_res:
+		printerr("TEST FAILED: Selecting pause row 2 did not select the effect gear.")
+		get_tree().quit(1)
+		return
+	var atk_cur: float = player.attribute_component.get_current(AttributeComponent.STAT_ATTACK)
+	var flat_mag: float = (flat_res.gameplay_effects[0] as GameplayEffect).magnitude
+	var atk_row_text: String = pause_menu.stats_panel.attack_row.text
+	if not atk_row_text.contains("Attack:") or not atk_row_text.contains("->"):
+		printerr("TEST FAILED: Attack row must preview the selected item with an arrow. Got: ", atk_row_text)
+		get_tree().quit(1)
+		return
+	if not atk_row_text.contains(str(roundi(atk_cur - flat_mag))) or not atk_row_text.contains(str(roundi(atk_cur))):
+		printerr("TEST FAILED: Attack arrow must span without -> with the item. Got: ", atk_row_text)
+		get_tree().quit(1)
+		return
+	if pause_menu.stats_panel.defense_row.text.contains("->") or pause_menu.stats_panel.speed_row.text.contains("->"):
+		printerr("TEST FAILED: Stats untouched by the selected item must stay plain.")
+		get_tree().quit(1)
+		return
+	pause_menu.stats_panel.set_selected_item(null)
+	await get_tree().process_frame
+	if pause_menu.stats_panel.attack_row.text.contains("->"):
+		printerr("TEST FAILED: Clearing the selection must clear stat arrows. Got: ", pause_menu.stats_panel.attack_row.text)
+		get_tree().quit(1)
+		return
+	print("ok: Selected item previews without -> with arrows; untouched rows stay plain.")
+
 	pause_menu.queue_free()
 	inventory.queue_free()
 	flat_card.queue_free()
