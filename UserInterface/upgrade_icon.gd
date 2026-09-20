@@ -19,20 +19,6 @@ signal upgrade_taken(card: UpgradeIcon)
 		_connect_resource_signal()
 		setup_label()
 
-## Compatibility alias for item_resource.
-var upgrade_resource: ItemResource:
-	get:
-		return item_resource
-	set(value):
-		item_resource = value
-
-## Fallback text template used if item_resource is not set.
-@export_multiline var text_template: String = "%.1f -> [color='7fffd4']%.1f[/color] m/s"
-## Fallback attribute name on AttributeComponent used if item_resource is not set.
-@export var stat_name: String = ""
-## Fallback stat bonus used if item_resource is not set.
-@export var stat_bonus: float = 0.0
-
 ## Unique-name references so the card survives scene reparenting.
 @onready var texture_button: TextureButton = %TextureButton
 @onready var title: RichTextLabel = %Title
@@ -40,10 +26,10 @@ var upgrade_resource: ItemResource:
 ## this label, so the stats readout below is never pushed out of view.
 @onready var description: RichTextLabel = %Description
 ## Auto-calculated stat changes, pinned below the flavor text.
-@onready var stats_label: RichTextLabel = get_node_or_null("%StatsLabel") as RichTextLabel
+@onready var stats_label: RichTextLabel = %StatsLabel
 ## Footer label pinning cost/stock to the bottom of the card so long
 ## descriptions scroll in the middle instead of pushing the cost off-panel.
-@onready var cost_label: RichTextLabel = get_node_or_null("%CostLabel") as RichTextLabel
+@onready var cost_label: RichTextLabel = %CostLabel
 @onready var player: Character = get_tree().get_first_node_in_group("player") as Character
 
 var _already_taken: bool = false
@@ -99,15 +85,12 @@ func set_item_resource(resource: ItemResource) -> void:
 	item_resource = resource
 
 
-## Compatibility alias for set_item_resource.
-func set_upgrade_resource(resource: ItemResource) -> void:
-	set_item_resource(resource)
-
-
 ## Applies the item effect to the player, deducts cost, and signals completion.
 ## Never runs in the editor: preview cards are not purchasable.
 func take_upgrade() -> void:
 	if Engine.is_editor_hint():
+		return
+	if item_resource == null:
 		return
 	if _already_taken or (texture_button != null and texture_button.disabled):
 		return
@@ -115,31 +98,26 @@ func take_upgrade() -> void:
 	if player == null and is_inside_tree():
 		player = get_tree().get_first_node_in_group("player") as Character
 
-	if item_resource != null:
-		# Check affordability and stock
-		if player != null and player.equipment_component != null:
-			if not player.equipment_component.can_purchase(item_resource):
-				return
-		elif ProgressionState != null and not ProgressionState.has_gold(item_resource.cost):
+	# Check affordability and stock
+	if player != null and player.equipment_component != null:
+		if not player.equipment_component.can_purchase(item_resource):
+			return
+	elif ProgressionState != null and not ProgressionState.has_gold(item_resource.cost):
+		return
+
+	# Deduct gold
+	if ProgressionState != null and item_resource.cost > 0:
+		var spent: bool = ProgressionState.spend_gold(item_resource.cost)
+		if not spent:
 			return
 
-		# Deduct gold
-		if ProgressionState != null and item_resource.cost > 0:
-			var spent: bool = ProgressionState.spend_gold(item_resource.cost)
-			if not spent:
-				return
-
-		# Apply item to character
-		if player != null:
-			if player.equipment_component != null:
-				player.equipment_component.apply_item(item_resource)
-				player.equipment_component.record_purchase(item_resource)
-			else:
-				item_resource.apply(player)
-
-	elif stat_bonus != 0.0 and player != null and player.attribute_component != null and not stat_name.is_empty():
-		var fallback_attrs: AttributeComponent = player.attribute_component
-		fallback_attrs.set_base(StringName(stat_name), fallback_attrs.get_base(StringName(stat_name)) + stat_bonus)
+	# Apply item to character
+	if player != null:
+		if player.equipment_component != null:
+			player.equipment_component.apply_item(item_resource)
+			player.equipment_component.record_purchase(item_resource)
+		else:
+			item_resource.apply(player)
 
 	_already_taken = true
 	if texture_button != null:
@@ -148,75 +126,51 @@ func take_upgrade() -> void:
 	upgrade_taken.emit(self)
 
 
-## Populates the title, flavor, stats readout, and cost footer from
-## item_resource or fallback properties.
+## Populates the title, flavor, stats readout, and cost footer from the
+## assigned item resource. Does nothing until the card is in the tree.
 func setup_label() -> void:
 	if not is_inside_tree() or title == null or description == null:
 		return
 	if player == null and is_inside_tree():
 		player = get_tree().get_first_node_in_group("player") as Character
 
-	if item_resource != null:
-		if not item_resource.title.is_empty():
-			title.text = item_resource.title
-
-		# Flavor text stays in its own fixed scrolling region; the stat
-		# changes auto-calculated from the item's actual effects
-		# (descriptions carry no stat numbers) go in the pinned readout
-		# below so long flavor can never push them out of view.
-		description.text = item_resource.description
-		_set_stats_text(item_resource.get_stat_summary(player))
-
-		# Cost and stock live in the pinned footer so they stay readable no
-		# matter how long the description above grows.
-		var footer_text: String = ""
-		if item_resource.cost > 0:
-			footer_text += "[color=gold]Cost: %d Gold[/color]" % item_resource.cost
-
-		if player != null and player.equipment_component != null and item_resource.max_purchases > 0:
-			var owned: int = player.equipment_component.get_purchase_count(item_resource)
-			if not footer_text.is_empty():
-				footer_text += "  "
-			footer_text += "[color=gray](%d/%d owned)[/color]" % [owned, item_resource.max_purchases]
-
-		_set_cost_footer(footer_text)
-
-		# Update button interactability based on affordability and stock.
-		# The currency check is runtime-only; editor previews stay enabled.
-		if texture_button != null and not _already_taken:
-			var can_buy: bool = true
-			if player != null and player.equipment_component != null:
-				can_buy = player.equipment_component.can_purchase(item_resource)
-			elif not Engine.is_editor_hint() and ProgressionState != null and item_resource.cost > 0:
-				can_buy = ProgressionState.has_gold(item_resource.cost)
-
-			texture_button.disabled = not can_buy
-
-	elif stat_bonus != 0.0 and player != null and player.attribute_component != null and not stat_name.is_empty():
-		var label_attrs: AttributeComponent = player.attribute_component
-		description.text = ""
-		_set_stats_text(text_template % [label_attrs.get_current(StringName(stat_name)), label_attrs.get_current(StringName(stat_name)) + stat_bonus])
-		_set_cost_footer("")
-
-
-## Writes the pinned stats readout below the flavor text. Falls back to
-## appending onto the description when the stats node is missing (e.g. an
-## outdated card scene).
-func _set_stats_text(stats_text: String) -> void:
-	if stats_label == null:
-		if not stats_text.is_empty():
-			description.text += "\n\n" + stats_text
+	if item_resource == null:
 		return
-	stats_label.visible = not stats_text.is_empty()
-	stats_label.text = stats_text
 
+	if not item_resource.title.is_empty():
+		title.text = item_resource.title
 
-## Writes the pinned cost/stock footer. Falls back to appending onto the
-## description when the footer node is missing (e.g. an outdated card scene).
-func _set_cost_footer(footer_text: String) -> void:
-	if cost_label == null:
+	# Flavor text stays in its own fixed scrolling region; the stat changes
+	# auto-calculated from the item's actual effects (descriptions carry no
+	# stat numbers) go in the pinned readout below so long flavor can never
+	# push them out of view.
+	description.text = item_resource.description
+	var stat_text: String = item_resource.get_stat_summary(player)
+	stats_label.visible = not stat_text.is_empty()
+	stats_label.text = stat_text
+
+	# Cost and stock live in the pinned footer so they stay readable no
+	# matter how long the description above grows.
+	var footer_text: String = ""
+	if item_resource.cost > 0:
+		footer_text += "[color=gold]Cost: %d Gold[/color]" % item_resource.cost
+
+	if player != null and player.equipment_component != null and item_resource.max_purchases > 0:
+		var owned: int = player.equipment_component.get_purchase_count(item_resource)
 		if not footer_text.is_empty():
-			description.text += "\n\n" + footer_text
-		return
+			footer_text += "  "
+		footer_text += "[color=gray](%d/%d owned)[/color]" % [owned, item_resource.max_purchases]
+
 	cost_label.visible = not footer_text.is_empty()
 	cost_label.text = footer_text
+
+	# Update button interactability based on affordability and stock.
+	# The currency check is runtime-only; editor previews stay enabled.
+	if texture_button != null and not _already_taken:
+		var can_buy: bool = true
+		if player != null and player.equipment_component != null:
+			can_buy = player.equipment_component.can_purchase(item_resource)
+		elif not Engine.is_editor_hint() and ProgressionState != null and item_resource.cost > 0:
+			can_buy = ProgressionState.has_gold(item_resource.cost)
+
+		texture_button.disabled = not can_buy

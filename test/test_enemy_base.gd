@@ -1671,7 +1671,7 @@ func _ready() -> void:
 		return
 	print("UpgradeShop dynamically generated 2 upgrade options successfully.")
 
-	# Verify each child is an UpgradeIcon with size_flags_horizontal == 6, upgrade_resource set, and upgrade_taken connected to shop.exit_shop
+	# Verify each child is an UpgradeIcon with size_flags_horizontal == 6, item_resource set, and upgrade_taken connected to shop.exit_shop
 	for child: Node in shop.upgrade_container.get_children():
 		var icon: UpgradeIcon = child as UpgradeIcon
 		if icon == null:
@@ -1679,8 +1679,8 @@ func _ready() -> void:
 			shop.queue_free()
 			get_tree().quit(1)
 			return
-		if icon.upgrade_resource == null:
-			printerr("TEST FAILED: UpgradeIcon child upgrade_resource is null.")
+		if icon.item_resource == null:
+			printerr("TEST FAILED: UpgradeIcon child item_resource is null.")
 			shop.queue_free()
 			get_tree().quit(1)
 			return
@@ -1694,7 +1694,7 @@ func _ready() -> void:
 			shop.queue_free()
 			get_tree().quit(1)
 			return
-	print("UpgradeShop dynamic upgrade children verified (UpgradeIcon type, upgrade_resource set, size_flags_horizontal 6, upgrade_taken connected).")
+	print("UpgradeShop dynamic upgrade children verified (UpgradeIcon type, item_resource set, size_flags_horizontal 6, upgrade_taken connected).")
 
 	# Verify exiting_shop guard
 	if shop.exiting_shop:
@@ -1814,12 +1814,12 @@ func _ready() -> void:
 		printerr("TEST FAILED: UpgradeIcon description is null or misconfigured")
 		get_tree().quit(1)
 		return
-	if icon_inst.text_template != "%.1f -> [color='7fffd4']%.1f[/color] m/s":
-		printerr("TEST FAILED: UpgradeIcon text_template incorrect: ", icon_inst.text_template)
+	if icon_inst.stats_label == null or icon_inst.stats_label.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		printerr("TEST FAILED: UpgradeIcon stats_label is null or misconfigured")
 		get_tree().quit(1)
 		return
-	if icon_inst.stat_name != "" or icon_inst.stat_bonus != 0.0:
-		printerr("TEST FAILED: UpgradeIcon default stat_name or stat_bonus incorrect")
+	if icon_inst.cost_label == null or icon_inst.cost_label.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		printerr("TEST FAILED: UpgradeIcon cost_label is null or misconfigured")
 		get_tree().quit(1)
 		return
 
@@ -2744,7 +2744,13 @@ func _ready() -> void:
 		return
 	print("UpgradeIcon TextureButton 'upgrade_button' group membership verified.")
 	
-	# Verify take_upgrade() disables group
+	# Verify take_upgrade() disables group. A card with no item is a no-op,
+	# so hand it a free item first to reach the purchase path.
+	var free_res_p33: GearItemResource = GearItemResource.new()
+	free_res_p33.id = &"test_free_take"
+	free_res_p33.title = "Free Take"
+	free_res_p33.cost = 0
+	upgrade_inst_p33.set_item_resource(free_res_p33)
 	upgrade_inst_p33.take_upgrade()
 	if not tb_p33.disabled:
 		printerr("TEST FAILED: take_upgrade did not disable the button via call_group.")

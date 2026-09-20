@@ -11,13 +11,6 @@ extends Control
 ## Item resources offered by this shop. Falls back to GlobalVars.items if empty.
 @export var available_items: Array[ItemResource] = []
 
-## Compatibility alias for available_items.
-var available_upgrades: Array[ItemResource]:
-	get:
-		return available_items
-	set(val):
-		available_items = val
-
 ## Unique-name references (%HBoxContainer, %LeaveButton) so these survive
 ## scene reparenting: only the node name matters, not its path.
 @onready var upgrade_container: HBoxContainer = %HBoxContainer
