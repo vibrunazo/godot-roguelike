@@ -5,6 +5,9 @@
 - **Genre**: 3D Top-Down Action Roguelite (based on GameDev.tv Godot 3D Course, already completed).
 - **Phase**: Adding custom gameplay improvements, combat polish, and balance.
 
+Because we are very early in development stage, do NOT worry about backwards compatibility. 
+If a refactor breaks old clients of an interface then refactor the clients to use the new interface rather than writing fallbacks of deprecated functions for clients to use.
+
 ---
 
 ## 2. Mandatory Coding Guidelines
