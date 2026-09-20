@@ -2,6 +2,9 @@
 
 [ext_resource type="Shader" uid="uid://cela787gxx7fy" path="res://Assets/Shaders/background_material.tres" id="1_35ex1"]
 [ext_resource type="Script" uid="uid://bjfhahgt2muts" path="res://UserInterface/upgrade_shop.gd" id="1_fv7qc"]
+[ext_resource type="PackedScene" uid="uid://3lgqbvbvyeg8" path="res://UserInterface/upgrade_icon.tscn" id="2_preview"]
+[ext_resource type="Resource" uid="uid://b5acdx7mjfwcp" path="res://Items/ItemResources/item_potion.tres" id="3_potion"]
+[ext_resource type="Resource" uid="uid://ibdvk8mp3ht7" path="res://Items/ItemResources/item_damage.tres" id="4_sword"]
 
 [sub_resource type="Gradient" id="Gradient_fv7qc"]
 offsets = PackedFloat32Array(0.31683168, 0.6188119, 0.75247526, 0.85148513)
@@ -41,35 +44,46 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1050566595]
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=752047165]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -448.0
+offset_top = -265.0
+offset_right = 448.0
+offset_bottom = 258.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 128
-theme_override_constants/margin_top = 128
-theme_override_constants/margin_right = 128
-theme_override_constants/margin_bottom = 128
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer" unique_id=752047165]
-layout_mode = 2
-
-[node name="RichTextLabel" type="RichTextLabel" parent="MarginContainer/VBoxContainer" unique_id=2016304766]
+[node name="RichTextLabel" type="RichTextLabel" parent="VBoxContainer" unique_id=2016304766]
 layout_mode = 2
 theme_override_font_sizes/normal_font_size = 36
 bbcode_enabled = true
 text = "[center][wave]Upgrade Shop[/wave][/center]"
 fit_content = true
 
-[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=324626823]
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=324626823]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 6
+theme_override_constants/separation = 16
 
-[node name="LeaveButton" type="Button" parent="MarginContainer/VBoxContainer" unique_id=987654321]
+[node name="MockPreviewShort" parent="VBoxContainer/HBoxContainer" unique_id=2117989608 instance=ExtResource("2_preview")]
+layout_mode = 2
+item_resource = ExtResource("3_potion")
+metadata/mock_preview = true
+
+[node name="MockPreviewLong" parent="VBoxContainer/HBoxContainer" unique_id=789458664 instance=ExtResource("2_preview")]
+layout_mode = 2
+item_resource = ExtResource("4_sword")
+metadata/mock_preview = true
+
+[node name="LeaveButton" type="Button" parent="VBoxContainer" unique_id=987654321]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 20
 text = "Leave Shop"
-

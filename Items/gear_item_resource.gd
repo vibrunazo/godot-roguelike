@@ -1,5 +1,7 @@
 ## Equippable gear item resource (weapons, boots, amulets, armor, stat upgrades).
 ## Automatically tracks and applies GameplayEffects on equip, and removes them on unequip.
+## Tool-enabled to match ItemResource so editor previews get real instances.
+@tool
 class_name GearItemResource
 extends ItemResource
 

@@ -1614,21 +1614,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	var margin_container: MarginContainer = shop.get_node_or_null("MarginContainer") as MarginContainer
-	if margin_container == null:
-		printerr("TEST FAILED: UpgradeShop MarginContainer missing.")
-		shop.queue_free()
-		get_tree().quit(1)
-		return
-
-	if margin_container.get_theme_constant("margin_left") != 128 or margin_container.get_theme_constant("margin_top") != 128 \
-		or margin_container.get_theme_constant("margin_right") != 128 or margin_container.get_theme_constant("margin_bottom") != 128:
-		printerr("TEST FAILED: UpgradeShop MarginContainer margins are not 128.")
-		shop.queue_free()
-		get_tree().quit(1)
-		return
-
-	var vbox: VBoxContainer = margin_container.get_node_or_null("VBoxContainer") as VBoxContainer
+	var vbox: VBoxContainer = shop.get_node_or_null("VBoxContainer") as VBoxContainer
 	if vbox == null:
 		printerr("TEST FAILED: UpgradeShop VBoxContainer missing.")
 		shop.queue_free()
@@ -1639,11 +1625,20 @@ func _ready() -> void:
 		shop.queue_free()
 		get_tree().quit(1)
 		return
-	print("UpgradeShop scene hierarchy, shader material, margin container, and title label verified.")
+	print("UpgradeShop scene hierarchy, shader material, and title label verified.")
 
-	var hbox: HBoxContainer = vbox.get_node_or_null("HBoxContainer") as HBoxContainer
-	if hbox == null or hbox.size_flags_vertical != 6:
-		printerr("TEST FAILED: UpgradeShop HBoxContainer missing or size_flags_vertical != 6")
+	# Layout-independent references: the container and leave button resolve by
+	# unique name, so reparenting the scene must not break the script.
+	var hbox: HBoxContainer = shop.get_node_or_null("%HBoxContainer") as HBoxContainer
+	if hbox == null or hbox.size_flags_vertical != 6 or not vbox.is_ancestor_of(hbox):
+		printerr("TEST FAILED: UpgradeShop %HBoxContainer missing, misconfigured, or outside the VBoxContainer.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+
+	var leave_btn: Button = shop.get_node_or_null("%LeaveButton") as Button
+	if leave_btn == null:
+		printerr("TEST FAILED: UpgradeShop %LeaveButton missing.")
 		shop.queue_free()
 		get_tree().quit(1)
 		return
@@ -1659,6 +1654,14 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("UpgradeShop upgrade_container onready reference verified.")
+
+	# Verify leave_button onready reference (unique-name wiring)
+	if shop.leave_button != leave_btn:
+		printerr("TEST FAILED: UpgradeShop leave_button does not match %LeaveButton.")
+		shop.queue_free()
+		get_tree().quit(1)
+		return
+	print("UpgradeShop leave_button onready reference verified.")
 
 	# Verify 2 dynamic upgrades were instantiated into upgrade_container
 	if shop.upgrade_container.get_child_count() != 2:

@@ -18,8 +18,10 @@ var available_upgrades: Array[ItemResource]:
 	set(val):
 		available_items = val
 
-@onready var upgrade_container: HBoxContainer = $MarginContainer/VBoxContainer/HBoxContainer
-@onready var leave_button: Button = get_node_or_null("MarginContainer/VBoxContainer/LeaveButton") as Button
+## Unique-name references (%HBoxContainer, %LeaveButton) so these survive
+## scene reparenting: only the node name matters, not its path.
+@onready var upgrade_container: HBoxContainer = %HBoxContainer
+@onready var leave_button: Button = get_node_or_null("%LeaveButton") as Button
 
 var exiting_shop: bool = false
 
@@ -27,6 +29,13 @@ var exiting_shop: bool = false
 func _ready() -> void:
 	if leave_button != null:
 		leave_button.pressed.connect(leave_shop)
+
+	# The scene holds editor-only mock preview cards (metadata "mock_preview")
+	# for visual layout debugging. The game never shows them: drop every
+	# pre-existing placeholder before dealing real item cards.
+	for child: Node in upgrade_container.get_children():
+		upgrade_container.remove_child(child)
+		child.queue_free()
 
 	var card_scene: PackedScene = upgrade_card_scene
 	if card_scene == null and GlobalVars != null:

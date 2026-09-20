@@ -1,5 +1,7 @@
 ## Consumable item resource (potions, scrolls, temporary buffs, bandages).
 ## Applied once on consumption, not persisted as equipped gear. Defaults to infinite shop availability.
+## Tool-enabled to match ItemResource so editor previews get real instances.
+@tool
 class_name ConsumableItemResource
 extends ItemResource
 

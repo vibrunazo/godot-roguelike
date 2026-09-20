@@ -265,14 +265,14 @@ func _ready() -> void:
 	add_child(shop_inst)
 	await get_tree().process_frame
 
-	var leave_btn: Button = shop_inst.get_node_or_null("MarginContainer/VBoxContainer/LeaveButton") as Button
+	var leave_btn: Button = shop_inst.get_node_or_null("%LeaveButton") as Button
 	if leave_btn == null:
 		printerr("TEST FAILED: UpgradeShop missing LeaveButton.")
 		get_tree().quit(1)
 		return
 	print("ok: UpgradeShop LeaveButton present.")
 
-	var shop_gold_lbl: RichTextLabel = shop_inst.get_node_or_null("MarginContainer/VBoxContainer/GoldLabel") as RichTextLabel
+	var shop_gold_lbl: RichTextLabel = shop_inst.get_node_or_null("%GoldLabel") as RichTextLabel
 	if shop_gold_lbl != null:
 		printerr("TEST FAILED: UpgradeShop must not keep its own gold label; the persistent HUD is the single gold count.")
 		get_tree().quit(1)

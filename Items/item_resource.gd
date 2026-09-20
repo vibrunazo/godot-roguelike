@@ -1,5 +1,9 @@
 ## Base data resource defining an item's metadata, economy, gameplay effects, and visual scene.
 ## Standard items are 100% data-driven; custom scripts are rarely needed.
+## Tool-enabled so editor previews (e.g. UpgradeIcon) can call summary
+## helpers like get_stat_summary() on loaded .tres files instead of hitting
+## placeholder instances. Pure data and logic only; safe in the editor.
+@tool
 class_name ItemResource
 extends Resource
 
