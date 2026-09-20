@@ -21,8 +21,9 @@ func _ready() -> void:
 func refresh() -> void:
 	var selected_gear: GearItemResource = get_selected_gear()
 	gear_list.clear()
-	for gear: GearItemResource in _read_equipped_gear():
-		var idx: int = gear_list.add_item(_display_name(gear), gear.icon)
+	var equipment: EquipmentComponent = _read_player_equipment()
+	for gear: GearItemResource in _read_equipped_gear(equipment):
+		var idx: int = gear_list.add_item(_display_name(gear, equipment), gear.icon)
 		gear_list.set_item_metadata(idx, gear)
 	if gear_list.item_count == 0:
 		var empty_idx: int = gear_list.add_item("No gear equipped")
@@ -46,14 +47,21 @@ func get_selected_gear() -> GearItemResource:
 	return gear_list.get_item_metadata(selected[0]) as GearItemResource
 
 
-## Reads the equipped gear of the player in the tree. Empty when no player
-## with equipment is present (e.g. menus shown without an active run).
-func _read_equipped_gear() -> Array[GearItemResource]:
-	var result: Array[GearItemResource] = []
+## Returns the player-facing equipment tracker, or null when no run with
+## equipment is active (e.g. menus shown without a player in the tree).
+func _read_player_equipment() -> EquipmentComponent:
 	var player: Character = get_tree().get_first_node_in_group("player") as Character
-	if player == null or player.equipment_component == null:
+	if player == null:
+		return null
+	return player.equipment_component
+
+
+## Reads the equipped gear from a tracker. Empty when no tracker is present.
+func _read_equipped_gear(equipment: EquipmentComponent) -> Array[GearItemResource]:
+	var result: Array[GearItemResource] = []
+	if equipment == null:
 		return result
-	for gear: GearItemResource in player.equipment_component.equipped_gear:
+	for gear: GearItemResource in equipment.equipped_gear:
 		if gear != null:
 			result.append(gear)
 	return result
@@ -85,11 +93,16 @@ func _find_gear_index(gear: GearItemResource) -> int:
 	return -1
 
 
-## Renders a gear title as plain list text (titles carry BBCode effects).
-func _display_name(gear: GearItemResource) -> String:
+## Renders a gear row as plain list text (titles carry BBCode effects),
+## suffixed with the owned stack count, e.g. "Laser sword x2". Single items
+## show no suffix.
+func _display_name(gear: GearItemResource, equipment: EquipmentComponent) -> String:
 	var plain: String = _tag_regex.sub(gear.title.strip_edges(), "", true).strip_edges()
 	if plain.is_empty():
 		if not gear.id.is_empty():
-			return String(gear.id)
-		return "Unnamed gear"
+			plain = String(gear.id)
+		else:
+			plain = "Unnamed gear"
+	if equipment != null and equipment.get_purchase_count(gear) > 1:
+		plain += " x%d" % equipment.get_purchase_count(gear)
 	return plain

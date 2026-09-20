@@ -107,6 +107,9 @@ func _ready() -> void:
 		printerr("TEST FAILED: Could not equip test gear B.")
 		get_tree().quit(1)
 		return
+	# Own gear A twice so its row must carry a stack count.
+	player.equipment_component.record_purchase(gear_a)
+	player.equipment_component.record_purchase(gear_a)
 
 	var inventory_scene: PackedScene = load("res://UserInterface/inventory_menu.tscn") as PackedScene
 	if inventory_scene == null:
@@ -123,6 +126,14 @@ func _ready() -> void:
 		return
 	if inventory.gear_list.get_item_text(0).contains("["):
 		printerr("TEST FAILED: Gear list shows raw BBCode. Got: ", inventory.gear_list.get_item_text(0))
+		get_tree().quit(1)
+		return
+	if inventory.gear_list.get_item_text(0) != "Alpha Gear x2":
+		printerr("TEST FAILED: Stacked gear row must show its count. Got: ", inventory.gear_list.get_item_text(0))
+		get_tree().quit(1)
+		return
+	if inventory.gear_list.get_item_text(1) != "Beta Gear":
+		printerr("TEST FAILED: Single gear row must show no count suffix. Got: ", inventory.gear_list.get_item_text(1))
 		get_tree().quit(1)
 		return
 	# Mirror a real click on the second row: select it, then drive the
