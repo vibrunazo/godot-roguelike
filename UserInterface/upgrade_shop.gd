@@ -40,13 +40,37 @@ func _ready() -> void:
 	if pool.is_empty() and GlobalVars != null:
 		pool = GlobalVars.items
 
-	var item_options: Array[ItemResource] = pool.duplicate()
+	# Only deal items that can still be picked: anything already purchased
+	# the maximum allowed times never shows up as an option again.
+	# Affordability is not filtered here; unaffordable cards still show up
+	# with a disabled button.
+	var player: Character = get_tree().get_first_node_in_group("player") as Character
+	var equipment: EquipmentComponent = null
+	if player != null:
+		equipment = player.equipment_component
+	var item_options: Array[ItemResource] = []
+	for item: ItemResource in pool:
+		if _has_stock_left(item, equipment):
+			item_options.append(item)
 	item_options.shuffle()
 	for resource: ItemResource in item_options.slice(0, 2):
 		var current_card: UpgradeIcon = card_scene.instantiate() as UpgradeIcon
 		upgrade_container.add_child(current_card)
 		current_card.set_item_resource(resource)
 		current_card.upgrade_taken.connect(exit_shop)
+
+
+## Returns true when the shop may still offer the item. Items purchased up
+## to their maximum allowed times are out of stock; without tracked purchase
+## history (no player equipment) everything is offered.
+func _has_stock_left(item: ItemResource, equipment: EquipmentComponent) -> bool:
+	if item == null:
+		return false
+	if equipment == null:
+		return true
+	if item.max_purchases <= 0:
+		return true
+	return equipment.get_purchase_count(item) < item.max_purchases
 
 
 func _unhandled_input(event: InputEvent) -> void:

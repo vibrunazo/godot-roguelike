@@ -222,6 +222,52 @@ func _ready() -> void:
 	extreme_card.queue_free()
 	await get_tree().process_frame
 
+	# ---------------------------------------------------------
+	# PART 6: Maxed-out items are never dealt
+	# ---------------------------------------------------------
+	print("\n>>> PART 6: Stock-exhausted items leave the pool")
+	var player_scene: PackedScene = load("res://Player/player.tscn") as PackedScene
+	var shopper: Character = player_scene.instantiate() as Character
+	add_child(shopper)
+	await get_tree().process_frame
+	if shopper.equipment_component == null:
+		printerr("TEST FAILED: Player has no EquipmentComponent.")
+		get_tree().quit(1)
+		return
+
+	var sword_res: ItemResource = load("res://Items/ItemResources/item_damage.tres") as ItemResource
+	var potion_stock_res: ItemResource = load("res://Items/ItemResources/item_potion.tres") as ItemResource
+	if sword_res.max_purchases <= 0:
+		printerr("TEST FAILED: Sword test prerequisite: expected a limited-stock item.")
+		get_tree().quit(1)
+		return
+	while shopper.equipment_component.get_purchase_count(sword_res) < sword_res.max_purchases:
+		shopper.equipment_component.record_purchase(sword_res)
+
+	# Deterministic two-item pool: the maxed-out sword must be filtered out,
+	# leaving only the potion on offer.
+	var stocked_shop: Control = shop_scene.instantiate() as Control
+	var forced_pool: Array[ItemResource] = [sword_res, potion_stock_res]
+	stocked_shop.set("available_items", forced_pool)
+	add_child(stocked_shop)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var stocked_container: HBoxContainer = stocked_shop.get_node_or_null("%HBoxContainer") as HBoxContainer
+	if stocked_container.get_child_count() != 1:
+		printerr("TEST FAILED: Only the still-available item should be dealt. Got: ", stocked_container.get_child_count(), " cards.")
+		get_tree().quit(1)
+		return
+	var offered: UpgradeIcon = stocked_container.get_child(0) as UpgradeIcon
+	if offered == null or offered.item_resource != potion_stock_res:
+		printerr("TEST FAILED: Maxed-out sword was dealt instead of the available potion.")
+		get_tree().quit(1)
+		return
+	print("ok: Maxed-out items never appear as shop options.")
+	stocked_shop.queue_free()
+	shopper.queue_free()
+	await get_tree().process_frame
+
 	print("\n====================================================")
 	print("  ALL UPGRADE CARD LAYOUT TESTS PASSED!              ")
 	print("====================================================")
