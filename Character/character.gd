@@ -34,6 +34,9 @@ signal alerted
 @export var ai_state_machine: AIStateMachine
 ## Optional NavigationAgent3D for pathfinding.
 @export var navigation_agent_3d: NavigationAgent3D
+## Automatically configures NavigationAgent3D height offset and waypoint distances
+## based on the character's collision shape dimensions.
+@export var auto_configure_navigation: bool = true
 ## Primary collision shape of this character body.
 @export var collision_shape_3d: CollisionShape3D
 ## Optional Area3D weapon hitbox for melee attacks.
@@ -121,6 +124,7 @@ func _ready() -> void:
 		navigation_agent_3d = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
 	if collision_shape_3d == null:
 		collision_shape_3d = get_node_or_null("CollisionShape3D") as CollisionShape3D
+	_auto_configure_navigation()
 	if hurtbox == null:
 		hurtbox = get_node_or_null("Hurtbox") as Hurtbox
 	if dash_cooldown == null:
@@ -165,6 +169,43 @@ func _ready() -> void:
 		ac.add_exception(self)
 		if not ac.hit_landed.is_connected(_on_attack_component_hit_landed):
 			ac.hit_landed.connect(_on_attack_component_hit_landed.bind(ac))
+
+
+## Calibrates NavigationAgent3D parameters to match this character's collision shape.
+## Offsets waypoints vertically to cancel 3D Euclidean distance inflation for tall agents,
+## and scales path desired distance to the character's radius for clean corner rounding.
+func _auto_configure_navigation() -> void:
+	if not auto_configure_navigation or navigation_agent_3d == null or collision_shape_3d == null:
+		return
+	var shape: Shape3D = collision_shape_3d.shape
+	if shape == null:
+		return
+
+	var height: float = 2.0
+	var radius: float = 0.5
+
+	if shape is CapsuleShape3D:
+		var cap: CapsuleShape3D = shape as CapsuleShape3D
+		height = cap.height
+		radius = cap.radius
+	elif shape is CylinderShape3D:
+		var cyl: CylinderShape3D = shape as CylinderShape3D
+		height = cyl.height
+		radius = cyl.radius
+	elif shape is BoxShape3D:
+		var box: BoxShape3D = shape as BoxShape3D
+		height = box.size.y
+		radius = maxf(box.size.x, box.size.z) * 0.5
+	else:
+		return
+
+	var origin_height: float = height * 0.5 - collision_shape_3d.position.y
+	# Standard navmesh surface is baked slightly above floor geometry (~0.35m).
+	var nav_elevation: float = 0.35
+
+	navigation_agent_3d.path_height_offset = -maxf(0.0, origin_height - nav_elevation)
+	navigation_agent_3d.path_desired_distance = clampf(radius + 0.3, 0.7, 1.5)
+	navigation_agent_3d.target_desired_distance = maxf(1.5, radius + 0.8)
 
 
 func _physics_process(delta: float) -> void:

@@ -22,14 +22,13 @@ func _ready() -> void:
 	print("Dummy initial health: ", initial_health)
 
 	# Disable any other enemies spawned by the level's WaveObjective so they cannot interfere
+	var wave_obj: Node = level.find_child("WaveObjective", true, false)
+	if wave_obj != null:
+		wave_obj.set_script(null)
 	for enemy_node: Node in level.find_children("*", "Character", true, false):
 		var enemy_char: Character = enemy_node as Character
 		if enemy_char != null and enemy_char != player and enemy_char != dummy:
-			if enemy_char.ai_state_machine != null:
-				enemy_char.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
-			if enemy_char.collision_shape_3d != null:
-				enemy_char.collision_shape_3d.disabled = true
-			enemy_char.global_position = Vector3(999.0, 999.0, 999.0)
+			enemy_char.queue_free()
 	
 	# Wait for initial spawn/navigation repositioning timer (1.0s) to settle, then for player to land on floor
 	await get_tree().create_timer(1.1).timeout
