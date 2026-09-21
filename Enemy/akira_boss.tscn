@@ -15,6 +15,7 @@
 [ext_resource type="Script" uid="uid://c81hirrrp64m2" path="res://StateMachine/EnemyStates/enemy_defeat.gd" id="11_defeat"]
 [ext_resource type="Script" uid="uid://b53uetcel424p" path="res://StateMachine/EnemyStates/enemy_fall.gd" id="12_fall"]
 [ext_resource type="Script" uid="uid://cmqolk21i2p4i" path="res://StateMachine/character_attack.gd" id="13_attack"]
+[ext_resource type="Script" path="res://StateMachine/CharacterStates/ground_slam_attack.gd" id="13_slam_attack"]
 [ext_resource type="Script" uid="uid://r6sgebowkgjn" path="res://Enemy/akira_boss_firebomb_attack.gd" id="13_firebomb_attack"]
 [ext_resource type="Script" uid="uid://bktjbk1s3kg6n" path="res://StateMachine/ai_state_machine.gd" id="14_aism"]
 [ext_resource type="Script" uid="uid://0n22etq4hpy8" path="res://StateMachine/AIStates/ai_pursue.gd" id="15_pursue"]
@@ -456,17 +457,21 @@ land_state = NodePath("../EnemyStun")
 character = NodePath("../..")
 fall_state = NodePath(".")
 
-[node name="EnemyAttack" type="Node" parent="StateMachine" unique_id=765968905 node_paths=PackedStringArray("next_states", "attack_component", "character", "fall_state")]
-script = ExtResource("13_attack")
+[node name="EnemyAttack" type="Node" parent="StateMachine" unique_id=765968905 node_paths=PackedStringArray("next_states", "weapon_slot", "attack_component", "character", "fall_state")]
+script = ExtResource("13_slam_attack")
 damage = 30.0
 knockback = 35.0
 next_states = [NodePath("../EnemyMove")]
 attack_animation_name = "MeleeAttack"
+weapon_slot = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot")
 attack_component = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 self_hitstop_duration = 0.25
 uninterruptable = true
 cooldown = 20.0
 starting_cooldown = 20.0
+aoe_radius = 3.5
+aoe_height = 0.4
+aoe_forward_offset = 3.2
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 

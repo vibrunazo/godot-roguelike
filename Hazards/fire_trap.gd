@@ -4,7 +4,7 @@
 ## Supports dynamic sizing, removable ground plate, tool-mode editor preview,
 ## and configurable duration for dynamic enemy spawns (e.g. fire bombs).
 class_name FireTrap
-extends Node3D
+extends DamageArea
 
 ## Size in meters (X = width, Y = depth in 3D space) of the fire field.
 @export var trap_size: Vector2 = Vector2(1.0, 1.0):
@@ -21,60 +21,12 @@ extends Node3D
 		if is_inside_tree():
 			_apply_ground_mesh_state()
 
-## Lifetime in seconds before the fire trap extinguishes and frees itself.
-## If <= 0.0, the fire trap persists indefinitely.
-@export var duration: float = 0.0
-
-## Fire damage dealt per tick to any character in the area.
-@export var damage: float = 5.0:
-	set(value):
-		damage = value
-		var att: AttackComponent = _get_attack_component()
-		if att != null:
-			att.damage = damage
-
-## Interval in seconds between consecutive damage ticks on lingering characters.
-## Default 2.0s ensures enemies aren't permanently locked in EnemyStun.
-@export var damage_interval: float = 2.0:
-	set(value):
-		damage_interval = value
-		var att: AttackComponent = _get_attack_component()
-		if att != null:
-			att.rehit_interval = damage_interval
-
-## Knockback impulse applied upon taking fire damage (default 0).
-@export var knockback_force: float = 0.0
-
 ## Base particle amount for a 1m x 1m area, captured from GPUParticles3D.amount.
 var base_particle_amount: int = 0
 
-var _is_extinguished: bool = false
-
-@onready var damage_hitbox: Area3D = $DamageHitbox
-@onready var collision_shape: CollisionShape3D = $DamageHitbox/CollisionShape3D
-@onready var attack_component: AttackComponent = $DamageHitbox/AttackComponent
 @onready var particles: GPUParticles3D = $GPUParticles3D
 @onready var ground_mesh: MeshInstance3D = $GroundMesh
 @onready var audio_player: AudioStreamPlayer3D = $AudioStreamPlayer3D
-@onready var life_timer: Timer = $LifeTimer
-
-
-func _get_damage_hitbox() -> Area3D:
-	if damage_hitbox == null and is_inside_tree():
-		damage_hitbox = get_node_or_null("DamageHitbox") as Area3D
-	return damage_hitbox
-
-
-func _get_collision_shape() -> CollisionShape3D:
-	if collision_shape == null and is_inside_tree():
-		collision_shape = get_node_or_null("DamageHitbox/CollisionShape3D") as CollisionShape3D
-	return collision_shape
-
-
-func _get_attack_component() -> AttackComponent:
-	if attack_component == null and is_inside_tree():
-		attack_component = get_node_or_null("DamageHitbox/AttackComponent") as AttackComponent
-	return attack_component
 
 
 func _get_particles() -> GPUParticles3D:
@@ -95,17 +47,14 @@ func _get_audio_player() -> AudioStreamPlayer3D:
 	return audio_player
 
 
-func _get_life_timer() -> Timer:
-	if life_timer == null and is_inside_tree():
-		life_timer = get_node_or_null("LifeTimer") as Timer
-	return life_timer
+func _init() -> void:
+	damage = 5.0
+	damage_interval = 2.0
+	damage_type = &"fire"
+	hits_all = true
 
 
 func _ready() -> void:
-	var col: CollisionShape3D = _get_collision_shape()
-	if col != null and col.shape != null:
-		col.shape = col.shape.duplicate()
-
 	var gm: MeshInstance3D = _get_ground_mesh()
 	if gm != null:
 		if show_ground_mesh:
@@ -122,6 +71,7 @@ func _ready() -> void:
 		if base_particle_amount <= 0:
 			base_particle_amount = p.amount
 
+	super._ready()
 	_apply_trap_size()
 
 	# In editor hint mode, avoid gameplay timers, audio autoplay, or damage processing
@@ -132,18 +82,10 @@ func _ready() -> void:
 			audio.stop()
 		return
 
-	var att: AttackComponent = _get_attack_component()
-	if att != null:
-		att.damage = damage
-		att.rehit_interval = damage_interval
-		att.knockback = Vector3(0.0, knockback_force, 0.0)
-
 	if duration > 0.0:
 		var timer: Timer = _get_life_timer()
-		if timer != null:
-			timer.wait_time = duration
+		if timer != null and not timer.timeout.is_connected(extinguish):
 			timer.timeout.connect(extinguish)
-			timer.start()
 
 
 ## Dynamically scales the collision hitbox, ground plate, and particle emission volume.
@@ -184,11 +126,16 @@ func _apply_trap_size() -> void:
 		p.amount = maxi(1, int(round(float(base_particle_amount) * area)))
 
 
+## Overrides expire to perform fire extinguish VFX and audio fade before freeing.
+func expire() -> void:
+	extinguish()
+
+
 ## Extinguishes the fire trap, turning off damage and fading out VFX/audio.
 func extinguish() -> void:
-	if _is_extinguished:
+	if _is_expired:
 		return
-	_is_extinguished = true
+	_is_expired = true
 
 	var hitbox: Area3D = _get_damage_hitbox()
 	if hitbox != null:
@@ -216,4 +163,4 @@ func extinguish() -> void:
 
 
 func is_extinguished() -> bool:
-	return _is_extinguished
+	return _is_expired

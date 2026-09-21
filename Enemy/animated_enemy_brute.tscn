@@ -61,7 +61,7 @@ _data = {
 }
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_aoe"]
-radius = 3.0
+radius = 0.2
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_punch"]
 radius = 0.8
@@ -212,8 +212,8 @@ shape = SubResource("SphereShape3D_aoe")
 
 [node name="AttackComponent" type="Node" parent="Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot/HitboxArea"]
 script = ExtResource("4_attack_comp")
-damage = 25.0
-knockback = Vector3(0, 5, 35)
+damage = 0.0
+knockback = Vector3(0, 0, 0)
 shake_on_damage = false
 
 [node name="PunchSlot" type="BoneAttachment3D" parent="Enemy_Large/Rig_Large/Skeleton3D" node_paths=PackedStringArray("hitbox")]

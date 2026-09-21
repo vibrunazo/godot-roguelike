@@ -1,0 +1,115 @@
+[gd_scene format=3 uid="uid://bv7a3ek2m7aoe"]
+
+[ext_resource type="Script" path="res://Hazards/ground_damage_aoe.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="2_attack"]
+[ext_resource type="AudioStream" uid="uid://bhd6x8sglgt14" path="res://Assets/Audio/hit.ogg" id="3_audio"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_aoe"]
+height = 0.4
+radius = 3.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ring"]
+transparency = 1
+blend_mode = 1
+shading_mode = 0
+albedo_color = Color(1, 0.65, 0.2, 1)
+
+[sub_resource type="TorusMesh" id="TorusMesh_ring"]
+material = SubResource("StandardMaterial3D_ring")
+inner_radius = 0.88
+outer_radius = 1.0
+rings = 32
+ring_segments = 16
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_disc"]
+transparency = 1
+blend_mode = 1
+shading_mode = 0
+albedo_color = Color(1, 0.65, 0.2, 0.35)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_disc"]
+material = SubResource("StandardMaterial3D_disc")
+top_radius = 1.0
+bottom_radius = 1.0
+height = 0.002
+radial_segments = 32
+
+[sub_resource type="Gradient" id="Gradient_dust"]
+offsets = PackedFloat32Array(0, 0.7, 1)
+colors = PackedColorArray(1, 0.75, 0.3, 1, 0.8, 0.5, 0.2, 0.8, 0.3, 0.2, 0.1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_dust"]
+gradient = SubResource("Gradient_dust")
+
+[sub_resource type="Curve" id="Curve_dust"]
+_data = [Vector2(0, 0.6), 0.0, 1.2, 0, 0, Vector2(0.3, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.1), -1.5, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_dust"]
+curve = SubResource("Curve_dust")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_aoe"]
+emission_shape = 6
+emission_ring_axis = Vector3(0, 1, 0)
+emission_ring_height = 0.1
+emission_ring_radius = 2.2
+emission_ring_inner_radius = 0.5
+direction = Vector3(0, 1, 0)
+spread = 35.0
+initial_velocity_min = 2.0
+initial_velocity_max = 5.0
+gravity = Vector3(0, -6, 0)
+scale_min = 0.15
+scale_max = 0.35
+scale_curve = SubResource("CurveTexture_dust")
+color = Color(1, 0.65, 0.2, 1)
+color_ramp = SubResource("GradientTexture1D_dust")
+
+[sub_resource type="SphereMesh" id="SphereMesh_particle"]
+radius = 0.2
+height = 0.4
+radial_segments = 8
+rings = 4
+
+[node name="GroundDamageArea" type="Node3D" unique_id=1489299901]
+script = ExtResource("1_script")
+radius = 3.0
+height = 0.4
+
+[node name="DamageHitbox" type="Area3D" parent="." unique_id=1483329902]
+collision_layer = 0
+collision_mask = 64
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DamageHitbox" unique_id=1483329903]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+shape = SubResource("CylinderShape3D_aoe")
+
+[node name="AttackComponent" type="Node" parent="DamageHitbox" unique_id=1483329904]
+script = ExtResource("2_attack")
+damage = 25.0
+knockback = Vector3(0, 8, 25)
+shake_on_damage = true
+
+[node name="ShockwaveRing" type="MeshInstance3D" parent="." unique_id=1483329905]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+gi_mode = 0
+mesh = SubResource("TorusMesh_ring")
+
+[node name="GroundIndicator" type="MeshInstance3D" parent="." unique_id=1483329906]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_disc")
+
+[node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=1483329907]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+emitting = false
+amount = 24
+lifetime = 0.5
+one_shot = true
+explosiveness = 0.9
+process_material = SubResource("ParticleProcessMaterial_aoe")
+draw_pass_1 = SubResource("SphereMesh_particle")
+
+[node name="ImpactAudio" type="AudioStreamPlayer3D" parent="." unique_id=1483329908]
+stream = ExtResource("3_audio")
+bus = &"SFX"

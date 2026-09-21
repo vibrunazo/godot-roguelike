@@ -1,9 +1,10 @@
+@tool
 ## Floor hazard that triggers when a player steps on it.
 ## After a configurable dodge-window delay, spikes thrust upward via AnimationPlayer,
 ## dealing damage and knockback to any character (player or enemy) in the damage hitbox.
 ## Resets back to idle after an active duration and cooldown.
 class_name SpikesHazard
-extends Node3D
+extends DamageArea
 
 enum State {
 	IDLE,
@@ -22,12 +23,6 @@ enum State {
 
 ## Cooldown duration in seconds after spikes finish retracting before the trap can re-trigger.
 @export var reset_cooldown: float = 1.0
-
-## Damage dealt to any character (player or enemy) standing on the spikes.
-@export var damage: float = 5.0
-
-## Vertical knockback impulse applied to damaged characters.
-@export var knockback_force: float = 4.0
 
 var current_state: int = State.IDLE
 
@@ -50,15 +45,22 @@ func is_cooldown() -> bool:
 
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 @onready var trigger_area: Area3D = $TriggerArea
-@onready var damage_hitbox: Area3D = $DamageHitbox
-@onready var attack_component: AttackComponent = $DamageHitbox/AttackComponent
 @onready var delay_timer: Timer = $DelayTimer
 @onready var active_timer: Timer = $ActiveTimer
 @onready var cooldown_timer: Timer = $CooldownTimer
 @onready var spike_audio: AudioStreamPlayer3D = $SpikeAudio
 
 
+func _init() -> void:
+	damage = 5.0
+	knockback_force = 4.0
+	hits_all = true
+
+
 func _ready() -> void:
+	super._ready()
+	if Engine.is_editor_hint():
+		return
 	trigger_area.body_entered.connect(_on_trigger_area_body_entered)
 	delay_timer.timeout.connect(_on_delay_timer_timeout)
 	active_timer.timeout.connect(_on_active_timer_timeout)
@@ -69,12 +71,6 @@ func _ready() -> void:
 	current_state = State.IDLE
 	damage_hitbox.monitoring = false
 	damage_hitbox.monitorable = false
-
-
-func _sync_attack_component() -> void:
-	if attack_component != null:
-		attack_component.damage = damage
-		attack_component.knockback = Vector3(0.0, knockback_force, 0.0)
 
 
 func _on_trigger_area_body_entered(body: Node3D) -> void:
