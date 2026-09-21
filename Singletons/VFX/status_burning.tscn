@@ -1,5 +1,7 @@
 [gd_scene format=3]
 
+[ext_resource type="Script" path="res://Singletons/VFX/status_burning.gd" id="1_burn_script"]
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_particle"]
 shading_mode = 0
 vertex_color_use_as_albedo = true
@@ -38,11 +40,12 @@ radial_segments = 12
 rings = 8
 
 [node name="StatusBurning" type="Node3D"]
+script = ExtResource("1_burn_script")
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="."]
 material_override = SubResource("StandardMaterial3D_particle")
 amount = 24
 lifetime = 0.6
-local_coords = true
+local_coords = false
 process_material = SubResource("ParticleProcessMaterial_burn")
 draw_pass_1 = SubResource("SphereMesh_particle")
