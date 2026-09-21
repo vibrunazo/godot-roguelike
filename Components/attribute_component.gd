@@ -1,9 +1,12 @@
 ## Central stat store for one character (the project's GAS AttributeSet equivalent).
 ## Owns two kinds of data:
 ## - Resource pools (health, mana): current values clamped to 0..max-stat that
-##   move only through instant deltas (damage_pool, restore_pool,
-##   set_pool_current). Pools carry no modifier stack, so expiring a max-stat
-##   buff re-clamps but never phantom-deletes earned pool value.
+##   move through instant deltas (damage_pool, restore_pool,
+##   set_pool_current) and rise with permanent max-stat gains (buying max HP
+##   at full health tops the pool up). Timed max-stat gains grant capacity
+##   only, so expiry can never delete earned health. Pools carry no modifier
+##   stack, so expiring a max-stat buff re-clamps but never phantom-deletes
+##   earned pool value.
 ## - Stat attributes (max_health, max_mana, attack, defense, speed,
 ##   attack_speed, fire_resistance, rotation_speed): base value plus a stack of active
 ##   modifiers, recomputed as
@@ -202,7 +205,9 @@ func get_base(stat_name: StringName) -> float:
 
 ## Writes a stat base (permanent change, e.g. shop upgrades). Emits
 ## attribute_changed when the current value moves and re-clamps the linked
-## pool, which emits its own change when clamped. Never emits defeat.
+## pool, which emits its own change when clamped. Base increases on a
+## pool-linked max stat also raise that pool by the same delta. Never emits
+## defeat.
 func set_base(stat_name: StringName, value: float) -> void:
 	var attr: Attribute = _stats.get(stat_name) as Attribute
 	if attr == null:
@@ -214,6 +219,7 @@ func set_base(stat_name: StringName, value: float) -> void:
 	var after: float = attr.recalculate()
 	if not is_equal_approx(before, after):
 		attribute_changed.emit(stat_name, after)
+		_carry_pool_with_max(stat_name, after - before, 0.0)
 	_clamp_pool_to_max(stat_name)
 
 
@@ -230,6 +236,8 @@ func get_current(attribute_name: StringName) -> float:
 
 ## Adds a modifier entry to a stat. Re-applying the same id refreshes that
 ## entry; distinct ids stack. Duration <= 0.0 means permanent until removed.
+## Permanent gains on a pool-linked max stat also raise that pool by the same
+## delta; timed gains leave the pool untouched so expiry deletes nothing.
 ## Returns false for unknown stats or pools (pools take no modifiers).
 func apply_modifier(target_stat: StringName, modifier_id: StringName, op: int, magnitude: float, duration: float = 0.0) -> bool:
 	var attr: Attribute = _stats.get(target_stat) as Attribute
@@ -241,10 +249,13 @@ func apply_modifier(target_stat: StringName, modifier_id: StringName, op: int, m
 	_update_processing()
 	if not is_equal_approx(before, attr.current_value):
 		attribute_changed.emit(target_stat, attr.current_value)
+		_carry_pool_with_max(target_stat, attr.current_value - before, duration)
 	return true
 
 
-## Removes one modifier entry from a stat. Returns true when one existed.
+## Removes one modifier entry from a stat. Also re-clamps the linked pool, so
+## removing max HP can never leave the pool above max. Returns true when one
+## existed.
 func remove_modifier(target_stat: StringName, modifier_id: StringName) -> bool:
 	var attr: Attribute = _stats.get(target_stat) as Attribute
 	if attr == null:
@@ -256,7 +267,35 @@ func remove_modifier(target_stat: StringName, modifier_id: StringName) -> bool:
 	_reap_effect_vfx()
 	if removed and not is_equal_approx(before, attr.current_value):
 		attribute_changed.emit(target_stat, attr.current_value)
+	if removed:
+		_clamp_pool_to_max(target_stat)
 	return removed
+
+
+## Carries the pool linked to a max stat when a permanent write moves that
+## max: increases also raise the pool by the same delta (buying max HP at
+## full health tops it up), decreases re-clamp it. Timed writes grant
+## capacity only: the pool stays put so expiry can never delete earned
+## health. Restores and clamps emit their own pool change; never defeat.
+func _carry_pool_with_max(max_stat_name: StringName, delta: float, duration: float) -> void:
+	if duration > 0.0 or is_zero_approx(delta):
+		return
+	var pool_name: StringName = _pool_for_max_stat(max_stat_name)
+	if pool_name.is_empty():
+		return
+	if delta > 0.0:
+		restore_pool(pool_name, delta)
+	else:
+		_clamp_pool_to_max(max_stat_name)
+
+
+## Returns the pool linked to a max stat (health for max_health), or &""
+## when the stat caps no pool.
+func _pool_for_max_stat(max_stat_name: StringName) -> StringName:
+	for pool_name: StringName in POOL_NAMES:
+		if (POOL_MAX_LINK[pool_name] as StringName) == max_stat_name:
+			return pool_name
+	return &""
 
 
 ## Applies a GameplayEffect resource and returns an instance id for later

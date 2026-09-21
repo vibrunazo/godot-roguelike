@@ -59,6 +59,8 @@ func _run_all() -> void:
 		return
 	if not await _part_lethal_hit_reaches_defeat():
 		return
+	if not _part_max_raise_carries_pool():
+		return
 	print("====================================================================")
 	print("  ALL ATTRIBUTE COMPONENT TESTS PASSED!                             ")
 	print("====================================================================")
@@ -836,4 +838,46 @@ func _part_lethal_hit_reaches_defeat() -> bool:
 	floor_body.queue_free()
 	await get_tree().process_frame
 	print("Lethal hit defeat verified.")
+	return true
+
+
+## PART 16: permanent max-HP gains raise current HP by the same amount (shop
+## sigil case); timed gains grant capacity only so expiry deletes nothing;
+## removing a gain re-clamps an over-full pool but preserves wounds.
+func _part_max_raise_carries_pool() -> bool:
+	print("\n>>> PART 16: Permanent max-HP gains raise current HP")
+	var comp: AttributeComponent = _make_component()
+	var base_max: float = 200.0
+	var gain: float = 20.0
+	comp.set_base(AttributeComponent.STAT_MAX_HEALTH, base_max)
+	comp.set_pool_current(AttributeComponent.POOL_HEALTH, base_max)
+	comp.apply_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_gain", Attribute.Op.ADD, gain)
+	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_MAX_HEALTH), base_max + gain):
+		return _fail("Permanent max buff should raise the max stat.")
+	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), base_max + gain):
+		return _fail("Permanent max-HP gain must raise current HP by the same amount.")
+	var timed_gain: float = 30.0
+	comp.apply_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_timed", Attribute.Op.ADD, timed_gain, 5.0)
+	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_MAX_HEALTH), base_max + gain + timed_gain):
+		return _fail("Timed max buff should raise the max stat.")
+	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), base_max + gain):
+		return _fail("Timed max buff must not raise current HP.")
+	if not comp.remove_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_timed"):
+		return _fail("Timed max buff should be removable.")
+	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), base_max + gain):
+		return _fail("Removing a timed max buff must not delete health.")
+	if not comp.remove_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_gain"):
+		return _fail("Permanent max buff should be removable.")
+	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_MAX_HEALTH), base_max):
+		return _fail("Max stat should return to base after removal.")
+	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), base_max):
+		return _fail("Removing a max gain must re-clamp an over-full pool to max.")
+	comp.apply_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_gain", Attribute.Op.ADD, gain)
+	comp.damage_pool(AttributeComponent.POOL_HEALTH, gain + 10.0)
+	var wounded: float = comp.get_current(AttributeComponent.POOL_HEALTH)
+	if not comp.remove_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_gain"):
+		return _fail("Permanent max buff should be removable when wounded.")
+	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), wounded):
+		return _fail("Removing a max gain must preserve wounds below the new max.")
+	print("Permanent max gains carry current HP; timed gains and removals behave.")
 	return true

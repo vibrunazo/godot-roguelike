@@ -3,9 +3,11 @@
 ## eight stat rows (level, pools, attack, defense, speed, attack speed, fire
 ## resistance). Refresh on ready, on show, and whenever the player's
 ## attributes change. When a gear item is selected via set_selected_item(),
-## stat rows touched by its persistent effects preview the contribution as
+## rows touched by its persistent effects preview the contribution as
 ## "Label: without -> with" (without excludes the item when it is equipped,
-## otherwise the current value); untouched rows show their plain current value.
+## otherwise the current value); untouched rows show their plain current
+## value. Pool rows keep their live current/max shape and preview the linked
+## max-stat increase the same way ("HP: 100/100 -> 100/120").
 class_name CharacterStatsPanel
 extends VBoxContainer
 
@@ -60,12 +62,8 @@ func refresh() -> void:
 		return
 	var level: int = ProgressionState.dungeon_level if ProgressionState != null else 1
 	_set_row(level_row, "Level", "%d" % level, "e8c85a")
-	var hp_cur: float = attrs.get_current(AttributeComponent.POOL_HEALTH)
-	var hp_max: float = attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)
-	_set_row(hp_row, "Max HP", "%s/%s" % [_fmt(hp_cur), _fmt(hp_max)], "7fe8a8")
-	var mana_cur: float = attrs.get_current(AttributeComponent.POOL_MANA)
-	var mana_max: float = attrs.get_current(AttributeComponent.STAT_MAX_MANA)
-	_set_row(mana_row, "Max Mana", "%s/%s" % [_fmt(mana_cur), _fmt(mana_max)], "8ac8ff")
+	_render_pool_row(hp_row, "HP", AttributeComponent.POOL_HEALTH, AttributeComponent.STAT_MAX_HEALTH, attrs, equipment, "7fe8a8")
+	_render_pool_row(mana_row, "Mana", AttributeComponent.POOL_MANA, AttributeComponent.STAT_MAX_MANA, attrs, equipment, "8ac8ff")
 	_render_stat_row(attack_row, "Attack", AttributeComponent.STAT_ATTACK, attrs, equipment, "7fe8a8", false)
 	_render_stat_row(defense_row, "Defense", AttributeComponent.STAT_DEFENSE, attrs, equipment, "7fe8a8", false)
 	_render_stat_row(speed_row, "Speed", AttributeComponent.STAT_SPEED, attrs, equipment, "7fe8a8", false)
@@ -86,6 +84,28 @@ func _render_stat_row(row: RichTextLabel, label: String, stat: StringName, attrs
 		return
 	var from_text: String = _display_value(float(arrow["from"]), is_percent)
 	var to_text: String = _display_value(float(arrow["to"]), is_percent)
+	row.text = "%s: %s -> [color=#%s]%s[/color]" % [label, from_text, value_color, to_text]
+
+
+## Renders one pool row in its live current/max shape ("HP: 100/120"), or
+## with the linked max-stat increase previewed ("HP: 100/100 -> 120/120")
+## when the selected item touches it. Each side clamps the pool to its own
+## max (a full pool reads 100/100 without the item, 120/120 with it). The
+## pool current never changes across the arrow: selecting gear previews,
+## never applies.
+func _render_pool_row(row: RichTextLabel, label: String, pool: StringName, max_stat: StringName, attrs: AttributeComponent, equipment: EquipmentComponent, value_color: String) -> void:
+	if row == null or attrs == null:
+		return
+	var pool_cur: float = attrs.get_current(pool)
+	var max_cur: float = attrs.get_current(max_stat)
+	var arrow: Dictionary = _selected_arrow(max_stat, max_cur, equipment)
+	if arrow.is_empty():
+		_set_row(row, label, "%s/%s" % [_fmt(pool_cur), _fmt(max_cur)], value_color)
+		return
+	var from_max: float = float(arrow["from"])
+	var to_max: float = float(arrow["to"])
+	var from_text: String = "%s/%s" % [_fmt(minf(pool_cur, from_max)), _fmt(from_max)]
+	var to_text: String = "%s/%s" % [_fmt(minf(pool_cur, to_max)), _fmt(to_max)]
 	row.text = "%s: %s -> [color=#%s]%s[/color]" % [label, from_text, value_color, to_text]
 
 
@@ -150,8 +170,8 @@ func _on_attribute_changed(_attribute_name: StringName, _current_value: float) -
 
 func _render_placeholders() -> void:
 	_set_row(level_row, "Level", "--", "e8c85a")
-	_set_row(hp_row, "Max HP", "--", "7fe8a8")
-	_set_row(mana_row, "Max Mana", "--", "8ac8ff")
+	_set_row(hp_row, "HP", "--", "7fe8a8")
+	_set_row(mana_row, "Mana", "--", "8ac8ff")
 	_set_row(attack_row, "Total Attack", "--", "7fe8a8")
 	_set_row(defense_row, "Total Defense", "--", "7fe8a8")
 	_set_row(speed_row, "Total Speed", "--", "7fe8a8")

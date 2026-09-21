@@ -249,7 +249,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: Stats panel is missing its stat rows.")
 		get_tree().quit(1)
 		return
-	if not pause_menu.stats_panel.hp_row.text.contains("Max HP"):
+	if not pause_menu.stats_panel.hp_row.text.contains("HP:"):
 		printerr("TEST FAILED: Stats panel HP row did not render. Got: ", pause_menu.stats_panel.hp_row.text)
 		get_tree().quit(1)
 		return
@@ -287,10 +287,80 @@ func _ready() -> void:
 		printerr("TEST FAILED: Stats untouched by the selected item must stay plain.")
 		get_tree().quit(1)
 		return
+	# The Colossus Sigil raises max health: selecting it must preview the max
+	# increase on the HP row while attack stays plain.
+	var sigil_res: GearItemResource = load("res://Items/ItemResources/item_health.tres") as GearItemResource
+	if sigil_res == null:
+		printerr("TEST FAILED: Could not load the Colossus Sigil resource.")
+		get_tree().quit(1)
+		return
+	if not player.equipment_component.equip_gear(sigil_res):
+		printerr("TEST FAILED: Could not equip the Colossus Sigil.")
+		get_tree().quit(1)
+		return
+	pause_menu.list_panel.refresh()
+	await get_tree().process_frame
+	if pause_menu.gear_list.item_count != 4:
+		printerr("TEST FAILED: Pause list should show 4 rows after equipping the sigil. Got: ", pause_menu.gear_list.item_count)
+		get_tree().quit(1)
+		return
+	pause_menu.list_panel.select_row(3)
+	if pause_menu.list_panel.get_selected_gear() != sigil_res:
+		printerr("TEST FAILED: Selecting pause row 3 did not select the sigil.")
+		get_tree().quit(1)
+		return
+	var pool_cur: float = player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	var max_cur: float = player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
+	var sigil_mag: float = (sigil_res.gameplay_effects[0] as GameplayEffect).magnitude
+	var hp_row_text: String = pause_menu.stats_panel.hp_row.text
+	if not hp_row_text.contains("HP:") or not hp_row_text.contains("->"):
+		printerr("TEST FAILED: HP row must preview the sigil's max-health increase. Got: ", hp_row_text)
+		get_tree().quit(1)
+		return
+	# Equipping at full health tops the pool up, so the arrow reads
+	# pool-clamped-to-without-max -> pool-clamped-to-with-max.
+	if not is_equal_approx(pool_cur, max_cur):
+		printerr("TEST FAILED: Equipping max-HP gear at full health must raise current HP to the new max. Pool: ", pool_cur, " Max: ", max_cur)
+		get_tree().quit(1)
+		return
+	var want_sigil_from: String = "%s/%s" % [str(roundi(minf(pool_cur, max_cur - sigil_mag))), str(roundi(max_cur - sigil_mag))]
+	var want_sigil_to: String = "%s/%s" % [str(roundi(minf(pool_cur, max_cur))), str(roundi(max_cur))]
+	if not hp_row_text.contains(want_sigil_from) or not hp_row_text.contains(want_sigil_to):
+		printerr("TEST FAILED: HP arrow must span clamped pool/max on both sides. Got: ", hp_row_text)
+		get_tree().quit(1)
+		return
+	if pause_menu.stats_panel.attack_row.text.contains("->"):
+		printerr("TEST FAILED: Attack row must stay plain when the sigil is selected. Got: ", pause_menu.stats_panel.attack_row.text)
+		get_tree().quit(1)
+		return
+	print("ok: Sigil previews its max-health increase on the HP row; attack stays plain.")
+
+	# An over-full pool clamps to each side's own max: topped up, the without
+	# side must read pool-clamped-to-without-max, never pool above its max.
+	player.attribute_component.restore_pool(AttributeComponent.POOL_HEALTH, 50.0)
+	pause_menu.stats_panel.refresh()
+	await get_tree().process_frame
+	var topped_pool: float = player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	var topped_max: float = player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
+	var topped_from: float = topped_max - sigil_mag
+	var full_hp_text: String = pause_menu.stats_panel.hp_row.text
+	var unclamped: String = "%s/%s" % [str(roundi(topped_pool)), str(roundi(topped_from))]
+	if full_hp_text.contains(unclamped):
+		printerr("TEST FAILED: Without-side pool must clamp to its max. Got: ", full_hp_text)
+		get_tree().quit(1)
+		return
+	var want_from: String = "%s/%s" % [str(roundi(minf(topped_pool, topped_from))), str(roundi(topped_from))]
+	var want_to: String = "%s/%s" % [str(roundi(minf(topped_pool, topped_max))), str(roundi(topped_max))]
+	if not full_hp_text.contains(want_from) or not full_hp_text.contains(want_to):
+		printerr("TEST FAILED: Full pool must read clamped on both sides. Got: ", full_hp_text)
+		get_tree().quit(1)
+		return
+	print("ok: Over-full pool clamps to each side of the HP arrow.")
+
 	pause_menu.stats_panel.set_selected_item(null)
 	await get_tree().process_frame
-	if pause_menu.stats_panel.attack_row.text.contains("->"):
-		printerr("TEST FAILED: Clearing the selection must clear stat arrows. Got: ", pause_menu.stats_panel.attack_row.text)
+	if pause_menu.stats_panel.attack_row.text.contains("->") or pause_menu.stats_panel.hp_row.text.contains("->"):
+		printerr("TEST FAILED: Clearing the selection must clear stat arrows. Attack: ", pause_menu.stats_panel.attack_row.text, " HP: ", pause_menu.stats_panel.hp_row.text)
 		get_tree().quit(1)
 		return
 	print("ok: Selected item previews without -> with arrows; untouched rows stay plain.")
