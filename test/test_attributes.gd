@@ -61,6 +61,8 @@ func _run_all() -> void:
 		return
 	if not _part_max_raise_carries_pool():
 		return
+	if not await _part_effect_vfx_bone_attachment():
+		return
 	print("====================================================================")
 	print("  ALL ATTRIBUTE COMPONENT TESTS PASSED!                             ")
 	print("====================================================================")
@@ -881,3 +883,99 @@ func _part_max_raise_carries_pool() -> bool:
 		return _fail("Removing a max gain must preserve wounds below the new max.")
 	print("Permanent max gains carry current HP; timed gains and removals behave.")
 	return true
+
+
+## PART 17: effects with vfx_bone attach to a BoneAttachment3D under the
+## character's Skeleton3D so the visual follows the bone through animations
+## and collapses to the floor with the corpse upon defeat.
+func _part_effect_vfx_bone_attachment() -> bool:
+	print("\n>>> PART 17: Bone-attached status visuals follow corpse on defeat")
+	var floor_body: StaticBody3D = StaticBody3D.new()
+	var col: CollisionShape3D = CollisionShape3D.new()
+	var box: BoxShape3D = BoxShape3D.new()
+	box.size = Vector3(10.0, 1.0, 10.0)
+	col.shape = box
+	floor_body.add_child(col)
+	floor_body.position = Vector3(0.0, -0.5, 0.0)
+	add_child(floor_body)
+
+	var enemy_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
+	var enemy: Character = enemy_scene.instantiate() as Character
+	add_child(enemy)
+	enemy.global_position = Vector3.ZERO
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+
+	var comp: AttributeComponent = enemy.get_node_or_null("AttributeComponent") as AttributeComponent
+	if comp == null:
+		floor_body.queue_free()
+		enemy.queue_free()
+		return _fail("Melee enemy must have an AttributeComponent.")
+
+	var burn: GameplayEffect = load("res://Components/effect_fire_burn.tres") as GameplayEffect
+	if burn == null or burn.vfx_scene == null or burn.vfx_bone != &"spine":
+		floor_body.queue_free()
+		enemy.queue_free()
+		return _fail("effect_fire_burn.tres should configure vfx_scene and vfx_bone = &\"spine\".")
+
+	var instance_id: StringName = comp.apply_effect(burn)
+	if instance_id == &"":
+		floor_body.queue_free()
+		enemy.queue_free()
+		return _fail("Burn application should return a valid instance id.")
+
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+
+	var skel: Skeleton3D = enemy.find_child("*Skeleton*", true, false) as Skeleton3D
+	if skel == null:
+		floor_body.queue_free()
+		enemy.queue_free()
+		return _fail("Enemy must have a Skeleton3D.")
+
+	var spine_slot: BoneAttachment3D = null
+	for child: Node in skel.get_children():
+		if child is BoneAttachment3D and (child as BoneAttachment3D).bone_name == "spine":
+			spine_slot = child as BoneAttachment3D
+			break
+
+	if spine_slot == null:
+		floor_body.queue_free()
+		enemy.queue_free()
+		return _fail("Status visual should create or find a BoneAttachment3D for spine.")
+
+	var burn_fx: Node3D = spine_slot.get_node_or_null("StatusBurning") as Node3D
+	if burn_fx == null:
+		floor_body.queue_free()
+		enemy.queue_free()
+		return _fail("Status burning visual should be parented under SpineSlot.")
+
+	var initial_fx_y: float = burn_fx.global_position.y
+	if initial_fx_y < 0.4:
+		floor_body.queue_free()
+		enemy.queue_free()
+		return _fail("Initial spine visual should be around torso height (>= 0.4), got %f." % initial_fx_y)
+
+	# Trigger defeat and wait for the defeat animation to collapse the skeleton to the floor
+	enemy.on_defeat()
+	for i: int in range(50):
+		await get_tree().physics_frame
+
+	var defeated_fx_y: float = burn_fx.global_position.y
+	if defeated_fx_y >= initial_fx_y - 0.25:
+		floor_body.queue_free()
+		enemy.queue_free()
+		return _fail("Status visual should fall with the spine bone on defeat; initial=%f, defeated=%f." % [initial_fx_y, defeated_fx_y])
+
+	comp.clear_temporary_effects()
+	await get_tree().physics_frame
+	if is_instance_valid(burn_fx):
+		floor_body.queue_free()
+		enemy.queue_free()
+		return _fail("Visual should be freed when effect is cleared.")
+
+	floor_body.queue_free()
+	enemy.queue_free()
+	print("Bone-attached status visual followed corpse on defeat and freed on cleanup.")
+	return true
+

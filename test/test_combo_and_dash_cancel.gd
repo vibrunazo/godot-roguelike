@@ -16,8 +16,20 @@ func _ready() -> void:
 	var dummy_attrs: AttributeComponent = dummy.get_node("AttributeComponent") as AttributeComponent
 	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
 	
+	dummy_attrs.set_base(AttributeComponent.STAT_MAX_HEALTH, 500.0)
+	dummy_attrs.restore_pool(AttributeComponent.POOL_HEALTH, 500.0)
 	var initial_health: float = dummy_attrs.get_current(AttributeComponent.POOL_HEALTH)
 	print("Dummy initial health: ", initial_health)
+
+	# Disable any other enemies spawned by the level's WaveObjective so they cannot interfere
+	for enemy_node: Node in level.find_children("*", "Character", true, false):
+		var enemy_char: Character = enemy_node as Character
+		if enemy_char != null and enemy_char != player and enemy_char != dummy:
+			if enemy_char.ai_state_machine != null:
+				enemy_char.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
+			if enemy_char.collision_shape_3d != null:
+				enemy_char.collision_shape_3d.disabled = true
+			enemy_char.global_position = Vector3(999.0, 999.0, 999.0)
 	
 	# Wait for initial spawn/navigation repositioning timer (1.0s) to settle, then for player to land on floor
 	await get_tree().create_timer(1.1).timeout

@@ -47,9 +47,13 @@ enum Stacking {
 ## never show it since they have no duration. Null means no visual.
 @export var vfx_scene: PackedScene
 ## Local offset applied to the instanced visual, relative to the target's
-## body origin (the feet). E.g. raise flames toward the torso with
-## Vector3(0, 0.6, 0).
+## body origin (the feet) or relative to the bone attachment slot if vfx_bone
+## is set. E.g. raise flames toward the torso with Vector3(0, 0.6, 0).
 @export var vfx_offset: Vector3 = Vector3.ZERO
+## Optional target bone name on the target character's Skeleton3D (e.g. &"spine", &"head").
+## When set, the visual is parented to a BoneAttachment3D targeting this bone so
+## it tracks animated poses and remains on the body after death.
+@export var vfx_bone: StringName = &""
 ## Optional designer note describing the effect's intent.
 @export var description: String = ""
 ## Gameplay tags granted to the target's AttributeComponent while this effect is active.

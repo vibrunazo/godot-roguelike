@@ -11,5 +11,6 @@ total_damage = 5.0
 damage_type = &"fire"
 duration = 5.0
 vfx_scene = ExtResource("2_burnvfx")
-vfx_offset = Vector3(0, 0.6, 0)
+vfx_offset = Vector3(0, 0, 0)
+vfx_bone = &"spine"
 description = "Shared fire burn: 5 damage over 5 seconds with flames. Applied by fireball hits, fire traps, and firebomb direct hits; re-application refreshes the single instance."

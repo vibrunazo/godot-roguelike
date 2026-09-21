@@ -222,7 +222,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	# Verify burning VFX node attached
-	var burning_node: Node = player.get_node_or_null("StatusBurning")
+	var burning_node: Node = player.find_child("StatusBurning", true, false)
 	if burning_node == null:
 		printerr("TEST FAILED: StatusBurning visual effect not found on player before transition.")
 		SceneTransition.player_cache = null
@@ -253,7 +253,7 @@ func _ready() -> void:
 		return
 
 	# Assert that StatusBurning visual node is completely freed/removed
-	var remaining_burning: Node = carried_fire.get_node_or_null("StatusBurning")
+	var remaining_burning: Node = carried_fire.find_child("StatusBurning", true, false)
 	if remaining_burning != null and is_instance_valid(remaining_burning) and not remaining_burning.is_queued_for_deletion():
 		printerr("TEST FAILED: StatusBurning visual node survived level transition!")
 		SceneTransition.player_cache = null

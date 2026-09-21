@@ -451,15 +451,60 @@ func _remove_timed_tag_effect(instance_id: StringName, keep_visual: bool = false
 ## Instances the effect's vfx_scene on this component while the timed instance
 ## lives. Refreshes reuse the existing node (same instance id); stacked
 ## instances each get their own. No scene (or an instant pool effect, which
-## never reaches here) means no visual.
+## never reaches here) means no visual. Attaches to a BoneAttachment3D if
+## effect.vfx_bone is specified and a Skeleton3D is available.
 func _show_effect_vfx(instance_id: StringName, effect: GameplayEffect) -> void:
 	if effect.vfx_scene == null or _effect_vfx.has(instance_id):
 		return
 	var fx: Node = effect.vfx_scene.instantiate()
-	_effect_vfx_parent().add_child(fx)
+	var parent_node: Node = _get_vfx_parent_for_effect(effect)
+	parent_node.add_child(fx)
 	if fx is Node3D:
 		(fx as Node3D).position = effect.vfx_offset
 	_effect_vfx[instance_id] = fx
+
+
+## Finds the Skeleton3D associated with this component's parent or character, if any.
+func _find_skeleton() -> Skeleton3D:
+	var p: Node = get_parent()
+	if p == null:
+		return null
+	var c: Character = p as Character
+	if c != null and c.mesh_mount != null:
+		var skel_in_mount: Skeleton3D = c.mesh_mount.find_child("*Skeleton*", true, false) as Skeleton3D
+		if skel_in_mount != null:
+			return skel_in_mount
+	return p.find_child("*Skeleton*", true, false) as Skeleton3D
+
+
+## Finds an existing BoneAttachment3D targeting the given bone, or creates a new one.
+func _find_or_create_bone_slot(skeleton: Skeleton3D, bone_name: String) -> BoneAttachment3D:
+	for child: Node in skeleton.get_children():
+		if child is BoneAttachment3D and (child as BoneAttachment3D).bone_name == bone_name:
+			return child as BoneAttachment3D
+	var bone_idx: int = skeleton.find_bone(bone_name)
+	if bone_idx < 0:
+		return null
+	var new_slot: BoneAttachment3D = BoneAttachment3D.new()
+	new_slot.name = bone_name.replace(".", "_").capitalize().replace(" ", "") + "Slot"
+	new_slot.bone_name = bone_name
+	new_slot.bone_idx = bone_idx
+	skeleton.add_child(new_slot)
+	return new_slot
+
+
+## Resolves the target parent Node for an effect's instanced status visual.
+## When vfx_bone is set, attaches to a BoneAttachment3D on the character's Skeleton3D
+## so the visual tracks skeletal poses and remains on the body after death.
+## Falls back to the nearest Node3D ancestor if no skeleton or bone is found.
+func _get_vfx_parent_for_effect(effect: GameplayEffect) -> Node:
+	if effect != null and not effect.vfx_bone.is_empty():
+		var skeleton: Skeleton3D = _find_skeleton()
+		if skeleton != null:
+			var slot: BoneAttachment3D = _find_or_create_bone_slot(skeleton, String(effect.vfx_bone))
+			if slot != null:
+				return slot
+	return _effect_vfx_parent()
 
 
 ## Status visuals must live under a Node3D to inherit the target's transform:

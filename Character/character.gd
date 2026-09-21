@@ -625,10 +625,9 @@ func cancel_movement_and_abilities() -> void:
 		camera.trauma = 0.0
 	if attribute_component != null:
 		attribute_component.clear_temporary_effects()
-	for child: Node in get_children():
+	for child: Node in find_children("*", "Node3D", true, false):
 		if child.name.begins_with("Status") or child.name.to_lower().contains("burning"):
-			if child is Node3D:
-				(child as Node3D).visible = false
+			(child as Node3D).visible = false
 			child.queue_free()
 
 
