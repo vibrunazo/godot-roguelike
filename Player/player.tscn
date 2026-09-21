@@ -341,6 +341,9 @@ transitions = ["Start", "PlayerAnimations_Spawn_Ground", SubResource("AnimationN
 graph_offset = Vector2(41, -108)
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_l8h54"]
+radius = 0.375
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player_hurtbox"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_dkpta"]
 noise_type = 2
@@ -727,7 +730,7 @@ attribute_component = NodePath("../AttributeComponent")
 knockback_component = NodePath("../KnockbackComponent")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox" unique_id=110869971]
-shape = SubResource("CapsuleShape3D_l8h54")
+shape = SubResource("CapsuleShape3D_player_hurtbox")
 
 [node name="DamageTint" type="ColorRect" parent="." unique_id=241735057]
 anchors_preset = 15

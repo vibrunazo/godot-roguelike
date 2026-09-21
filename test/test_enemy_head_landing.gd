@@ -98,7 +98,7 @@ func _ready() -> void:
 	player.velocity = Vector3.ZERO
 	for frame: int in range(LANDING_FRAMES):
 		await get_tree().physics_frame
-		var over_enemy: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0
+		var over_enemy: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0 and player.global_position.y > terrain_y + 0.5
 		if player.is_on_floor() and over_enemy:
 			ever_floor = true
 		max_horizontal = maxf(max_horizontal, Vector2(player.velocity.x, player.velocity.z).length())
@@ -129,8 +129,11 @@ func _ready() -> void:
 	player.move_direction = Vector3.ZERO
 	if input_comp != null:
 		input_comp.set_physics_process(true)
+	var p_rad: float = (player.collision_shape_3d.shape as CapsuleShape3D).radius if player.collision_shape_3d.shape is CapsuleShape3D else 0.375
+	var e_rad: float = (enemy.collision_shape_3d.shape as CapsuleShape3D).radius if enemy.collision_shape_3d.shape is CapsuleShape3D else 0.375
+	var min_blocking_dist: float = (p_rad + e_rad) * 0.8
 	check(closest_radial < 1.9, "Player actually approaches the enemy (closest radial %.2fm)" % closest_radial)
-	check(closest_radial > 0.8, "Player cannot walk through the enemy body (closest radial %.2fm)" % closest_radial)
+	check(closest_radial > min_blocking_dist, "Player cannot walk through the enemy body (closest radial %.2fm > %.2fm)" % [closest_radial, min_blocking_dist])
 
 	# PART 5: Centered neutral drop onto the crown: the apex is never a perch.
 	print("\n>>> PART 5: Centered neutral drop (apex perch)")

@@ -78,10 +78,10 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	# Verify collision shape size for large enemy (radius 0.5 matching navmesh agent, height ~3.0)
+	# Verify collision shape size for large enemy (radius 0.375, height ~3.0)
 	var cap_shape: CapsuleShape3D = brute.collision_shape_3d.shape as CapsuleShape3D
-	if cap_shape == null or cap_shape.height < 2.5 or not is_equal_approx(cap_shape.radius, 0.5):
-		printerr("TEST FAILED: Brute CollisionShape3D not configured with radius 0.5.")
+	if cap_shape == null or cap_shape.height < 2.5 or not is_equal_approx(cap_shape.radius, 0.375):
+		printerr("TEST FAILED: Brute CollisionShape3D not configured with radius 0.375.")
 		get_tree().quit(1)
 		return
 

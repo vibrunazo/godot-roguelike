@@ -16,6 +16,9 @@
 [ext_resource type="Script" uid="uid://d1jynuos72fph" path="res://Components/attribute_component.gd" id="14_attr"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
+radius = 0.375
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_enemy_hurtbox"]
 
 [node name="EnemyBase" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "stun_state", "defeat_state", "color_component") groups=["enemy"] editor_description="ABSTRACT BASE TEMPLATE: Defines shared physics, health, knockback, and rig. Concrete enemies (melee_enemy.tscn, ranged_enemy.tscn) must inherit from this scene and configure their own attacks and AI states. Do not instantiate directly in waves."]
 collision_layer = 3
@@ -52,7 +55,7 @@ attribute_component = NodePath("../AttributeComponent")
 knockback_component = NodePath("../KnockbackComponent")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
-shape = SubResource("CapsuleShape3D_ncf7h")
+shape = SubResource("CapsuleShape3D_enemy_hurtbox")
 
 [node name="HealthBar" parent="." unique_id=1961835903 node_paths=PackedStringArray("attribute_component") instance=ExtResource("2_am0pq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)

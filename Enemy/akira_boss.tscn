@@ -162,7 +162,7 @@ shader_parameter/Threshold = 1.0
 size = Vector2(4, 2)
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_akira_body"]
-radius = 0.65
+radius = 0.4875
 height = 3.96
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_akira_hurtbox"]

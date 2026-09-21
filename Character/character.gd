@@ -203,8 +203,9 @@ func _auto_configure_navigation() -> void:
 	# Standard navmesh surface is baked slightly above floor geometry (~0.35m).
 	var nav_elevation: float = 0.35
 
+	navigation_agent_3d.radius = radius
 	navigation_agent_3d.path_height_offset = -maxf(0.0, origin_height - nav_elevation)
-	navigation_agent_3d.path_desired_distance = clampf(radius + 0.3, 0.7, 1.5)
+	navigation_agent_3d.path_desired_distance = clampf(radius + 0.3, 0.6, 1.5)
 	navigation_agent_3d.target_desired_distance = maxf(1.5, radius + 0.8)
 
 
