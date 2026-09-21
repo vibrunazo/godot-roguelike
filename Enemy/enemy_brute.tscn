@@ -261,8 +261,9 @@ attack_cooldown = 2.0
 ai_state_machine = NodePath("..")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=1882190998]
-path_desired_distance = 2.0
-target_desired_distance = 2.0
+path_desired_distance = 0.8
+target_desired_distance = 1.5
+path_height_offset = -1.0
 
 [node name="AttributeComponent" type="Node" parent="." unique_id=271828461]
 script = ExtResource("19_attr")

@@ -97,10 +97,10 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	# Verify NavigationAgent3D settings
+	# Verify NavigationAgent3D settings (tall agent requires negative height offset to avoid vertical distance inflation and allow tight path following)
 	var nav_agent: NavigationAgent3D = brute.navigation_agent_3d
-	if nav_agent == null or nav_agent.path_desired_distance < 1.4:
-		printerr("TEST FAILED: Brute NavigationAgent3D path_desired_distance is too small for tall agent.")
+	if nav_agent == null or nav_agent.path_height_offset >= 0.0 or nav_agent.path_desired_distance > 1.0:
+		printerr("TEST FAILED: Brute NavigationAgent3D not configured with path_height_offset < 0.0 and path_desired_distance <= 1.0.")
 		get_tree().quit(1)
 		return
 

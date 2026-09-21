@@ -580,8 +580,9 @@ next_state = NodePath("../AIPursue")
 ai_state_machine = NodePath("..")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=1492277192]
-path_desired_distance = 2.5
-target_desired_distance = 2.5
+path_desired_distance = 0.9
+target_desired_distance = 1.5
+path_height_offset = -1.5
 
 [node name="AttributeComponent" type="Node" parent="." unique_id=1551787638]
 script = ExtResource("19_attr")
