@@ -37,6 +37,12 @@ func freeze_ai(enemy: Character) -> void:
 		enemy.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
 
 
+func _get_character_radius(character: Character) -> float:
+	if character != null and character.collision_shape_3d != null and character.collision_shape_3d.shape is CapsuleShape3D:
+		return (character.collision_shape_3d.shape as CapsuleShape3D).radius
+	return 0.5
+
+
 ## Spawns a real melee enemy under the level, freezes it, and waits for it to
 ## settle on the floor. Returns null if it never settles.
 func spawn_settled_enemy(level: Node3D, position: Vector3) -> Character:
@@ -91,6 +97,8 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	var enemy_top: float = enemy.global_position.y + 1.0
+	var contact_threshold: float = (_get_character_radius(player) + _get_character_radius(enemy)) * 1.25
+	var min_blocking_dist: float = (_get_character_radius(player) + _get_character_radius(enemy)) * 0.8
 	var ever_floor: bool = false
 	var max_horizontal: float = 0.0
 	var landed_on_terrain: bool = false
@@ -98,7 +106,7 @@ func _ready() -> void:
 	player.velocity = Vector3.ZERO
 	for frame: int in range(LANDING_FRAMES):
 		await get_tree().physics_frame
-		var over_enemy: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0 and player.global_position.y > terrain_y + 0.5
+		var over_enemy: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < contact_threshold and player.global_position.y > terrain_y + 0.5
 		if player.is_on_floor() and over_enemy:
 			ever_floor = true
 		max_horizontal = maxf(max_horizontal, Vector2(player.velocity.x, player.velocity.z).length())
@@ -129,9 +137,6 @@ func _ready() -> void:
 	player.move_direction = Vector3.ZERO
 	if input_comp != null:
 		input_comp.set_physics_process(true)
-	var p_rad: float = (player.collision_shape_3d.shape as CapsuleShape3D).radius if player.collision_shape_3d.shape is CapsuleShape3D else 0.375
-	var e_rad: float = (enemy.collision_shape_3d.shape as CapsuleShape3D).radius if enemy.collision_shape_3d.shape is CapsuleShape3D else 0.375
-	var min_blocking_dist: float = (p_rad + e_rad) * 0.8
 	check(closest_radial < 1.9, "Player actually approaches the enemy (closest radial %.2fm)" % closest_radial)
 	check(closest_radial > min_blocking_dist, "Player cannot walk through the enemy body (closest radial %.2fm > %.2fm)" % [closest_radial, min_blocking_dist])
 
@@ -146,10 +151,10 @@ func _ready() -> void:
 	var run_streak5: int = 0
 	for frame: int in range(LANDING_FRAMES):
 		await get_tree().physics_frame
-		var head5: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0 and player.global_position.y > terrain_y + 0.5
+		var head5: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < contact_threshold and player.global_position.y > terrain_y + 0.5
 		if player.is_on_floor() and head5:
 			ever_head_floor5 = true
-		var perched5: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0 and player.global_position.y > terrain_y + 0.5
+		var perched5: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < contact_threshold and player.global_position.y > terrain_y + 0.5
 		if perched5 and sm.state == run_state:
 			run_streak5 += 1
 			if run_streak5 >= 5:
@@ -183,10 +188,10 @@ func _ready() -> void:
 		else:
 			player.move_direction = to_enemy6.normalized()
 		await get_tree().physics_frame
-		var head6: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0 and player.global_position.y > terrain_y + 0.5
+		var head6: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < contact_threshold and player.global_position.y > terrain_y + 0.5
 		if player.is_on_floor() and head6:
 			ever_head_floor6 = true
-		var perched6: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < 1.0 and player.global_position.y > terrain_y + 0.5
+		var perched6: bool = Vector2(player.global_position.x - enemy.global_position.x, player.global_position.z - enemy.global_position.z).length() < contact_threshold and player.global_position.y > terrain_y + 0.5
 		if perched6 and sm.state == run_state:
 			run_streak6 += 1
 			if run_streak6 >= 5:

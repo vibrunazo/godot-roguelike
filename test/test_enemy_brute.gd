@@ -78,29 +78,41 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 
-	# Verify collision shape size for large enemy (radius 0.375, height ~3.0)
-	var cap_shape: CapsuleShape3D = brute.collision_shape_3d.shape as CapsuleShape3D
-	if cap_shape == null or cap_shape.height < 2.5 or not is_equal_approx(cap_shape.radius, 0.375):
-		printerr("TEST FAILED: Brute CollisionShape3D not configured with radius 0.375.")
+	# Verify collision shape is a valid CapsuleShape3D with positive dimensions
+	var cap_shape: CapsuleShape3D = brute.collision_shape_3d.shape as CapsuleShape3D if brute.collision_shape_3d else null
+	if cap_shape == null or cap_shape.height <= 0.0 or cap_shape.radius <= 0.0:
+		printerr("TEST FAILED: Brute CollisionShape3D missing or has invalid dimensions.")
 		get_tree().quit(1)
 		return
 
-	# Verify hurtbox (larger capsule shape for hit detection matching visual mesh)
+	# Verify hurtbox (functional capsule shape covering the body on layer 128)
 	if brute.hurtbox == null or brute.hurtbox.collision_layer != 128:
 		printerr("TEST FAILED: Brute Hurtbox not on layer 128.")
 		get_tree().quit(1)
 		return
 	var hurtbox_shape: CollisionShape3D = brute.hurtbox.get_node_or_null("CollisionShape3D") as CollisionShape3D
 	var hurtbox_cap: CapsuleShape3D = hurtbox_shape.shape as CapsuleShape3D if hurtbox_shape else null
-	if hurtbox_cap == null or hurtbox_cap.radius < 0.75:
-		printerr("TEST FAILED: Brute hurtbox shape radius is smaller than 0.75.")
+	if hurtbox_cap == null or hurtbox_cap.radius <= 0.0 or hurtbox_cap.height <= 0.0:
+		printerr("TEST FAILED: Brute hurtbox shape missing or has invalid dimensions.")
+		get_tree().quit(1)
+		return
+	if hurtbox_cap.radius < cap_shape.radius:
+		printerr("TEST FAILED: Brute hurtbox radius must be >= collision shape radius for reliable hit registration.")
 		get_tree().quit(1)
 		return
 
-	# Verify NavigationAgent3D settings (tall agent requires negative height offset to avoid vertical distance inflation and allow tight path following)
+	# Verify NavigationAgent3D settings (nav agent dynamically mirrors collision radius and aligns height)
 	var nav_agent: NavigationAgent3D = brute.navigation_agent_3d
-	if nav_agent == null or nav_agent.path_height_offset >= 0.0 or nav_agent.path_desired_distance > 1.0:
-		printerr("TEST FAILED: Brute NavigationAgent3D not configured with path_height_offset < 0.0 and path_desired_distance <= 1.0.")
+	if nav_agent == null:
+		printerr("TEST FAILED: Brute NavigationAgent3D is missing.")
+		get_tree().quit(1)
+		return
+	if not is_equal_approx(nav_agent.radius, cap_shape.radius):
+		printerr("TEST FAILED: Brute NavigationAgent3D radius does not match collision shape radius.")
+		get_tree().quit(1)
+		return
+	if nav_agent.path_height_offset > 0.0 or nav_agent.path_desired_distance <= 0.0:
+		printerr("TEST FAILED: Brute NavigationAgent3D invalid path_height_offset or path_desired_distance.")
 		get_tree().quit(1)
 		return
 

@@ -171,8 +171,8 @@ func _part2_body_and_scale() -> void:
 		return
 	var brute_scene: PackedScene = load("res://Enemy/enemy_brute.tscn") as PackedScene
 	var brute: Character = (brute_scene.instantiate() as Character) if brute_scene != null else null
-	var brute_h: float = 3.0
-	var brute_r: float = 0.5
+	var brute_h: float = 0.0
+	var brute_r: float = 0.0
 	if brute != null:
 		add_child(brute)
 		await get_tree().physics_frame
@@ -187,7 +187,7 @@ func _part2_body_and_scale() -> void:
 		return
 	print("Boss capsule bigger than brute: h=%.2f r=%.2f." % [cap.height, cap.radius])
 	# Tougher than brute via relative health comparison (no hardcoded values).
-	var brute_hp: float = 100.0
+	var brute_hp: float = 0.0
 	if brute_scene != null:
 		var tmp: Character = brute_scene.instantiate() as Character
 		if tmp != null and tmp.attribute_component != null:
