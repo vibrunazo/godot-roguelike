@@ -107,9 +107,12 @@ debug_kill={
 
 [layer_names]
 
-3d_physics/layer_names/layer_6="Triggers"
-3d_physics/layer_names/layer_7="PlayerHurtbox"
-3d_physics/layer_names/layer_8="EnemyHurtbox"
+3d_physics/layer_1="World"
+3d_physics/layer_2="Enemy"
+3d_physics/layer_5="Player"
+3d_physics/layer_6="Triggers"
+3d_physics/layer_7="PlayerHurtbox"
+3d_physics/layer_8="EnemyHurtbox"
 
 [physics]
 
