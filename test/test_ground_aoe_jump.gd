@@ -210,13 +210,90 @@ func _run_tests() -> void:
 	passed_checks += 1
 
 	# -------------------------------------------------------------
+	# PART 4: Friendly Fire Verification
+	# -------------------------------------------------------------
+	print("\n>>> PART 4: Friendly Fire (Allied enemy takes damage, caster takes 0)")
+	var ff_brute: Character = brute_scene.instantiate() as Character
+	ff_brute.position = Vector3.ZERO
+	add_child(ff_brute)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	var ff_attack: GroundSlamAttack = ff_brute.state_machine.get_node_or_null("EnemyAttack") as GroundSlamAttack
+	if ff_attack == null or not ff_attack.friendly_fire:
+		_fail("Brute EnemyAttack does not have friendly_fire enabled.")
+		return
+
+	var ally_scene: PackedScene = load("res://Enemy/melee_enemy.tscn")
+	var ally_enemy: Character = ally_scene.instantiate() as Character
+	var ally_offset: float = ff_attack.aoe_forward_offset
+	var ally_forward: Vector3 = ff_brute.mesh_mount.global_basis.z.normalized() if ff_brute.mesh_mount != null else Vector3.FORWARD
+	ally_enemy.position = ff_brute.global_position + ally_forward * ally_offset
+	add_child(ally_enemy)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	var ally_attrs: AttributeComponent = ally_enemy.attribute_component
+	var brute_attrs: AttributeComponent = ff_brute.attribute_component
+	var ally_hp_before: float = ally_attrs.get_current(AttributeComponent.POOL_HEALTH)
+	var brute_hp_before: float = brute_attrs.get_current(AttributeComponent.POOL_HEALTH)
+
+	# Trigger slam with friendly_fire enabled
+	ff_attack._spawn_ground_aoe()
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	await get_tree().physics_frame
+
+	var ally_hp_after: float = ally_attrs.get_current(AttributeComponent.POOL_HEALTH)
+	var brute_hp_after: float = brute_attrs.get_current(AttributeComponent.POOL_HEALTH)
+	var ally_damage_taken: float = ally_hp_before - ally_hp_after
+	var brute_damage_taken: float = brute_hp_before - brute_hp_after
+
+	var expected_slam_damage: float = ff_attack.damage * (ff_brute.get_damage_modifier() if ff_brute.has_method("get_damage_modifier") else 1.0)
+	print("Ally enemy damage taken: ", ally_damage_taken, " (expected: ", expected_slam_damage, ")")
+	print("Casting brute damage taken: ", brute_damage_taken, " (expected: 0.0)")
+
+	if not is_equal_approx(ally_damage_taken, expected_slam_damage):
+		_fail("Allied enemy did not take friendly fire damage! Expected %f, got %f" % [expected_slam_damage, ally_damage_taken])
+		return
+
+	if not is_equal_approx(brute_damage_taken, 0.0):
+		_fail("Casting brute damaged itself! Self-damage must be 0, got %f" % brute_damage_taken)
+		return
+
+	# Clean up friendly fire entities and spawned AOEs
+	ally_enemy.queue_free()
+	ff_brute.queue_free()
+	for child: Node in get_tree().current_scene.get_children():
+		if child is GroundDamageArea:
+			child.queue_free()
+	await get_tree().physics_frame
+	await get_tree().process_frame
+
+	# Verify Akira Boss friendly fire toggle
+	var boss_scene: PackedScene = load("res://Enemy/akira_boss.tscn")
+	var boss: Character = boss_scene.instantiate() as Character
+	add_child(boss)
+	await get_tree().physics_frame
+	var boss_attack: GroundSlamAttack = boss.state_machine.get_node_or_null("EnemyAttack") as GroundSlamAttack
+	if boss_attack == null or not boss_attack.friendly_fire:
+		_fail("Akira Boss EnemyAttack does not have friendly_fire enabled.")
+		return
+	boss.queue_free()
+	await get_tree().physics_frame
+
+	print("Friendly fire verified: allied enemies take damage, caster takes 0 self-damage, boss configured.")
+	passed_checks += 1
+
+	# -------------------------------------------------------------
 	# Summary
 	# -------------------------------------------------------------
 	print("\n====================================================")
-	print("  ALL GROUND AOE & JUMP EVASION CHECKS PASSED (%d/3)" % passed_checks)
+	print("  ALL GROUND AOE & JUMP EVASION CHECKS PASSED (%d/4)" % passed_checks)
 	print("  1. Low cylinder height & floor alignment verified")
 	print("  2. Standing player hit & jumping player evasion verified")
 	print("  3. Downward raycast floor height detection verified")
+	print("  4. Friendly fire on allies and self-damage immunity verified")
 	print("====================================================\n")
 	get_tree().quit(0)
 

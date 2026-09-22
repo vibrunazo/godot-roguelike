@@ -26,6 +26,9 @@ extends CharacterAttack
 ## Maximum vertical distance in meters downward to search for the floor.
 @export var max_ground_drop: float = 20.0
 
+## Whether the ground slam deals friendly fire to allies of the attacker.
+@export var friendly_fire: bool = false
+
 var _aoe_spawned: bool = false
 
 
@@ -101,6 +104,7 @@ func _spawn_ground_aoe() -> void:
 	var enemy_check: bool = character.is_enemy() if character.has_method("is_enemy") else true
 	aoe_instance.can_hit_player = enemy_check
 	aoe_instance.can_hit_enemies = not enemy_check
+	aoe_instance.friendly_fire = friendly_fire
 
 	VfxManager.spawn_world_entity(aoe_instance)
 

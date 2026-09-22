@@ -65,6 +65,14 @@ extends Node3D
 		if is_inside_tree():
 			_update_collision_mask()
 
+## Whether this damage area deals friendly fire to allies of the wielder.
+## If true, enemies can hit other enemies, or players can hit other players.
+@export var friendly_fire: bool = false:
+	set(value):
+		friendly_fire = value
+		if is_inside_tree():
+			_update_collision_mask()
+
 ## Status effects applied to each victim when damaged.
 @export var effects_to_apply: Array[GameplayEffect] = []:
 	set(value):
@@ -76,6 +84,8 @@ var wielder: Character = null:
 	set(value):
 		wielder = value
 		_sync_attack_component()
+		if is_inside_tree():
+			_update_collision_mask()
 
 var _is_expired: bool = false
 
@@ -142,6 +152,21 @@ func _update_collision_mask() -> void:
 			mask |= 64
 		if can_hit_enemies:
 			mask |= 128
+		if friendly_fire:
+			if wielder != null:
+				if wielder.is_in_group("enemy") or (wielder.has_method("is_enemy") and wielder.is_enemy()):
+					mask |= 128
+				elif wielder.is_in_group("player") or (wielder.has_method("is_player") and wielder.is_player()):
+					mask |= 64
+				else:
+					mask |= 64 | 128
+			else:
+				if can_hit_player and not can_hit_enemies:
+					mask |= 128
+				elif can_hit_enemies and not can_hit_player:
+					mask |= 64
+				else:
+					mask |= 64 | 128
 	hitbox.collision_mask = mask
 
 
@@ -188,6 +213,8 @@ func set_wielder(character: Character) -> void:
 	var att: AttackComponent = _get_attack_component()
 	if att != null:
 		att.wielder = character
+	if is_inside_tree():
+		_update_collision_mask()
 
 
 ## Immediately deals damage to any hurtboxes currently overlapping the hitbox Area3D.

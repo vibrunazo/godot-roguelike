@@ -225,6 +225,7 @@ starting_cooldown = 5.0
 aoe_radius = 3.0
 aoe_height = 0.4
 aoe_forward_offset = 2.8
+friendly_fire = true
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
