@@ -68,6 +68,8 @@ var lunge_direction: Vector3 = Vector3.ZERO
 var _lunge_base_velocity: Vector3 = Vector3.ZERO
 var lunge_timer: SceneTreeTimer
 var lunge_slot: WeaponSlot
+## WeaponSlot whose slash signal reports this attack's ACTIVE lifecycle event.
+var _active_phase_slot: WeaponSlot
 ## Remaining self-hitstop time in seconds (real time). Above 0.0 means the
 ## attacker is slowed by self_hitstop_scale after landing a hit.
 var hitstop_time_remaining: float = 0.0
@@ -203,6 +205,10 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 		aim_direction = Vector3.ZERO
 	_aim_at_current_target()
 	_arm_lunge()
+	_active_phase_slot = get_weapon_slot()
+	if _active_phase_slot != null:
+		connect_one_shot(_active_phase_slot.slash, _broadcast_active_phase)
+	broadcast_ability_event(AbilityEvent.Phase.STARTED, {}, aim_direction)
 
 
 ## Overrides the snapshotted aim with the direction to the character's
@@ -255,6 +261,13 @@ func _arm_lunge() -> void:
 	lunge_slot = get_weapon_slot()
 	if lunge_slot != null:
 		connect_one_shot(lunge_slot.slash, _begin_lunge)
+
+
+## Reports this attack's ACTIVE lifecycle event, fired by the weapon slot's
+## slash signal (exactly when the hit window opens). Slot-less legacy hitboxes
+## never report ACTIVE; they still report STARTED/ENDED from enter/exit.
+func _broadcast_active_phase() -> void:
+	broadcast_ability_event(AbilityEvent.Phase.ACTIVE, {}, aim_direction)
 
 
 ## Starts the forward lunge along the locked aim direction.
@@ -407,9 +420,13 @@ func exit() -> void:
 	if exit_component != null:
 		disconnect_safe(exit_component.hit_landed, _on_hit_landed)
 		exit_component.reset_exceptions()
+	if _active_phase_slot != null:
+		disconnect_safe(_active_phase_slot.slash, _broadcast_active_phase)
+		_active_phase_slot = null
 	var exit_slot: WeaponSlot = get_weapon_slot()
 	if exit_slot != null and exit_slot.enabled:
 		exit_slot.enabled = false
+	broadcast_ability_event(AbilityEvent.Phase.ENDED, {}, aim_direction)
 
 
 ## Transitions to a random pick of next_states when the attack animation finishes.

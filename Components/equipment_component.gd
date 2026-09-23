@@ -23,6 +23,9 @@ var _gear_effect_ids: Dictionary = {}
 ## Maps GearItemResource -> Node3D visual instance mounted to the character.
 var _gear_visuals: Dictionary = {}
 
+## Maps GearItemResource -> Array[PassiveAbility] granted by that gear.
+var _gear_passives: Dictionary = {}
+
 ## Maps item identifier -> int count of times purchased this run.
 var _purchase_counts: Dictionary = {}
 
@@ -66,6 +69,14 @@ func equip_gear(gear: GearItemResource) -> bool:
 			_gear_visuals[gear] = visual_node
 		equipped_gear.append(gear)
 
+	# Track granted passive instances per gear for revoke on unequip.
+	var new_passives: Array[PassiveAbility] = equip_data.get("passives", []) as Array[PassiveAbility]
+	if _gear_passives.has(gear):
+		var existing_passives: Array[PassiveAbility] = _gear_passives[gear] as Array[PassiveAbility]
+		existing_passives.append_array(new_passives)
+	else:
+		_gear_passives[gear] = new_passives
+
 	gear_equipped.emit(gear)
 	item_applied.emit(gear)
 	return true
@@ -78,11 +89,13 @@ func unequip_gear(gear: GearItemResource) -> bool:
 
 	var effect_ids: Array[StringName] = _gear_effect_ids.get(gear, []) as Array[StringName]
 	var visual_node: Node3D = _gear_visuals.get(gear, null) as Node3D
+	var passive_nodes: Array[PassiveAbility] = _gear_passives.get(gear, []) as Array[PassiveAbility]
 
-	gear.unequip(character, effect_ids, visual_node)
+	gear.unequip(character, effect_ids, visual_node, passive_nodes)
 
 	_gear_effect_ids.erase(gear)
 	_gear_visuals.erase(gear)
+	_gear_passives.erase(gear)
 	equipped_gear.erase(gear)
 
 	gear_unequipped.emit(gear)

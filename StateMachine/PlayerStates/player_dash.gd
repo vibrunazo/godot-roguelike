@@ -10,6 +10,9 @@ extends CharacterState
 @onready var dash_duration: Timer = $DashDuration
 
 var direction: Vector3
+## True when the dash duration expired naturally (vs. interrupted by a forced
+## state change). Reported through the ENDED event's "completed" data key.
+var _dash_completed: bool = false
 var dash_root: Node3D
 var dash_animation_player: AnimationPlayer
 var dash_cooldown: Timer
@@ -19,6 +22,7 @@ var dash_audio: AudioStreamPlayer3D
 func enter(_previous_state_path: String, _data := {}) -> void:
 	if character == null:
 		return
+	_dash_completed = false
 	var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
 	if input_comp != null:
 		dash_cooldown = input_comp.dash_cooldown
@@ -51,16 +55,22 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 		dash_animation_player.stop()
 		dash_animation_player.play("dash")
 
+	broadcast_ability_event(AbilityEvent.Phase.STARTED, {}, direction)
+
 
 func physics_update(_delta: float) -> void:
 	if character == null or not character.is_inside_tree():
 		return
 	if dash_duration.is_stopped() and running_state != null:
+		_dash_completed = true
 		finished.emit(running_state.name)
 	character.move_character()
 
 
 ## Stops the dash timer so a forced exit (stun, defeat, level transition) never
-## leaves a stale running timer behind on the state.
+## leaves a stale running timer behind on the state. Also broadcasts the ENDED
+## lifecycle event (with "completed" reporting whether the dash ran its full
+## duration), so granted passives fire exactly once per dash however it ended.
 func exit() -> void:
 	dash_duration.stop()
+	broadcast_ability_event(AbilityEvent.Phase.ENDED, {"completed": _dash_completed}, direction)

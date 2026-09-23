@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="GearItemResource" format=3]
+
+[ext_resource type="Script" path="res://Items/gear_item_resource.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://Passives/passive_landing_blast.tscn" id="2_passive"]
+
+[resource]
+script = ExtResource("1_script")
+slot_tag = &"feet"
+id = &"item_landing_blast"
+title = "[wave]Stonefall Greaves[/wave]"
+description = "Heavy boots that answer every return to earth with a shockwave. By leap, by kick, or by misfortune, journeys end loudly."
+cost = 10
+max_purchases = 1
+granted_passives = Array[PackedScene]([ExtResource("2_passive")])

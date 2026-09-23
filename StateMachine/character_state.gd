@@ -11,6 +11,10 @@ extends State
 @export var dash_state: CharacterState
 ## State to transition to when an attack intent is consumed.
 @export var attack_state: CharacterState
+## Ability identity tags this state broadcasts lifecycle events with (e.g.
+## &"ability.dash"). Empty (the default) means the state broadcasts nothing and
+## granted passives never see its lifecycle.
+@export var ability_tags: Array[StringName] = []
 ## State to transition to when a jump intent is consumed.
 @export var jump_state: CharacterState
 
@@ -105,3 +109,29 @@ func core_movement(delta: float, speed: float, direction: Vector3 = Vector3.ZERO
 	else:
 		character.velocity.x = move_toward(character.velocity.x, 0.0, speed)
 		character.velocity.z = move_toward(character.velocity.z, 0.0, speed)
+
+
+## Broadcasts one lifecycle point of this state to the character's
+## PassiveAbilityComponent as an AbilityEvent (position = the character's world
+## position, direction = event_direction or the character's movement/forward).
+## No-op when the state is untagged or no component exists. extra_data's
+## standard key is "completed" (bool) for states that can be interrupted
+## mid-ability; events without it count as completed.
+func broadcast_ability_event(phase: int, extra_data: Dictionary = {}, event_direction: Vector3 = Vector3.ZERO) -> void:
+	if ability_tags.is_empty() or character == null or not is_instance_valid(character):
+		return
+	var event: AbilityEvent = AbilityEvent.new()
+	var event_tags: Array[StringName] = []
+	event_tags.assign(ability_tags)
+	event.tags = event_tags
+	event.phase = phase
+	event.instigator = character
+	event.source = self
+	event.position = character.global_position
+	event.direction = event_direction
+	if event.direction.is_zero_approx():
+		event.direction = character.move_direction
+	if event.direction.is_zero_approx() and character.mesh_mount != null:
+		event.direction = character.mesh_mount.global_basis.z.normalized()
+	event.data = extra_data
+	character.broadcast_ability_event(event)

@@ -69,8 +69,7 @@ func _ready() -> void:
 		animation_player.animation_finished.connect(_on_animation_finished)
 	_sync_attack_component()
 	current_state = State.IDLE
-	damage_hitbox.monitoring = false
-	damage_hitbox.monitorable = false
+	set_hitbox_active(false, false)
 
 
 func _on_trigger_area_body_entered(body: Node3D) -> void:
@@ -109,7 +108,8 @@ func _emerge_spikes() -> void:
 	_sync_attack_component()
 	if attack_component != null:
 		attack_component.reset_exceptions()
-	damage_hitbox.monitoring = true
+	# Spikes only ever deal damage: monitorable stays off (legacy semantics).
+	set_hitbox_active(true, false)
 	if animation_player != null and animation_player.has_animation("spring"):
 		animation_player.play("spring")
 	if spike_audio != null and not spike_audio.playing:
@@ -129,7 +129,7 @@ func _on_active_timer_timeout() -> void:
 
 func _retract_spikes() -> void:
 	current_state = State.RETRACTING
-	damage_hitbox.monitoring = false
+	set_hitbox_active(false, false)
 	if animation_player != null and animation_player.has_animation("retract"):
 		animation_player.play("retract")
 	else:

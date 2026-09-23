@@ -224,6 +224,27 @@ func deal_damage() -> void:
 		att.deal_damage()
 
 
+## Toggles the damage hitbox's monitoring/monitorable flags safely in every
+## context. Area3D monitoring setters are locked while physics queries flush
+## (the "Function blocked during in/out signal" engine error), which happens
+## whenever this runs from a physics callback - a body_entered trigger, or a
+## passive spawning this payload because another ability ended mid signal
+## (e.g. the exit portal cancelling a dash during a scene transition). Writes
+## are deferred there (the same guard WeaponSlot uses for its animated hit
+## windows), so pre-existing overlaps are picked up by area_entered on the next
+## physics step instead of a spawn-frame sweep.
+func set_hitbox_active(monitoring_on: bool, monitorable_on: bool) -> void:
+	var hitbox: Area3D = _get_damage_hitbox()
+	if hitbox == null:
+		return
+	if Engine.is_in_physics_frame():
+		hitbox.set_deferred("monitoring", monitoring_on)
+		hitbox.set_deferred("monitorable", monitorable_on)
+	else:
+		hitbox.monitoring = monitoring_on
+		hitbox.monitorable = monitorable_on
+
+
 ## Expires this damage area, disabling hits and cleaning up.
 ## Subclasses can override to add visual/audio fadeouts before freeing.
 func expire() -> void:

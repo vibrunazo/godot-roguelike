@@ -51,6 +51,11 @@ signal alerted
 @export var defeat_state: State
 ## Optional EquipmentComponent for inventory and gear management.
 @export var equipment_component: EquipmentComponent
+## Optional PassiveAbilityComponent hosting granted passive abilities (item
+## behavior upgrades). Ability states broadcast lifecycle events here via
+## broadcast_ability_event; resolved from a "PassiveAbilityComponent" child
+## when unset (same convention as equipment_component).
+@export var passive_ability_component: PassiveAbilityComponent
 ## Optional EnemyResource defining enemy archetype properties (such as gold drop).
 @export var enemy_resource: EnemyResource
 ## Optional cooldown timer preventing dash spamming. Wired on the player;
@@ -95,6 +100,16 @@ var current_target: Node3D = null
 var is_attacking: bool = false
 
 var _is_defeated: bool = false
+## True while an airborne episode is in progress (left the floor and not yet
+## grounded again). Drives the movement lifecycle events and TAG_AIRBORNE.
+var _airborne: bool = false
+## Elapsed seconds of the current/last airborne episode, reported in the
+## landing event's "airborne_time" data for future passive filters.
+var _airborne_time: float = 0.0
+## True once move_character() has slid the body, so floor state is real.
+## is_on_floor() is false before the first move_and_slide and would otherwise
+## fake an airborne episode (and a landing) at spawn.
+var _movement_updated: bool = false
 ## Time in seconds until the next allowed auto-aim re-evaluation.
 var _retarget_timer: float = 0.0
 
@@ -144,6 +159,15 @@ func _ready() -> void:
 				break
 	if equipment_component != null:
 		equipment_component.character = self
+	if passive_ability_component == null:
+		passive_ability_component = get_node_or_null("PassiveAbilityComponent") as PassiveAbilityComponent
+	if passive_ability_component == null:
+		for child: Node in get_children():
+			if child is PassiveAbilityComponent:
+				passive_ability_component = child as PassiveAbilityComponent
+				break
+	if passive_ability_component != null:
+		passive_ability_component.character = self
 	if is_enemy():
 		if stun_state == null:
 			push_warning("Character '%s' in 'enemy' group has no stun_state assigned." % name)
@@ -212,6 +236,7 @@ func _auto_configure_navigation() -> void:
 func _physics_process(delta: float) -> void:
 	if auto_aim_range > 0.0:
 		_update_auto_aim(delta)
+	_update_airborne_state(delta)
 
 
 ## Moves normally, except enemy tops are never usable floors for the player.
@@ -224,6 +249,7 @@ func _physics_process(delta: float) -> void:
 ## whether dropping neutrally, parked with zero momentum, or steering inward.
 ## Side collisions and terrain slopes are untouched.
 func move_character() -> bool:
+	_movement_updated = true
 	var start_transform: Transform3D = global_transform
 	var intended_velocity: Vector3 = velocity
 	var collided: bool = move_and_slide()
@@ -421,6 +447,69 @@ func remove_tag(tag: StringName) -> void:
 		attribute_component.remove_tag(tag)
 
 
+## Forwards an ability lifecycle event to this character's
+## PassiveAbilityComponent so granted passives can react to tagged abilities.
+## No-op when no component is attached.
+func broadcast_ability_event(event: AbilityEvent) -> void:
+	if passive_ability_component != null and is_instance_valid(passive_ability_component):
+		passive_ability_component.notify_ability_event(event)
+
+
+## Tracks the grounded<->airborne edge and broadcasts movement lifecycle events
+## through the passive bus - state-agnostically (jump, jump kick, knockback
+## launches: whichever state is active when the edge happens). Leaving the
+## floor emits (TAG_AIRBORNE) / STARTED; touching down emits
+## (TAG_AIRBORNE + TAG_LANDED) / ENDED with {"airborne_time": seconds}. A
+## landing blast passive therefore fires exactly once per airborne episode,
+## even when a jump turns into a jump kick mid-flight. Defeated characters
+## stay silent (no corpse detonations).
+func _update_airborne_state(delta: float) -> void:
+	if _is_defeated or not is_alive():
+		_clear_airborne_tracking()
+		return
+	if not _movement_updated:
+		return
+	if not is_on_floor():
+		if not _airborne:
+			_airborne = true
+			_airborne_time = 0.0
+			add_tag(TAG_AIRBORNE)
+			var started_tags: Array[StringName] = [TAG_AIRBORNE]
+			_broadcast_movement_event(AbilityEvent.Phase.STARTED, started_tags)
+		_airborne_time += delta
+	elif _airborne:
+		_airborne = false
+		remove_tag(TAG_AIRBORNE)
+		var landed_tags: Array[StringName] = [TAG_AIRBORNE, TAG_LANDED]
+		_broadcast_movement_event(AbilityEvent.Phase.ENDED, landed_tags, {"airborne_time": _airborne_time})
+
+
+## Clears airborne episode tracking silently (defeat/reset paths), dropping the
+## TAG_AIRBORNE marker without broadcasting a landing.
+func _clear_airborne_tracking() -> void:
+	if _airborne:
+		_airborne = false
+		remove_tag(TAG_AIRBORNE)
+
+
+## Builds and broadcasts one movement lifecycle event (source is this
+## character; direction is the current horizontal velocity or facing).
+func _broadcast_movement_event(phase: int, tags: Array[StringName], extra_data: Dictionary = {}) -> void:
+	var event: AbilityEvent = AbilityEvent.new()
+	var event_tags: Array[StringName] = []
+	event_tags.assign(tags)
+	event.tags = event_tags
+	event.phase = phase
+	event.instigator = self
+	event.source = self
+	event.position = global_position
+	event.direction = Vector3(velocity.x, 0.0, velocity.z)
+	if event.direction.is_zero_approx() and mesh_mount != null:
+		event.direction = mesh_mount.global_basis.z.normalized()
+	event.data = extra_data
+	broadcast_ability_event(event)
+
+
 ## Returns all currently active gameplay tags.
 func get_tags() -> Array[StringName]:
 	if attribute_component != null and is_instance_valid(attribute_component):
@@ -431,6 +520,13 @@ func get_tags() -> Array[StringName]:
 ## Fallback rotation speed in degrees per second when no AttributeComponent is
 ## attached. Mirrors AttributeComponent.base_rotation_speed.
 const DEFAULT_ROTATION_SPEED: float = 360.0
+## Gameplay tag carried while the character is airborne (left the floor and not
+## grounded again). Passive required/blocked gates can use it ("only while
+## airborne"); the grounded->airborne and airborne->grounded edges are also
+## broadcast as movement lifecycle events (see _update_airborne_state).
+const TAG_AIRBORNE: StringName = &"movement.airborne"
+## Extra tag on an airborne episode's ENDED event: the character just landed.
+const TAG_LANDED: StringName = &"movement.landed"
 
 
 ## Requests facing toward the given desired direction. The actual rotation only
@@ -680,6 +776,7 @@ func on_defeat() -> void:
 		return
 	_is_defeated = true
 	defeat.emit()
+	_clear_airborne_tracking()
 
 	if is_enemy() and ProgressionState != null:
 		var gold: int = 5

@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3 inherits="uid://bv7a3ek2m7aoe"]
+
+[ext_resource type="PackedScene" path="res://Hazards/ground_damage_aoe.tscn" id="1_base"]
+
+[node name="GroundDamageArea" instance=ExtResource("1_base")]
+radius = 2.5
+height = 1.6
+damage = 30.0
+knockback_force = 22.0
+active_duration = 0.15
+visual_duration = 0.45
+aoe_color = Color(1, 0.45, 0.15, 1)
+show_ground_indicator = false
+can_hit_player = false
+can_hit_enemies = true

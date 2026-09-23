@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="GearItemResource" format=3]
+
+[ext_resource type="Script" path="res://Items/gear_item_resource.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://Passives/passive_dash_explosion.tscn" id="2_passive"]
+
+[resource]
+script = ExtResource("1_script")
+slot_tag = &"relic"
+id = &"item_dash_blast"
+title = "[wave]Volatile Dashers[/wave]"
+description = "Reckless greaves that detonate the instant their wearer blurs forward, leaving the blast where every dash began."
+cost = 10
+max_purchases = 1
+granted_passives = Array[PackedScene]([ExtResource("2_passive")])

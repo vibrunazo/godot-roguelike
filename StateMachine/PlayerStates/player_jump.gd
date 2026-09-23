@@ -38,6 +38,9 @@ var _has_left_floor: bool = false
 ## per-leap override passed through the transition data never leaks into the
 ## next jump.
 var _default_speed_ratio: float = 1.0
+## True when the jump ended by landing (vs. interrupted mid-air). Reported
+## through the ENDED event's "completed" data key.
+var _jump_completed: bool = false
 
 
 func enter(_previous_state_path: String, _data := {}) -> void:
@@ -75,9 +78,12 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 		gravity_mag = 9.8
 	character.velocity.y = sqrt(2.0 * gravity_mag * jump_height)
 	_has_left_floor = false
+	_jump_completed = false
 
 	if character.animation_tree != null:
 		character.animation_tree.change_immediate("Jump")
+
+	broadcast_ability_event(AbilityEvent.Phase.STARTED, {}, _launch_velocity)
 
 
 func physics_update(delta: float) -> void:
@@ -110,10 +116,14 @@ func physics_update(delta: float) -> void:
 		_has_left_floor = true
 	elif _has_left_floor and character.velocity.y <= 0.0:
 		if running_state != null:
+			_jump_completed = true
 			finished.emit(running_state.name)
 
 
 ## Restores the state's default movement_speed_ratio so a per-leap override
-## from the transition data never leaks into the next jump.
+## from the transition data never leaks into the next jump. Also broadcasts the
+## ENDED lifecycle event (with "completed" reporting a full landing), so granted
+## passives fire exactly once per jump however it ended.
 func exit() -> void:
 	movement_speed_ratio = _default_speed_ratio
+	broadcast_ability_event(AbilityEvent.Phase.ENDED, {"completed": _jump_completed}, _launch_velocity)

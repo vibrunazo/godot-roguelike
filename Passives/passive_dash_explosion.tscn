@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Passives/payload_passive_ability.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://Hazards/explosion.tscn" id="2_payload"]
+
+[node name="PassiveDashExplosion" type="Node"]
+script = ExtResource("1_script")
+id = &"dash_explosion"
+display_name = "Dash Detonation"
+trigger_tags = Array[StringName]([&"ability.dash"])
+trigger_phase = 0
+require_completion = false
+payload_scene = ExtResource("2_payload")
+spawn_at = 0
+damage_multiplier = 1.0
+scale_with_attack = true

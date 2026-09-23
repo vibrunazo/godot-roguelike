@@ -94,11 +94,12 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	# Enable hitbox monitoring for active window
-	var hitbox: Area3D = _get_damage_hitbox()
-	if hitbox != null:
-		hitbox.monitoring = true
-		hitbox.monitorable = true
+	# Enable hitbox monitoring for the active window. Physics-frame spawns (the
+	# common case: state exits, animation callbacks, and passive payloads fired
+	# from physics signal dispatch) defer the arming through set_hitbox_active;
+	# pre-existing victims are then struck by area_entered on the next physics
+	# step instead of the spawn-frame sweep below.
+	set_hitbox_active(true, true)
 
 	# Play impact sound if available
 	var audio: AudioStreamPlayer3D = _get_impact_audio()

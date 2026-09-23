@@ -34,6 +34,7 @@
 [ext_resource type="Script" uid="uid://btugq3clpmbs4" path="res://Player/weapon_slot.gd" id="31_feet"]
 [ext_resource type="AudioStream" uid="uid://berff6qe7j1yi" path="res://Assets/Audio/boing/540790__magnuswaker__boing-2.ogg" id="32_i4o1l"]
 [ext_resource type="Script" path="res://Components/equipment_component.gd" id="33_equip"]
+[ext_resource type="Script" path="res://Components/passive_ability_component.gd" id="34_passive"]
 
 [sub_resource type="Gradient" id="Gradient_i4o1l"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -637,6 +638,7 @@ metadata/_custom_type_script = "uid://c2fahn2m2se57"
 
 [node name="PlayerDash" type="Node" parent="StateMachine" unique_id=1966261831 node_paths=PackedStringArray("running_state", "character")]
 script = ExtResource("5_a28ek")
+ability_tags = Array[StringName]([&"ability.dash", &"ability.movement"])
 running_state = NodePath("../PlayerRun")
 character = NodePath("../..")
 metadata/_custom_type_script = "uid://21pflv2d1drw"
@@ -647,6 +649,7 @@ one_shot = true
 
 [node name="PlayerJump" type="Node" parent="StateMachine" unique_id=1966261832 node_paths=PackedStringArray("running_state", "jump_audio", "character", "attack_state")]
 script = ExtResource("28_jump")
+ability_tags = Array[StringName]([&"ability.jump"])
 jump_height = 1.6
 control_ratio = 0.2
 movement_speed_ratio = 0.7
@@ -664,6 +667,7 @@ script = ExtResource("13_gu6f8")
 movement_speed = 1.0
 dash_cancel = true
 damage = 8.0
+ability_tags = Array[StringName]([&"ability.attack"])
 next_states = [NodePath("../PlayerRun")]
 combo_next = NodePath("../PlayerAttack2")
 attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
@@ -675,6 +679,7 @@ jump_state = NodePath("../PlayerJump")
 script = ExtResource("13_gu6f8")
 dash_cancel = true
 damage = 14.0
+ability_tags = Array[StringName]([&"ability.attack"])
 next_states = [NodePath("../PlayerRun")]
 combo_next = NodePath("../PlayerAttack3")
 attack_animation_name = "StabAttack"
@@ -690,6 +695,7 @@ jump_state = NodePath("../PlayerJump")
 script = ExtResource("13_gu6f8")
 movement_speed = 4.0
 knockback = 7.5
+ability_tags = Array[StringName]([&"ability.attack"])
 next_states = [NodePath("../PlayerRun")]
 attack_animation_name = "SpinAttack"
 attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
@@ -704,6 +710,7 @@ script = ExtResource("30_kick")
 running_state = NodePath("../PlayerRun")
 dash_cancel = true
 damage = 15.0
+ability_tags = Array[StringName]([&"ability.attack"])
 knockback = 20.0
 next_states = [NodePath("../PlayerRun")]
 attack_animation_name = "JumpKick"
@@ -784,6 +791,9 @@ base_rotation_speed = 720.0
 
 [node name="EquipmentComponent" type="Node" parent="." unique_id=284918274]
 script = ExtResource("33_equip")
+
+[node name="PassiveAbilityComponent" type="Node" parent="."]
+script = ExtResource("34_passive")
 
 [connection signal="slash" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone/AudioStreamPlayer3D" method="play"]
