@@ -88,8 +88,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1, 0)
 [node name="Pit" type="MeshInstance3D" parent="." unique_id=915475260]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, 0)
 material_override = SubResource("StandardMaterial3D_ersrp")
-mesh = SubResource("PlaneMesh_r82ii")
 cast_shadow = 0
+mesh = SubResource("PlaneMesh_r82ii")
 
 [node name="WorldBoundary" type="Area3D" parent="." unique_id=245228793]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -4, 0)

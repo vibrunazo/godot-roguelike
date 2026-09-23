@@ -16,6 +16,7 @@
 [ext_resource type="AudioStream" uid="uid://cw7xybxcl0jds" path="res://Assets/Audio/footstep-04.ogg" id="6_p5o4e"]
 [ext_resource type="Texture2D" uid="uid://dhidi6ygdbiys" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Character/GamedevTV_Mannequin_Medium_character_texture.png" id="7_755ss"]
 [ext_resource type="Script" uid="uid://s7bhjeu20n3b" path="res://Player/shake_camera_3d.gd" id="9_dkpta"]
+[ext_resource type="Script" path="res://Player/camera_rig_3d.gd" id="9_rig"]
 [ext_resource type="Script" uid="uid://cmqolk21i2p4i" path="res://StateMachine/character_attack.gd" id="13_gu6f8"]
 [ext_resource type="PackedScene" uid="uid://bwo2c4dl16ces" path="res://Components/health_bar.tscn" id="14_healthbar"]
 [ext_resource type="AudioStream" uid="uid://cx123snak3vdw" path="res://Assets/Audio/fire-slash.ogg" id="15_fireslash"]
@@ -610,6 +611,7 @@ shape = SubResource("CapsuleShape3D_l8h54")
 
 [node name="CameraRoot" type="Node3D" parent="." unique_id=2526914]
 transform = Transform3D(-0.70710677, -0.5416752, 0.45451948, 0, 0.64278764, 0.76604444, -0.70710677, 0.5416752, -0.45451948, 0, 0, 0)
+script = ExtResource("9_rig")
 
 [node name="ShakeCamera3D" type="Camera3D" parent="CameraRoot" unique_id=80870162]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)

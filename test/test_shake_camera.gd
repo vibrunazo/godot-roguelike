@@ -4,6 +4,7 @@ func _ready() -> void:
 	print("--- RUNNING SHAKE CAMERA TEST ---")
 	var player_scene: PackedScene = load("res://Player/player.tscn")
 	var player: Character = player_scene.instantiate() as Character
+	player.position = Vector3(0.0, 3.0, 0.0)
 	add_child(player)
 	await get_tree().physics_frame
 	await get_tree().process_frame
@@ -34,6 +35,11 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("Offset scale verified: ", camera.offset_scale)
+	if not await _verify_camera_follow(player):
+		player.queue_free()
+		await get_tree().physics_frame
+		get_tree().quit(1)
+		return
 	
 	# 3. Verify zero trauma gives zero offsets
 	camera.trauma = 0.0
@@ -135,8 +141,50 @@ func _ready() -> void:
 	print("  3. quick_shake produces dynamic h_offset & v_offset via noise      ")
 	print("  4. Trauma smoothly decays back to 0 via Tween                     ")
 	print("  5. Physics processing disabled at idle, gated by trauma setter   ")
+	print("  6. Camera follows upward but never below its initial Y          ")
 	print("====================================================================")
 	
 	player.queue_free()
 	await get_tree().physics_frame
 	get_tree().quit(0)
+
+
+func _verify_camera_follow(player: Character) -> bool:
+	var camera_rig: Node3D = player.get_node("CameraRoot")
+	var original_position: Vector3 = player.global_position
+	var initial_camera_y: float = camera_rig.global_position.y
+	player.process_mode = Node.PROCESS_MODE_DISABLED
+	camera_rig.process_mode = Node.PROCESS_MODE_ALWAYS
+
+	var lower_position: Vector3 = Vector3(original_position.x + 3.0, initial_camera_y - 4.0, original_position.z - 2.0)
+	player.global_position = lower_position
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not camera_rig.global_position.is_equal_approx(Vector3(lower_position.x, initial_camera_y, lower_position.z)):
+		printerr("TEST FAILED: Camera left its initial Y floor or stopped following horizontally: ", camera_rig.global_position)
+		player.process_mode = Node.PROCESS_MODE_INHERIT
+		return false
+
+	var upper_position: Vector3 = Vector3(original_position.x - 2.0, initial_camera_y + 4.0, original_position.z + 1.0)
+	player.global_position = upper_position
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not camera_rig.global_position.is_equal_approx(upper_position):
+		printerr("TEST FAILED: Camera did not freely follow above its initial Y: ", camera_rig.global_position)
+		player.process_mode = Node.PROCESS_MODE_INHERIT
+		return false
+
+	var second_lower_position: Vector3 = Vector3(original_position.x, initial_camera_y - 6.0, original_position.z)
+	player.global_position = second_lower_position
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_equal_approx(camera_rig.global_position.y, initial_camera_y):
+		printerr("TEST FAILED: Camera retained an upper high-water mark instead of using its initial Y floor: ", camera_rig.global_position.y)
+		player.process_mode = Node.PROCESS_MODE_INHERIT
+		return false
+
+	player.global_position = original_position
+	player.process_mode = Node.PROCESS_MODE_INHERIT
+	await get_tree().process_frame
+	print("Camera vertical follow verified: upward freely, downward clamped to initial Y.")
+	return true
