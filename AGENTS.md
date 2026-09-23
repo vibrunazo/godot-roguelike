@@ -20,7 +20,7 @@ If a refactor breaks old clients of an interface then refactor the clients to us
    - The user manages git commits. **Never run `git commit` or `git push` unless explicitly told so by the user**.
 
 ### Worktree Rules
-- Always create feature worktrees under `.worktrees/<branch-name>` inside the project root.
+- IF you are told to create a new branch, then create a worktree under `.worktrees/<branch-name>` inside the project root.
 - Never create worktrees outside the repository tree.
 
 ---
