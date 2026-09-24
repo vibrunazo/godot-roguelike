@@ -10,7 +10,7 @@ If a refactor breaks old clients of an interface then refactor the clients to us
 
 ---
 
-## 2. Mandatory Coding Guidelines
+## 2. Coding Guidelines
 1. **Strict GDScript Typing**:
    - `warnings/untyped_declaration=1` is enforced in `project.godot`.
    - Every variable, parameter, and function return type must be explicitly typed (e.g. `var x: float = 0.0`, `func foo(bar: int) -> void:`).
@@ -18,6 +18,9 @@ If a refactor breaks old clients of an interface then refactor the clients to us
    - Preserve and maintain all docstrings (`## ...`) and comments on classes, exported variables, and functions.
 3. **Git Commits**:
    - The user manages git commits. **Never run `git commit` or `git push` unless explicitly told so by the user**.
+4. Use good coding practices.
+   - Prefer designing long term scalable and maintainable systems rather than quick and dirty hacks.
+   - Avoid hardcoding preload() PackedScenes. Prefer configurable export variables instead.
 
 ### Worktree Rules
 - IF you are told to create a new branch, then create a worktree under `.worktrees/<branch-name>` inside the project root.
