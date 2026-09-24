@@ -114,6 +114,9 @@ func _verify_level(level_path: String) -> bool:
 		printerr("TEST FAILED: VoxelGI data not baked in ", level_path)
 		ok = false
 
+	if not _verify_gridmap_items_exist(level, level_path):
+		ok = false
+
 	if ok:
 		if not _verify_navmesh_covers_level(level, level_path):
 			ok = false
@@ -300,6 +303,29 @@ func _verify_no_stray_islands(level: Node3D, level_path: String) -> bool:
 			return false
 	print("no stray nav islands in ", level_path)
 	return true
+
+
+## Every GridMap cell must reference an item that exists in its MeshLibrary.
+## A missing id renders nothing in game (a silently absent wall or floor) and
+## would otherwise crash the geometry helpers below with a null mesh.
+func _verify_gridmap_items_exist(level: Node3D, level_path: String) -> bool:
+	var ok: bool = true
+	for gm_node: Node in level.find_children("*", "GridMap", true, false):
+		var gm: GridMap = gm_node as GridMap
+		if gm.mesh_library == null:
+			printerr("TEST FAILED: GridMap ", gm.name, " has no MeshLibrary in ", level_path)
+			ok = false
+			continue
+		var known: PackedInt32Array = gm.mesh_library.get_item_list()
+		var missing: Dictionary[int, int] = {}
+		for cell: Vector3i in gm.get_used_cells():
+			var item: int = gm.get_cell_item(cell)
+			if not known.has(item):
+				missing[item] = missing.get(item, 0) + 1
+		if not missing.is_empty():
+			printerr("TEST FAILED: GridMap ", gm.name, " in ", level_path, " uses items missing from its MeshLibrary (item: cell count): ", missing)
+			ok = false
+	return ok
 
 
 ## Real world-space bounds include cell centering, orientation, cell scale,

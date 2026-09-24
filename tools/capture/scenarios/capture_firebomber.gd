@@ -1,7 +1,6 @@
 extends Node3D
 
 var frame_count: int = 0
-var dest_path: String = "C:/Users/vibru/.gemini/antigravity/brain/bc855baf-9e75-4bce-a2bf-dc53e493b2fe/orange_firebomber.png"
 var fb: Character
 
 
@@ -43,7 +42,6 @@ func _process(_delta: float) -> void:
 		st.visible = false
 	
 	if frame_count == 15:
-		_save_screenshot(dest_path)
 		_save_screenshot("movies/orange_firebomber.png")
 	
 	if frame_count >= 20:

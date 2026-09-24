@@ -1,0 +1,47 @@
+[gd_scene format=3]
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_im8p5"]
+vertices = PackedVector3Array(-19.5, 0.5, -19.5, -19.5, 0.5, 19.5, 19.5, 0.5, 19.5, 19.5, 0.5, -19.5)
+polygons = [PackedInt32Array(3, 2, 0), PackedInt32Array(0, 2, 1)]
+geometry_parsed_geometry_type = 1
+region_min_size = 6.0
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_6bxga"]
+size = Vector3(40, 1, 40)
+
+[sub_resource type="BoxMesh" id="BoxMesh_12dcj"]
+size = Vector3(40, 1, 40)
+
+[sub_resource type="Environment" id="Environment_o8fq5"]
+background_mode = 1
+background_color = Color(0.1, 0.1, 0.12, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.6, 0.65, 1)
+
+[node name="Arena" type="Node3D" unique_id=1643225183]
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="." unique_id=996003513]
+navigation_mesh = SubResource("NavigationMesh_im8p5")
+
+[node name="Floor" type="StaticBody3D" parent="NavigationRegion3D" unique_id=489333514]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Floor" unique_id=549688982]
+shape = SubResource("BoxShape3D_6bxga")
+
+[node name="FloorMesh" type="MeshInstance3D" parent="NavigationRegion3D/Floor" unique_id=665424258]
+mesh = SubResource("BoxMesh_12dcj")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1530515867]
+transform = Transform3D(0.81915206, -0.43938506, 0.36868784, 0, 0.64278764, 0.76604444, -0.57357645, -0.62750685, 0.5265408, 0, 0, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=205485739]
+environment = SubResource("Environment_o8fq5")
+
+[node name="PlayerSpawn" type="Marker3D" parent="." unique_id=1823364919]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 4)
+
+[node name="EnemySpawn" type="Marker3D" parent="." unique_id=2004406293]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -4)

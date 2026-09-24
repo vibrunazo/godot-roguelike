@@ -1,12 +1,26 @@
 #!/usr/bin/env python3
 """Automated Test Runner for Godot Project.
 
-Runs test suites (*.tscn in test/) headlessly with per-test timeout guardrails.
+Runs test suites (test/test_*.tscn) headlessly, each in its own Godot process
+under an OS watchdog. A suite passes only when Godot exits 0 AND its output
+contains no script errors (Godot skips the rest of a function after a script
+error instead of failing, so an exit code alone can report a broken suite as
+passing).
+
+Frames run back to back at a fixed timestep (--fixed-fps): game time advances
+exactly 1/fps per frame without waiting on the wall clock, which is how the
+whole suite finishes in about half a minute. Use --fps to run the same suites
+at another render rate (physics always ticks at the project's rate), e.g. to
+check that gameplay behaves the same on a slow device.
+
 Usage:
-    python run_tests.py                     # Run all test suites in test/*.tscn
-    python run_tests.py test/test_audio.tscn # Run a specific test suite
+    python run_tests.py                              # all suites
+    python run_tests.py test/test_audio.tscn         # specific suite(s)
+    python run_tests.py --fps 20                     # emulate a 20 fps device
+    python run_tests.py --verbose                    # print engine output for passing suites too
 """
 
+import argparse
 import glob
 import os
 import shutil
@@ -14,7 +28,10 @@ import subprocess
 import sys
 import time
 
-DEFAULT_TIMEOUT = 20  # seconds per test
+DEFAULT_TIMEOUT = 10  # seconds per suite (suites take ~1s under --fixed-fps)
+DEFAULT_FPS = 60
+# Output lines that mean a suite is broken even when Godot exits 0.
+FAILURE_MARKERS = ("SCRIPT ERROR:", "Parse Error:", "Compile Error:")
 
 
 def reap_stale_headless_godot() -> int:
@@ -71,73 +88,116 @@ def reap_stale_headless_godot() -> int:
     return reaped
 
 
-def main() -> int:
-    # Determine test list
-    if len(sys.argv) > 1:
-        tests = sys.argv[1:]
-    else:
-        tests = sorted(glob.glob("test/*.tscn"))
+def find_failure_lines(output: str) -> list[str]:
+    """Returns the output lines (with their location line) that mark a script error."""
+    lines = output.splitlines()
+    found: list[str] = []
+    for index, line in enumerate(lines):
+        if any(marker in line for marker in FAILURE_MARKERS):
+            found.append(line.strip())
+            if index + 1 < len(lines) and lines[index + 1].strip().startswith("at:"):
+                found.append("  " + lines[index + 1].strip())
+    return found
 
+
+def decode(stream: object) -> str:
+    """Normalizes captured output (TimeoutExpired may hold bytes even with text=True)."""
+    if stream is None:
+        return ""
+    if isinstance(stream, bytes):
+        return stream.decode("utf-8", errors="replace")
+    return str(stream)
+
+
+def collect_tests(paths: list[str]) -> list[str]:
+    """Explicit paths as given; otherwise every test/test_*.tscn suite."""
+    if paths:
+        return paths
+    return sorted(glob.glob(os.path.join("test", "test_*.tscn")))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Run Godot test suites headlessly under a watchdog.")
+    parser.add_argument("tests", nargs="*", help="Suite scenes to run (default: test/test_*.tscn)")
+    parser.add_argument("--fps", type=int, default=DEFAULT_FPS, help=f"Fixed render frame rate (default: {DEFAULT_FPS})")
+    parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help=f"Seconds per suite (default: {DEFAULT_TIMEOUT})")
+    parser.add_argument("--verbose", action="store_true", help="Print engine output for passing suites too")
+    args = parser.parse_args()
+
+    tests = collect_tests(args.tests)
     if not tests:
-        print("No tests found.")
+        print("No tests found.", flush=True)
         return 1
 
     total = len(tests)
-    print(f"=== Running {total} test suite{'s' if total != 1 else ''} (timeout: {DEFAULT_TIMEOUT}s/test) ===")
+    print(f"=== Running {total} test suite{'s' if total != 1 else ''} "
+          f"(fixed {args.fps} fps, timeout: {args.timeout}s/suite) ===", flush=True)
 
     stale = reap_stale_headless_godot()
     if stale > 0:
-        print(f"Reaped {stale} leftover headless Godot process(es) from earlier runs.")
+        print(f"Reaped {stale} leftover headless Godot process(es) from earlier runs.", flush=True)
 
+    godot_bin = shutil.which("godot") or "godot"
     start_total = time.time()
     passed = 0
-    failed = []
+    failed: list[tuple[str, str]] = []
 
     for idx, test in enumerate(tests, 1):
         test_display = os.path.basename(test)
-        print(f"\n>>> [{idx}/{total}] Running {test_display}...")
         t0 = time.time()
-        godot_bin = shutil.which("godot") or "godot"
+        cmd = [godot_bin, "--headless", "--fixed-fps", str(args.fps), "--path", ".", test]
+        output = ""
+        reason = ""
         try:
-            res = subprocess.run(
-                [godot_bin, "--headless", "--path", ".", test],
-                shell=False,
-                check=False,
-                timeout=DEFAULT_TIMEOUT,
-            )
-            elapsed = time.time() - t0
-            if res.returncode == 0:
-                print(f"[OK] {test_display} passed ({elapsed:.2f}s)")
-                passed += 1
-            else:
-                print(f"[FAIL] {test_display} failed with exit code {res.returncode} ({elapsed:.2f}s)")
-                failed.append((test, f"Exit code {res.returncode}"))
-        except subprocess.TimeoutExpired:
-            elapsed = time.time() - t0
-            print(f"[TIMEOUT] {test_display} timed out after {DEFAULT_TIMEOUT}s!")
-            failed.append((test, f"Timed out after {DEFAULT_TIMEOUT}s"))
+            res = subprocess.run(cmd, shell=False, check=False, capture_output=True,
+                                 text=True, encoding="utf-8", errors="replace", timeout=args.timeout)
+            output = decode(res.stdout) + decode(res.stderr)
+            script_errors = find_failure_lines(output)
+            if res.returncode != 0:
+                reason = f"exit code {res.returncode}"
+            elif script_errors:
+                reason = f"{sum(1 for l in script_errors if not l.startswith('  '))} script error(s)"
+        except subprocess.TimeoutExpired as e:
+            output = decode(e.stdout) + decode(e.stderr)
+            reason = f"timed out after {args.timeout}s"
             # The timed-out engine often survives the kill (see
             # reap_stale_headless_godot); clear it so the next suite gets a
             # quiet machine instead of competing with a leftover run.
             reap_stale_headless_godot()
-        except Exception as e:
-            elapsed = time.time() - t0
-            print(f"[ERROR] {test_display} encountered exception: {e}")
-            failed.append((test, str(e)))
+        except Exception as e:  # launcher failure (missing binary, etc.)
+            reason = f"runner exception: {e}"
+        elapsed = time.time() - t0
+
+        if not reason:
+            passed += 1
+            print(f"[OK]   [{idx}/{total}] {test_display} ({elapsed:.2f}s)", flush=True)
+            if args.verbose:
+                print(output, flush=True)
+            continue
+
+        failed.append((test, reason))
+        print(f"[FAIL] [{idx}/{total}] {test_display}: {reason} ({elapsed:.2f}s)", flush=True)
+        print(f"----- output of {test_display} -----", flush=True)
+        print(output.rstrip(), flush=True)
+        script_errors = find_failure_lines(output)
+        if script_errors:
+            print(f"----- script errors in {test_display} -----", flush=True)
+            print("\n".join(script_errors), flush=True)
+        print(f"----- end of {test_display} -----", flush=True)
 
     total_time = time.time() - start_total
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 60, flush=True)
     if not failed:
-        print(f"ALL {passed} TESTS PASSED! ({total_time:.2f}s total)")
-        print("=" * 60)
+        print(f"ALL {passed} TESTS PASSED! ({total_time:.2f}s total, fixed {args.fps} fps)", flush=True)
+        print("=" * 60, flush=True)
         return 0
-    else:
-        print(f"TESTS FAILED: {passed}/{total} passed, {len(failed)} failed ({total_time:.2f}s total)")
-        print("\nFailures:")
-        for t, reason in failed:
-            print(f"  - {t}: {reason}")
-        print("=" * 60)
-        return 1
+    print(f"TESTS FAILED: {passed}/{total} passed, {len(failed)} failed "
+          f"({total_time:.2f}s total, fixed {args.fps} fps)", flush=True)
+    print("\nFailures:", flush=True)
+    for t, reason in failed:
+        print(f"  - {t}: {reason}", flush=True)
+    print("=" * 60, flush=True)
+    return 1
 
 
 if __name__ == "__main__":

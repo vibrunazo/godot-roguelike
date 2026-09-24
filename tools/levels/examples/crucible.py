@@ -104,7 +104,7 @@ def main() -> int:
     assert lining, "crucible expects lake lining cells"
     for cell in sorted(lining):
         assert cell not in wall, f"lining overlaps a wall: {cell}"
-        wall[cell] = (21, 0)
+        wall[cell] = lining[cell]
     print(f"design: {len(wall)} walls ({len(PILLARS)} pillars, {len(lining)} lining)")
 
     dressing = [("player", float(PLAYER[0]), float(PLAYER[2])),

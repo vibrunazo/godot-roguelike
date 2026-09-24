@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://b8d5a1v4k9mxw"]
+[gd_scene format=3 uid="uid://b8d5a1v4lamxw"]
 
 [ext_resource type="Script" path="res://test/test_spikes_hazard.gd" id="1_script"]
 

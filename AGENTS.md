@@ -54,6 +54,7 @@ Agents can write and execute whatever custom scripts or commands their task requ
   ```bash
   python run_tests.py test/test_combo_and_dash_cancel.tscn
   ```
+  The runner collects `test/test_*.tscn`, runs each suite with `--fixed-fps 60` (frames run back to back, so the whole suite takes ~35s), and fails a suite on a non-zero exit **or** any `SCRIPT ERROR`/`Parse Error` in its output. Output is printed only for failing suites (`--verbose` prints all). `--fps N` runs the suites at another render rate (physics still ticks at 60 Hz), e.g. `--fps 20` to emulate a slow device.
 
 - **Run Scratch / Diagnostic Scripts via Watchdog Runner:**
   ```bash
@@ -77,6 +78,11 @@ Scripts executed standalone via Godot's `-s` flag **strictly require** two rules
 2. **The script MUST explicitly call `quit(code)`** when done (e.g. `quit(0)`).
 3. **Consider using `run_scratch.py`**: It automatically validates these invariants before launching Godot and enforces an external OS watchdog timeout.
 
+### Writing Test Suites
+- **New and migrated suites extend the harness:** `extends "res://test/lib/test_suite.gd"`. Start from `test/lib/suite_template.gd`; `test/test_character_rotation.gd` is the reference suite. The harness runs every `test_*` method in isolation and gives `check()`, `check_eq()`, `check_approx()`, `wait_until()`, `wait_signal()`, `spawn()`, `autofree()`, `load_arena()`, `disable_ai()` and `press_action()`. A test fails on a failed check, a script error, or leaked orphan nodes.
+- **Mechanics tests run in the arena fixture** (`load_arena()`: flat floor, baked navmesh, no enemies or waves), not in real levels. Regenerate it with `python run_scratch.py test/fixtures/build_arena.gd`; never hand-edit `test/fixtures/arena.tscn`.
+- Only suites (`test_*.tscn`/`.gd`), `test/lib/` and `test/fixtures/` belong in `test/`. Recording or capture scenes go in `tools/capture/scenarios/`.
+
 ### Testing Philosophy & Invariants
 - **Never assert balance values or tuning constants:** Do not test for hardcoded damage numbers, cooldown lengths, movement speeds, or specific keyboard scancodes.
 - **Test behavioral contracts and state transitions:** 
@@ -85,7 +91,7 @@ Scripts executed standalone via Godot's `-s` flag **strictly require** two rules
   - Test actions via `InputMap` action names (e.g., `"toggle_fullscreen"`), never physical key constants (`KEY_F`).
 - **If a test fails due to intentional balance changes, the test design was flawed.** Fix the test to evaluate the mechanic dynamically, never hardcode the new value.
 - **Simulate hits via `Hurtbox.receive_hit()`, never direct pool writes:** `damage_pool()` / `restore_pool()` are silent resource changes by design (no stun, flash, or shake); only `receive_hit()` emits `struck`. Tests asserting hit reactions must go through the hurtbox.
-- **Mind the frame budget (20s/test):** headless idle/process frames are far slower than physics frames, so long `await process_frame` loops and wall-clock `create_timer` waits can overrun the budget in large suites while hundreds of `physics_frame` awaits run in ~1s. Keep timed behavior in small dedicated suites (e.g. `test_pause_menu.tscn`).
+- **Mind the timeout (10s/suite):** with `--fixed-fps` game time is no longer tied to the wall clock, so frame and timer waits are cheap; wait on conditions (`wait_until`) rather than fixed frame counts. Code that deliberately uses wall-clock time (`Time.get_ticks_msec()`, timers with `ignore_time_scale`) does not line up with game time under `--fixed-fps`; keep tests of such behavior in small dedicated suites.
 
 ### Suite Hygiene Recommendations
 - **Scene-changing calls sit better at the end of a suite:** methods like `exit_shop()`, `SceneTransition.load_scene_path()` / `load_next_level()`, or `change_scene_to_file()` free the running suite about a second later (transition tween), which can read as a mysterious stall near the end. Part 11 of `test_enemy_base.gd` defers its live `exit_shop()` check to just before `quit(0)` for this reason.

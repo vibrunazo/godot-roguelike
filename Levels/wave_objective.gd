@@ -13,8 +13,23 @@ extends Node3D
 
 signal finished
 
+## Every enemy planned for this wave. Instanced up front in _ready() but only
+## added to the tree one by one by spawn_enemy(), so entries may be orphans
+## (not yet in the tree) until their spawn tween step fires.
 var all_enemies: Array[Character] = []
 var _enemy_difficulties: Dictionary = {}
+
+
+## Frees planned enemies that never spawned. They were instanced by this node
+## but never entered the tree, so nothing else owns them: leaving the level
+## mid-wave (restart, quit to menu, scene change) would otherwise leak each
+## one with its physics, navigation and rendering server resources.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		for enemy: Character in all_enemies:
+			if is_instance_valid(enemy) and not enemy.is_inside_tree():
+				enemy.free()
+		all_enemies.clear()
 
 
 ## Returns the default list of enemy resources from GlobalVars.

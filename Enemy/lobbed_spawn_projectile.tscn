@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://c7m0x8vw92klm"]
+[gd_scene format=3 uid="uid://c7m0x8vxa2klm"]
 
 [ext_resource type="Script" path="res://Enemy/lobbed_spawn_projectile.gd" id="1_lob_script"]
 [ext_resource type="AudioStream" uid="uid://mgv1fbcndh5a" path="res://Assets/Audio/weapon-swing.ogg" id="2_audio"]

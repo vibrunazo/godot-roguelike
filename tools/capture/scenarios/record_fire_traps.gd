@@ -66,7 +66,6 @@ func _physics_process(_delta: float) -> void:
 	# Allow particles to emit and fill space
 	if frame_count == 20:
 		_save_screenshot("movies/fire_trap_comparison.png")
-		_save_screenshot("D:/docs/godot/godot-roguelite-starting-project/movies/fire_trap_comparison.png")
 
 	if frame_count == 22:
 		print("Screenshots captured successfully.")
