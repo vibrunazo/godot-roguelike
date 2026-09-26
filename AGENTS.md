@@ -214,9 +214,9 @@ To ensure scripts run reliably without hangs, pipe deadlocks, or process leaks a
    - **Visual Media Capture & Scenarios**: `python capture.py <subcommand>`
    - *Custom Scripts & Commands*: If a task requires custom scripts or commands not covered by the above, agents can write and run them following the guidelines below.
 
-2. **Resolve Binaries via `shutil.which`**:
-   - When calling external commands (`godot`, `ffmpeg`) from Python, resolve the executable via `shutil.which("godot") or "godot"`.
-   - This cleanly and portably resolves binary locations, wrapper scripts (e.g. bash scripts on Linux/WSL), or shims without hardcoded paths or OS-specific branching.
+2. **Resolve the Godot Binary via `godot_env.resolve_godot()`**:
+   - From Python, launch Godot with `from godot_env import resolve_godot` (repo root). It honors a `GODOT_BIN` override and unwraps a Windows `godot.cmd`/`.bat` shim to the real `.exe`. A watchdog kill only reaches the process Python started: killing a shim orphans the engine, which keeps the output pipes open and hangs any runner that captures output.
+   - Other tools (e.g. `ffmpeg`) resolve via `shutil.which(...)`. Unix wrapper scripts for Godot must `exec` the engine.
 
 3. **Use `shell=False` with Argument Lists**:
    - `shell=True` spawns an intermediate shell process. On timeout, Python terminates the shell while the child engine process may remain orphaned, holding standard I/O pipes open and stalling execution.
@@ -231,7 +231,9 @@ To ensure scripts run reliably without hangs, pipe deadlocks, or process leaks a
 import shutil
 import subprocess
 
-godot_bin = shutil.which("godot") or "godot"
+from godot_env import resolve_godot
+
+godot_bin = resolve_godot()
 cmd = [
     godot_bin,
     "--headless",

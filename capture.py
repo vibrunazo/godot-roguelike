@@ -40,6 +40,8 @@ import threading
 import time
 from typing import List, Optional
 
+from godot_env import resolve_godot
+
 
 DEFAULT_TIMEOUT_SCREENSHOT = 25  # seconds
 DEFAULT_TIMEOUT_VIDEO = 90       # seconds
@@ -91,7 +93,7 @@ def run_godot_command(
     (returncode/stdout/stderr) is preserved for callers.
     """
     # OS-agnostic godot resolution (works on Linux, WSL, macOS, and Windows)
-    godot_bin = shutil.which("godot") or "godot"
+    godot_bin = resolve_godot()
     cmd: List[str] = [godot_bin, "--path", "."]
     cmd.extend(godot_flags)
     cmd.append(scene_path)

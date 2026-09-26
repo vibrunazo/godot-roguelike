@@ -15,9 +15,10 @@ Usage:
 
 import argparse
 import os
-import shutil
 import subprocess
 import sys
+
+from godot_env import resolve_godot
 
 DEFAULT_TIMEOUT = 15  # seconds
 
@@ -57,7 +58,7 @@ def main() -> int:
         )
 
     # OS-agnostic binary resolution (works on Linux, WSL, macOS, and Windows)
-    godot_bin = shutil.which("godot") or "godot"
+    godot_bin = resolve_godot()
 
     cmd = [
         godot_bin,

@@ -28,6 +28,8 @@ import subprocess
 import sys
 import time
 
+from godot_env import resolve_godot
+
 DEFAULT_TIMEOUT = 10  # seconds per suite (suites take ~1s under --fixed-fps)
 DEFAULT_FPS = 60
 # Output lines that mean a suite is broken even when Godot exits 0.
@@ -137,7 +139,7 @@ def main() -> int:
     if stale > 0:
         print(f"Reaped {stale} leftover headless Godot process(es) from earlier runs.", flush=True)
 
-    godot_bin = shutil.which("godot") or "godot"
+    godot_bin = resolve_godot()
     start_total = time.time()
     passed = 0
     failed: list[tuple[str, str]] = []

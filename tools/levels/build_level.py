@@ -9,24 +9,11 @@ The authored spec stays unchanged; spec.final.json records baked paths.
 from __future__ import annotations
 import argparse
 import json
-import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-
-
-def engine_binary() -> str:
-    """Resolve the local engine; unwrap a simple Windows shim for watchdogs."""
-    binary = shutil.which('godot') or 'godot'
-    if Path(binary).suffix.lower() in ('.cmd', '.bat'):
-        match = re.search(r'@?"([^"]+\.exe)"',Path(binary).read_text())
-        if not match:
-            raise RuntimeError('Cannot unwrap Godot shim; expose engine executable on PATH')
-        binary = match.group(1)
-    return binary
 
 
 def run(args: list[str], log: Path, timeout: int = 30) -> None:
@@ -51,7 +38,7 @@ def main() -> None:
     spec_path = args.spec.resolve()
     spec = json.loads(spec_path.read_text())
     out = spec_path.parent
-    engine = engine_binary()
+    engine = resolve_godot()
     prefix = [engine,'--path',str(ROOT)]
     # Files are engine resource paths; project-local paths use forward slashes.
     rel = lambda p: Path(p).resolve().relative_to(ROOT).as_posix()

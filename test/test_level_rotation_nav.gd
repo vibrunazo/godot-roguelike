@@ -1,4 +1,5 @@
-## Rotation integrity test: every level in `SceneTransition.levels` must load,
+## Rotation integrity test: every level the run can load (SceneTransition.levels,
+## GlobalVars.dungeons and SceneTransition.boss_arenas) must load,
 ## expose its core nodes (Player, ExitPoint, WaveObjective, VoxelGI with baked
 ## data), and provide a valid navigation path from player spawn to the exit
 ## with a VoxelGI volume that covers the floor footprint. Every interior floor
@@ -27,8 +28,8 @@ func _ready() -> void:
 		return
 	var st: Node = st_scene.instantiate()
 	add_child(st)
-	var level_paths: Array = st.get("levels") as Array
-	print("Rotation levels: ", level_paths)
+	var level_paths: Array[String] = _collect_level_paths(st)
+	print("Levels under test: ", level_paths)
 	if level_paths.is_empty():
 		printerr("TEST FAILED: level rotation list is empty")
 		get_tree().quit(1)
@@ -51,6 +52,31 @@ func _ready() -> void:
 	else:
 		print("LEVEL ROTATION NAV TEST PASSED")
 		get_tree().quit(0)
+
+
+## Every level scene the run can load, deduplicated: the SceneTransition
+## rotation fallback (levels), the dungeon pool the run actually picks from
+## (GlobalVars.dungeons) and the boss arenas (SceneTransition.boss_arenas).
+## Until the registries are unified, a level registered in only one of them
+## must still be verified.
+func _collect_level_paths(scene_transition: Node) -> Array[String]:
+	var paths: Array[String] = []
+	for path_variant: Variant in scene_transition.get("levels") as Array:
+		_append_unique(paths, str(path_variant))
+	for dungeon: DungeonResource in GlobalVars.dungeons:
+		if dungeon == null or dungeon.scene == null:
+			printerr("TEST FAILED: GlobalVars.dungeons has an entry without a scene")
+			_append_unique(paths, "<dungeon without scene>")
+			continue
+		_append_unique(paths, dungeon.scene.resource_path)
+	for arena_variant: Variant in (scene_transition.get("boss_arenas") as Dictionary).values():
+		_append_unique(paths, str(arena_variant))
+	return paths
+
+
+func _append_unique(paths: Array[String], path: String) -> void:
+	if not paths.has(path):
+		paths.append(path)
 
 
 ## Verifies a single level scene. Returns true on success.
@@ -305,9 +331,10 @@ func _verify_no_stray_islands(level: Node3D, level_path: String) -> bool:
 	return true
 
 
-## Every GridMap cell must reference an item that exists in its MeshLibrary.
-## A missing id renders nothing in game (a silently absent wall or floor) and
-## would otherwise crash the geometry helpers below with a null mesh.
+## Every GridMap cell must reference an item that exists in its MeshLibrary
+## and has a mesh. A missing id or mesh renders nothing in game (a silently
+## absent wall or floor) and would crash the geometry helpers below, which
+## only run once this check passes.
 func _verify_gridmap_items_exist(level: Node3D, level_path: String) -> bool:
 	var ok: bool = true
 	for gm_node: Node in level.find_children("*", "GridMap", true, false):
@@ -318,12 +345,18 @@ func _verify_gridmap_items_exist(level: Node3D, level_path: String) -> bool:
 			continue
 		var known: PackedInt32Array = gm.mesh_library.get_item_list()
 		var missing: Dictionary[int, int] = {}
+		var meshless: Dictionary[int, int] = {}
 		for cell: Vector3i in gm.get_used_cells():
 			var item: int = gm.get_cell_item(cell)
 			if not known.has(item):
 				missing[item] = missing.get(item, 0) + 1
+			elif gm.mesh_library.get_item_mesh(item) == null:
+				meshless[item] = meshless.get(item, 0) + 1
 		if not missing.is_empty():
 			printerr("TEST FAILED: GridMap ", gm.name, " in ", level_path, " uses items missing from its MeshLibrary (item: cell count): ", missing)
+			ok = false
+		if not meshless.is_empty():
+			printerr("TEST FAILED: GridMap ", gm.name, " in ", level_path, " uses MeshLibrary items with no mesh (item: cell count): ", meshless)
 			ok = false
 	return ok
 

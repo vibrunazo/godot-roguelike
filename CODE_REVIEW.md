@@ -550,7 +550,7 @@ The catch: a skill is loaded only if the agent **recognizes it needs it**. A rul
 | Building or editing a level (template, GridMap metrics, `build_level.py`, VoxelGI/navmesh, rotation test) | skill `build-level`, with `tools/levels/README.md` as its reference file | A long procedure; already a good doc. |
 | Capturing screenshots or video | skill `capture-media` (CAPTURE.md content) | A procedure. |
 | Writing or migrating a test (harness API, rules, arena fixture, template suite) | skill `write-test` | Loaded whenever a test is touched. Keep the three hard test rules in AGENTS.md too. |
-| Debugging hangs, timeouts, watchdog artifacts, leaks | skill `debug-test-hang` (today's AGENTS §3 war stories) | Rarely needed, verbose. |
+| *Diagnosing* a suite that already **timed out** (the runner returned `[TIMEOUT]`): watchdog-kill artifacts, engine timestamps, leaks | skill `debug-test-hang` (today's AGENTS §3 war stories) | Only reachable because the runner turned the hang into a result the agent can read. **Hang prevention is not in this skill:** "never launch Godot except through the runners" is the first rule in AGENTS.md (see §5.2 item 6 for enforcement that doesn't depend on reading it). |
 | Adding an enemy / item / passive (resources to create, registries to update) | skills, once the registries are unified (§2.5) | Checklists are where agents most often miss a step. |
 
 Caveats:
@@ -575,6 +575,10 @@ Caveats:
 3. **Runner fails on engine `SCRIPT ERROR`s** (§3.4.1).
 4. **CI** on Linux (§4.3).
 5. **Pre-commit hook** running `tools/lint_project.py`.
+6. **Hang prevention that doesn't rely on the agent reading anything.** An agent that runs `godot` directly bypasses every Python guardrail, and a stuck agent can't go read a skill. Layers, strongest first:
+   - **Block direct engine calls in the agent harness.** In Claude Code, a permission deny rule or a `PreToolUse` hook rejects shell commands that launch the Godot executable directly, with a message pointing at the runners. Other harnesses need their own equivalent (command deny lists, per-command timeouts). Configure each one used here.
+   - **Engine-side self-kill for headless runs (to prototype).** A tiny autoload that, only when running headless outside the editor, starts a thread that kills the process after a hard limit. That would make even a bare `godot --headless scene.tscn` return eventually. It can't cover failures before autoloads load (a `-s` script that doesn't extend `SceneTree`, a broken project file), so it complements the runners rather than replacing them. Verify it on `-s` runs before relying on it.
+   - **Regression-test the runners themselves.** A fixture scene that never quits must make `run_tests.py`, `run_scratch.py` and `capture.py` return within their timeout and leave no engine process behind. Phase A shipped a runner that hung on exactly this case (fixed via `godot_env.py`), so it needs a test, run in CI.
 
 ### 5.3 Architectural conventions to write down (and follow)
 
