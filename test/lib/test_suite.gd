@@ -312,6 +312,12 @@ func load_arena() -> Node3D:
 	return spawn(load(ARENA_SCENE_PATH) as PackedScene) as Node3D
 
 
+## World height of the arena floor's top surface.
+func arena_floor_top(arena: Node3D) -> float:
+	var floor_shape: CollisionShape3D = arena.get_node("NavigationRegion3D/Floor/CollisionShape3D") as CollisionShape3D
+	return floor_shape.global_position.y + (floor_shape.shape as BoxShape3D).size.y * 0.5
+
+
 ## Waits until the navigation map answers queries on the arena's navmesh.
 ## The region joins the map asynchronously after the arena enters the tree,
 ## and the map builds its polygons on a later sync; until then navmesh

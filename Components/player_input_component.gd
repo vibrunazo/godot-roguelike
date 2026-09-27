@@ -26,6 +26,10 @@ extends Node
 ## Maximum clamped movement speed ratio applied by the dynamic forward-jump
 ## sizing below (the jump never exceeds full walk speed horizontally).
 @export var max_forward_jump_ratio: float = 1.0
+## Peak opacity of the red damage vignette when the character is hurt.
+@export var damage_tint_alpha: float = 0.5
+## Seconds the damage vignette takes to fade back out.
+@export var damage_tint_duration: float = 0.2
 
 ## Active damage vignette tween, tracked so a scene transition (or any other
 ## cancel source) can kill a mid-flash tween instead of letting it resume later.
@@ -235,7 +239,7 @@ func _on_character_health_changed(_value: float) -> void:
 		if _damage_tint_tween != null and _damage_tint_tween.is_valid():
 			_damage_tint_tween.kill()
 		_damage_tint_tween = create_tween()
-		_damage_tint_tween.tween_property(damage_tint, "color", Color(Color.RED, 0.0), 0.2).from(Color(Color.RED, 0.5))
+		_damage_tint_tween.tween_property(damage_tint, "color", Color(Color.RED, 0.0), damage_tint_duration).from(Color(Color.RED, damage_tint_alpha))
 
 
 ## Cancels any in-flight damage vignette flash and resets the tint to fully

@@ -90,7 +90,7 @@ Scripts executed standalone via Godot's `-s` flag **strictly require** two rules
 - Only suites (`test_*.tscn`/`.gd`), `test/lib/` and `test/fixtures/` belong in `test/`. Recording or capture scenes go in `tools/capture/scenarios/`.
 
 ### Testing Philosophy & Invariants
-- **Never assert balance values or tuning constants:** Do not test for hardcoded damage numbers, cooldown lengths, movement speeds, or specific keyboard scancodes.
+- **Never assert balance values or tuning constants:** Do not test for hardcoded damage numbers, cooldown lengths, movement speeds, or specific keyboard scancodes. Comparisons between two tuned values ("the boss is tougher than the brute", "these bombs are bigger than those") are balance assertions too; when a mechanism needs a value (e.g. fire immunity), the test sets it itself.
 - **Test behavioral contracts and state transitions:** 
   - Test that entering cooldown prevents reactivation until elapsed, using the node's own exported variable (e.g., `simulate_time(node.cooldown_time)`).
   - Test relative damage application (`target.health == previous_health - attack.damage`), not arbitrary final integers.

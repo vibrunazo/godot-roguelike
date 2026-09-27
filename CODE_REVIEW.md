@@ -488,7 +488,7 @@ Not affected by frame rate (identical at every rate, even before the fix): knock
   - `test/test_attack_component.gd`: reproduces the freed-target crash without the fix;
   - `test_ground_aoe_jump` migrated to the harness (its old version relied on fixed frame counts and broke under the fix).
 - **Harness teardown:** now also frees nodes that game code parents to the suite.
-- **Result:** the full suite passes at 60 fps. At 30/20/12 fps only the three test-assumption suites above fail; they're tracked in `TODO.md`.
+- **Result:** the full suite passes at 60 fps. At 30/20/12 fps only the three test-assumption suites above failed; all three were migrated to the harness on 2026-09-27, and the full suite now passes at `--fps 20`.
 
 **Recommendations:**
 1. **Make gameplay timing physics-driven.** Set `callback_mode_process` to *Physics* on gameplay `AnimationTree`s, or at least guarantee that an enabled hitbox gets at least one physics query: `WeaponSlot` latches `enabled` until the next physics tick, or calls `ShapeCast`/`PhysicsDirectSpaceState3D.intersect_shape` once when enabled. Use physics-processed timers (`create_timer(t, true, true)`) for damage windows. Purely visual animation can stay on Idle.

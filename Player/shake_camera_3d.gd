@@ -18,6 +18,8 @@ extends Camera3D
 			set_physics_process(false)
 ## Multiplier applied to camera offsets during screen shake.
 @export var offset_scale: float = 1.0
+## Seconds a quick_shake() takes to decay back to no shake.
+@export var shake_duration: float = 0.3
 
 func _ready() -> void:
 	set_physics_process(trauma > 0.0)
@@ -35,8 +37,8 @@ func _physics_process(delta: float) -> void:
 	h_offset = noise.get_noise_2d(time, 0.0) * trauma * offset_scale
 	v_offset = noise.get_noise_2d(0.0, time) * trauma * offset_scale
 
-## Triggers a screen shake with the specified magnitude that decays over 0.3 seconds.
+## Triggers a screen shake with the specified magnitude that decays over shake_duration seconds.
 func quick_shake(magnitude: float) -> void:
 	set_physics_process(true)
 	var tween: Tween = create_tween()
-	tween.tween_property(self, "trauma", 0.0, 0.3).from(magnitude)
+	tween.tween_property(self, "trauma", 0.0, shake_duration).from(magnitude)

@@ -30,8 +30,7 @@ var _floor_top: float
 
 func before_each() -> void:
 	_arena = load_arena()
-	var floor_shape: CollisionShape3D = _arena.get_node("NavigationRegion3D/Floor/CollisionShape3D") as CollisionShape3D
-	_floor_top = floor_shape.global_position.y + (floor_shape.shape as BoxShape3D).size.y * 0.5
+	_floor_top = arena_floor_top(_arena)
 
 
 func test_hitbox_is_a_low_cylinder_resting_on_the_floor() -> void:

@@ -10,8 +10,15 @@
 ## Rules (AGENTS.md has the full list):
 ## - Assert behavior, never tuning: every expected number is either set by the
 ##   test itself or read from the live node (attack.damage, dash.cooldown...).
+##   Comparing two tuned values ("boss hits harder than the brute") is tuning
+##   too: a designer can legitimately swap them. Set the values the mechanism
+##   needs in the test instead (e.g. give the target full fire resistance).
 ## - Wait on conditions (wait_until / wait_signal), never on fixed frame
-##   counts or wall-clock timers.
+##   counts or wall-clock timers. Visual feedback (tweens, animations) runs on
+##   the render clock: wait for it, don't assume it shows after one tick.
+## - A "must not happen" check watches the whole window (poll every frame and
+##   remember if it ever happened); one sample at the end misses anything that
+##   already faded or decayed.
 ## - Drive input by action name (press_action(&"jump")), never physical keys.
 ## - Use public methods only; if a test needs a hook, add a documented public one.
 ## - Everything the test creates goes through spawn()/autofree()/load_arena()
