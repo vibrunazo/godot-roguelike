@@ -181,6 +181,7 @@ libraries/ = SubResource("AnimationLibrary_8wj31")
 libraries/EnemyAnimations = SubResource("AnimationLibrary_pje6n")
 
 [node name="AnimationTree" type="AnimationTree" parent="Enemy_Medium" unique_id=1365896023]
+callback_mode_process = 0
 tree_root = SubResource("AnimationNodeStateMachine_m75i3")
 anim_player = NodePath("../AnimationPlayer")
 parameters/WalkSpace/blend_position = -0.0058252215

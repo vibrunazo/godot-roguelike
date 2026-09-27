@@ -44,7 +44,7 @@ Severity labels are words, not colors: **HIGH** = correctness risk or blocks sca
 | 13 | HIGH | Tests are slow because headless physics frames are **paced to real time**, not because scenes are heavy. `--fixed-fps 60` makes the suite 4.7× faster overall (up to 16× per suite) with identical results. | §3.6 |
 | 14 | MED | **Production leak:** `WaveObjective` instantiates every enemy up front and adds them to the tree one per second. Enemies that haven't spawned when the level unloads (restart, menu, test end) are never freed. This is the source of the exit-time leak spam. | §2.12, §3.7 |
 | 15 | MED | **UID drift:** 8 UIDs were hand-written by agents as non-canonical spellings (`uid://d7hurtbox41zq`, …). *(Fixed in Phase A; the "stale reference" part of the original finding was wrong, see §4.4.)* | §4.4 |
-| 16 | HIGH | **Hits fail to register at low frame rates.** With physics at 60 Hz, 4–6 suites fail at 30/20/12 render fps, mostly attacks and AoEs that never deal damage. Hitbox windows are driven by idle-mode `AnimationTree`s (one window is 0.030 s). Mid-range phones will run in this range. | §3.9 |
+| 16 | HIGH | *(Fixed 2026-09-26: gameplay timing moved to the physics clock, `test_frame_rate_invariance` added.)* **Hits fail to register at low frame rates.** With physics at 60 Hz, 4–6 suites fail at 30/20/12 render fps, mostly attacks and AoEs that never deal damage. Hitbox windows are driven by idle-mode `AnimationTree`s (one window is 0.030 s). Mid-range phones will run in this range. | §3.9 |
 | 17 | HIGH | **Renderer vs. phone target:** every level requires a VoxelGI bake, and VoxelGI is Forward+-only. It isn't available in the Mobile/Compatibility renderers a mid-range phone needs. | §3.9 |
 | 18 | MED | Agents add throwaway verification (such as "enemy albedo is orange") to the permanent suite because nothing defines what belongs there. Scratch vs. suite needs a written rule and mechanical enforcement. | §5.4 |
 
@@ -457,6 +457,39 @@ Notes:
 
 Not every failure is a game bug. Some tests sample a position or size at a moment that depends on frame length (`test_firebomber_enemy`'s target `y`, `test_akira_boss`'s trap-area comparison). But the dominant symptom is **"a hit that should land doesn't"**, across player melee, combos and AoE. That matches the idle-driven hit-window mechanism above and is exactly what a mid-range phone at 20–30 fps would show players. **Each failure needs triage** into "game bug" vs. "test assumes 60 fps", and that triage is the first task of this workstream.
 
+**Triage result (Phase B step 5, 2026-09-26).** Method:
+- A scratch probe (`.scratch/fps_probe/`) ran the same isolated arena scenarios at 60, 30, 20 and 12 fps: player combo vs. a dummy, melee enemy vs. the player, the brute's slam including friendly fire, knockback, dash and jump.
+- The failing suites were then rerun with the project temporarily switched to physics timing: the 3 gameplay `AnimationTree`s set to `callback_mode_process = PHYSICS`, the player's dash timers set to physics, and gameplay `create_timer` calls set to `process_in_physics`. The patch is saved as `.scratch/fps_probe/physics_timing_experiment.patch` and was reverted afterwards.
+
+| Finding | Evidence | Class |
+|---|---|---|
+| **Dash distance depends on frame rate:** 6.67 / 7.5 / 4.17 / 7.5 m at 60 / 30 / 20 / 12 fps (up to 37% off). `DashDuration` is a `Timer` on the idle (render) clock. | Probe. On the physics clock: 6.67 m at every rate, the same as today's 60 fps feel. | **Game bug** |
+| **Melee hits drop out at low fps:** the melee enemy's hitbox is authored to be live for 0.030 s (`Melee_2H_Attack_Chop`, keys 0.790–0.820 s). With an idle-clock `AnimationTree` that window can fall between physics steps, so the attack never lands at 12 fps. The spin attack loses its second hit at 12 fps. Aimed attacks miss at 20–30 fps because the window opens a render frame early or late relative to physics-driven rotation. | Probe, plus `test_attack_aiming`, `test_attack_cycle`, `test_combo_and_dash_cancel` and `test_self_hitstop`, which **all pass at every rate** on the physics clock. | **Game bug** |
+| **`AttackComponent._refresh_cooldowns()` crashes on a freed target:** `target as CollisionObject3D` runs before `is_instance_valid()`, so once a target hit by a repeating attack is freed, it raises a script error every physics tick and aborts before any cleanup. Rehit cooldowns then stop expiring for every target of that attack. Not frame-rate related; low fps only changed the ordering in `test_akira_boss`. | 224 script errors in `test_akira_boss` at 20 fps. | **Game bug** (any rate) |
+| `test_ground_aoe_jump` (friendly fire / standing damage) | Calls private `_spawn_ground_aoe()`, leaves the brute's AI running, and asserts exact damage after a fixed 2–3 frames with AoEs from earlier parts still around. The probe's real slam hits the ally exactly once for full damage at every rate. | Test assumption |
+| `test_firebomber_enemy` (target position) | Spawns the target in mid-air with no floor, waits one *render* frame, and expects it not to have fallen. | Test assumption |
+| `test_damage_flash_and_shake` (knockback velocity, 12 fps) | Calls `core_movement(0.016, 8.0)` directly on a player that isn't on the floor at that instant, so the function correctly hands off to the fall state. | Test assumption |
+| `test_akira_boss` line 403 (freed projectile) | Inspects live projectiles one render frame after spawning them; at low fps they've already landed and been freed. | Test assumption |
+
+Not affected by frame rate (identical at every rate, even before the fix): knockback displacement, jump airtime and apex, the slam AoE (player and friendly-fire damage), and the player's first two combo hits against a target straight ahead.
+
+**Fix applied (2026-09-26).**
+- **Physics clock for gameplay timing:**
+  - the 3 gameplay `AnimationTree`s: `callback_mode_process = PHYSICS`;
+  - the rider `AnimationPlayer`s (set in `AkiraBossRiders._setup_rider`);
+  - `Timer` nodes: the player's dash, projectile lifetimes, spike phases, and `DamageArea` lifetimes;
+  - the gameplay `create_timer` calls: attack queue window, lunge, AoE damage window, boss attack delays, rider swing, AI wait;
+  - `WaveObjective`'s spawn tween.
+
+  Visual and audio timing stays on the render clock.
+- **`AttackComponent._refresh_cooldowns()`:** checks validity before the cast.
+- **New tests:**
+  - `test/test_frame_rate_invariance.gd`: runs at 12/20/30/60 fps through the new `## fps_matrix:` runner feature, and fails at 12–30 fps without the fix;
+  - `test/test_attack_component.gd`: reproduces the freed-target crash without the fix;
+  - `test_ground_aoe_jump` migrated to the harness (its old version relied on fixed frame counts and broke under the fix).
+- **Harness teardown:** now also frees nodes that game code parents to the suite.
+- **Result:** the full suite passes at 60 fps. At 30/20/12 fps only the three test-assumption suites above fail; they're tracked in `TODO.md`.
+
 **Recommendations:**
 1. **Make gameplay timing physics-driven.** Set `callback_mode_process` to *Physics* on gameplay `AnimationTree`s, or at least guarantee that an enabled hitbox gets at least one physics query: `WeaponSlot` latches `enabled` until the next physics tick, or calls `ShapeCast`/`PhysicsDirectSpaceState3D.intersect_shape` once when enabled. Use physics-processed timers (`create_timer(t, true, true)`) for damage windows. Purely visual animation can stay on Idle.
 2. **Test in a frame-rate matrix.** Keep 60 as the default gate and add 20 and 30 (and 144 for high-refresh screens) as a CI job. It costs about 35 s per rate. Suites that genuinely only work at one rate must say so in a comment.
@@ -663,7 +696,7 @@ The harness depends on the runner being trustworthy and fast, so the runner is f
 
    Suites not yet migrated keep working, because the runner contract doesn't change.
 
-5. **Frame-rate workstream: a parallel track that can start as soon as step 1 is done** (it's HIGH severity and doesn't need the harness):
+5. *(Done 2026-09-26, apart from the renderer decision; see §3.9 and `TODO.md`.)* **Frame-rate workstream: a parallel track that can start as soon as step 1 is done** (it's HIGH severity and doesn't need the harness):
    - triage the 30/20/12 fps failures into game bugs vs. 60 fps test assumptions
    - make hit windows and damage timers physics-driven
    - add the frame-rate invariance tests (§3.9)

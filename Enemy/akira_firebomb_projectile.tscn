@@ -81,6 +81,7 @@ autoplay = true
 bus = &"SFX"
 
 [node name="Timer" type="Timer" parent="."]
+process_callback = 0
 wait_time = 15.0
 autostart = true
 

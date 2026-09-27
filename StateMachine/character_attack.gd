@@ -186,7 +186,9 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 		connect_one_shot(character.animation_tree.animation_finished, finish_attack)
 		_cache_hitstop_timescale()
 
-	attack_timer = get_tree().create_timer(queued_attack_time)
+	# Gameplay windows run on the physics clock (process_in_physics) so their
+	# length in game time never depends on the render frame rate.
+	attack_timer = get_tree().create_timer(queued_attack_time, true, true)
 	attack_timer.timeout.connect(attempt_queue_attack)
 	character.is_attacking = true
 	var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
@@ -284,7 +286,7 @@ func _begin_lunge() -> void:
 	lunge_direction = lunge_direction.normalized()
 	_lunge_base_velocity = Vector3(character.velocity.x, 0.0, character.velocity.z)
 	lunging = true
-	lunge_timer = get_tree().create_timer(dash_duration)
+	lunge_timer = get_tree().create_timer(dash_duration, true, true)
 	lunge_timer.timeout.connect(_end_lunge)
 
 

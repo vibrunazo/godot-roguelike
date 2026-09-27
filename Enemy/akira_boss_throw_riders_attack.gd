@@ -37,7 +37,7 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	var tree: SceneTree = get_tree()
 	if tree == null:
 		return
-	var timer: SceneTreeTimer = tree.create_timer(maxf(throw_delay, 0.0))
+	var timer: SceneTreeTimer = tree.create_timer(maxf(throw_delay, 0.0), true, true)
 	timer.timeout.connect(_throw_riders)
 
 

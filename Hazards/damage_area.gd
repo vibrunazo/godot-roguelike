@@ -204,6 +204,8 @@ func _setup_duration_timer() -> void:
 		timer.timeout.connect(expire)
 	timer.wait_time = duration
 	timer.one_shot = true
+	# Lifetime is gameplay (how long the area deals damage): physics clock.
+	timer.process_callback = Timer.TIMER_PROCESS_PHYSICS
 	timer.start()
 
 

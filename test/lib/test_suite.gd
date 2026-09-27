@@ -15,8 +15,11 @@
 ##   going, so without this the test would silently report PASS), or
 ## - it leaks orphan nodes. Teardown frees every node registered with
 ##   autofree()/spawn()/load_arena() (queue_free when in the tree, free when
-##   orphaned), flushes frames, then compares the orphan-node count with the
-##   count before the test. An orphan is a node that was created but is neither
+##   orphaned) plus every node that game code added directly under the suite
+##   during the test (VfxManager.spawn_world_entity parents projectiles, AoEs
+##   and impact effects to the current scene, which is the suite), flushes
+##   frames, then compares the orphan-node count with the count before the
+##   test. Nothing a test spawns can leak into the next test. An orphan is a node that was created but is neither
 ##   in the tree nor freed; it leaks with all of its server resources.
 ##
 ## See test/lib/suite_template.gd for a copyable starting point and
@@ -118,11 +121,12 @@ func _run_test(test_name: String) -> bool:
 	_current_failures.clear()
 	_error_capture.take()
 	var orphans_before: int = _orphan_count()
+	var children_before: Array[Node] = get_children()
 	var started_ms: int = Time.get_ticks_msec()
 	await before_each()
 	await call(test_name)
 	await after_each()
-	await _teardown()
+	await _teardown(children_before)
 	var errors: Array[Array] = _error_capture.take()
 	for script_error: String in errors[0]:
 		_record_failure("script error: " + script_error)
@@ -151,7 +155,10 @@ func _discover_tests() -> Array[String]:
 	return names
 
 
-func _teardown() -> void:
+func _teardown(children_before: Array[Node]) -> void:
+	for child: Node in get_children():
+		if not children_before.has(child):
+			autofree(child)
 	for node: Node in _autofree_nodes:
 		if not is_instance_valid(node):
 			continue

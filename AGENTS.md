@@ -21,6 +21,11 @@ If a refactor breaks old clients of an interface then refactor the clients to us
 4. Use good coding practices.
    - Prefer designing long term scalable and maintainable systems rather than quick and dirty hacks.
    - Avoid hardcoding preload() PackedScenes. Prefer configurable export variables instead.
+5. **Gameplay timing runs on the physics clock** (the game targets slow devices, where render frames are long):
+   - Anything that decides gameplay (hit windows, damage windows, durations, cooldowns, spawn pacing) must not depend on the render frame rate.
+   - `AnimationTree`/`AnimationPlayer` driving gameplay tracks (e.g. `WeaponSlot:enabled`): `callback_mode_process = PHYSICS`. Gameplay `Timer` nodes: `process_callback = PHYSICS`. Code timers: `get_tree().create_timer(t, true, true)`. Gameplay tweens: `.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)`.
+   - Purely visual or audio timing (fades, UI, VFX) may stay on the render clock.
+   - `test/test_frame_rate_invariance.gd` runs at 12-60 fps; extend it when adding timed mechanics.
 
 ### Worktree Rules
 - IF you are told to create a new branch, then create a worktree under `.worktrees/<branch-name>` inside the project root.
@@ -81,6 +86,7 @@ Scripts executed standalone via Godot's `-s` flag **strictly require** two rules
 ### Writing Test Suites
 - **New and migrated suites extend the harness:** `extends "res://test/lib/test_suite.gd"`. Start from `test/lib/suite_template.gd`; `test/test_character_rotation.gd` is the reference suite. The harness runs every `test_*` method in isolation and gives `check()`, `check_eq()`, `check_approx()`, `wait_until()`, `wait_signal()`, `spawn()`, `autofree()`, `load_arena()`, `disable_ai()` and `press_action()`. A test fails on a failed check, a script error, or leaked orphan nodes.
 - **Mechanics tests run in the arena fixture** (`load_arena()`: flat floor, baked navmesh, no enemies or waves), not in real levels. Regenerate it with `python run_scratch.py test/fixtures/build_arena.gd`; never hand-edit `test/fixtures/arena.tscn`.
+- A suite that must hold at any frame rate declares `## fps_matrix: 12, 20, 30, 60` in its script; the runner runs it once per listed rate.
 - Only suites (`test_*.tscn`/`.gd`), `test/lib/` and `test/fixtures/` belong in `test/`. Recording or capture scenes go in `tools/capture/scenarios/`.
 
 ### Testing Philosophy & Invariants

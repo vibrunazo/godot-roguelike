@@ -238,12 +238,15 @@ rehit_interval = 0.5
 libraries/ = SubResource("AnimationLibrary_spikes")
 
 [node name="DelayTimer" type="Timer" parent="." unique_id=1725091155]
+process_callback = 0
 one_shot = true
 
 [node name="ActiveTimer" type="Timer" parent="." unique_id=1277434314]
+process_callback = 0
 one_shot = true
 
 [node name="CooldownTimer" type="Timer" parent="." unique_id=1442612810]
+process_callback = 0
 one_shot = true
 
 [node name="SpikeAudio" type="AudioStreamPlayer3D" parent="." unique_id=304868704]

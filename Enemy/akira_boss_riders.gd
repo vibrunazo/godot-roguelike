@@ -117,6 +117,11 @@ func _setup_rider(is_left: bool) -> AnimationPlayer:
 	if rider_tree == null or rider_root == null:
 		return null
 	var player: AnimationPlayer = rider_root.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if player != null:
+		# The slash is played on this player directly (tree deactivated) and its
+		# WeaponSlot:enabled track is the hit window, so it runs on the physics
+		# clock like the character AnimationTrees.
+		player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_PHYSICS
 	if player != null and not player.has_animation_library(SLASH_LIBRARY):
 		var slash: Animation = load(SLASH_PATH) as Animation
 		if slash != null:
@@ -178,7 +183,7 @@ func _play_rider_attack(is_left: bool) -> void:
 	else:
 		_right_swinging = true
 		_right_cooldown = attack_cooldown
-	var timer: SceneTreeTimer = get_tree().create_timer(SLASH_LENGTH)
+	var timer: SceneTreeTimer = get_tree().create_timer(SLASH_LENGTH, true, true)
 	timer.timeout.connect(_end_rider_swing.bind(is_left))
 
 

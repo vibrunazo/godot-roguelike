@@ -1,303 +1,210 @@
-## Automated verification suite for GroundDamageArea, Brute Slam ground impact,
-## and player jump evasion.
-## Tests that:
-## 1. GroundDamageArea uses a low-height CylinderShape3D resting on the floor.
-## 2. Standing players inside the radius receive relative damage matching the attack.
-## 3. Jumping players in mid-air clear the low cylinder height and take ZERO damage.
-## 4. Downward raycast correctly snaps the AOE to the floor even if the caster is elevated.
-extends Node3D
+## GroundDamageArea and the ground slam (GroundSlamAttack):
+## - The damage hitbox is a low cylinder (the area's radius and height) whose
+##   base rests on the area's origin, i.e. on the floor it was spawned on.
+## - A standing character inside the area takes its damage exactly once.
+## - An airborne character whose feet are above the cylinder takes none (jump
+##   evasion).
+## - The brute's slam spawns an area that hits a standing player for the
+##   attack's damage, hits allies too when friendly_fire is on (never the
+##   caster), and snaps to the ground below when slamming from a ledge.
+##
+## Every expected value is read from the live nodes (radius, height, damage,
+## aoe_forward_offset) or set by the test, and every wait is on a condition, so
+## the suite holds at any frame rate and survives retuning.
+extends "res://test/lib/test_suite.gd"
 
-var passed_checks: int = 0
+const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+const BRUTE_SCENE: PackedScene = preload("res://Enemy/enemy_brute.tscn")
+const AOE_SCENE: PackedScene = preload("res://Hazards/ground_damage_aoe.tscn")
+## Test-owned damage for areas spawned directly by the suite.
+const TEST_AOE_DAMAGE: float = 10.0
+## Test-owned ledge height for the ledge slam scenario.
+const LEDGE_HEIGHT: float = 3.0
+## Generous frame budget for a full slam (windup, impact, recovery).
+const SLAM_FRAMES: int = 600
 
-
-func _ready() -> void:
-	print("\n====================================================")
-	print("  STARTING GROUND AOE & JUMP EVASION TEST SUITE")
-	print("====================================================")
-
-	# Build physical floor on layer 1 (World)
-	var floor_body := StaticBody3D.new()
-	floor_body.collision_layer = 1
-	floor_body.collision_mask = 0
-	var floor_shape := CollisionShape3D.new()
-	var box := BoxShape3D.new()
-	box.size = Vector3(40.0, 1.0, 40.0)
-	floor_shape.shape = box
-	floor_shape.position = Vector3(0.0, -0.5, 0.0) # top of floor is at y = 0.0
-	floor_body.add_child(floor_shape)
-	add_child(floor_body)
-
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	_run_tests()
+var _arena: Node3D
+var _floor_top: float
 
 
-func _run_tests() -> void:
-	# -------------------------------------------------------------
-	# PART 1: GroundDamageArea Dimensions & Cylinder Positioning
-	# -------------------------------------------------------------
-	print("\n>>> PART 1: GroundDamageArea Cylinder Shape & Floor Alignment")
-	var aoe_scene: PackedScene = load("res://Hazards/ground_damage_aoe.tscn")
-	if aoe_scene == null:
-		_fail("Could not load Hazards/ground_damage_aoe.tscn.")
+func before_each() -> void:
+	_arena = load_arena()
+	var floor_shape: CollisionShape3D = _arena.get_node("NavigationRegion3D/Floor/CollisionShape3D") as CollisionShape3D
+	_floor_top = floor_shape.global_position.y + (floor_shape.shape as BoxShape3D).size.y * 0.5
+
+
+func test_hitbox_is_a_low_cylinder_resting_on_the_floor() -> void:
+	var aoe: GroundDamageArea = _spawn_aoe(Vector3(0.0, _floor_top, 0.0))
+	await wait_physics_frames(1)
+	var col: CollisionShape3D = aoe.get_node("DamageHitbox/CollisionShape3D") as CollisionShape3D
+	if not check(col.shape is CylinderShape3D, "damage hitbox should be a CylinderShape3D"):
 		return
+	var cylinder: CylinderShape3D = col.shape as CylinderShape3D
+	check_approx(cylinder.radius, aoe.radius, "cylinder radius should follow the area's radius")
+	check_approx(cylinder.height, aoe.height, "cylinder height should follow the area's height")
+	check_approx(col.global_position.y - cylinder.height * 0.5, aoe.global_position.y, "cylinder base should rest on the area's origin (the floor)")
 
-	var aoe: GroundDamageArea = aoe_scene.instantiate() as GroundDamageArea
-	add_child(aoe)
-	await get_tree().physics_frame
 
-	var col: CollisionShape3D = aoe.get_node_or_null("DamageHitbox/CollisionShape3D") as CollisionShape3D
-	if col == null or col.shape == null or not (col.shape is CylinderShape3D):
-		_fail("GroundDamageArea missing CylinderShape3D on DamageHitbox.")
+func test_standing_player_inside_takes_its_damage_once() -> void:
+	var player: Character = await _spawn_grounded_player()
+	var hp_before: float = _health(player)
+	var aoe: GroundDamageArea = _spawn_aoe(Vector3(player.global_position.x, _floor_top, player.global_position.z))
+	await wait_signal(player.hurtbox.struck, "a standing player inside the area should be struck")
+	await _wait_until_inactive(aoe)
+	check_approx(hp_before - _health(player), aoe.damage, "standing player should take the area's damage exactly once")
+
+
+func test_airborne_player_above_the_cylinder_takes_nothing() -> void:
+	var player: Character = await _spawn_grounded_player()
+	var hp_before: float = _health(player)
+	var aoe: GroundDamageArea = AOE_SCENE.instantiate() as GroundDamageArea
+	var clearance: float = _floor_top + aoe.height
+	player.state_machine.request_state("PlayerJump", {"direction": Vector3.ZERO})
+	var cleared: bool = await wait_until(func() -> bool: return _feet_y(player) > clearance, "jumping player's feet should rise above the area's height")
+	if not cleared:
+		aoe.free()
 		return
+	_add_aoe(aoe, Vector3(player.global_position.x, _floor_top, player.global_position.z))
+	await _wait_until_inactive(aoe)
+	check(not player.is_on_floor(), "setup: the player should still be airborne when the damage window closes")
+	check_approx(_health(player), hp_before, "an airborne player above the cylinder should take no damage")
 
-	var cyl: CylinderShape3D = col.shape as CylinderShape3D
-	if not is_equal_approx(cyl.radius, aoe.radius):
-		_fail("CylinderShape3D radius does not match aoe.radius.")
-		return
-	if not is_equal_approx(cyl.height, aoe.height):
-		_fail("CylinderShape3D height does not match aoe.height.")
-		return
-	# Base of cylinder must align with y=0, meaning center position.y must be height / 2.0
-	if not is_equal_approx(col.position.y, aoe.height * 0.5):
-		_fail("CollisionShape3D center is not offset to height / 2.0. Base is not at y=0.")
-		return
 
-	# Verify visual components exist
-	var shockwave: MeshInstance3D = aoe.get_node_or_null("ShockwaveRing") as MeshInstance3D
-	var indicator: MeshInstance3D = aoe.get_node_or_null("GroundIndicator") as MeshInstance3D
-	var particles: GPUParticles3D = aoe.get_node_or_null("GPUParticles3D") as GPUParticles3D
-	if shockwave == null or indicator == null or particles == null:
-		_fail("GroundDamageArea missing visual nodes (ShockwaveRing, GroundIndicator, GPUParticles3D).")
-		return
-
-	aoe.queue_free()
-	print("GroundDamageArea cylindrical hitbox, floor alignment, and visuals verified.")
-	passed_checks += 1
-
-	# -------------------------------------------------------------
-	# PART 2: Standing Player takes Damage vs Jumping Player takes 0
-	# -------------------------------------------------------------
-	print("\n>>> PART 2: Jump Evasion (Standing takes damage, Jumping takes 0)")
-	var brute_scene: PackedScene = load("res://Enemy/enemy_brute.tscn")
-	var brute: Character = brute_scene.instantiate() as Character
-	brute.position = Vector3.ZERO
-	add_child(brute)
-
-	var enemy_attack: CharacterAttack = brute.state_machine.get_node_or_null("EnemyAttack") as CharacterAttack
-	if enemy_attack == null:
-		_fail("Brute EnemyAttack node missing.")
-		return
-
-	var forward: Vector3 = brute.mesh_mount.global_basis.z.normalized() if brute.mesh_mount != null else Vector3.FORWARD
-	var offset: float = enemy_attack.get("aoe_forward_offset") if "aoe_forward_offset" in enemy_attack else 2.8
-	var test_impact_xz: Vector3 = brute.global_position + forward * offset
-
-	var player_scene: PackedScene = load("res://Player/player.tscn")
-
-	# Phase 2A: Standing player inside impact zone
-	var standing_player: Character = player_scene.instantiate() as Character
-	standing_player.position = test_impact_xz
-	add_child(standing_player)
-
-	# Let standing player settle on the floor
-	for _i: int in range(5):
-		await get_tree().physics_frame
-	await get_tree().process_frame
-
-	var standing_hp_before: float = standing_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+func test_brute_slam_hits_standing_player_for_attack_damage() -> void:
+	var brute: Character = await _spawn_grounded_brute()
+	var slam: GroundSlamAttack = brute.state_machine.get_node("EnemyAttack") as GroundSlamAttack
+	var player: Character = await _spawn_grounded_player(_impact_point(brute, slam))
+	var hp_before: float = _health(player)
 	brute.state_machine.request_state("EnemyAttack")
+	await wait_signal(player.hurtbox.struck, "the slam should strike a player standing at its impact point", SLAM_FRAMES)
+	await _wait_until_no_live_aoes()
+	check_approx(hp_before - _health(player), slam.damage * brute.get_damage_modifier(), "the slam should deal the attack's damage once")
 
-	# Advance physics frames until slam apex strikes and completes
-	for _i: int in range(60):
-		await get_tree().physics_frame
-	await get_tree().process_frame
 
-	var standing_hp_after: float = standing_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-	var standing_damage_taken: float = standing_hp_before - standing_hp_after
-	print("Standing player damage taken: ", standing_damage_taken, " (expected: ", enemy_attack.damage, ")")
-
-	if not is_equal_approx(standing_damage_taken, enemy_attack.damage):
-		_fail("Standing player did not take relative damage equal to enemy_attack.damage! Got: %f" % standing_damage_taken)
-		return
-
-	standing_player.queue_free()
-	await get_tree().physics_frame
-
-	# Phase 2B: Jumping player inside impact zone
-	var jumping_player: Character = player_scene.instantiate() as Character
-	jumping_player.position = test_impact_xz
-	add_child(jumping_player)
-
-	for _i: int in range(5):
-		await get_tree().physics_frame
-	await get_tree().process_frame
-
-	var jumping_hp_before: float = jumping_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-
-	# Reset brute slam cooldown and trigger slam
-	enemy_attack.cooldown_timer = 0.0
+func test_brute_slam_friendly_fire_hits_ally_but_never_caster() -> void:
+	var brute: Character = await _spawn_grounded_brute()
+	var slam: GroundSlamAttack = brute.state_machine.get_node("EnemyAttack") as GroundSlamAttack
+	slam.friendly_fire = true
+	var ally: Character = _spawn_character(MELEE_SCENE, _impact_point(brute, slam))
+	await wait_until(func() -> bool: return ally.is_on_floor(), "ally should land")
+	var ally_before: float = _health(ally)
+	var brute_before: float = _health(brute)
 	brute.state_machine.request_state("EnemyAttack")
+	await wait_signal(ally.hurtbox.struck, "with friendly_fire on, the slam should strike an ally at its impact point", SLAM_FRAMES)
+	await _wait_until_no_live_aoes()
+	check_approx(ally_before - _health(ally), slam.damage * brute.get_damage_modifier(), "the ally should take the slam's damage once")
+	check_approx(_health(brute), brute_before, "the caster must never damage itself")
 
-	# Wait until slam windup is underway (~25 frames), then jump
-	for _i: int in range(25):
-		await get_tree().physics_frame
 
-	jumping_player.state_machine.request_state("PlayerJump")
-
-	# Advance through apex impact (~35 more frames)
-	for _i: int in range(40):
-		await get_tree().physics_frame
-	await get_tree().process_frame
-
-	var jumping_hp_after: float = jumping_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-	var jumping_damage_taken: float = jumping_hp_before - jumping_hp_after
-	print("Jumping player damage taken: ", jumping_damage_taken, " (expected: 0.0)")
-
-	if not is_equal_approx(jumping_damage_taken, 0.0):
-		_fail("Jumping player took %f damage! Jumping over the slam should take 0 damage." % jumping_damage_taken)
+func test_slam_from_a_ledge_lands_on_the_ground_below() -> void:
+	var spawn_xz: Vector3 = (_arena.get_node("EnemySpawn") as Node3D).global_position
+	var brute: Character = _spawn_character(BRUTE_SCENE, Vector3(spawn_xz.x, _floor_top + LEDGE_HEIGHT + 1.0, spawn_xz.z))
+	# A pillar barely wider than the brute, so the slam's impact point lies
+	# beyond its edge and the area has to find the ground below.
+	var half_extent: float = (brute.collision_shape_3d.shape as CapsuleShape3D).radius + 0.05
+	var pillar: StaticBody3D = _add_pillar(Vector3(spawn_xz.x, _floor_top, spawn_xz.z), half_extent, LEDGE_HEIGHT)
+	await wait_until(func() -> bool: return brute.is_on_floor(), "brute should land on the ledge")
+	brute.state_machine.request_state("EnemyAttack")
+	if not await wait_until(func() -> bool: return not _live_aoes().is_empty(), "the slam should spawn a ground area", SLAM_FRAMES):
 		return
-
-	jumping_player.queue_free()
-	brute.queue_free()
-	print("Jump evasion confirmed: standing player took damage, jumping player took 0.")
-	passed_checks += 1
-
-	# -------------------------------------------------------------
-	# PART 3: Downward Raycast Floor Detection for Elevated Caster
-	# -------------------------------------------------------------
-	print("\n>>> PART 3: Downward Raycast Floor Detection for Elevated Caster")
-	var elevated_brute: Character = brute_scene.instantiate() as Character
-	elevated_brute.position = Vector3(0.0, 3.5, 0.0) # High in mid-air
-	add_child(elevated_brute)
-
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	var elevated_attack: GroundSlamAttack = elevated_brute.state_machine.get_node_or_null("EnemyAttack") as GroundSlamAttack
-	if elevated_attack == null:
-		_fail("EnemyAttack is not GroundSlamAttack.")
+	var aoe: GroundDamageArea = _live_aoes()[0]
+	var offset: Vector3 = aoe.global_position - pillar.global_position
+	if not check(absf(offset.x) > half_extent or absf(offset.z) > half_extent, "setup: the impact point should lie beyond the ledge (offset %s, half extent %.2f)" % [offset, half_extent]):
 		return
-
-	# Trigger slam from elevated position
-	elevated_attack._spawn_ground_aoe()
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	# Find spawned AOE in scene
-	var spawned_aoe: GroundDamageArea = null
-	for child: Node in get_tree().current_scene.get_children():
-		if child is GroundDamageArea and not child.is_queued_for_deletion():
-			spawned_aoe = child as GroundDamageArea
-			break
-
-	if spawned_aoe == null:
-		_fail("GroundDamageArea was not spawned into the scene tree.")
-		return
-
-	print("Elevated brute position Y: ", elevated_brute.global_position.y)
-	print("Spawned AOE position Y: ", spawned_aoe.global_position.y, " (floor top is at 0.0)")
-
-	# The raycast must place the AOE at y = 0.0 (the floor), not at y = 3.5!
-	if not is_equal_approx(spawned_aoe.global_position.y, 0.0):
-		_fail("Spawned AOE did not snap to floor y=0.0! Spawned at y=%f" % spawned_aoe.global_position.y)
-		return
-
-	spawned_aoe.queue_free()
-	elevated_brute.queue_free()
-	print("Downward raycast accurately snapped ground AOE to floor surface.")
-	passed_checks += 1
-
-	# -------------------------------------------------------------
-	# PART 4: Friendly Fire Verification
-	# -------------------------------------------------------------
-	print("\n>>> PART 4: Friendly Fire (Allied enemy takes damage, caster takes 0)")
-	var ff_brute: Character = brute_scene.instantiate() as Character
-	ff_brute.position = Vector3.ZERO
-	add_child(ff_brute)
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	var ff_attack: GroundSlamAttack = ff_brute.state_machine.get_node_or_null("EnemyAttack") as GroundSlamAttack
-	if ff_attack == null or not ff_attack.friendly_fire:
-		_fail("Brute EnemyAttack does not have friendly_fire enabled.")
-		return
-
-	var ally_scene: PackedScene = load("res://Enemy/melee_enemy.tscn")
-	var ally_enemy: Character = ally_scene.instantiate() as Character
-	var ally_offset: float = ff_attack.aoe_forward_offset
-	var ally_forward: Vector3 = ff_brute.mesh_mount.global_basis.z.normalized() if ff_brute.mesh_mount != null else Vector3.FORWARD
-	ally_enemy.position = ff_brute.global_position + ally_forward * ally_offset
-	add_child(ally_enemy)
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	var ally_attrs: AttributeComponent = ally_enemy.attribute_component
-	var brute_attrs: AttributeComponent = ff_brute.attribute_component
-	var ally_hp_before: float = ally_attrs.get_current(AttributeComponent.POOL_HEALTH)
-	var brute_hp_before: float = brute_attrs.get_current(AttributeComponent.POOL_HEALTH)
-
-	# Trigger slam with friendly_fire enabled
-	ff_attack._spawn_ground_aoe()
-	await get_tree().physics_frame
-	await get_tree().process_frame
-	await get_tree().physics_frame
-
-	var ally_hp_after: float = ally_attrs.get_current(AttributeComponent.POOL_HEALTH)
-	var brute_hp_after: float = brute_attrs.get_current(AttributeComponent.POOL_HEALTH)
-	var ally_damage_taken: float = ally_hp_before - ally_hp_after
-	var brute_damage_taken: float = brute_hp_before - brute_hp_after
-
-	var expected_slam_damage: float = ff_attack.damage * (ff_brute.get_damage_modifier() if ff_brute.has_method("get_damage_modifier") else 1.0)
-	print("Ally enemy damage taken: ", ally_damage_taken, " (expected: ", expected_slam_damage, ")")
-	print("Casting brute damage taken: ", brute_damage_taken, " (expected: 0.0)")
-
-	if not is_equal_approx(ally_damage_taken, expected_slam_damage):
-		_fail("Allied enemy did not take friendly fire damage! Expected %f, got %f" % [expected_slam_damage, ally_damage_taken])
-		return
-
-	if not is_equal_approx(brute_damage_taken, 0.0):
-		_fail("Casting brute damaged itself! Self-damage must be 0, got %f" % brute_damage_taken)
-		return
-
-	# Clean up friendly fire entities and spawned AOEs
-	ally_enemy.queue_free()
-	ff_brute.queue_free()
-	for child: Node in get_tree().current_scene.get_children():
-		if child is GroundDamageArea:
-			child.queue_free()
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	# Verify Akira Boss friendly fire toggle
-	var boss_scene: PackedScene = load("res://Enemy/akira_boss.tscn")
-	var boss: Character = boss_scene.instantiate() as Character
-	add_child(boss)
-	await get_tree().physics_frame
-	var boss_attack: GroundSlamAttack = boss.state_machine.get_node_or_null("EnemyAttack") as GroundSlamAttack
-	if boss_attack == null or not boss_attack.friendly_fire:
-		_fail("Akira Boss EnemyAttack does not have friendly_fire enabled.")
-		return
-	boss.queue_free()
-	await get_tree().physics_frame
-
-	print("Friendly fire verified: allied enemies take damage, caster takes 0 self-damage, boss configured.")
-	passed_checks += 1
-
-	# -------------------------------------------------------------
-	# Summary
-	# -------------------------------------------------------------
-	print("\n====================================================")
-	print("  ALL GROUND AOE & JUMP EVASION CHECKS PASSED (%d/4)" % passed_checks)
-	print("  1. Low cylinder height & floor alignment verified")
-	print("  2. Standing player hit & jumping player evasion verified")
-	print("  3. Downward raycast floor height detection verified")
-	print("  4. Friendly fire on allies and self-damage immunity verified")
-	print("====================================================\n")
-	get_tree().quit(0)
+	check_approx(aoe.global_position.y, _floor_top, "an area slammed from a ledge should snap to the ground below, not the caster's height", 0.05)
 
 
-func _fail(reason: String) -> void:
-	printerr("TEST FAILED: ", reason)
-	get_tree().quit(1)
+# --- helpers -----------------------------------------------------------------
+
+func _spawn_character(scene: PackedScene, at: Vector3) -> Character:
+	var character: Character = spawn(scene, _arena, at) as Character
+	disable_ai(character)
+	return character
+
+
+func _spawn_grounded_player(at: Vector3 = Vector3.INF) -> Character:
+	var position: Vector3 = (_arena.get_node("PlayerSpawn") as Node3D).global_position if at == Vector3.INF else at
+	var player: Character = _spawn_character(PLAYER_SCENE, position)
+	await wait_until(func() -> bool: return player.is_on_floor(), "player should land on the arena floor")
+	return player
+
+
+func _spawn_grounded_brute() -> Character:
+	var brute: Character = _spawn_character(BRUTE_SCENE, (_arena.get_node("EnemySpawn") as Node3D).global_position)
+	await wait_until(func() -> bool: return brute.is_on_floor(), "brute should land on the arena floor")
+	return brute
+
+
+## Point on the arena floor the slam targets: in front of the brute by the
+## attack's aoe_forward_offset (well inside the area's radius either way).
+func _impact_point(brute: Character, slam: GroundSlamAttack) -> Vector3:
+	var forward: Vector3 = brute.mesh_mount.global_basis.z
+	forward.y = 0.0
+	var point: Vector3 = brute.global_position + forward.normalized() * slam.aoe_forward_offset
+	return Vector3(point.x, brute.global_position.y, point.z)
+
+
+## Instances a test-owned area (TEST_AOE_DAMAGE, hits the player) at a floor
+## position. The position must be set before it enters the tree, because the
+## area strikes everything it overlaps as soon as it is ready.
+func _spawn_aoe(at: Vector3) -> GroundDamageArea:
+	return _add_aoe(AOE_SCENE.instantiate() as GroundDamageArea, at)
+
+
+func _add_aoe(aoe: GroundDamageArea, at: Vector3) -> GroundDamageArea:
+	aoe.damage = TEST_AOE_DAMAGE
+	aoe.can_hit_player = true
+	aoe.position = at
+	autofree(aoe)
+	_arena.add_child(aoe)
+	return aoe
+
+
+## Waits for the area's damage window to open and close again (or for the
+## area to be freed).
+func _wait_until_inactive(aoe: GroundDamageArea) -> void:
+	var hitbox: Area3D = aoe.get_node("DamageHitbox") as Area3D
+	await wait_until(func() -> bool: return not is_instance_valid(aoe) or hitbox.monitoring, "the area's damage window should open")
+	await wait_until(func() -> bool: return not is_instance_valid(aoe) or not hitbox.monitoring, "the area's damage window should close")
+
+
+## Ground areas spawned by game code (parented to the current scene, which is
+## this suite) that have not expired yet.
+func _live_aoes() -> Array[GroundDamageArea]:
+	var found: Array[GroundDamageArea] = []
+	for child: Node in get_children():
+		if child is GroundDamageArea and not child.is_queued_for_deletion() and not (child as GroundDamageArea).is_expired():
+			found.append(child as GroundDamageArea)
+	return found
+
+
+func _wait_until_no_live_aoes() -> void:
+	await wait_until(func() -> bool: return not _live_aoes().is_empty(), "the slam should spawn a ground area", SLAM_FRAMES)
+	await wait_until(func() -> bool: return _live_aoes().is_empty(), "the slam's ground area should expire", SLAM_FRAMES)
+
+
+func _add_pillar(base_center: Vector3, half_extent: float, height: float) -> StaticBody3D:
+	var pillar: StaticBody3D = StaticBody3D.new()
+	pillar.collision_layer = 1
+	pillar.collision_mask = 0
+	var shape: CollisionShape3D = CollisionShape3D.new()
+	var box: BoxShape3D = BoxShape3D.new()
+	box.size = Vector3(half_extent * 2.0, height, half_extent * 2.0)
+	shape.shape = box
+	shape.position = Vector3(0.0, height * 0.5, 0.0)
+	pillar.add_child(shape)
+	pillar.position = base_center
+	autofree(pillar)
+	_arena.add_child(pillar)
+	return pillar
+
+
+func _health(character: Character) -> float:
+	return character.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+
+
+## World height of the character's feet (bottom of its capsule).
+func _feet_y(character: Character) -> float:
+	var shape: CollisionShape3D = character.collision_shape_3d
+	return shape.global_position.y - (shape.shape as CapsuleShape3D).height * 0.5

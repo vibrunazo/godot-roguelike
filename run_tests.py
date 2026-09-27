@@ -18,11 +18,18 @@ Usage:
     python run_tests.py test/test_audio.tscn         # specific suite(s)
     python run_tests.py --fps 20                     # emulate a 20 fps device
     python run_tests.py --verbose                    # print engine output for passing suites too
+
+A suite whose script (test/test_x.gd next to test/test_x.tscn) contains a line
+    ## fps_matrix: 12, 20, 30, 60
+runs once per listed render rate instead of once at --fps. Use it for
+behavior that must not depend on the frame rate (hit windows, dash length,
+timers); see test/test_frame_rate_invariance.gd.
 """
 
 import argparse
 import glob
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -118,6 +125,24 @@ def collect_tests(paths: list[str]) -> list[str]:
     return sorted(glob.glob(os.path.join("test", "test_*.tscn")))
 
 
+FPS_MATRIX_PATTERN = re.compile(r"^##\s*fps_matrix:\s*([0-9][0-9,\s]*)$", re.MULTILINE)
+
+
+def declared_fps_matrix(scene_path: str) -> list[int] | None:
+    """Frame rates a suite declares with `## fps_matrix: 12, 20, 60` in its
+    script (same path and name as the scene, .gd instead of .tscn), or None."""
+    script_path = os.path.splitext(scene_path)[0] + ".gd"
+    try:
+        with open(script_path, "r", encoding="utf-8", errors="replace") as f:
+            match = FPS_MATRIX_PATTERN.search(f.read())
+    except OSError:
+        return None
+    if match is None:
+        return None
+    rates = [int(value) for value in re.split(r"[,\s]+", match.group(1).strip()) if value]
+    return rates or None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run Godot test suites headlessly under a watchdog.")
     parser.add_argument("tests", nargs="*", help="Suite scenes to run (default: test/test_*.tscn)")
@@ -131,9 +156,14 @@ def main() -> int:
         print("No tests found.", flush=True)
         return 1
 
-    total = len(tests)
-    print(f"=== Running {total} test suite{'s' if total != 1 else ''} "
-          f"(fixed {args.fps} fps, timeout: {args.timeout}s/suite) ===", flush=True)
+    runs: list[tuple[str, int]] = []
+    for test in tests:
+        for fps in declared_fps_matrix(test) or [args.fps]:
+            runs.append((test, fps))
+
+    total = len(runs)
+    print(f"=== Running {len(tests)} test suite{'s' if len(tests) != 1 else ''} as {total} run{'s' if total != 1 else ''} "
+          f"(fixed {args.fps} fps unless a suite declares fps_matrix, timeout: {args.timeout}s/run) ===", flush=True)
 
     stale = reap_stale_headless_godot()
     if stale > 0:
@@ -144,10 +174,10 @@ def main() -> int:
     passed = 0
     failed: list[tuple[str, str]] = []
 
-    for idx, test in enumerate(tests, 1):
-        test_display = os.path.basename(test)
+    for idx, (test, fps) in enumerate(runs, 1):
+        test_display = os.path.basename(test) if fps == args.fps else f"{os.path.basename(test)} @ {fps} fps"
         t0 = time.time()
-        cmd = [godot_bin, "--headless", "--fixed-fps", str(args.fps), "--path", ".", test]
+        cmd = [godot_bin, "--headless", "--fixed-fps", str(fps), "--path", ".", test]
         output = ""
         reason = ""
         try:
@@ -177,7 +207,7 @@ def main() -> int:
                 print(output, flush=True)
             continue
 
-        failed.append((test, reason))
+        failed.append((test_display if fps != args.fps else test, reason))
         print(f"[FAIL] [{idx}/{total}] {test_display}: {reason} ({elapsed:.2f}s)", flush=True)
         print(f"----- output of {test_display} -----", flush=True)
         print(output.rstrip(), flush=True)

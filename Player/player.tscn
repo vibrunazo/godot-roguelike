@@ -438,6 +438,7 @@ script = ExtResource("25_shake")
 character = NodePath("..")
 
 [node name="DashCooldown" type="Timer" parent="." unique_id=27957904]
+process_callback = 0
 wait_time = 0.3
 one_shot = true
 
@@ -597,6 +598,7 @@ script = ExtResource("3_p5o4e")
 shake_on_damage = true
 
 [node name="MannequinAnimationTree" type="AnimationTree" parent="GamedevTV_Mannequin_Medium" unique_id=1454625001]
+callback_mode_process = 0
 tree_root = SubResource("AnimationNodeStateMachine_o28un")
 anim_player = NodePath("../AnimationPlayer")
 parameters/JumpKick/TimeScale/scale = 1.3
@@ -646,6 +648,7 @@ character = NodePath("../..")
 metadata/_custom_type_script = "uid://21pflv2d1drw"
 
 [node name="DashDuration" type="Timer" parent="StateMachine/PlayerDash" unique_id=793371820]
+process_callback = 0
 wait_time = 0.1
 one_shot = true
 

@@ -255,6 +255,7 @@ libraries/ = SubResource("AnimationLibrary_default")
 libraries/EnemyAnimations = SubResource("AnimationLibrary_enemy")
 
 [node name="AnimationTree" type="AnimationTree" parent="Enemy_Large"]
+callback_mode_process = 0
 tree_root = SubResource("AnimationNodeStateMachine_root")
 anim_player = NodePath("../AnimationPlayer")
 parameters/MeleeAttack/TimeScale/scale = 1.0

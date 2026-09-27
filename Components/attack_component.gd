@@ -150,19 +150,31 @@ func add_exception(col: CollisionObject3D) -> void:
 		temporary_exceptions.append(col)
 
 
+## Expires rehit exceptions older than interval. Targets freed since they were
+## hit are dropped from both lists; they must be checked with
+## is_instance_valid() before any cast, since casting a freed object is a
+## script error that would abort the refresh for every other target too.
 func _refresh_cooldowns(interval: float) -> void:
-	var to_remove: Array[CollisionObject3D] = []
+	var to_remove: Array = []
+	var found_freed: bool = false
 	for target: Variant in hit_timestamps:
-		var col := target as CollisionObject3D
-		if not is_instance_valid(col):
-			to_remove.append(col)
+		if not is_instance_valid(target):
+			to_remove.append(target)
+			found_freed = true
 			continue
+		var col: CollisionObject3D = target as CollisionObject3D
 		var hit_time: float = hit_timestamps[col] as float
 		if current_time - hit_time >= interval:
 			to_remove.append(col)
 			temporary_exceptions.erase(col)
-	for target: CollisionObject3D in to_remove:
+	for target: Variant in to_remove:
 		hit_timestamps.erase(target)
+	if found_freed:
+		var live_exceptions: Array[CollisionObject3D] = []
+		for exception: Variant in temporary_exceptions:
+			if is_instance_valid(exception):
+				live_exceptions.append(exception as CollisionObject3D)
+		temporary_exceptions = live_exceptions
 
 
 func reset_exceptions() -> void:

@@ -124,7 +124,8 @@ func _ready() -> void:
 	all_enemies = generate_wave_enemies()
 	_print_wave_debug_info()
 
-	var tween: Tween = create_tween()
+	# Spawn pacing is gameplay: step it on the physics clock.
+	var tween: Tween = create_tween().set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
 	tween.tween_interval(2.5)
 	for enemy: Character in all_enemies:
 		tween.tween_interval(1.0)
