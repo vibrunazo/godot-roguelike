@@ -1,256 +1,98 @@
-extends Node
+## HealthBar: a character's floating health bar follows its AttributeComponent.
+## - The player and enemies wire their bar to their own AttributeComponent.
+## - The bar starts at the owner's current health fraction.
+## - Damage snaps the front bar to the new fraction at once while the back
+##   bar lags, then catches up within damage_lag_duration.
+## - Healing raises both bars immediately.
+## - When the owner is defeated the bar fades out and frees itself within
+##   fade_out_duration.
+## Expected values are fractions of the live max health, and waits derive
+## from the bar's own durations, so retuning health or animation timing
+## never breaks the suite.
+extends "res://test/lib/test_suite.gd"
 
-const TestUtils = preload("res://test/test_utils.gd")
+const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+const HEALTH_BAR_SCENE: PackedScene = preload("res://Components/health_bar.tscn")
+## Test-owned fraction of max health dealt or healed per step.
+const STEP_FRACTION: float = 0.25
 
-func _ready() -> void:
-	print("--- RUNNING HEALTH BAR TEST ---")
-	
-	var player_scene: PackedScene = load("res://Player/player.tscn")
-	var player: Character = player_scene.instantiate() as Character
-	add_child(player)
-	
-	await get_tree().physics_frame
-	await get_tree().process_frame
-	
-	# ---------------------------------------------------------
-	# PART 1: Node & Component Setup Verification on Player
-	# ---------------------------------------------------------
-	print("\n>>> PART 1: Verifying HealthBar Node on Player")
-	var health_bar: HealthBar = player.get_node_or_null("HealthBar") as HealthBar
-	if health_bar == null:
-		printerr("TEST FAILED: HealthBar node not found on Player.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("HealthBar found on Player.")
-	
-	# Check attribute_component assignment
-	if health_bar.attribute_component != player.attribute_component:
-		printerr("TEST FAILED: HealthBar attribute_component not assigned to Player.AttributeComponent.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("HealthBar attribute_component assignment verified.")
-	
-	# ---------------------------------------------------------
-	# PART 2: Scene Internal Structure & Properties
-	# ---------------------------------------------------------
-	print("\n>>> PART 2: Verifying SubViewport, ProgressBars, and Sprite3D")
-	var sub_viewport: SubViewport = health_bar.get_node_or_null("SubViewport") as SubViewport
-	if sub_viewport == null:
-		printerr("TEST FAILED: SubViewport not found under HealthBar.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	if sub_viewport.size.x <= 0 or sub_viewport.size.y <= 0:
-		printerr("TEST FAILED: SubViewport has non-positive size: ", sub_viewport.size)
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("SubViewport valid dimensions verified.")
-	
-	var front_bar: ProgressBar = health_bar.front_progress_bar
-	if front_bar == null:
-		printerr("TEST FAILED: front_progress_bar reference is null.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	if front_bar.show_percentage != false:
-		printerr("TEST FAILED: Expected show_percentage == false on FrontProgressBar.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("FrontProgressBar show_percentage disabled verified.")
-	
-	var health_bar_bg: ProgressBar = health_bar.health_progress_bar
-	if health_bar_bg == null:
-		printerr("TEST FAILED: health_progress_bar reference is null.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	if health_bar_bg.show_percentage != false:
-		printerr("TEST FAILED: Expected show_percentage == false on HealthProgressBar.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("HealthProgressBar show_percentage disabled verified.")
-	
-	# Verify HealthProgressBar renders behind FrontProgressBar (lower index in SubViewport)
-	if health_bar_bg.get_index() >= front_bar.get_index():
-		printerr("TEST FAILED: HealthProgressBar should be rendered before FrontProgressBar (behind it).")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("Progress bar z-order verified: HealthProgressBar is behind FrontProgressBar.")
-	
-	# Verify initial value starts at 100%
-	if not is_equal_approx(front_bar.value, 100.0):
-		printerr("TEST FAILED: Expected FrontProgressBar initial value == 100.0, got: ", front_bar.value)
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("FrontProgressBar initialized to 100% successfully.")
-	
-	# Verify health_color applied to front_bar fill stylebox
-	var fill_style: StyleBoxFlat = front_bar.get_theme_stylebox("fill") as StyleBoxFlat
-	if fill_style == null:
-		printerr("TEST FAILED: Expected fill style to be StyleBoxFlat on FrontProgressBar.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	if not fill_style.bg_color.is_equal_approx(health_bar.health_color):
-		printerr("TEST FAILED: Expected fill bg_color to match health_color ", health_bar.health_color, ", got: ", fill_style.bg_color)
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("Health color assignment to FrontProgressBar fill verified.")
-	
-	var sprite: Sprite3D = health_bar.get_node_or_null("Sprite3D") as Sprite3D
-	if sprite == null:
-		printerr("TEST FAILED: Sprite3D not found under HealthBar.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	if sprite.billboard != BaseMaterial3D.BILLBOARD_ENABLED:
-		printerr("TEST FAILED: Expected Sprite3D billboard == BILLBOARD_ENABLED (1), got: ", sprite.billboard)
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("Sprite3D billboard enabled verified.")
-	
-	if not (sprite.texture is ViewportTexture):
-		printerr("TEST FAILED: Expected Sprite3D texture to be ViewportTexture, got: ", sprite.texture)
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("Sprite3D ViewportTexture verified.")
-	
-	# ---------------------------------------------------------
-	# PART 3: Health Damage Animation & Tween Synchronization
-	# ---------------------------------------------------------
-	print("\n>>> PART 3: Testing Health Damage Animation & Tweening")
-	# Deal 25% max_health damage -> current health 75%
-	var player_attrs: AttributeComponent = player.attribute_component
-	var dmg_step: float = player_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH) * 0.25
-	player.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, dmg_step)
-	await get_tree().process_frame
-	
-	var expected_pct_1: float = (player_attrs.get_current(AttributeComponent.POOL_HEALTH) / player_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)) * 100.0
-	# Front bar should snap immediately to expected percentage
-	print("Front bar value immediately after damage: ", front_bar.value)
-	if not is_equal_approx(front_bar.value, expected_pct_1):
-		printerr("TEST FAILED: FrontProgressBar should snap immediately to ", expected_pct_1, ". Got: ", front_bar.value)
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("FrontProgressBar snapped immediately to ", expected_pct_1, "%!")
-	
-	# Health (background) bar should lag behind / be mid-tween (> expected_pct_1)
-	print("Health bar value during tween: ", health_bar_bg.value)
-	if health_bar_bg.value <= expected_pct_1:
-		printerr("TEST FAILED: HealthProgressBar should animate/lag behind FrontProgressBar. Got: ", health_bar_bg.value)
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("HealthProgressBar lag animation confirmed! Value mid-tween: ", health_bar_bg.value)
-	
-	# Wait for 0.25s for the 0.2s tween to complete
-	await get_tree().create_timer(0.25).timeout
-	await get_tree().process_frame
-	print("Health bar value after tween completed: ", health_bar_bg.value)
-	if not is_equal_approx(health_bar_bg.value, expected_pct_1):
-		printerr("TEST FAILED: HealthProgressBar did not reach target ", expected_pct_1, " after tween. Got: ", health_bar_bg.value)
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("HealthProgressBar smoothly completed animation to ", expected_pct_1, "%!")
-	
-	# Deal another 25% damage -> current health 50%
-	player.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, dmg_step)
-	await get_tree().process_frame
-	var expected_pct_2: float = (player_attrs.get_current(AttributeComponent.POOL_HEALTH) / player_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)) * 100.0
-	if not is_equal_approx(front_bar.value, expected_pct_2):
-		printerr("TEST FAILED: FrontProgressBar did not snap to ", expected_pct_2, ". Got: ", front_bar.value)
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	
-	await get_tree().create_timer(0.25).timeout
-	await get_tree().process_frame
-	if not is_equal_approx(health_bar_bg.value, expected_pct_2):
-		printerr("TEST FAILED: HealthProgressBar did not reach ", expected_pct_2, ". Got: ", health_bar_bg.value)
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("Second damage tween completed successfully! (", expected_pct_1, "% -> ", expected_pct_2, "%)")
-	player.queue_free()
-	await get_tree().process_frame
-	await get_tree().process_frame
-	
-	# ---------------------------------------------------------
-	# PART 4: Enemy HealthBar in LevelTemplate & Defeat Handling
-	# ---------------------------------------------------------
-	print("\n>>> PART 4: Testing Enemy HealthBar in LevelTemplate & Defeat Fade-Out")
-	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
-	var level: Node3D = level_scene.instantiate() as Node3D
-	add_child(level)
-	await get_tree().physics_frame
-	await get_tree().process_frame
-	
-	var dummy: CollisionObject3D = TestUtils.find_dummy(level)
-	var dummy_attrs: AttributeComponent = dummy.get_node("AttributeComponent") as AttributeComponent
-	var dummy_health_bar: HealthBar = dummy.get_node_or_null("HealthBar") as HealthBar
-	
-	if dummy_health_bar == null:
-		printerr("TEST FAILED: HealthBar node not found on enemy in LevelTemplate.")
-		level.queue_free()
-		get_tree().quit(1)
-		return
-	print("Enemy HealthBar found in LevelTemplate.")
-	
-	if dummy_health_bar.attribute_component != dummy_attrs:
-		printerr("TEST FAILED: Enemy HealthBar attribute_component not wired to dummy AttributeComponent.")
-		level.queue_free()
-		get_tree().quit(1)
-		return
-	print("Enemy HealthBar attribute_component assignment verified.")
-	
-	# Trigger defeat on dummy
-	dummy.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, dummy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH))
-	await get_tree().process_frame
-	
-	# Mid-fade check: transparency should be animating towards 1.0
-	print("Sprite3D transparency immediately after defeat: ", dummy_health_bar.sprite_3d.transparency)
-	if dummy_health_bar.sprite_3d.transparency < 0.0:
-		printerr("TEST FAILED: Sprite3D transparency invalid on defeat.")
-		level.queue_free()
-		get_tree().quit(1)
-		return
-	
-	# Wait for 0.25s for 0.2s fade-out tween and queue_free callback
-	await get_tree().create_timer(0.25).timeout
-	await get_tree().process_frame
-	await get_tree().process_frame
-	
-	# Verify health bar is queued for deletion or freed
-	if is_instance_valid(dummy_health_bar) and not dummy_health_bar.is_queued_for_deletion():
-		printerr("TEST FAILED: HealthBar was not queue_free'd after defeat fade-out completed.")
-		level.queue_free()
-		get_tree().quit(1)
-		return
-	print("Enemy HealthBar successfully faded out and auto-deleted via queue_free!")
-	
-	print("\n====================================================================")
-	print("  ALL HEALTH BAR TESTS PASSED!                                      ")
-	print("  1. HealthBar instantiated and connected to Player.AttributeComponent ")
-	print("  2. SubViewport, Sprite3D billboard, and dual-layer bars verified  ")
-	print("  3. FrontProgressBar initialized to 100% and custom color applied  ")
-	print("  4. Damage animates via Tween: front bar snaps, back bar smoothly lags")
-	print("  5. Enemy HealthBar configured on StaticBody3D in LevelTemplate    ")
-	print("  6. Defeat signal fades transparency to 1.0 and calls queue_free   ")
-	print("====================================================================")
-	
-	level.queue_free()
-	await get_tree().process_frame
-	await get_tree().process_frame
-	get_tree().quit(0)
+var _arena: Node3D
+
+
+func before_each() -> void:
+	_arena = load_arena()
+
+
+func test_characters_wire_the_bar_to_their_own_attributes() -> void:
+	for scene: PackedScene in [PLAYER_SCENE, MELEE_SCENE]:
+		var character: Character = _spawn(scene)
+		var bar: HealthBar = character.get_node_or_null("HealthBar") as HealthBar
+		if check(bar != null, "%s should carry a HealthBar" % character.name):
+			check(bar.attribute_component == character.attribute_component, "%s's HealthBar should follow its own AttributeComponent" % character.name)
+
+
+func test_bar_starts_at_the_current_health_fraction() -> void:
+	var fresh: HealthBar = _spawn(PLAYER_SCENE).get_node("HealthBar") as HealthBar
+	check_approx(fresh.front_progress_bar.value, 100.0, "a character at full health should start with a full bar")
+	# A bar attached to an owner that is already wounded.
+	var attributes: AttributeComponent = autofree(AttributeComponent.new()) as AttributeComponent
+	add_child(attributes)
+	attributes.damage_pool(AttributeComponent.POOL_HEALTH, attributes.get_current(AttributeComponent.STAT_MAX_HEALTH) * STEP_FRACTION)
+	var bar: HealthBar = HEALTH_BAR_SCENE.instantiate() as HealthBar
+	bar.attribute_component = attributes
+	autofree(bar)
+	add_child(bar)
+	check_approx(bar.front_progress_bar.value, _percentage(attributes), "the bar should start at the owner's current health, not at full")
+	check_approx(bar.health_progress_bar.value, _percentage(attributes), "the back bar should start at the owner's current health too")
+
+
+func test_damage_snaps_the_front_bar_and_the_back_bar_catches_up() -> void:
+	var player: Character = _spawn(PLAYER_SCENE)
+	var bar: HealthBar = player.get_node("HealthBar") as HealthBar
+	var attributes: AttributeComponent = player.attribute_component
+	attributes.damage_pool(AttributeComponent.POOL_HEALTH, attributes.get_current(AttributeComponent.STAT_MAX_HEALTH) * STEP_FRACTION)
+	var target: float = _percentage(attributes)
+	check_approx(bar.front_progress_bar.value, target, "the front bar should snap to the new health at once")
+	await wait_physics_frames(1)
+	check(bar.health_progress_bar.value > target, "the back bar should lag behind the front bar after damage")
+	await wait_until(func() -> bool: return is_equal_approx(bar.health_progress_bar.value, target), "the back bar should catch up within damage_lag_duration", _frames_for(bar.damage_lag_duration))
+
+
+func test_healing_raises_both_bars_immediately() -> void:
+	var player: Character = _spawn(PLAYER_SCENE)
+	var bar: HealthBar = player.get_node("HealthBar") as HealthBar
+	var attributes: AttributeComponent = player.attribute_component
+	var step: float = attributes.get_current(AttributeComponent.STAT_MAX_HEALTH) * STEP_FRACTION
+	attributes.damage_pool(AttributeComponent.POOL_HEALTH, step * 2.0)
+	await wait_until(func() -> bool: return is_equal_approx(bar.health_progress_bar.value, _percentage(attributes)), "the back bar should settle after damage", _frames_for(bar.damage_lag_duration))
+	attributes.restore_pool(AttributeComponent.POOL_HEALTH, step)
+	check_approx(bar.front_progress_bar.value, _percentage(attributes), "healing should raise the front bar at once")
+	check_approx(bar.health_progress_bar.value, _percentage(attributes), "healing should raise the back bar at once")
+
+
+func test_defeat_fades_the_bar_out_and_frees_it() -> void:
+	var enemy: Character = _spawn(MELEE_SCENE)
+	var bar: HealthBar = enemy.get_node("HealthBar") as HealthBar
+	var fade_duration: float = bar.fade_out_duration
+	enemy.hurtbox.receive_hit(enemy.attribute_component.get_current(AttributeComponent.POOL_HEALTH), Vector3.ZERO)
+	await wait_physics_frames(1)
+	if is_instance_valid(bar):
+		check(bar.sprite_3d.transparency > 0.0, "the bar should start fading out on defeat")
+	var bar_ref: WeakRef = weakref(bar)
+	await wait_until(func() -> bool: return bar_ref.get_ref() == null or (bar_ref.get_ref() as Node).is_queued_for_deletion(), "the bar should free itself after fading out", _frames_for(fade_duration))
+
+
+func _spawn(scene: PackedScene) -> Character:
+	var character: Character = spawn(scene, _arena, (_arena.get_node("PlayerSpawn") as Node3D).global_position) as Character
+	disable_ai(character)
+	return character
+
+
+func _percentage(attributes: AttributeComponent) -> float:
+	return attributes.get_current(AttributeComponent.POOL_HEALTH) / attributes.get_current(AttributeComponent.STAT_MAX_HEALTH) * 100.0
+
+
+## Physics frames covering the given game time, plus a small margin.
+func _frames_for(seconds: float) -> int:
+	return ceili(seconds * Engine.physics_ticks_per_second) + 5

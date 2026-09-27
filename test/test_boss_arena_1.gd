@@ -108,7 +108,7 @@ func _part2_arena_integrity() -> void:
 	print("Arena pins the akira boss on its WaveObjective.")
 	# Silence the spawner (read first: values are needed above) so the
 	# staggered spawn tween cannot fire while the checks run.
-	wave.set_script(null)
+	wave.stop_spawning()
 	for c: Node in wave.get_children():
 		c.queue_free()
 	var player: Node3D = arena.find_child("Player", true, false) as Node3D

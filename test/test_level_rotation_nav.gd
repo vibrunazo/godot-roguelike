@@ -98,7 +98,7 @@ func _verify_level(level_path: String) -> bool:
 		printerr("TEST FAILED: WaveObjective missing in ", level_path)
 		level.queue_free()
 		return false
-	wave_obj.set_script(null)
+	(wave_obj as WaveObjective).stop_spawning()
 	for c: Node in wave_obj.get_children():
 		c.queue_free()
 

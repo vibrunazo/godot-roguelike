@@ -24,7 +24,7 @@ func _ready() -> void:
 	# Disable any other enemies spawned by the level's WaveObjective so they cannot interfere
 	var wave_obj: Node = level.find_child("WaveObjective", true, false)
 	if wave_obj != null:
-		wave_obj.set_script(null)
+		(wave_obj as WaveObjective).stop_spawning()
 	for enemy_node: Node in level.find_children("*", "Character", true, false):
 		var enemy_char: Character = enemy_node as Character
 		if enemy_char != null and enemy_char != player and enemy_char != dummy:

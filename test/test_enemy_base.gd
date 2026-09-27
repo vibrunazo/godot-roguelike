@@ -1739,8 +1739,8 @@ func _ready() -> void:
 	var fs_action_event := InputEventAction.new()
 	fs_action_event.action = "ui_toggle_fullscreen"
 	fs_action_event.pressed = true
-	UI._unhandled_key_input(fs_action_event)
-	print("UI._unhandled_key_input with ui_toggle_fullscreen verified.")
+	UI._unhandled_input(fs_action_event)
+	print("UI._unhandled_input with ui_toggle_fullscreen verified.")
 
 	var stretch_mode: Variant = ProjectSettings.get_setting("display/window/stretch/mode")
 	var stretch_aspect: Variant = ProjectSettings.get_setting("display/window/stretch/aspect")

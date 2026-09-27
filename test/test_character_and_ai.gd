@@ -1,1132 +1,376 @@
-extends Node
+## Characters, teams, and the enemy AI (mind) driving the body:
+## - Player and enemies are Characters on opposite teams; nearest-target
+##   resolution picks the closest living opponent.
+## - Player input (by action name) sets the player's movement intent.
+## - The AI mind commands the body; a hit stuns the body, and the mind cannot
+##   attack until the body recovers; defeated characters stop acting entirely.
+## - Projectiles are parented to the world, so they outlive their shooter.
+## - Ranged AI attacks a player in range and then moves on to one of its
+##   configured next states; enemies never use auto-aim.
+## - Aim gates: AIAttack and AIPursue only order an attack when the body faces
+##   the target within desired_angle (they hold fire while unable to turn).
+## - Waves place enemies at distinct points on the navmesh; wave budgets add up
+##   to the difficulty with two tier-1 enemies first; difficulty follows
+##   ProgressionState's own curve; the level title shows the level number.
+##
+## Cones, ranges, difficulties and speeds are read from the live nodes or set
+## by the test, so retuning any of them never breaks the suite.
+extends "res://test/lib/test_suite.gd"
 
-## Automated test suite for Issue #2:
-## - Unified Character class shared by Player and Enemies
-## - Group-based identification ("player" vs "enemy") and team targeting
-## - Decoupled PlayerInputComponent
-## - Dual State Machines on Enemies (Body physical state vs Mind AI state)
-## - Stun state independence and recovery
+const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+const RANGED_SCENE: PackedScene = preload("res://Enemy/ranged_enemy.tscn")
+const BASE_ENEMY_SCENE: PackedScene = preload("res://Enemy/enemy_base.tscn")
+const BRUTE_SCENE: PackedScene = preload("res://Enemy/enemy_brute.tscn")
+## Frame budget for an AI decision that involves turning and attacking.
+const DECISION_FRAMES: int = 600
+## Frames an aim gate must hold fire while the body cannot turn.
+const HOLD_FRAMES: int = 30
+## Test-owned wave budget and tier layout for the wave generation tests.
+const TEST_BUDGET: int = 10
+const WAVE_SAMPLES: int = 25
+## Test-owned level number for the level title test.
+const TITLE_LEVEL: int = 7
 
-const PlayerScene: PackedScene = preload("res://Player/player.tscn")
-const MeleeEnemyScene: PackedScene = preload("res://Enemy/melee_enemy.tscn")
-const RangedEnemyScene: PackedScene = preload("res://Enemy/ranged_enemy.tscn")
-const BaseEnemyScene: PackedScene = preload("res://Enemy/enemy_base.tscn")
-
-
-func _ready() -> void:
-	print("--- RUNNING CHARACTER & AI STATE MACHINE TEST ---")
-	
-	var floor_body := StaticBody3D.new()
-	var floor_col := CollisionShape3D.new()
-	var floor_box := BoxShape3D.new()
-	floor_box.size = Vector3(100.0, 1.0, 100.0)
-	floor_col.shape = floor_box
-	floor_body.add_child(floor_col)
-	floor_body.position = Vector3(0.0, -0.5, 0.0)
-	add_child(floor_body)
-
-	test_part_1_unified_character_and_groups()
-	await test_part_2_team_targeting()
-	await test_part_3_player_input_component()
-	await test_part_4_dual_state_machines()
-	await test_part_5_stun_independence_and_recovery()
-	await test_part_6_ranged_projectile_spawner()
-	await test_part_7_ranged_enemy_ai_attack_timing()
-	await test_part_8_defeat_inactivity_and_rotation_lock()
-	await test_part_9_scattered_enemy_spawning()
-	test_part_10_enemy_difficulty_and_wave_budget_spawning()
-	await test_part_11_ai_attack_aim_gate()
-	await test_part_12_pursue_aim_gate()
-
-	print("\n====================================================================")
-	print("  ALL CHARACTER & AI STATE MACHINE TESTS PASSED!                    ")
-	print("  1. Unified Character class & group identification verified       ")
-	print("  2. Team targeting and nearest target resolution verified          ")
-	print("  3. Decoupled PlayerInputComponent verified                       ")
-	print("  4. Dual State Machines (Body vs Mind) verified                   ")
-	print("  5. Stun state independence & seamless locomotion recovery ok     ")
-	print("  6. ProjectileSpawnerComponent on ranged characters verified      ")
-	print("  7. RangedEnemy attack timing & real polling path verified        ")
-	print("  8. Defeat inactivity & rotation lock on corpses verified        ")
-	print("  9. Scattered enemy spawning on navmesh verified                  ")
-	print(" 10. Enemy difficulty ratings & budget wave spawning verified      ")
-	print(" 11. AIAttack aim gate (desired_angle) verified                      ")
-	print(" 12. AIPursue aim gate (melee turns before punching) verified        ")
-	print("====================================================================")
-	get_tree().quit(0)
+var _arena: Node3D
 
 
-func test_part_1_unified_character_and_groups() -> void:
-	print("\n>>> PART 1: Unified Character Class & Group Identification")
-	
-	# Instantiate Player
-	var player: Character = PlayerScene.instantiate() as Character
-	if player == null:
-		printerr("TEST FAILED: Player is not an instance of Character.")
-		get_tree().quit(1)
-		return
-	if not (player is CharacterBody3D):
-		printerr("TEST FAILED: Player is not a CharacterBody3D.")
-		get_tree().quit(1)
-		return
-	if not player.is_player() or player.is_enemy():
-		printerr("TEST FAILED: Player team helper methods failed. is_player(): ", player.is_player(), " is_enemy(): ", player.is_enemy())
-		get_tree().quit(1)
-		return
-	if not player.is_in_group("player") or player.is_in_group("enemy"):
-		printerr("TEST FAILED: Player group assignment invalid.")
-		get_tree().quit(1)
-		return
-	print("Player verified as Character in group 'player'.")
-	player.free()
-
-	# Instantiate Base Enemy
-	var base_enemy: Character = BaseEnemyScene.instantiate() as Character
-	if base_enemy == null:
-		printerr("TEST FAILED: Base enemy is not an instance of Character.")
-		get_tree().quit(1)
-		return
-	if base_enemy.is_player() or not base_enemy.is_enemy():
-		printerr("TEST FAILED: Base enemy team helper methods failed.")
-		get_tree().quit(1)
-		return
-	if not base_enemy.is_in_group("enemy") or base_enemy.is_in_group("player"):
-		printerr("TEST FAILED: Base enemy group assignment invalid.")
-		get_tree().quit(1)
-		return
-	print("Base enemy verified as Character in group 'enemy'.")
-	base_enemy.free()
-
-	# Instantiate Melee Enemy
-	var melee_enemy: Character = MeleeEnemyScene.instantiate() as Character
-	if melee_enemy == null or not melee_enemy.is_enemy() or melee_enemy.is_player():
-		printerr("TEST FAILED: Melee enemy Character / team verification failed.")
-		get_tree().quit(1)
-		return
-	print("Melee enemy verified as Character in group 'enemy'.")
-	melee_enemy.free()
-
-	# Instantiate Ranged Enemy
-	var ranged_enemy: Character = RangedEnemyScene.instantiate() as Character
-	if ranged_enemy == null or not ranged_enemy.is_enemy() or ranged_enemy.is_player():
-		printerr("TEST FAILED: Ranged enemy Character / team verification failed.")
-		get_tree().quit(1)
-		return
-	print("Ranged enemy verified as Character in group 'enemy'.")
-	ranged_enemy.free()
+func before_each() -> void:
+	_arena = load_arena()
 
 
-func test_part_2_team_targeting() -> void:
-	print("\n>>> PART 2: Team Targeting & Nearest Target Resolution")
-	var player: Character = PlayerScene.instantiate() as Character
-	var enemy1: Character = MeleeEnemyScene.instantiate() as Character
-	var enemy2: Character = MeleeEnemyScene.instantiate() as Character
-	
-	add_child(player)
-	add_child(enemy1)
-	add_child(enemy2)
-	
-	player.global_position = Vector3(0.0, 0.0, 0.0)
-	enemy1.global_position = Vector3(5.0, 0.0, 0.0)
-	enemy2.global_position = Vector3(10.0, 0.0, 0.0)
-	
-	await get_tree().process_frame
-	
-	# Player looking for enemy should find the closest one (enemy1)
-	var target_for_player: Character = player.get_nearest_target("enemy")
-	if target_for_player != enemy1:
-		printerr("TEST FAILED: Player did not resolve closest enemy. Expected enemy1, got: ", target_for_player)
-		get_tree().quit(1)
-		return
-	print("Player nearest enemy resolved correctly (enemy1 at 5m).")
-	
-	# Enemy looking for player
-	var target_for_enemy: Character = enemy1.get_nearest_target("player")
-	if target_for_enemy != player:
-		printerr("TEST FAILED: Enemy did not resolve player. Got: ", target_for_enemy)
-		get_tree().quit(1)
-		return
-	print("Enemy nearest player resolved correctly.")
-	
-	# Defeating enemy1 should cause player to now resolve enemy2
-	enemy1.attribute_component.set_pool_current(AttributeComponent.POOL_HEALTH, 0.0)
-	var new_target_for_player: Character = player.get_nearest_target("enemy")
-	if new_target_for_player != enemy2:
-		printerr("TEST FAILED: Player did not ignore defeated enemy1. Got: ", new_target_for_player)
-		get_tree().quit(1)
-		return
-	print("Player correctly ignored defeated enemy1 and targeted living enemy2.")
-	
-	player.queue_free()
-	enemy1.queue_free()
-	enemy2.queue_free()
-	await get_tree().process_frame
+func after_each() -> void:
+	ProgressionState.reset_run()
 
 
-func test_part_3_player_input_component() -> void:
-	print("\n>>> PART 3: Decoupled Player Input Component")
-	var player: Character = PlayerScene.instantiate() as Character
-	add_child(player)
-	await get_tree().process_frame
-	
-	var input_comp: PlayerInputComponent = player.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
-	if input_comp == null:
-		printerr("TEST FAILED: PlayerInputComponent not found on Player.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	if input_comp.character != player:
-		printerr("TEST FAILED: PlayerInputComponent.character is not wired to Player.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("PlayerInputComponent node and character wiring verified.")
+# --- Characters and teams ------------------------------------------------------
 
-	# Verify setting player intents
-	player.move_direction = Vector3(1.0, 0.0, 0.0).normalized()
-	player.aim_direction = Vector3(0.0, 0.0, 1.0).normalized()
-	if not player.move_direction.is_equal_approx(Vector3(1.0, 0.0, 0.0)):
-		printerr("TEST FAILED: move_direction intent mismatch.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	if not player.aim_direction.is_equal_approx(Vector3(0.0, 0.0, 1.0)):
-		printerr("TEST FAILED: aim_direction intent mismatch.")
-		player.queue_free()
-		get_tree().quit(1)
-		return
-	print("Player input intent vectors verified.")
-	player.queue_free()
-	await get_tree().process_frame
+func test_player_and_enemies_are_characters_on_opposite_teams() -> void:
+	var player: Character = autofree(PLAYER_SCENE.instantiate()) as Character
+	check(player.is_player() and not player.is_enemy(), "the player should be on the player team")
+	check(player.is_in_group("player") and not player.is_in_group("enemy"), "the player should only be in the 'player' group")
+	for scene: PackedScene in [BASE_ENEMY_SCENE, MELEE_SCENE, RANGED_SCENE]:
+		var enemy: Character = autofree(scene.instantiate()) as Character
+		if check(enemy != null, "%s should instantiate a Character" % scene.resource_path):
+			check(enemy.is_enemy() and not enemy.is_player(), "%s should be on the enemy team" % scene.resource_path)
+			check(enemy.is_in_group("enemy") and not enemy.is_in_group("player"), "%s should only be in the 'enemy' group" % scene.resource_path)
 
 
-func test_part_4_dual_state_machines() -> void:
-	print("\n>>> PART 4: Dual State Machine Architecture (Body vs Mind)")
-	var enemy: Character = MeleeEnemyScene.instantiate() as Character
-	add_child(enemy)
-	await get_tree().process_frame
-	
-	var body_sm: StateMachine = enemy.state_machine
-	var mind_sm: AIStateMachine = enemy.ai_state_machine as AIStateMachine
-	
-	if body_sm == null:
-		printerr("TEST FAILED: Body StateMachine is null on MeleeEnemy.")
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if mind_sm == null:
-		printerr("TEST FAILED: Mind AIStateMachine is null on MeleeEnemy.")
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if body_sm.initial_state.name != "EnemyMove":
-		printerr("TEST FAILED: Body initial_state is not EnemyMove. Got: ", body_sm.initial_state.name)
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if mind_sm.initial_state.name != "AIPursue":
-		printerr("TEST FAILED: Mind initial_state is not AIPursue. Got: ", mind_sm.initial_state.name)
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Body (EnemyMove) and Mind (AIPursue) initial states verified.")
-	
-	# Test Mind issuing movement command to Body
-	mind_sm.command_move(Vector3(0.0, 0.0, 1.0), Vector3(0.0, 0.0, 1.0))
-	if not enemy.move_direction.is_equal_approx(Vector3(0.0, 0.0, 1.0)):
-		printerr("TEST FAILED: command_move did not set character move_direction.")
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if not enemy.face_target.is_equal_approx(Vector3(0.0, 0.0, 1.0)):
-		printerr("TEST FAILED: command_move did not set character face_target.")
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AIStateMachine command_move() set character intents successfully.")
-	
-	# Test Mind issuing stop command
-	mind_sm.command_stop()
-	if not enemy.move_direction.is_zero_approx() or not enemy.face_target.is_zero_approx():
-		printerr("TEST FAILED: command_stop did not clear intents.")
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AIStateMachine command_stop() cleared character intents successfully.")
-	enemy.queue_free()
-	await get_tree().process_frame
+func test_nearest_target_is_the_closest_living_opponent() -> void:
+	var player: Character = _spawn(PLAYER_SCENE, Vector3(0.0, 1.0, 0.0))
+	var near: Character = _spawn(MELEE_SCENE, Vector3(5.0, 1.0, 0.0))
+	var far: Character = _spawn(MELEE_SCENE, Vector3(10.0, 1.0, 0.0))
+	await wait_physics_frames(1)
+	check(player.get_nearest_target() == near, "the player should target the closest enemy")
+	check(near.get_nearest_target() == player, "an enemy should target the player")
+	near.hurtbox.receive_hit(near.attribute_component.get_current(AttributeComponent.POOL_HEALTH), Vector3.ZERO)
+	check(player.get_nearest_target() == far, "defeated enemies should never be targeted")
 
 
-func test_part_5_stun_independence_and_recovery() -> void:
-	print("\n>>> PART 5: Stun State Independence & Recovery")
-	var enemy: Character = MeleeEnemyScene.instantiate() as Character
-	var player: Character = PlayerScene.instantiate() as Character
-	add_child(enemy)
-	add_child(player)
-	enemy.global_position = Vector3(0.0, 1.0, 0.0)
-	player.global_position = Vector3(2.0, 1.0, 0.0)
-	enemy.velocity = Vector3(0.0, -1.0, 0.0)
-	enemy.move_and_slide()
-	await get_tree().physics_frame
-	await get_tree().process_frame
-	
-	var body_sm: StateMachine = enemy.state_machine
-	var mind_sm: AIStateMachine = enemy.ai_state_machine as AIStateMachine
-	
-	# Verify taking a hit enters EnemyStun on Body (struck-gated; silent pool
-	# writes such as DoT ticks must not stun)
-	if not enemy.hurtbox.receive_hit(10.0, Vector3.ZERO):
-		printerr("TEST FAILED: Hurtbox hit should land.")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
+func test_player_input_sets_the_movement_intent() -> void:
+	var player: Character = _spawn(PLAYER_SCENE, (_arena.get_node("PlayerSpawn") as Node3D).global_position)
+	var input_component: PlayerInputComponent = player.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
+	if not check(input_component != null and input_component.character == player, "the player's input component should drive the player"):
 		return
-	await get_tree().process_frame
-	if body_sm.state.name != "EnemyStun":
-		printerr("TEST FAILED: Taking damage did not put body into EnemyStun. Got: ", body_sm.state.name)
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Body successfully entered EnemyStun upon taking damage.")
-	
-	# While Body is stunned, Mind order_attack should return false and NOT interrupt stun
-	var order_success: bool = mind_sm.order_attack("EnemyAttack")
-	if order_success or body_sm.state.name != "EnemyStun":
-		printerr("TEST FAILED: order_attack interrupted EnemyStun! State: ", body_sm.state.name)
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Body protected: AI order_attack() blocked during EnemyStun.")
-	
-	# Simulate stun animation finish
-	enemy.animation_tree.animation_finished.emit("Stun")
-	if body_sm.state.name != "EnemyMove":
-		printerr("TEST FAILED: Stun finish did not return body to EnemyMove. Got: ", body_sm.state.name)
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Body cleanly returned to EnemyMove after stun animation finished.")
-	
-	# Now that body is in EnemyMove, AI can order attack
-	var post_stun_attack: bool = mind_sm.order_attack("EnemyAttack")
-	if not post_stun_attack or body_sm.state.name != "EnemyAttack":
-		printerr("TEST FAILED: AI order_attack failed after recovering from stun. State: ", body_sm.state.name)
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AI order_attack succeeded after recovering from stun.")
-	
-	player.queue_free()
-	enemy.queue_free()
-	await get_tree().process_frame
+	hold_action(&"move_right")
+	await wait_until(func() -> bool: return not player.move_direction.is_zero_approx(), "holding a move action should set a movement intent", 10)
+	check(is_zero_approx(player.move_direction.y), "the movement intent should be horizontal")
+	release_action(&"move_right")
+	await wait_until(func() -> bool: return player.move_direction.is_zero_approx(), "releasing the move action should clear the intent", 10)
 
 
-func test_part_6_ranged_projectile_spawner() -> void:
-	print("\n>>> PART 6: Ranged Projectile Spawner Component")
-	var ranged_enemy: Character = RangedEnemyScene.instantiate() as Character
-	add_child(ranged_enemy)
-	ranged_enemy.global_position = Vector3(0.0, 1.0, 0.0)
-	await get_tree().process_frame
-	
-	var spawner: ProjectileSpawnerComponent = ranged_enemy.get_node_or_null("ProjectileSpawnerComponent") as ProjectileSpawnerComponent
-	if spawner == null:
-		printerr("TEST FAILED: ProjectileSpawnerComponent missing on RangedEnemy.")
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if spawner.spawn_point == null:
-		printerr("TEST FAILED: ProjectileSpawnerComponent spawn_point is null.")
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	
-	var world: Node = get_tree().current_scene
-	var child_count_before: int = world.get_child_count()
+# --- Mind and body -------------------------------------------------------------
+
+func test_ai_mind_commands_move_and_stop_the_body() -> void:
+	var enemy: Character = _spawn(MELEE_SCENE, (_arena.get_node("EnemySpawn") as Node3D).global_position)
+	disable_ai(enemy)
+	var direction: Vector3 = Vector3(0.0, 0.0, 1.0)
+	enemy.ai_state_machine.command_move(direction, direction)
+	check(enemy.move_direction.is_equal_approx(direction), "command_move should set the body's movement intent")
+	check(enemy.face_target.is_equal_approx(direction), "command_move should set the body's facing target")
+	enemy.ai_state_machine.command_stop()
+	check(enemy.move_direction.is_zero_approx() and enemy.face_target.is_zero_approx(), "command_stop should clear the body's intents")
+
+
+func test_a_hit_stuns_the_body_and_the_mind_cannot_attack_until_it_recovers() -> void:
+	var enemy: Character = await _grounded_enemy(MELEE_SCENE)
+	disable_ai(enemy)
+	var body: StateMachine = enemy.state_machine
+	var stun_name: String = str(enemy.stun_state.name)
+	check(enemy.hurtbox.receive_hit(1.0, Vector3.ZERO), "the hit should land")
+	check_eq(str(body.state.name), stun_name, "a hit should put the body in its stun state")
+	check(not enemy.ai_state_machine.order_attack("EnemyAttack"), "the mind must not be able to order an attack while stunned")
+	check_eq(str(body.state.name), stun_name, "a refused order must not interrupt the stun")
+	await wait_until(func() -> bool: return str(body.state.name) != stun_name, "the body should recover from the stun", DECISION_FRAMES)
+	check(enemy.ai_state_machine.order_attack("EnemyAttack"), "after recovering, the mind should be able to order an attack")
+	check_eq(str(body.state.name), "EnemyAttack", "the ordered attack should run on the body")
+
+
+func test_defeated_characters_stop_acting() -> void:
+	var enemy: Character = await _grounded_enemy(MELEE_SCENE)
+	var mind: AIStateMachine = enemy.ai_state_machine
+	enemy.hurtbox.receive_hit(enemy.attribute_component.get_current(AttributeComponent.POOL_HEALTH), Vector3.ZERO)
+	check(not enemy.is_alive(), "a character at zero health should not be alive")
+	check_eq(enemy.state_machine.state, enemy.defeat_state, "the body should enter its defeat state")
+	check(not mind.is_physics_processing(), "the mind should stop running on defeat")
+	check(enemy.move_direction.is_zero_approx() and enemy.face_target.is_zero_approx(), "intents should be cleared on defeat")
+	var rotation_before: Vector3 = enemy.mesh_mount.global_rotation
+	enemy.look_at_target(enemy.global_position + Vector3(10.0, 0.0, 10.0), 1.0)
+	enemy.look_toward_direction(Vector3(0.0, 0.0, -1.0), 1.0)
+	check(enemy.mesh_mount.global_rotation.is_equal_approx(rotation_before), "a corpse must never turn")
+	mind.command_move(Vector3(1.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0))
+	check(enemy.move_direction.is_zero_approx(), "the mind must not move a corpse")
+	check(not mind.order_attack("EnemyAttack"), "the mind must not order a corpse to attack")
+	check_eq(enemy.state_machine.state, enemy.defeat_state, "a corpse should stay defeated")
+
+
+func test_projectiles_outlive_their_shooter() -> void:
+	var shooter: Character = _spawn(RANGED_SCENE, (_arena.get_node("EnemySpawn") as Node3D).global_position)
+	disable_ai(shooter)
+	await wait_physics_frames(1)
+	var spawner: ProjectileSpawnerComponent = shooter.get_node("ProjectileSpawnerComponent") as ProjectileSpawnerComponent
 	spawner.spawn_projectile()
-	var spawned: EnemyProjectile = null
-	for i: int in range(child_count_before, world.get_child_count()):
-		var c: Node = world.get_child(i)
-		if c is EnemyProjectile:
-			spawned = c as EnemyProjectile
-			break
-	if spawned == null:
-		printerr("TEST FAILED: spawn_projectile did not instantiate EnemyProjectile in world container.")
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
+	var projectile: EnemyProjectile = null
+	for child: Node in get_children():
+		if child is EnemyProjectile:
+			projectile = child as EnemyProjectile
+	if not check(projectile != null, "spawn_projectile() should put a projectile in the world"):
 		return
-	if spawned.get_parent() != world or spawned.shooter != ranged_enemy:
-		printerr("TEST FAILED: Projectile not parented to world container with shooter reference.")
-		spawned.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
+	check(projectile.shooter == shooter, "the projectile should remember its shooter")
+	shooter.free()
+	await wait_physics_frames(1)
+	check(is_instance_valid(projectile), "a projectile in flight must survive its shooter being removed")
+
+
+# --- Ranged AI -----------------------------------------------------------------
+
+func test_ranged_ai_attacks_a_player_in_range_then_moves_on() -> void:
+	var enemy: Character = await _grounded_enemy(RANGED_SCENE)
+	var mind: AIStateMachine = enemy.ai_state_machine
+	var meander: AIMeander = mind.get_node("AIMeander") as AIMeander
+	var attack: AIAttack = mind.get_node("AIAttack") as AIAttack
+	var player: Character = _spawn_quiet_player(enemy.global_position + Vector3(meander.attack_range * 0.75, 0.0, 0.0))
+	if not await wait_until(func() -> bool: return enemy.state_machine.state.name == attack.attack_state_name, "a ranged enemy should attack a player within its attack range", DECISION_FRAMES):
 		return
-	print("ProjectileSpawnerComponent successfully spawned projectile into world container.")
-	spawned.queue_free()
-	ranged_enemy.queue_free()
-	await get_tree().process_frame
+	check(_alignment(enemy, player) >= _cone_alignment(attack.desired_angle), "the attack should start with the target inside the aim cone")
+	check(enemy.current_target == null, "enemies never use auto-aim targeting")
+	await wait_until(func() -> bool: return mind.state != attack, "after attacking, the mind should leave AIAttack", DECISION_FRAMES)
+	if not attack.next_states.is_empty():
+		check(attack.next_states.has(mind.state), "after attacking, the mind should move to one of AIAttack.next_states (got %s)" % mind.state.name)
 
 
-func test_part_7_ranged_enemy_ai_attack_timing() -> void:
-	print("\n>>> PART 7: Ranged Enemy AI Attack Timing & State Cycle")
-	var ranged_enemy: Character = RangedEnemyScene.instantiate() as Character
-	add_child(ranged_enemy)
-	ranged_enemy.global_position = Vector3(0.0, 1.0, 0.0)
-	ranged_enemy.velocity = Vector3(0.0, -1.0, 0.0)
-	ranged_enemy.move_and_slide()
-	await get_tree().physics_frame
-	await get_tree().process_frame
+# --- Aim gates -----------------------------------------------------------------
 
-	var ai_sm: AIStateMachine = ranged_enemy.ai_state_machine as AIStateMachine
-	var body_sm: StateMachine = ranged_enemy.state_machine
-	if ai_sm == null or body_sm == null:
-		printerr("TEST FAILED: RangedEnemy state machines missing.")
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
+func test_ai_attack_holds_fire_while_it_cannot_face_the_target() -> void:
+	var setup: Array = await _ranged_facing_away()
+	var enemy: Character = setup[0]
+	var attack: AIAttack = setup[1]
+	attack.desired_angle = 90.0
+	_freeze_rotation(enemy)
+	enemy.ai_state_machine.request_state("AIAttack")
+	await wait_physics_frames(_hold_frames(attack.cooldown_timer))
+	check(enemy.state_machine.state.name != attack.attack_state_name, "AIAttack must not fire while the target is outside its cone")
+	check(enemy.ai_state_machine.state == attack, "AIAttack should keep aiming instead of giving up")
+
+
+func test_ai_attack_with_a_full_cone_fires_regardless_of_facing() -> void:
+	var setup: Array = await _ranged_facing_away()
+	var enemy: Character = setup[0]
+	var attack: AIAttack = setup[1]
+	attack.desired_angle = 360.0
+	_freeze_rotation(enemy)
+	await _order_until_attacking(enemy, "AIAttack", attack.attack_state_name, "a 360-degree cone should fire even while facing away")
+
+
+func test_ai_attack_with_a_zero_cone_fires_only_on_exact_alignment() -> void:
+	var setup: Array = await _ranged_facing_away()
+	var enemy: Character = setup[0]
+	var attack: AIAttack = setup[1]
+	var player: Character = setup[2]
+	attack.desired_angle = 0.0
+	var turn_speed: float = _freeze_rotation(enemy)
+	enemy.ai_state_machine.request_state("AIAttack")
+	await wait_physics_frames(_hold_frames(attack.cooldown_timer))
+	check(enemy.state_machine.state.name != attack.attack_state_name, "a zero cone must hold fire while misaligned")
+	enemy.attribute_component.set_base(AttributeComponent.STAT_ROTATION_SPEED, turn_speed)
+	if await _order_until_attacking(enemy, "AIAttack", attack.attack_state_name, "a zero cone should fire once the AI has turned to face the target exactly"):
+		check(_alignment(enemy, player) >= _cone_alignment(0.0), "a zero cone should only fire on (near) exact alignment")
+
+
+func test_melee_pursue_turns_to_face_the_target_before_attacking() -> void:
+	var enemy: Character = await _grounded_enemy(MELEE_SCENE)
+	var pursue: AIPursue = enemy.ai_state_machine.get_node("AIPursue") as AIPursue
+	pursue.desired_angle = 90.0
+	var player: Character = _spawn_quiet_player(enemy.global_position + Vector3(pursue.attack_range * 0.5, 0.0, 0.0))
+	await wait_until(func() -> bool: return player.is_on_floor(), "player should land")
+	_turn_to_face(enemy, enemy.global_position - player.global_position)
+	var turn_speed: float = _freeze_rotation(enemy)
+	# The mind may start in another state (e.g. waiting); pursue explicitly so
+	# the hold below really exercises the pursue aim gate.
+	enemy.ai_state_machine.request_state("AIPursue")
+	await wait_physics_frames(_hold_frames(maxf(pursue.cooldown_timer, pursue.attack_cooldown)))
+	check(enemy.ai_state_machine.state == pursue, "setup: the mind should be pursuing during the hold")
+	check(enemy.state_machine.state.name != pursue.attack_state_name, "a melee enemy must not attack while facing away")
+	enemy.attribute_component.set_base(AttributeComponent.STAT_ROTATION_SPEED, turn_speed)
+	if await wait_until(func() -> bool: return enemy.state_machine.state.name == pursue.attack_state_name, "the melee enemy should turn and attack", DECISION_FRAMES):
+		check(_alignment(enemy, player) >= _cone_alignment(pursue.desired_angle), "the attack should start inside the pursue cone")
+
+
+# --- Waves and progression -----------------------------------------------------
+
+func test_wave_places_enemies_at_distinct_points_on_the_navmesh() -> void:
+	var resource: EnemyResource = EnemyResource.new()
+	resource.scene = MELEE_SCENE
+	var wave: WaveObjective = WaveObjective.new()
+	wave.boss_resources = [resource, resource, resource]
+	wave.first_spawn_delay = 1000.0
+	autofree(wave)
+	_arena.add_child(wave)
+	var nav_map: RID = _arena.get_world_3d().navigation_map
+	if not await wait_for_navigation(_arena):
 		return
-
-	var ai_meander: AIMeander = ai_sm.get_node_or_null("AIMeander") as AIMeander
-	var ai_attack: AIAttack = ai_sm.get_node_or_null("AIAttack") as AIAttack
-	var ai_wait: AIWait = ai_sm.get_node_or_null("AIWait") as AIWait
-
-	if ai_meander == null or ai_attack == null or ai_wait == null:
-		printerr("TEST FAILED: RangedEnemy missing AIMeander, AIAttack, or AIWait.")
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-
-	if ai_sm.initial_state != ai_meander:
-		printerr("TEST FAILED: RangedEnemy initial AI state expected AIMeander, got: ", ai_sm.initial_state.name if ai_sm.initial_state else "null")
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("RangedEnemy initial AI state verified as AIMeander.")
-
-	if ai_meander.attack_range <= 0.0:
-		printerr("TEST FAILED: AIMeander attack_range should be > 0.0, got: ", ai_meander.attack_range)
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AIMeander attack_range (", ai_meander.attack_range, "m) verified.")
-
-	if ai_wait.wait_duration <= 0.0:
-		printerr("TEST FAILED: AIWait wait_duration should be > 0.0, got: ", ai_wait.wait_duration)
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AIWait wait_duration (", ai_wait.wait_duration, "s) verified.")
-
-	if ai_attack.cooldown <= 0.0:
-		printerr("TEST FAILED: AIAttack cooldown should be > 0.0, got: ", ai_attack.cooldown)
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AIAttack cooldown (", ai_attack.cooldown, "s) verified.")
-
-	if ai_attack.next_states.size() != 2 or not ai_attack.next_states.has(ai_wait) or not ai_attack.next_states.has(ai_meander):
-		printerr("TEST FAILED: AIAttack next_states expected [AIWait, AIMeander].")
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AIAttack next_states [AIWait, AIMeander] verified (50/50 post-attack cycle).")
-
-	if ranged_enemy.auto_aim_range > 0.0:
-		printerr("TEST FAILED: RangedEnemy auto_aim_range expected 0.0 (disabled by default for AI), got: ", ranged_enemy.auto_aim_range)
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("RangedEnemy auto_aim_range (0.0 - disabled) verified.")
-
-	# Verify proximity trigger in AIMeander transitions AI to AIAttack and Body to EnemyAttack
-	var player: Character = PlayerScene.instantiate() as Character
-	add_child(player)
-	if player.auto_aim_range <= 0.0:
-		printerr("TEST FAILED: Player auto_aim_range expected > 0.0, got: ", player.auto_aim_range)
-		player.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Player auto_aim_range (", player.auto_aim_range, "m) enabled via PlayerInputComponent verified.")
-
-	player.global_position = Vector3(ai_meander.attack_range * 0.75, 1.0, 0.0) # within attack_range
-	player.velocity = Vector3(0.0, -1.0, 0.0)
-	player.move_and_slide()
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	if ai_sm.state != ai_attack:
-		printerr("TEST FAILED: AIMeander proximity did not transition AI to AIAttack. Got: ", ai_sm.state.name if ai_sm.state else "null")
-		player.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	# The aim gate must hold fire while facing away: face the enemy directly
-	# away from the player and require no attack over the next ticks.
-	_turn_to_face(ranged_enemy, ranged_enemy.global_position - player.global_position)
-	for i: int in range(3):
-		await get_tree().physics_frame
-	if body_sm.state.name == "EnemyAttack":
-		printerr("TEST FAILED: AIAttack ordered EnemyAttack while facing away from the target!")
-		player.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Aim gate held fire while facing away verified.")
-	# The mind must then aim at the rotation speed limit and order inside the
-	# 90-degree cone. Keep pulling the mind back while polling: a body that
-	# cannot accept orders yet (landing stun after the spawn drop, a fall)
-	# fails the order and the mind steps out, so re-enter until the order
-	# lands. Poll until the body flips, recording alignment then.
-	var order_alignment: float = -1.0
-	var ordered := false
-	for i: int in range(180):
-		if ai_sm.state != ai_attack and body_sm.state.name != "EnemyAttack":
-			ai_sm._transition_to_next_state("AIAttack")
-		await get_tree().physics_frame
-		if body_sm.state.name == "EnemyAttack":
-			var facing_now: Vector3 = ranged_enemy.mesh_mount.global_basis.z
-			facing_now.y = 0.0
-			var to_player: Vector3 = player.global_position - ranged_enemy.global_position
-			to_player.y = 0.0
-			order_alignment = facing_now.normalized().dot(to_player.normalized())
-			ordered = true
-			break
-	if not ordered:
-		printerr("TEST FAILED: AIAttack never ordered EnemyAttack after aiming at the target!")
-		player.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if order_alignment < 0.70:
-		printerr("TEST FAILED: AIAttack ordered EnemyAttack outside the 90-degree cone (alignment: ", order_alignment, ")!")
-		player.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Proximity detection transitioned AI to AIAttack; Body ordered inside the cone (alignment: ", order_alignment, ").")
-
-	# 1. Verify real production polling path:
-	# When Body finishes EnemyAttack and transitions back to EnemyMove,
-	# AIAttack.physics_update() polls that state.name != attack_state_name and completes.
-	body_sm.state.finished.emit("EnemyMove")
-	if body_sm.state.name != "EnemyMove":
-		printerr("TEST FAILED: Body failed to transition back to EnemyMove.")
-		player.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-
-	# Run production polling update
-	ai_attack.physics_update(0.016)
-	if ai_sm.state == ai_attack:
-		printerr("TEST FAILED: Polling path failed: AI remained in AIAttack after body left EnemyAttack!")
-		player.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if ai_sm.state != ai_wait and ai_sm.state != ai_meander:
-		printerr("TEST FAILED: AI state after polled attack completion is neither AIWait nor AIMeander. Got: ", ai_sm.state.name if ai_sm.state else "null")
-		player.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Production polling path verified: AI transitioned cleanly to ", ai_sm.state.name, " upon body leaving EnemyAttack.")
-
-	# 2. Unit check for manual end_attack() method
-	ai_sm._transition_to_next_state("AIAttack")
-	ai_attack.end_attack()
-	if ai_sm.state == ai_attack:
-		printerr("TEST FAILED: ai_attack.end_attack() unit check failed: AI remained in AIAttack!")
-		player.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Unit check end_attack() verified.")
-	print("Post-attack transition verified: AI transitioned cleanly to ", ai_sm.state.name, " without spamming.")
-
-	# 3. Verify ranged enemy aiming at distances > auto_aim_range
-	var beyond_auto_aim_dist: float = maxf(player.auto_aim_range * 2.0, 6.0)
-	player.global_position = Vector3(beyond_auto_aim_dist, 0.0, 0.0)
-	ranged_enemy.global_position = Vector3.ZERO
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	if ranged_enemy.current_target != null:
-		printerr("TEST FAILED: RangedEnemy current_target should be null (auto-aim disabled on enemies). Got: ", ranged_enemy.current_target)
-		player.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-
-	# Drive the real production path: transition the mind into AIAttack and let
-	# it aim the body at the rotation speed limit, order inside the cone, and
-	# converge via the order aim. Poll until aligned instead of expecting a snap.
-	ai_sm._transition_to_next_state("AIAttack")
-	var facing: Vector3 = ranged_enemy.mesh_mount.global_basis.z.normalized()
-	var alignment: float = facing.dot(Vector3(1.0, 0.0, 0.0))
-	for i: int in range(90):
-		if ai_sm.state != ai_attack and alignment < 0.9:
-			ai_sm._transition_to_next_state("AIAttack")
-		await get_tree().physics_frame
-		facing = ranged_enemy.mesh_mount.global_basis.z.normalized()
-		alignment = facing.dot(Vector3(1.0, 0.0, 0.0))
-		if alignment >= 0.9:
-			break
-	await get_tree().process_frame
-
-	if alignment < 0.9:
-		printerr("TEST FAILED: RangedEnemy mesh_mount did not align with target at 10m! Facing: ", facing, " dot: ", alignment)
-		player.queue_free()
-		ranged_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Ranged enemy aiming at >5m verified (facing alignment: ", alignment, ").")
-
-	player.queue_free()
-	ranged_enemy.queue_free()
-	await get_tree().process_frame
+	var planned: Array[Character] = wave.all_enemies.duplicate()
+	for enemy: Character in planned:
+		wave.spawn_enemy(enemy)
+	for enemy: Character in planned:
+		var on_mesh: Vector3 = NavigationServer3D.map_get_closest_point(nav_map, enemy.global_position)
+		check(Vector2(on_mesh.x, on_mesh.z).distance_to(Vector2(enemy.global_position.x, enemy.global_position.z)) < 0.5, "enemies should spawn on the navmesh")
+	for i: int in range(planned.size()):
+		for j: int in range(i + 1, planned.size()):
+			check(planned[i].global_position.distance_to(planned[j].global_position) > 0.1, "enemies should spawn at distinct points, not stacked")
 
 
-func test_part_8_defeat_inactivity_and_rotation_lock() -> void:
-	print("\n>>> PART 8: Defeat Inactivity & Rotation Lock on Corpses")
-	var melee_enemy: Character = MeleeEnemyScene.instantiate() as Character
-	var player: Character = PlayerScene.instantiate() as Character
-	add_child(melee_enemy)
-	add_child(player)
-	melee_enemy.global_position = Vector3(0.0, 1.0, 0.0)
-	player.global_position = Vector3(5.0, 1.0, 0.0)
-	melee_enemy.velocity = Vector3(0.0, -1.0, 0.0)
-	player.velocity = Vector3(0.0, -1.0, 0.0)
-	melee_enemy.move_and_slide()
-	player.move_and_slide()
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	var ai_sm: AIStateMachine = melee_enemy.ai_state_machine as AIStateMachine
-	var body_sm: StateMachine = melee_enemy.state_machine
-
-	if not melee_enemy.is_alive():
-		printerr("TEST FAILED: Newly instantiated enemy is not alive.")
-		player.queue_free()
-		melee_enemy.queue_free()
-		get_tree().quit(1)
-		return
-
-	# Defeat the enemy
-	melee_enemy.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, melee_enemy.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH))
-	await get_tree().process_frame
-
-	if melee_enemy.is_alive():
-		printerr("TEST FAILED: Enemy is still reported as alive after taking max_health damage.")
-		player.queue_free()
-		melee_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Character is_alive() returns false after defeat.")
-
-	if body_sm.state.name != "EnemyDefeat":
-		printerr("TEST FAILED: Body StateMachine not in EnemyDefeat after death. Got: ", body_sm.state.name)
-		player.queue_free()
-		melee_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Body StateMachine in EnemyDefeat verified.")
-
-	if ai_sm.is_physics_processing():
-		printerr("TEST FAILED: AIStateMachine is still physics processing after defeat!")
-		player.queue_free()
-		melee_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AIStateMachine physics processing disabled on defeat verified.")
-
-	if not melee_enemy.move_direction.is_zero_approx() or not melee_enemy.face_target.is_zero_approx():
-		printerr("TEST FAILED: Character intent vectors not zeroed on defeat.")
-		player.queue_free()
-		melee_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Character intent vectors zeroed on defeat verified.")
-
-	# Record initial corpse transform
-	var initial_mesh_rot: Vector3 = melee_enemy.mesh_mount.global_rotation
-
-	# Attempt to turn corpse via look_at_target
-	melee_enemy.look_at_target(Vector3(10.0, 0.0, 10.0), 1.0 / 60.0)
-	if not melee_enemy.mesh_mount.global_rotation.is_equal_approx(initial_mesh_rot):
-		printerr("TEST FAILED: look_at_target rotated a dead character's mesh_mount!")
-		player.queue_free()
-		melee_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Corpse look_at_target lock verified (rotation unchanged).")
-
-	# Attempt to turn corpse via look_toward_direction
-	melee_enemy.look_toward_direction(Vector3(0.0, 0.0, -1.0), 0.5)
-	if not melee_enemy.mesh_mount.global_rotation.is_equal_approx(initial_mesh_rot):
-		printerr("TEST FAILED: look_toward_direction rotated a dead character's mesh_mount!")
-		player.queue_free()
-		melee_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Corpse look_toward_direction lock verified (rotation unchanged).")
-
-	# Attempt to command movement and attack via AIStateMachine on dead character
-	ai_sm.command_move(Vector3(1.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0))
-	if not melee_enemy.move_direction.is_zero_approx() or not melee_enemy.face_target.is_zero_approx():
-		printerr("TEST FAILED: command_move set intents on a dead character!")
-		player.queue_free()
-		melee_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AIStateMachine command_move blocked on dead character verified.")
-
-	var attack_ordered: bool = ai_sm.order_attack("EnemyAttack")
-	if attack_ordered or body_sm.state.name != "EnemyDefeat":
-		printerr("TEST FAILED: order_attack succeeded on a dead character!")
-		player.queue_free()
-		melee_enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AIStateMachine order_attack blocked on dead character verified.")
-
-	player.queue_free()
-	melee_enemy.queue_free()
-	await get_tree().process_frame
-
-
-func test_part_9_scattered_enemy_spawning() -> void:
-	print("\n>>> PART 9: Scattered Enemy Spawning & Navmesh Placement")
-	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
-	if level_scene == null:
-		printerr("TEST FAILED: Could not load LevelTemplate.")
-		get_tree().quit(1)
-		return
-	var level: Node3D = level_scene.instantiate() as Node3D
-	add_child(level)
-	# Wait for navigation map sync (iteration > 0 and regions active)
-	var nav_map: RID = level.get_world_3d().navigation_map
-	for _i: int in range(30):
-		await get_tree().physics_frame
-		if not NavigationServer3D.map_get_random_point(nav_map, 1, true).is_zero_approx():
-			break
-
-	var wave_obj: WaveObjective = level.get_node_or_null("WaveObjective") as WaveObjective
-	if wave_obj == null:
-		printerr("TEST FAILED: WaveObjective not found in level.")
-		level.queue_free()
-		get_tree().quit(1)
-		return
-
-	# Spawn up to 3 enemies via wave_obj.spawn_enemy
-	var spawn_count: int = mini(3, wave_obj.all_enemies.size())
-	var spawned: Array[Character] = []
-	for i: int in range(spawn_count):
-		var enemy: Character = wave_obj.all_enemies[i]
-		wave_obj.spawn_enemy(enemy)
-		spawned.append(enemy)
-
-	if spawned.size() < 2:
-		printerr("TEST FAILED: Not enough enemies in wave to verify scattered placement.")
-		level.queue_free()
-		get_tree().quit(1)
-		return
-
-	# Verify enemies are not all at the origin
-	var all_at_origin: bool = true
-	for enemy: Character in spawned:
-		if not enemy.global_position.is_equal_approx(Vector3(0.0, 1.0, 0.0)):
-			all_at_origin = false
-			break
-	if all_at_origin:
-		printerr("TEST FAILED: All spawned enemies were placed at the hardcoded origin (0, 1, 0)!")
-		level.queue_free()
-		get_tree().quit(1)
-		return
-	print("Enemies not stacked at hardcoded origin verified.")
-
-	# Check pairwise distances: enemies should have distinct positions on the navmesh
-	var identical_positions: bool = true
-	for i: int in range(spawned.size()):
-		for j: int in range(i + 1, spawned.size()):
-			if spawned[i].global_position.distance_squared_to(spawned[j].global_position) > 0.01:
-				identical_positions = false
-				break
-	if identical_positions:
-		printerr("TEST FAILED: Spawned enemies are stacked at identical positions!")
-		level.queue_free()
-		get_tree().quit(1)
-		return
-	print("Pairwise distinct enemy placement on navmesh verified.")
-
-	level.queue_free()
-	await get_tree().process_frame
-
-
-func test_part_10_enemy_difficulty_and_wave_budget_spawning() -> void:
-	print("\n>>> PART 10: Enemy Difficulty Ratings & Budget Wave Spawning")
-
-	# 1. Verify EnemyResource in GlobalVars.enemies for all 5 archetypes
-	var melee_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
-	var ranged_scene: PackedScene = load("res://Enemy/ranged_enemy.tscn") as PackedScene
-	var bomber_scene: PackedScene = load("res://Enemy/firebomber_enemy.tscn") as PackedScene
-	var brute_scene: PackedScene = load("res://Enemy/enemy_brute.tscn") as PackedScene
-	var mage_scene: PackedScene = load("res://Enemy/enemy_thunder_mage.tscn") as PackedScene
-
-	var melee_res: EnemyResource = GlobalVars.get_enemy_resource(melee_scene)
-	var ranged_res: EnemyResource = GlobalVars.get_enemy_resource(ranged_scene)
-	var bomber_res: EnemyResource = GlobalVars.get_enemy_resource(bomber_scene)
-	var brute_res: EnemyResource = GlobalVars.get_enemy_resource(brute_scene)
-	var mage_res: EnemyResource = GlobalVars.get_enemy_resource(mage_scene)
-
-	if melee_res == null or ranged_res == null or bomber_res == null or brute_res == null or mage_res == null:
-		printerr("TEST FAILED: One or more EnemyResources missing from GlobalVars.enemies.")
-		get_tree().quit(1)
-		return
-
-	if melee_res.difficulty_level != 1 or ranged_res.difficulty_level != 1:
-		printerr("TEST FAILED: Melee/Ranged EnemyResource difficulty expected 1, got melee: ", melee_res.difficulty_level, ", ranged: ", ranged_res.difficulty_level)
-		get_tree().quit(1)
-		return
-	if bomber_res.difficulty_level != 2:
-		printerr("TEST FAILED: Firebomber EnemyResource difficulty expected 2, got: ", bomber_res.difficulty_level)
-		get_tree().quit(1)
-		return
-	if brute_res.difficulty_level != 3:
-		printerr("TEST FAILED: Brute EnemyResource difficulty expected 3, got: ", brute_res.difficulty_level)
-		get_tree().quit(1)
-		return
-	if mage_res.difficulty_level != 4:
-		printerr("TEST FAILED: Thunder Mage EnemyResource difficulty expected 4, got: ", mage_res.difficulty_level)
-		get_tree().quit(1)
-		return
-	print("All 5 EnemyResources verified in GlobalVars (melee: 1, ranged: 1, bomber: 2, brute: 3, mage: 4).")
-
-	# 2. Verify ProgressionState level scaling and reset
+func test_difficulty_follows_the_progression_curve() -> void:
 	ProgressionState.reset_run()
-	if ProgressionState.dungeon_level != 1 or ProgressionState.difficulty_level != 3:
-		printerr("TEST FAILED: Initial ProgressionState expected dungeon_level 1 and difficulty 3. Got: ", ProgressionState.dungeon_level, ", ", ProgressionState.difficulty_level)
-		get_tree().quit(1)
-		return
-
-	# Test scaling progression: 3 -> 4 -> 5 -> 7 -> 8 -> 9 -> 11
-	var expected_diffs: Array[int] = [4, 5, 7, 8, 9, 11]
-	for i: int in range(expected_diffs.size()):
+	check_eq(ProgressionState.dungeon_level, ProgressionState.base_dungeon_level, "a new run should start at the base dungeon level")
+	check_eq(ProgressionState.difficulty_level, ProgressionState.calculate_difficulty(ProgressionState.dungeon_level), "difficulty should follow the curve at the start")
+	var previous: int = ProgressionState.difficulty_level
+	for i: int in range(6):
+		var level_before: int = ProgressionState.dungeon_level
 		ProgressionState.advance_level()
-		var expected_dungeon: int = i + 2
-		var expected_diff: int = expected_diffs[i]
-		if ProgressionState.dungeon_level != expected_dungeon or ProgressionState.difficulty_level != expected_diff:
-			printerr("TEST FAILED: ProgressionState level ", expected_dungeon, " expected difficulty ", expected_diff, ", got ", ProgressionState.difficulty_level)
-			get_tree().quit(1)
-			return
+		check_eq(ProgressionState.dungeon_level, level_before + 1, "advance_level() should move to the next dungeon level")
+		check_eq(ProgressionState.difficulty_level, ProgressionState.calculate_difficulty(ProgressionState.dungeon_level), "difficulty should follow the curve")
+		check(ProgressionState.difficulty_level >= previous, "difficulty should never drop as the run advances")
+		previous = ProgressionState.difficulty_level
 
-	ProgressionState.reset_run()
-	if ProgressionState.dungeon_level != 1 or ProgressionState.difficulty_level != 3:
-		printerr("TEST FAILED: reset_run failed to restore dungeon_level 1 and difficulty 3.")
-		get_tree().quit(1)
-		return
-	print("ProgressionState dungeon_level & floored difficulty_level progression verified.")
 
-	# 3. Verify WaveObjective wave generation at difficulty 3
-	var wave_obj := WaveObjective.new()
-	add_child(wave_obj)
-
-	ProgressionState.difficulty_level = 3
-	var wave_diff3: Array[Character] = wave_obj.generate_wave_enemies()
-	if wave_diff3.size() != 3:
-		printerr("TEST FAILED: WaveObjective at difficulty 3 expected exactly 3 enemies, got: ", wave_diff3.size())
-		get_tree().quit(1)
-		return
-	var sum_diff3: int = 0
-	for enemy: Character in wave_diff3:
-		var diff: int = wave_obj._enemy_difficulties.get(enemy, 0)
-		sum_diff3 += diff
-		if diff != 1:
-			printerr("TEST FAILED: WaveObjective at difficulty 3 spawned non-level-1 enemy: ", diff)
-			get_tree().quit(1)
-			return
-		enemy.free()
-	if sum_diff3 != 3:
-		printerr("TEST FAILED: WaveObjective at difficulty 3 sum expected 3, got: ", sum_diff3)
-		get_tree().quit(1)
-		return
-	print("WaveObjective level 1 difficulty 3 generation (3 level-1 enemies, sum = 3) verified.")
-
-	# 4. Verify WaveObjective wave generation at difficulty 10 across multiple seeds
-	ProgressionState.difficulty_level = 10
+func test_wave_budget_adds_up_with_two_tier_one_enemies_first() -> void:
+	# Test-owned tiers: each tier uses its own scene so a generated enemy's
+	# tier is known from its scene alone.
+	var tiers: Dictionary[String, int] = {MELEE_SCENE.resource_path: 1, RANGED_SCENE.resource_path: 2, BRUTE_SCENE.resource_path: 3}
+	var wave: WaveObjective = autofree(WaveObjective.new()) as WaveObjective
+	for scene_path: String in tiers:
+		var resource: EnemyResource = EnemyResource.new()
+		resource.scene = load(scene_path) as PackedScene
+		resource.difficulty_level = tiers[scene_path]
+		wave.enemy_resources.append(resource)
+	ProgressionState.current_planned_enemies.clear()
+	ProgressionState.difficulty_level = TEST_BUDGET
 	var saw_higher_tier: bool = false
-	for iteration: int in range(25):
-		var wave_diff10: Array[Character] = wave_obj.generate_wave_enemies()
-		if wave_diff10.size() < 2:
-			printerr("TEST FAILED: WaveObjective at difficulty 10 generated fewer than 2 enemies.")
-			get_tree().quit(1)
-			return
-		var d0: int = wave_obj._enemy_difficulties.get(wave_diff10[0], 0)
-		var d1: int = wave_obj._enemy_difficulties.get(wave_diff10[1], 0)
-		# Must always pick 2 level 1 enemies first
-		if d0 != 1 or d1 != 1:
-			printerr("TEST FAILED: WaveObjective at difficulty 10 did not pick 2 level-1 enemies first! Got diffs: ", d0, ", ", d1)
-			get_tree().quit(1)
-			return
-		# Total sum must equal 10
-		var sum_diff10: int = 0
-		for enemy: Character in wave_diff10:
-			var diff: int = wave_obj._enemy_difficulties.get(enemy, 0)
-			sum_diff10 += diff
-			if diff > 1:
-				saw_higher_tier = true
-			enemy.free()
-		if sum_diff10 != 10:
-			printerr("TEST FAILED: WaveObjective at difficulty 10 sum expected 10, got: ", sum_diff10)
-			get_tree().quit(1)
-			return
-
-	if not saw_higher_tier:
-		printerr("TEST FAILED: WaveObjective across 25 iterations at difficulty 10 never spawned enemies with difficulty > 1.")
-		get_tree().quit(1)
-		return
-	print("WaveObjective difficulty 10 budget matching, 2 level-1 first, and tier variety verified.")
-
-	wave_obj.queue_free()
-	ProgressionState.reset_run()
-
-	# 5. Verify UI level title text overlay
-	var overlay: LevelTitleOverlay = UI.show_level_title(3, 0.5)
-	if overlay == null:
-		printerr("TEST FAILED: UI.show_level_title returned null overlay.")
-		get_tree().quit(1)
-		return
-	if overlay.label.text != "Level 3":
-		printerr("TEST FAILED: LevelTitleOverlay expected 'Level 3', got: ", overlay.label.text)
-		overlay.queue_free()
-		get_tree().quit(1)
-		return
-	overlay.queue_free()
-	print("UI.show_level_title() text overlay verified.")
+	for sample: int in range(WAVE_SAMPLES):
+		var enemies: Array[Character] = wave.generate_wave_enemies()
+		var total: int = 0
+		for index: int in range(enemies.size()):
+			var tier: int = tiers.get(enemies[index].scene_file_path, 0)
+			total += tier
+			if index < 2:
+				check_eq(tier, 1, "the first two enemies of a wave should be tier 1")
+			saw_higher_tier = saw_higher_tier or tier > 1
+			enemies[index].free()
+		check_eq(total, TEST_BUDGET, "a wave's tiers should add up to the difficulty budget")
+	check(saw_higher_tier, "a wave budget above two tier-1 enemies should sometimes use higher tiers")
 
 
-func test_part_11_ai_attack_aim_gate() -> void:
-	print("\n>>> PART 11: AIAttack Aim Gate (desired_angle)")
-	var enemy: Character = RangedEnemyScene.instantiate() as Character
-	var player: Character = PlayerScene.instantiate() as Character
-	add_child(enemy)
-	add_child(player)
-	enemy.global_position = Vector3.ZERO
-	player.global_position = Vector3(3.0, 0.0, 0.0)
-	await get_tree().physics_frame
-	await get_tree().physics_frame
+func test_level_title_shows_the_level_number() -> void:
+	var overlay: LevelTitleOverlay = UI.show_level_title(TITLE_LEVEL, 0.1)
+	if check(overlay != null, "show_level_title() should display an overlay"):
+		autofree(overlay)
+		check(overlay.label.text.contains(str(TITLE_LEVEL)), "the level title should show the level number")
+
+
+# --- helpers -------------------------------------------------------------------
+
+func _spawn(scene: PackedScene, at: Vector3) -> Character:
+	return spawn(scene, _arena, at) as Character
+
+
+## A player whose live input is off, so only the test and physics move it.
+func _spawn_quiet_player(at: Vector3) -> Character:
+	var player: Character = _spawn(PLAYER_SCENE, at)
+	(player.get_node("PlayerInputComponent") as PlayerInputComponent).set_physics_process(false)
+	return player
+
+
+## Spawns an enemy at EnemySpawn and waits until it stands in its home body state.
+func _grounded_enemy(scene: PackedScene) -> Character:
+	var enemy: Character = _spawn(scene, (_arena.get_node("EnemySpawn") as Node3D).global_position)
+	await wait_until(func() -> bool: return enemy.is_on_floor() and enemy.state_machine.state == enemy.state_machine.initial_state, "the enemy should land and settle")
+	return enemy
+
+
+## A grounded ranged enemy facing directly away from a player inside its
+## attack range. Returns [enemy, its AIAttack, player].
+func _ranged_facing_away() -> Array:
+	var enemy: Character = await _grounded_enemy(RANGED_SCENE)
+	var meander: AIMeander = enemy.ai_state_machine.get_node("AIMeander") as AIMeander
+	var player: Character = _spawn_quiet_player(enemy.global_position + Vector3(meander.attack_range * 0.75, 0.0, 0.0))
+	await wait_until(func() -> bool: return player.is_on_floor(), "player should land")
+	_turn_to_face(enemy, enemy.global_position - player.global_position)
+	return [enemy, enemy.ai_state_machine.get_node("AIAttack") as AIAttack, player]
+
+
+## Sets the character's rotation speed to zero so it cannot turn, and
+## returns the previous speed for restoring.
+func _freeze_rotation(character: Character) -> float:
+	var speed: float = character.attribute_component.get_base(AttributeComponent.STAT_ROTATION_SPEED)
+	character.attribute_component.set_base(AttributeComponent.STAT_ROTATION_SPEED, 0.0)
+	return speed
+
+
+## Keeps the mind in ai_state (re-requesting it if a refused order made it
+## leave) until the body enters body_state. Returns whether it did.
+func _order_until_attacking(enemy: Character, ai_state: String, body_state: String, message: String) -> bool:
 	var mind: AIStateMachine = enemy.ai_state_machine
-	var body_sm: StateMachine = enemy.state_machine
-	var ai_attack: AIAttack = mind.get_node_or_null("AIAttack") as AIAttack
-	if mind == null or body_sm == null or ai_attack == null:
-		printerr("TEST FAILED: RangedEnemy mind, body, or AIAttack missing.")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if mind.get_target() != player:
-		printerr("TEST FAILED: RangedEnemy mind did not acquire the player as target.")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Mind target acquisition verified.")
-	if not is_equal_approx(ai_attack.desired_angle, 90.0):
-		printerr("TEST FAILED: AIAttack desired_angle default should be 90.0, got: ", ai_attack.desired_angle)
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AIAttack desired_angle default 90.0 verified.")
-
-	# Gate holds at the default cone while facing directly away.
-	_turn_to_face(enemy, Vector3(-1.0, 0.0, 0.0))
-	mind._transition_to_next_state("AIAttack")
-	for i: int in range(10):
-		await get_tree().physics_frame
-	if body_sm.state.name == "EnemyAttack":
-		printerr("TEST FAILED: AIAttack ordered EnemyAttack while facing away at the default cone!")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if mind.state != ai_attack:
-		printerr("TEST FAILED: AIAttack gave up aiming while outside the cone!")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Aim gate held fire while facing away verified (still aiming).")
-
-	# Widening to 360 fires immediately despite facing away. Keep pulling the
-	# mind back while polling so a failed order (body briefly unorderable)
-	# retries instead of ending the measurement.
-	ai_attack.desired_angle = 360.0
-	var fired_wide := false
-	for i: int in range(60):
-		if mind.state != ai_attack and body_sm.state.name != "EnemyAttack":
-			mind._transition_to_next_state("AIAttack")
-		await get_tree().physics_frame
-		if body_sm.state.name == "EnemyAttack":
-			fired_wide = true
-			break
-	if not fired_wide:
-		printerr("TEST FAILED: AIAttack with desired_angle 360 did not order despite facing away!")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("desired_angle 360 fires regardless of facing verified.")
-
-	# Wait for the body to finish before the perfect-alignment checks.
-	for i: int in range(180):
-		await get_tree().physics_frame
-		if body_sm.state.name != "EnemyAttack":
-			break
-	if body_sm.state.name == "EnemyAttack":
-		printerr("TEST FAILED: Body never left EnemyAttack.")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-
-	# A 0.0 cone holds fire while misaligned but opens on true alignment.
-	_turn_to_face(enemy, Vector3(-1.0, 0.0, 0.0))
-	ai_attack.desired_angle = 0.0
-	mind._transition_to_next_state("AIAttack")
-	for i: int in range(10):
-		await get_tree().physics_frame
-	if body_sm.state.name == "EnemyAttack":
-		printerr("TEST FAILED: AIAttack with desired_angle 0 ordered while misaligned!")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("desired_angle 0 holds fire while misaligned verified.")
-	_turn_to_face(enemy, Vector3(1.0, 0.0, 0.0))
-	var fired_exact := false
-	for i: int in range(60):
-		if mind.state != ai_attack and body_sm.state.name != "EnemyAttack":
-			mind._transition_to_next_state("AIAttack")
-		await get_tree().physics_frame
-		if body_sm.state.name == "EnemyAttack":
-			fired_exact = true
-			break
-	if not fired_exact:
-		printerr("TEST FAILED: AIAttack with desired_angle 0 never ordered despite perfect alignment!")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("desired_angle 0 fires on perfect alignment verified.")
-
-	player.queue_free()
-	enemy.queue_free()
-	await get_tree().process_frame
+	return await wait_until(func() -> bool:
+		if enemy.state_machine.state.name == body_state:
+			return true
+		if mind.state.name != ai_state:
+			mind.request_state(ai_state)
+		return false, message, DECISION_FRAMES)
 
 
-func test_part_12_pursue_aim_gate() -> void:
-	print("\n>>> PART 12: AIPursue Aim Gate (melee turns before punching)")
-	var enemy: Character = MeleeEnemyScene.instantiate() as Character
-	var player: Character = PlayerScene.instantiate() as Character
-	add_child(enemy)
-	add_child(player)
-	enemy.global_position = Vector3.ZERO
-	player.global_position = Vector3(1.5, 0.0, 0.0)
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	var mind: AIStateMachine = enemy.ai_state_machine
-	var body_sm: StateMachine = enemy.state_machine
-	var pursue: AIPursue = mind.get_node_or_null("AIPursue") as AIPursue
-	if mind == null or body_sm == null or pursue == null:
-		printerr("TEST FAILED: MeleeEnemy mind, body, or AIPursue missing.")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if mind.get_target() != player:
-		printerr("TEST FAILED: MeleeEnemy mind did not acquire the player as target.")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if mind.state != pursue:
-		printerr("TEST FAILED: MeleeEnemy mind should start in AIPursue.")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if not is_equal_approx(pursue.desired_angle, 90.0):
-		printerr("TEST FAILED: AIPursue desired_angle default should be 90.0, got: ", pursue.desired_angle)
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("AIPursue desired_angle default 90.0 verified.")
-
-	# Facing away with the player in range: no punch over the next ticks.
-	_turn_to_face(enemy, Vector3(-1.0, 0.0, 0.0))
-	for i: int in range(10):
-		await get_tree().physics_frame
-	if body_sm.state.name == "EnemyAttack":
-		printerr("TEST FAILED: MeleeEnemy punched while facing away from the player!")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("Pursue gate held the punch while facing away verified.")
-
-	# Then it must turn and punch inside the cone. Pursue retries failed
-	# orders every tick without leaving, so a plain poll suffices here.
-	var order_alignment: float = -1.0
-	var punched := false
-	for i: int in range(120):
-		await get_tree().physics_frame
-		if body_sm.state.name == "EnemyAttack":
-			var facing_now: Vector3 = enemy.mesh_mount.global_basis.z
-			facing_now.y = 0.0
-			var to_player: Vector3 = player.global_position - enemy.global_position
-			to_player.y = 0.0
-			order_alignment = facing_now.normalized().dot(to_player.normalized())
-			punched = true
-			break
-	if not punched:
-		printerr("TEST FAILED: MeleeEnemy never punched after turning toward the player!")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	if order_alignment < 0.70:
-		printerr("TEST FAILED: MeleeEnemy punched outside the 90-degree cone (alignment: ", order_alignment, ")!")
-		player.queue_free()
-		enemy.queue_free()
-		get_tree().quit(1)
-		return
-	print("MeleeEnemy turned and punched inside the cone (alignment: ", order_alignment, ").")
-
-	player.queue_free()
-	enemy.queue_free()
-	await get_tree().process_frame
+## Frames an aim gate must hold fire: longer than any remaining attack
+## cooldown, so a hold can never pass just because the cooldown was running.
+func _hold_frames(remaining_cooldown: float) -> int:
+	return HOLD_FRAMES + ceili(maxf(remaining_cooldown, 0.0) * Engine.physics_ticks_per_second)
 
 
-## Turns a character's mount toward an XZ direction with synchronous
-## speed-limited steps (no frames elapse), used to set deterministic facings.
-func _turn_to_face(c: Character, direction: Vector3) -> void:
-	var flat: Vector3 = direction
-	flat.y = 0.0
+## Cosine of the horizontal angle between the character's facing and the
+## direction to the target (1.0 = facing it exactly).
+func _alignment(character: Character, target: Character) -> float:
+	var facing: Vector3 = character.mesh_mount.global_basis.z
+	facing.y = 0.0
+	var to_target: Vector3 = target.global_position - character.global_position
+	to_target.y = 0.0
+	return facing.normalized().dot(to_target.normalized())
+
+
+## Minimum alignment (cosine) inside a cone of cone_degrees, with a small
+## tolerance for the final partial turn step.
+func _cone_alignment(cone_degrees: float) -> float:
+	return cos(deg_to_rad(minf(cone_degrees, 360.0) * 0.5 + 1.0))
+
+
+## Turns the character's mount toward a direction with synchronous
+## speed-limited steps (no frames elapse), for deterministic facings.
+func _turn_to_face(character: Character, direction: Vector3) -> void:
+	var flat: Vector3 = Vector3(direction.x, 0.0, direction.z)
 	if flat.is_zero_approx():
 		return
 	flat = flat.normalized()
-	for i: int in range(180):
-		c.look_at_target(c.mesh_mount.global_position + flat * 5.0, 1.0 / 60.0)
-		var facing: Vector3 = c.mesh_mount.global_basis.z
+	for i: int in range(360):
+		character.look_at_target(character.mesh_mount.global_position + flat * 5.0, 1.0 / 60.0)
+		var facing: Vector3 = character.mesh_mount.global_basis.z
 		facing.y = 0.0
 		if facing.normalized().dot(flat) >= 0.999:
-			break
-
-
-
+			return

@@ -10,6 +10,10 @@ extends Node3D
 ## normal level. Reusable: later bosses only need their own arena scene with
 ## this set.
 @export var boss_resources: Array[EnemyResource] = []
+## Seconds after the level starts before the first spawn step.
+@export var first_spawn_delay: float = 2.5
+## Seconds between consecutive enemy spawns (also before the first one).
+@export var spawn_interval: float = 1.0
 
 signal finished
 
@@ -18,18 +22,46 @@ signal finished
 ## (not yet in the tree) until their spawn tween step fires.
 var all_enemies: Array[Character] = []
 var _enemy_difficulties: Dictionary = {}
+## Paces the spawns scheduled in _ready(); killed by stop_spawning().
+var _spawn_tween: Tween = null
 
 
-## Frees planned enemies that never spawned. They were instanced by this node
-## but never entered the tree, so nothing else owns them: leaving the level
-## mid-wave (restart, quit to menu, scene change) would otherwise leak each
-## one with its physics, navigation and rendering server resources.
+## Frees planned enemies that never spawned when the wave is deleted. They
+## were instanced by this node but never entered the tree, so nothing else
+## owns them: leaving the level mid-wave (restart, quit to menu, scene change)
+## would otherwise leak each one with its physics, navigation and rendering
+## server resources.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		for enemy: Character in all_enemies:
-			if is_instance_valid(enemy) and not enemy.is_inside_tree():
-				enemy.free()
+		_free_unspawned_enemies()
 		all_enemies.clear()
+
+
+## Stops the wave from spawning any more enemies. The pending spawn schedule
+## is cancelled, and every planned enemy that has not entered the level yet is
+## freed and removed from all_enemies. Enemies already in the level are left
+## alone and still count toward the wave: finished is emitted once they are
+## all defeated. Stopping never emits finished by itself, since a stopped wave
+## is not a completed one. Safe to call at any time, repeatedly.
+func stop_spawning() -> void:
+	if _spawn_tween != null and _spawn_tween.is_valid():
+		_spawn_tween.kill()
+	_spawn_tween = null
+	_free_unspawned_enemies()
+
+
+## Frees and forgets every planned enemy that is not in the tree yet.
+func _free_unspawned_enemies() -> void:
+	var spawned: Array[Character] = []
+	for enemy: Character in all_enemies:
+		if not is_instance_valid(enemy):
+			continue
+		if enemy.is_inside_tree():
+			spawned.append(enemy)
+		else:
+			_enemy_difficulties.erase(enemy)
+			enemy.free()
+	all_enemies = spawned
 
 
 ## Returns the default list of enemy resources from GlobalVars.
@@ -125,11 +157,11 @@ func _ready() -> void:
 	_print_wave_debug_info()
 
 	# Spawn pacing is gameplay: step it on the physics clock.
-	var tween: Tween = create_tween().set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
-	tween.tween_interval(2.5)
+	_spawn_tween = create_tween().set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
+	_spawn_tween.tween_interval(first_spawn_delay)
 	for enemy: Character in all_enemies:
-		tween.tween_interval(1.0)
-		tween.tween_callback(spawn_enemy.bind(enemy))
+		_spawn_tween.tween_interval(spawn_interval)
+		_spawn_tween.tween_callback(spawn_enemy.bind(enemy))
 		enemy.defeat.connect(update_enemies.bind(enemy))
 
 

@@ -4,8 +4,9 @@ extends Node3D
 
 func _ready() -> void:
 	var level: Node3D = (load("res://Levels/level_13.tscn") as PackedScene).instantiate() as Node3D
-	level.get_node("WaveObjective").set_script(null)
 	add_child(level)
+	# No enemies: stop the wave before its first spawn step.
+	(level.get_node("WaveObjective") as WaveObjective).stop_spawning()
 	var player: Character = level.get_node("Player") as Character
 	# Isolate body collision from AI, camera input and automatic state motion.
 	player.disable_mode = CollisionObject3D.DISABLE_MODE_KEEP_ACTIVE

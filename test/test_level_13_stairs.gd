@@ -7,10 +7,9 @@ var resting_offset: float = 0.0
 
 func _ready() -> void:
 	var level: Node3D = (load("res://Levels/level_13.tscn") as PackedScene).instantiate() as Node3D
-	# Strip the wave script before _ready can allocate/spawn enemies.
-	var wave: Node = level.find_child("WaveObjective", true, false)
-	wave.set_script(null)
 	add_child(level)
+	# No enemies: stop the wave before its first spawn step.
+	(level.find_child("WaveObjective", true, false) as WaveObjective).stop_spawning()
 	player = level.get_node("Player") as Character
 	# Save the authored collider pose before physics can eject an overlapping
 	# spawn. Shrink slightly to ignore intended contact with the floor.

@@ -1,425 +1,132 @@
-extends Node
+## Pause and game-over flow (UI autoload + PauseMenu):
+## - pause_game()/resume_game()/toggle_pause() pause and unpause the tree and
+##   emit pause_state_changed; pausing opens a menu that keeps processing while
+##   the tree is paused, and resuming frees it.
+## - The menu's resume button and the ui_pause action (by name) resume/toggle.
+## - The game-over screen (show_game_over) hides resume, keeps restart, and
+##   locks the pause toggle until resume_game() clears it.
+## - Player defeat shows the game-over screen only after
+##   Character.DEFEAT_MENU_DELAY, and dying never resets run progression.
+## - Regression guards: the pause menu never renders its own gold counter (the
+##   HUD owns it), and without a selected item the stats panel shows no
+##   comparison arrows.
+## Key bindings, colors and layout are design choices and are not asserted.
+extends "res://test/lib/test_suite.gd"
 
-func _ready() -> void:
-	print("--- RUNNING PAUSE MENU & UI_PAUSE TEST ---")
+const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+## Test-owned progression values to prove defeat leaves them untouched.
+const TEST_DIFFICULTY: int = 9
+const TEST_DUNGEON_LEVEL: int = 5
 
-	# ---------------------------------------------------------
-	# PART 1: InputMap Verification for "ui_pause"
-	# ---------------------------------------------------------
-	print("\n>>> PART 1: InputMap Action Verification")
-	if not InputMap.has_action("ui_pause"):
-		printerr("TEST FAILED: 'ui_pause' action is not registered in InputMap.")
-		get_tree().quit(1)
-		return
-	print("Action 'ui_pause' exists in InputMap.")
 
-	var events: Array[InputEvent] = InputMap.action_get_events("ui_pause")
-	var has_p_key: bool = false
-	var has_esc_key: bool = false
-	for event: InputEvent in events:
-		if event is InputEventKey:
-			var key_event: InputEventKey = event as InputEventKey
-			if key_event.physical_keycode == KEY_P or key_event.keycode == KEY_P:
-				has_p_key = true
-			elif key_event.physical_keycode == KEY_ESCAPE or key_event.keycode == KEY_ESCAPE:
-				has_esc_key = true
-
-	if not has_p_key:
-		printerr("TEST FAILED: 'ui_pause' action does not have key P assigned.")
-		get_tree().quit(1)
-		return
-	if not has_esc_key:
-		printerr("TEST FAILED: 'ui_pause' action does not have key ESCAPE assigned.")
-		get_tree().quit(1)
-		return
-	print("Verified 'ui_pause' is mapped to physical key 'P' (KEY_P = 80) and 'Escape' (KEY_ESCAPE = 4194305).")
-
-	# ---------------------------------------------------------
-	# PART 2: GlobalVars Registry Verification
-	# ---------------------------------------------------------
-	print("\n>>> PART 2: GlobalVars Pause Menu Scene Registration")
-	if GlobalVars.pause_menu_scene == null:
-		printerr("TEST FAILED: GlobalVars.pause_menu_scene is null.")
-		get_tree().quit(1)
-		return
-	print("GlobalVars.pause_menu_scene verified: ", GlobalVars.pause_menu_scene.resource_path)
-
-	# ---------------------------------------------------------
-	# PART 3: UI Pause & Resume State Transitions
-	# ---------------------------------------------------------
-	print("\n>>> PART 3: UI Pause & Resume Logic")
-	var received_signals: Array[bool] = []
-	var on_pause_changed: Callable = func(is_paused: bool) -> void:
-		received_signals.append(is_paused)
-
-	UI.pause_state_changed.connect(on_pause_changed)
-
-	# Ensure initially unpaused
-	if UI.is_paused():
-		UI.resume_game()
-	received_signals.clear()
-
-	if get_tree().paused:
-		printerr("TEST FAILED: Tree is unexpectedly paused at start.")
-		get_tree().quit(1)
-		return
-
-	# Test pause_game()
-	UI.pause_game()
-
-	if not get_tree().paused:
-		printerr("TEST FAILED: get_tree().paused is false after UI.pause_game().")
-		get_tree().quit(1)
-		return
-	if not UI.is_paused():
-		printerr("TEST FAILED: UI.is_paused() returned false while paused.")
-		get_tree().quit(1)
-		return
-	if received_signals.is_empty() or not received_signals.back():
-		printerr("TEST FAILED: UI.pause_state_changed(true) was not received. Signals: ", received_signals)
-		get_tree().quit(1)
-		return
-
-	var current_menu: PauseMenu = UI._current_pause_menu
-	if current_menu == null or not is_instance_valid(current_menu):
-		printerr("TEST FAILED: UI._current_pause_menu was not instantiated.")
-		get_tree().quit(1)
-		return
-	if current_menu.process_mode != Node.PROCESS_MODE_ALWAYS:
-		printerr("TEST FAILED: PauseMenu process_mode is not PROCESS_MODE_ALWAYS.")
-		get_tree().quit(1)
-		return
-	print("UI.pause_game() verified: tree paused, menu instantiated with PROCESS_MODE_ALWAYS, signal emitted.")
-
-	# Test resume_game()
-	received_signals.clear()
+func after_each() -> void:
+	# Never leak a paused tree or a game-over lock into the next test.
 	UI.resume_game()
 
-	if get_tree().paused:
-		printerr("TEST FAILED: get_tree().paused is still true after UI.resume_game().")
-		get_tree().quit(1)
-		return
-	if UI.is_paused():
-		printerr("TEST FAILED: UI.is_paused() returned true after resume.")
-		get_tree().quit(1)
-		return
-	if received_signals.is_empty() or received_signals.back():
-		printerr("TEST FAILED: UI.pause_state_changed(false) was not received. Signals: ", received_signals)
-		get_tree().quit(1)
-		return
-	if UI._current_pause_menu != null:
-		printerr("TEST FAILED: UI._current_pause_menu reference was not cleared after resume.")
-		get_tree().quit(1)
-		return
-	print("UI.resume_game() verified: tree unpaused, menu freed, signal emitted.")
 
-	# Test toggle_pause()
-	UI.toggle_pause()
-	if not UI.is_paused():
-		printerr("TEST FAILED: toggle_pause() did not pause unpaused tree.")
-		get_tree().quit(1)
-		return
-	UI.toggle_pause()
-	if UI.is_paused():
-		printerr("TEST FAILED: toggle_pause() did not resume paused tree.")
-		get_tree().quit(1)
-		return
-	print("UI.toggle_pause() verified: toggles state correctly in both directions.")
+func test_pause_action_is_bound() -> void:
+	if check(InputMap.has_action(&"ui_pause"), "the ui_pause action should exist in the InputMap"):
+		check(not InputMap.action_get_events(&"ui_pause").is_empty(), "the ui_pause action should have at least one binding")
 
-	# ---------------------------------------------------------
-	# PART 4: PauseMenu UI Node Structure & Theme Verification
-	# ---------------------------------------------------------
-	print("\n>>> PART 4: PauseMenu Scene & Component Verification")
-	var menu_instance: PauseMenu = GlobalVars.pause_menu_scene.instantiate() as PauseMenu
-	add_child(menu_instance)
-	await get_tree().process_frame
 
-	if menu_instance.resume_button == null:
-		printerr("TEST FAILED: resume_button is null in PauseMenu.")
-		get_tree().quit(1)
-		return
-	if menu_instance.restart_button == null:
-		printerr("TEST FAILED: restart_button is null in PauseMenu.")
-		get_tree().quit(1)
-		return
-	if menu_instance.fullscreen_button == null:
-		printerr("TEST FAILED: fullscreen_button is null in PauseMenu.")
-		get_tree().quit(1)
-		return
-	if menu_instance.quit_button == null:
-		printerr("TEST FAILED: quit_button is null in PauseMenu.")
-		get_tree().quit(1)
-		return
-	if menu_instance.controls_button == null:
-		printerr("TEST FAILED: controls_button is null in PauseMenu.")
-		get_tree().quit(1)
-		return
-	if menu_instance.exit_menu_button == null:
-		printerr("TEST FAILED: exit_menu_button is null in PauseMenu.")
-		get_tree().quit(1)
-		return
-
-	# Concept layout: the four reusable columns. The run gold counter must NOT
-	# live here: the HUD scene owns the single gold display and stays visible
-	# under the pause menu, so a pause-side label would double-render.
-	if menu_instance.get_node_or_null("%GoldLabel") != null:
-		printerr("TEST FAILED: PauseMenu must not carry its own GoldLabel; gold lives in the HUD scene.")
-		get_tree().quit(1)
-		return
-	var hud_scene: PackedScene = load("res://UserInterface/hud.tscn") as PackedScene
-	if hud_scene == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/hud.tscn.")
-		get_tree().quit(1)
-		return
-	var hud_probe: HUD = hud_scene.instantiate() as HUD
-	add_child(hud_probe)
-	await get_tree().process_frame
-	var hud_gold: Label = hud_probe.get_node_or_null("MarginContainer/HBoxContainer/GoldLabel") as Label
-	if hud_gold == null:
-		printerr("TEST FAILED: HUD scene is missing the single GoldLabel.")
-		hud_probe.queue_free()
-		get_tree().quit(1)
-		return
-	hud_probe.queue_free()
-	await get_tree().process_frame
-	if menu_instance.list_panel == null or not (menu_instance.list_panel is ItemListPanel):
-		printerr("TEST FAILED: PauseMenu is missing the reusable ItemListPanel.")
-		get_tree().quit(1)
-		return
-	if menu_instance.detail_panel == null or not (menu_instance.detail_panel is ItemDetailPanel):
-		printerr("TEST FAILED: PauseMenu is missing the reusable ItemDetailPanel.")
-		get_tree().quit(1)
-		return
-	if menu_instance.stats_panel == null or not (menu_instance.stats_panel is CharacterStatsPanel):
-		printerr("TEST FAILED: PauseMenu is missing the reusable CharacterStatsPanel.")
-		get_tree().quit(1)
-		return
-	if menu_instance.buttons_panel == null or not (menu_instance.buttons_panel is MenuButtonsPanel):
-		printerr("TEST FAILED: PauseMenu is missing the reusable MenuButtonsPanel.")
-		get_tree().quit(1)
-		return
-	var columns: HBoxContainer = menu_instance.get_node_or_null("MainMargin/MainVBox/OuterPanel/Columns") as HBoxContainer
-	if columns == null or columns.get_child_count() != 4:
-		printerr("TEST FAILED: PauseMenu must host exactly 4 columns.")
-		get_tree().quit(1)
-		return
-	if menu_instance.stats_panel.attack_row.text.contains("->"):
-		printerr("TEST FAILED: Stat arrows need a selected item; the playerless preview must show none.")
-		get_tree().quit(1)
-		return
-
-	# Verify BBCode title with wave effect (unique-name lookup: the menu now
-	# hosts other titled panels, e.g. the inventory, so a recursive name
-	# search is no longer specific enough).
-	var title_label: RichTextLabel = menu_instance.get_node_or_null("%Title") as RichTextLabel
-	if title_label == null:
-		printerr("TEST FAILED: Title RichTextLabel not found in PauseMenu.")
-		get_tree().quit(1)
-		return
-	if not title_label.bbcode_enabled:
-		printerr("TEST FAILED: Title RichTextLabel does not have bbcode_enabled.")
-		get_tree().quit(1)
-		return
-	if not title_label.text.contains("[wave") or not title_label.text.to_upper().contains("PAUSE"):
-		printerr("TEST FAILED: Title RichTextLabel does not contain [wave] BBCode tag or PAUSED text: ", title_label.text)
-		get_tree().quit(1)
-		return
-	print("PauseMenu node structure verified: Title has [wave] BBCode, all 6 buttons and 4 columns present, no duplicate gold label.")
-
-	menu_instance.queue_free()
-	await get_tree().process_frame
-
-	# ---------------------------------------------------------
-	# PART 5: Button Interactivity & Resume Action
-	# ---------------------------------------------------------
-	print("\n>>> PART 5: PauseMenu Resume Button Action")
+func test_pause_and_resume_toggle_the_tree_and_report_it() -> void:
+	var states: Array[bool] = []
+	var record: Callable = func(is_paused: bool) -> void: states.append(is_paused)
+	UI.pause_state_changed.connect(record)
 	UI.pause_game()
-	var active_menu: PauseMenu = UI._current_pause_menu
-	if active_menu == null:
-		printerr("TEST FAILED: No active pause menu.")
-		get_tree().quit(1)
-		return
+	check(get_tree().paused and UI.is_paused(), "pause_game() should pause the tree")
+	UI.resume_game()
+	check(not get_tree().paused and not UI.is_paused(), "resume_game() should unpause the tree")
+	UI.toggle_pause()
+	check(UI.is_paused(), "toggle_pause() should pause an unpaused game")
+	UI.toggle_pause()
+	check(not UI.is_paused(), "toggle_pause() should resume a paused game")
+	UI.pause_state_changed.disconnect(record)
+	check_eq(states, [true, false, true, false], "pause_state_changed should report every change in order")
 
-	var resume_signals: Array[bool] = []
-	active_menu.resume_requested.connect(func() -> void: resume_signals.append(true))
-	active_menu.resume_button.pressed.emit()
 
-	if resume_signals.is_empty():
-		printerr("TEST FAILED: resume_requested signal was not emitted on resume button press.")
-		get_tree().quit(1)
+func test_pausing_opens_a_menu_that_works_while_paused_and_resume_frees_it() -> void:
+	UI.pause_game()
+	var menu: PauseMenu = _open_menu()
+	if not check(menu != null, "pausing should open a pause menu"):
 		return
-	if UI.is_paused():
-		printerr("TEST FAILED: UI is still paused after resume button pressed.")
-		get_tree().quit(1)
-		return
-	print("Resume button verified: emitted resume_requested, unpaused tree, closed menu.")
+	check_eq(menu.process_mode, Node.PROCESS_MODE_ALWAYS, "the menu must keep processing while the tree is paused")
+	var menu_ref: WeakRef = weakref(menu)
+	UI.resume_game()
+	await wait_until(func() -> bool: return menu_ref.get_ref() == null, "resuming should free the pause menu", 5)
 
-	# ---------------------------------------------------------
-	# PART 6: Key Input Event Simulation ("ui_pause")
-	# ---------------------------------------------------------
-	print("\n>>> PART 6: Key Input Event Simulation (P Key)")
-	var key_event_p: InputEventKey = InputEventKey.new()
-	key_event_p.physical_keycode = KEY_P
-	key_event_p.pressed = true
 
-	# Test pause via simulated key input
-	UI._unhandled_key_input(key_event_p)
-	if not UI.is_paused():
-		printerr("TEST FAILED: _unhandled_key_input with 'ui_pause' key P did not pause the game.")
-		get_tree().quit(1)
+func test_resume_button_resumes_the_game() -> void:
+	UI.pause_game()
+	var menu: PauseMenu = _open_menu()
+	if not check(menu != null, "pausing should open a pause menu"):
 		return
-	print("Simulated 'P' key successfully paused the game.")
+	menu.buttons_panel.resume_button.pressed.emit()
+	check(not UI.is_paused(), "pressing resume should unpause the game")
 
-	# Test resume via simulated key input
-	UI._unhandled_key_input(key_event_p)
-	if UI.is_paused():
-		printerr("TEST FAILED: Second _unhandled_key_input with 'ui_pause' key P did not resume the game.")
-		get_tree().quit(1)
-		return
-	print("Second simulated 'P' key successfully resumed the game.")
 
-	# ---------------------------------------------------------
-	# PART 7: Game-Over Reuse (Red Tint, Title, No Resume, Locked Toggle)
-	# ---------------------------------------------------------
-	print("\n>>> PART 7: Game-Over Menu Configuration")
-	var gameover_menu: PauseMenu = GlobalVars.pause_menu_scene.instantiate() as PauseMenu
-	gameover_menu.title_text = "GAME OVER"
-	gameover_menu.title_color = Color(0.85, 0.2, 0.2)
-	gameover_menu.backdrop_color = Color(0.25, 0.03, 0.03, 0.78)
-	gameover_menu.show_resume_button = false
-	add_child(gameover_menu)
-	await get_tree().process_frame
+func test_pressing_the_pause_action_toggles_pause() -> void:
+	press_action(&"ui_pause")
+	if not await wait_until(func() -> bool: return UI.is_paused(), "pressing ui_pause should pause the game", 10):
+		return
+	press_action(&"ui_pause")
+	await wait_until(func() -> bool: return not UI.is_paused(), "pressing ui_pause again should resume the game", 10)
 
-	var gameover_title: RichTextLabel = gameover_menu.get_node_or_null("%Title") as RichTextLabel
-	if gameover_title == null or not gameover_title.text.contains("GAME OVER"):
-		printerr("TEST FAILED: Game-over title should read GAME OVER, got: ", gameover_title.text if gameover_title != null else "null")
-		get_tree().quit(1)
-		return
-	var gameover_backdrop: ColorRect = gameover_menu.find_child("Backdrop", true, false) as ColorRect
-	if gameover_backdrop == null or gameover_backdrop.color.r < 0.15 or gameover_backdrop.color.b > 0.1:
-		printerr("TEST FAILED: Game-over backdrop should be red-tinted.")
-		get_tree().quit(1)
-		return
-	if gameover_menu.resume_button.visible:
-		printerr("TEST FAILED: Game-over menu should hide the resume button.")
-		get_tree().quit(1)
-		return
-	if not gameover_menu.restart_button.visible:
-		printerr("TEST FAILED: Game-over menu should keep the restart button.")
-		get_tree().quit(1)
-		return
-	print("Game-over configuration verified: red GAME OVER title, red backdrop, resume hidden, restart kept.")
-	gameover_menu.queue_free()
-	await get_tree().process_frame
 
+func test_game_over_hides_resume_and_locks_the_pause_toggle() -> void:
 	UI.show_game_over()
-	await get_tree().process_frame
-	if not UI.is_paused():
-		printerr("TEST FAILED: UI.show_game_over() should pause the tree.")
-		get_tree().quit(1)
-		return
-	var active_gameover: PauseMenu = UI._current_pause_menu
-	if active_gameover == null or not is_instance_valid(active_gameover):
-		printerr("TEST FAILED: UI.show_game_over() should track its menu.")
-		get_tree().quit(1)
-		return
-	if active_gameover.resume_button.visible:
-		printerr("TEST FAILED: Game-over menu from UI should hide resume.")
-		get_tree().quit(1)
-		return
+	var menu: PauseMenu = _open_menu()
+	check(UI.is_paused(), "the game-over screen should pause the tree")
+	if check(menu != null, "the game-over screen should open a menu"):
+		check(not menu.buttons_panel.resume_button.visible, "game over should hide the resume button")
+		check(menu.buttons_panel.restart_button.visible, "game over should keep the restart button")
 	UI.toggle_pause()
-	if not UI.is_paused():
-		printerr("TEST FAILED: Pause toggle should stay locked on the game-over screen.")
-		get_tree().quit(1)
-		return
-	print("UI.show_game_over() verified: paused, resume hidden, toggle locked.")
+	check(UI.is_paused(), "the pause toggle should stay locked on the game-over screen")
 	UI.resume_game()
-	if UI.is_paused():
-		printerr("TEST FAILED: UI.resume_game() should clear the game-over screen.")
-		get_tree().quit(1)
-		return
+	check(not UI.is_paused(), "resume_game() should clear the game-over screen")
 
-	# ---------------------------------------------------------
-	# PART 8: Player Defeat Shows Game Over After a Delay
-	# ---------------------------------------------------------
-	print("\n>>> PART 8: Delayed Game Over on Player Defeat")
-	var player: Character = (load("res://Player/player.tscn") as PackedScene).instantiate() as Character
-	add_child(player)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	var player_attrs: AttributeComponent = player.get_node("AttributeComponent") as AttributeComponent
+
+func test_player_defeat_shows_game_over_after_the_delay_without_resetting_progression() -> void:
+	var arena: Node3D = load_arena()
+	var player: Character = spawn(PLAYER_SCENE, arena, (arena.get_node("PlayerSpawn") as Node3D).global_position) as Character
+	await wait_physics_frames(1)
 	var saved_difficulty: int = ProgressionState.difficulty_level
 	var saved_dungeon_level: int = ProgressionState.dungeon_level
-	ProgressionState.difficulty_level = 9
-	ProgressionState.dungeon_level = 5
-	player_attrs.damage_pool(AttributeComponent.POOL_HEALTH, player_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH))
-	await get_tree().create_timer(1.0).timeout
-	if UI.is_paused():
-		player.queue_free()
-		UI.resume_game()
-		printerr("TEST FAILED: Game-over screen appeared before the defeat delay elapsed.")
-		get_tree().quit(1)
-		return
-	var player_sm: StateMachine = player.state_machine
-	if player_sm == null or player_sm.state == null or player_sm.state.name != "PlayerDefeat":
-		ProgressionState.difficulty_level = saved_difficulty
-		ProgressionState.dungeon_level = saved_dungeon_level
-		player.queue_free()
-		UI.resume_game()
-		printerr("TEST FAILED: Player defeat should enter the PlayerDefeat state.")
-		get_tree().quit(1)
-		return
-	var playback: AnimationNodeStateMachinePlayback = player.animation_tree.get("parameters/playback") as AnimationNodeStateMachinePlayback
-	if playback == null or playback.get_current_node() != &"Defeat":
-		ProgressionState.difficulty_level = saved_difficulty
-		ProgressionState.dungeon_level = saved_dungeon_level
-		player.queue_free()
-		UI.resume_game()
-		printerr("TEST FAILED: Player defeat should play the Defeat animation.")
-		get_tree().quit(1)
-		return
-	print("PlayerDefeat state and animation verified.")
-	await get_tree().create_timer(1.6).timeout
-	await get_tree().process_frame
-	if not UI.is_paused():
-		player.queue_free()
-		UI.resume_game()
-		printerr("TEST FAILED: Player defeat should pause into the game-over screen.")
-		get_tree().quit(1)
-		return
-	var defeat_menu: PauseMenu = UI._current_pause_menu
-	var defeat_title: RichTextLabel = defeat_menu.get_node_or_null("%Title") as RichTextLabel if defeat_menu != null else null
-	if defeat_title == null or not defeat_title.text.contains("GAME OVER"):
-		player.queue_free()
-		UI.resume_game()
-		printerr("TEST FAILED: Defeat menu should read GAME OVER.")
-		get_tree().quit(1)
-		return
-	if ProgressionState.difficulty_level != 9 or ProgressionState.dungeon_level != 5:
-		player.queue_free()
-		UI.resume_game()
-		printerr("TEST FAILED: Death should not reset progression; reset is deferred to restart.")
-		get_tree().quit(1)
-		return
-	print("Delayed game over verified: death plays out, then the GAME OVER menu takes over.")
+	ProgressionState.difficulty_level = TEST_DIFFICULTY
+	ProgressionState.dungeon_level = TEST_DUNGEON_LEVEL
+	player.hurtbox.receive_hit(player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), Vector3.ZERO)
+	await wait_physics_frames(_frames_for(Character.DEFEAT_MENU_DELAY * 0.5))
+	check(not UI.is_paused(), "the game-over screen must wait for the defeat delay")
+	check_eq(str(player.state_machine.state.name), "PlayerDefeat", "a defeated player should enter PlayerDefeat")
+	await wait_until(func() -> bool: return UI.is_paused(), "the game-over screen should appear after the defeat delay", _frames_for(Character.DEFEAT_MENU_DELAY))
+	var menu: PauseMenu = _open_menu()
+	check(menu != null and not menu.buttons_panel.resume_button.visible, "defeat should open the game-over screen")
+	check_eq(ProgressionState.difficulty_level, TEST_DIFFICULTY, "dying must not reset the difficulty (reset happens on restart)")
+	check_eq(ProgressionState.dungeon_level, TEST_DUNGEON_LEVEL, "dying must not reset the dungeon level (reset happens on restart)")
 	ProgressionState.difficulty_level = saved_difficulty
 	ProgressionState.dungeon_level = saved_dungeon_level
-	player.queue_free()
-	UI.resume_game()
 
-	# ---------------------------------------------------------
-	# Clean Teardown
-	# ---------------------------------------------------------
-	UI.resume_game()
-	print("\n====================================================================")
-	print("  ALL PAUSE MENU TESTS PASSED!                                      ")
-	print("  1. 'ui_pause' action and physical key 'P' (KEY_P = 80) verified   ")
-	print("  2. GlobalVars.pause_menu_scene registry export verified           ")
-	print("  3. UI.pause_game(), resume_game(), toggle_pause() state logic ok   ")
-	print("  4. PauseMenu [wave] BBCode title and button components ok         ")
-	print("  5. Resume button interaction unpauses and frees menu ok            ")
-	print("  6. Simulated 'ui_pause' input event toggles pause cleanly          ")
-	print("  7. Game-over reuse (red tint, title, no resume, locked toggle) ok  ")
-	print("  8. Delayed GAME OVER menu on player defeat ok                      ")
-	print("====================================================================")
-	get_tree().quit(0)
+
+func test_pause_menu_does_not_duplicate_the_hud_gold_counter() -> void:
+	var menu: PauseMenu = autofree(GlobalVars.pause_menu_scene.instantiate()) as PauseMenu
+	add_child(menu)
+	check(menu.find_child("GoldLabel", true, false) == null, "the pause menu must not render its own gold counter; the HUD's stays visible under it")
+
+
+func test_stats_panel_shows_no_comparison_arrows_without_a_selected_item() -> void:
+	var menu: PauseMenu = autofree(GlobalVars.pause_menu_scene.instantiate()) as PauseMenu
+	add_child(menu)
+	check(not menu.stats_panel.attack_row.text.contains("->"), "stat comparison arrows need a selected item")
+
+
+## The pause/game-over menu UI currently shows, or null.
+func _open_menu() -> PauseMenu:
+	for node: Node in UI.find_children("*", "PauseMenu", true, false):
+		if not node.is_queued_for_deletion():
+			return node as PauseMenu
+	return null
+
+
+## Physics frames covering the given game time, plus a small margin.
+func _frames_for(seconds: float) -> int:
+	return ceili(seconds * Engine.physics_ticks_per_second) + 5

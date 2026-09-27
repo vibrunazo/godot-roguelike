@@ -40,17 +40,9 @@ are in `CODE_REVIEW.md`; section numbers below point there.
    is Forward+-only, so it will *probably* be dropped (e.g. for LightmapGI or
    ambient lighting); not decided yet, and not urgent until touch input exists.
    Until then, avoid deepening the per-level VoxelGI dependency. (§3.9)
-8. **A supported way to stop a wave.** Seven suites disable enemy waves by
-   stripping `WaveObjective`'s script (`set_script(null)`), which also removes its
-   cleanup and leaks the pre-instanced enemies. Give `WaveObjective` a documented
-   stop method (freeing unspawned enemies) or move those suites to the test
-   arena. Affected: `test_boss_arena_1`, `test_brute_level2_nav`,
-   `test_brute_pit_corner_nav`, `test_combo_and_dash_cancel`,
-   `test_level_13_stairs`, `test_level_13_tables`, `test_level_rotation_nav`.
-
 ## Test suite bugs (fix while migrating each suite to the harness, Phase B)
 
-9. **Suites that assume 60 fps** (fail at `python run_tests.py --fps 20`):
+8. **Suites that assume 60 fps** (fail at `python run_tests.py --fps 20`):
    - `test_firebomber_enemy`: expects a target spawned in mid-air not to have
      fallen after one render frame.
    - `test_damage_flash_and_shake`: calls `core_movement(0.016, 8.0)` directly
@@ -58,24 +50,29 @@ are in `CODE_REVIEW.md`; section numbers below point there.
    - `test_akira_boss`: inspects projectiles one render frame after spawning
      them (already freed at low fps), and compares trap areas at a
      frame-dependent moment.
-10. **Hardcoded balance, art and key assertions** that break when designers
-    tune values: see the tables in §3.1 (balance), §3.2 (art/VFX/layout) and
-    §3.3 (physical keys).
-11. **`test_brute_level2_nav` saves screenshots during headless runs**
+9. **Migrate the remaining suites to the harness** (37 left; migrated so far:
+    `test_character_rotation`, `test_ground_aoe_jump`, `test_debug_kill`,
+    `test_self_hitstop`, `test_health_bar`, `test_enemy_thunder_mage`,
+    `test_pause_menu`, `test_character_and_ai`, plus the new
+    `test_frame_rate_invariance`, `test_attack_component`, `test_wave_objective`).
+    While migrating, remove the hardcoded balance, art and key assertions listed
+    in §3.1 (balance), §3.2 (art/VFX/layout) and §3.3 (physical keys; now only
+    `test_jump_action`), and the private-method calls (still in 14 suites).
+10. **`test_brute_level2_nav` saves screenshots during headless runs**
     (`_save_screenshot`, line 136), which logs engine errors because there is no
     renderer. Screenshots belong in `capture.py`/`tools/capture/scenarios/`.
-12. **`test_enemy_base.gd` is one 3,064-line `_ready()`.** Split it into feature
+11. **`test_enemy_base.gd` is one 3,064-line `_ready()`.** Split it into feature
     suites during its migration. (§3.4)
 
 ## Architecture backlog
 
-13. **Data-driven attacks (`AttackData` resources).** Attacks and combos are
+12. **Data-driven attacks (`AttackData` resources).** Attacks and combos are
     wired through string state names (`"SlashAttack"`, `"EnemyAttack"`, ...) with
     combo branches and timings spread across state scripts and scenes. An
     `AttackData` resource (animation, damage, knockback, combo window, audio)
     played by one generic attack state would let new weapons and enemy attacks
     be authored as data. Related: §2.2 (string state names).
-14. **Rig and bone-attachment decoupling.** `animated_player.tscn` and
+13. **Rig and bone-attachment decoupling.** `animated_player.tscn` and
     `animated_enemy.tscn` hand-place their skeleton attachments (`WeaponSlot`,
     foot bones); reusing animations across skeletons breaks when a track
     references an attachment that is missing. Bind sockets from one component

@@ -3,7 +3,7 @@
 ##
 ## Unique responsibilities:
 ## - Fullscreen state and toggling (`is_fullscreen`, `go_fullscreen`, `toggle_fullscreen`).
-## - Global UI input events (e.g. the `ui_toggle_fullscreen` action in `_unhandled_key_input`).
+## - Global UI input events (e.g. the `ui_toggle_fullscreen` action in `_unhandled_input`).
 ## - Global UI state and menu flow (opening/closing menus, tracking which menu is
 ##   open). No menu flow exists yet; new menu logic belongs here, not in levels
 ##   or character scripts.
@@ -33,7 +33,9 @@ func _ready() -> void:
 		go_fullscreen()
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
+## Handles the global UI actions from any input device. _unhandled_input (not
+## _unhandled_key_input) so actions bound to gamepad buttons work too.
+func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_toggle_fullscreen"):
 		toggle_fullscreen()
 	elif event.is_action_pressed("ui_pause"):

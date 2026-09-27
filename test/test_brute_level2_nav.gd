@@ -28,7 +28,7 @@ func _ready() -> void:
 	# Disable WaveObjective to avoid extraneous enemy spawns
 	var wave_obj: Node = level.find_child("WaveObjective", true, false)
 	if wave_obj != null:
-		wave_obj.set_script(null)
+		(wave_obj as WaveObjective).stop_spawning()
 		for c in wave_obj.get_children():
 			c.queue_free()
 

@@ -1,132 +1,59 @@
-## Committed test for the `debug_kill` action (keyboard K): verifies the
-## InputMap binding and that pressing it damages every living enemy through
-## Hurtbox.receive_hit() while leaving the player untouched.
-extends Node
+## The `debug_kill` action: pressing it makes UI.debug_kill_enemies() damage
+## every living enemy through Hurtbox.receive_hit() (so hit reactions fire like
+## real combat hits) by UI.DEBUG_KILL_DAMAGE, and never touches the player.
+## Expected damage is read from UI.DEBUG_KILL_DAMAGE, and the action is driven
+## by name, so rebinding its key or retuning the damage never breaks the suite.
+extends "res://test/lib/test_suite.gd"
 
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+## Test-owned health, well above the debug damage, so every hit is measurable.
+const DUMMY_HEALTH: float = 100000.0
+
+var _arena: Node3D
+var _enemies: Array[Character] = []
+var _player: Character
 
 
-func _ready() -> void:
-	print("--- RUNNING DEBUG KILL TEST ---")
+func before_each() -> void:
+	_arena = load_arena()
+	_enemies = [_spawn(MELEE_SCENE, Vector3(-3.0, 1.0, -4.0)), _spawn(MELEE_SCENE, Vector3(3.0, 1.0, -4.0))]
+	_player = _spawn(PLAYER_SCENE, (_arena.get_node("PlayerSpawn") as Node3D).global_position)
+	await wait_physics_frames(1)
 
-	# ---------------------------------------------------------
-	# PART 1: InputMap Verification for "debug_kill"
-	# ---------------------------------------------------------
-	print("\n>>> PART 1: InputMap Action Verification")
-	if not InputMap.has_action("debug_kill"):
-		printerr("TEST FAILED: 'debug_kill' action is not registered in InputMap.")
-		get_tree().quit(1)
-		return
-	print("Action 'debug_kill' exists in InputMap.")
 
-	var events: Array[InputEvent] = InputMap.action_get_events("debug_kill")
-	var has_k_key: bool = false
-	for event: InputEvent in events:
-		if event is InputEventKey:
-			var key_event: InputEventKey = event as InputEventKey
-			if key_event.physical_keycode == KEY_K or key_event.keycode == KEY_K:
-				has_k_key = true
-	if not has_k_key:
-		printerr("TEST FAILED: 'debug_kill' action does not have key K assigned.")
-		get_tree().quit(1)
-		return
-	print("Verified 'debug_kill' is mapped to key 'K'.")
+func test_debug_kill_action_is_bound() -> void:
+	if check(InputMap.has_action(&"debug_kill"), "the debug_kill action should exist in the InputMap"):
+		check(not InputMap.action_get_events(&"debug_kill").is_empty(), "the debug_kill action should have at least one binding")
 
-	if not is_equal_approx(UI.DEBUG_KILL_DAMAGE, 50.0):
-		printerr("TEST FAILED: UI.DEBUG_KILL_DAMAGE should be 50.0, got: ", UI.DEBUG_KILL_DAMAGE)
-		get_tree().quit(1)
-		return
-	print("Verified UI.DEBUG_KILL_DAMAGE is 50.0.")
 
-	# ---------------------------------------------------------
-	# PART 2: debug_kill_enemies() damages all enemies via Hurtbox
-	# ---------------------------------------------------------
-	print("\n>>> PART 2: debug_kill_enemies() damages all enemies")
-	var enemy_a: Character = MELEE_SCENE.instantiate() as Character
-	var enemy_b: Character = MELEE_SCENE.instantiate() as Character
-	var player: Character = PLAYER_SCENE.instantiate() as Character
-	add_child(enemy_a)
-	add_child(enemy_b)
-	add_child(player)
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-
-	if not enemy_a.is_in_group("enemy") or not enemy_b.is_in_group("enemy"):
-		printerr("TEST FAILED: Spawned melee enemies should be in the 'enemy' group.")
-		get_tree().quit(1)
-		return
-
-	var hurtbox_a: Hurtbox = enemy_a.get_node_or_null("Hurtbox") as Hurtbox
-	var hurtbox_b: Hurtbox = enemy_b.get_node_or_null("Hurtbox") as Hurtbox
-	if hurtbox_a == null or hurtbox_b == null:
-		printerr("TEST FAILED: Melee enemies should wire a Hurtbox.")
-		get_tree().quit(1)
-		return
-
-	var struck_hits: Array[float] = []
-	hurtbox_a.struck.connect(func(damage: float) -> void: struck_hits.append(damage))
-	hurtbox_b.struck.connect(func(damage: float) -> void: struck_hits.append(damage))
-
-	var attrs_a: AttributeComponent = enemy_a.get_node("AttributeComponent") as AttributeComponent
-	var attrs_b: AttributeComponent = enemy_b.get_node("AttributeComponent") as AttributeComponent
-	var player_attrs: AttributeComponent = player.get_node("AttributeComponent") as AttributeComponent
-	var before_a: float = attrs_a.get_current(AttributeComponent.POOL_HEALTH)
-	var before_b: float = attrs_b.get_current(AttributeComponent.POOL_HEALTH)
-	var before_player: float = player_attrs.get_current(AttributeComponent.POOL_HEALTH)
-
+func test_damages_every_living_enemy_through_its_hurtbox_but_not_the_player() -> void:
+	var strikes: Array[int] = [0]
+	var enemy_health_before: Array[float] = []
+	for enemy: Character in _enemies:
+		enemy.hurtbox.struck.connect(func(_damage: float) -> void: strikes[0] += 1)
+		enemy_health_before.append(_health(enemy))
+	var player_health_before: float = _health(_player)
 	UI.debug_kill_enemies()
+	for i: int in range(_enemies.size()):
+		check_approx(enemy_health_before[i] - _health(_enemies[i]), UI.DEBUG_KILL_DAMAGE, "enemy %d should lose UI.DEBUG_KILL_DAMAGE health" % i)
+	check_eq(strikes[0], _enemies.size(), "every enemy should be struck through its Hurtbox exactly once")
+	check_approx(_health(_player), player_health_before, "debug kill must not damage the player")
 
-	var expected_a: float = maxf(0.0, before_a - UI.DEBUG_KILL_DAMAGE)
-	var expected_b: float = maxf(0.0, before_b - UI.DEBUG_KILL_DAMAGE)
-	if not is_equal_approx(attrs_a.get_current(AttributeComponent.POOL_HEALTH), expected_a):
-		printerr("TEST FAILED: Enemy A health should drop relatively by the debug damage.")
-		get_tree().quit(1)
-		return
-	if not is_equal_approx(attrs_b.get_current(AttributeComponent.POOL_HEALTH), expected_b):
-		printerr("TEST FAILED: Enemy B health should drop relatively by the debug damage.")
-		get_tree().quit(1)
-		return
-	if struck_hits.size() != 2:
-		printerr("TEST FAILED: Both enemies should emit Hurtbox.struck (hit-reaction path), got: ", struck_hits.size())
-		get_tree().quit(1)
-		return
-	if not is_equal_approx(player_attrs.get_current(AttributeComponent.POOL_HEALTH), before_player):
-		printerr("TEST FAILED: debug_kill must not damage the player.")
-		get_tree().quit(1)
-		return
-	print("debug_kill_enemies() verified: all enemies damaged via Hurtbox, player untouched.")
 
-	# ---------------------------------------------------------
-	# PART 3: Simulated K key press routes through _unhandled_key_input
-	# ---------------------------------------------------------
-	print("\n>>> PART 3: Key Input Event Simulation (K Key)")
-	attrs_a.restore_pool(AttributeComponent.POOL_HEALTH, UI.DEBUG_KILL_DAMAGE)
-	attrs_b.restore_pool(AttributeComponent.POOL_HEALTH, UI.DEBUG_KILL_DAMAGE)
-	var healed_a: float = attrs_a.get_current(AttributeComponent.POOL_HEALTH)
-	var healed_b: float = attrs_b.get_current(AttributeComponent.POOL_HEALTH)
+func test_pressing_the_debug_kill_action_triggers_it() -> void:
+	var enemy: Character = _enemies[0]
+	var health_before: float = _health(enemy)
+	press_action(&"debug_kill")
+	await wait_until(func() -> bool: return _health(enemy) < health_before, "pressing debug_kill should damage the enemies")
 
-	var key_event_k: InputEventKey = InputEventKey.new()
-	key_event_k.physical_keycode = KEY_K
-	key_event_k.pressed = true
-	UI._unhandled_key_input(key_event_k)
 
-	if not is_equal_approx(attrs_a.get_current(AttributeComponent.POOL_HEALTH), maxf(0.0, healed_a - UI.DEBUG_KILL_DAMAGE)):
-		printerr("TEST FAILED: Simulated K key press did not damage enemy A.")
-		get_tree().quit(1)
-		return
-	if not is_equal_approx(attrs_b.get_current(AttributeComponent.POOL_HEALTH), maxf(0.0, healed_b - UI.DEBUG_KILL_DAMAGE)):
-		printerr("TEST FAILED: Simulated K key press did not damage enemy B.")
-		get_tree().quit(1)
-		return
-	print("Simulated 'K' key successfully damaged all enemies.")
+func _spawn(scene: PackedScene, at: Vector3) -> Character:
+	var character: Character = spawn(scene, _arena, at) as Character
+	disable_ai(character)
+	character.attribute_component.set_base(AttributeComponent.STAT_MAX_HEALTH, DUMMY_HEALTH)
+	return character
 
-	enemy_a.queue_free()
-	enemy_b.queue_free()
-	player.queue_free()
-	await get_tree().process_frame
 
-	print("\n====================================================================")
-	print("  ALL DEBUG KILL TESTS PASSED!                                      ")
-	print("====================================================================")
-	get_tree().quit(0)
+func _health(character: Character) -> float:
+	return character.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
