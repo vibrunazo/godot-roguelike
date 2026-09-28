@@ -1,6 +1,5 @@
 extends Node
 
-const TestUtils = preload("res://test/test_utils.gd")
 
 func _ready() -> void:
 	print("--- RUNNING BASE ENEMY SCENE & LOGIC TEST ---")
@@ -795,9 +794,19 @@ func _ready() -> void:
 	scene_trans.player_cache = null
 	test_level.queue_free()
 
-	var level_enemy: Character = TestUtils.find_enemy(level)
-	if level_enemy == null or not level_enemy.is_in_group("enemy"):
-		printerr("TEST FAILED: No enemy Character instance found via TestUtils in LevelTemplate scene.")
+	# Wait for the level's own WaveObjective to spawn its first enemy.
+	var level_wave: WaveObjective = level.get_node("WaveObjective") as WaveObjective
+	var level_enemy: Character = null
+	for i: int in range(ceili((level_wave.first_spawn_delay + 1.0) * Engine.physics_ticks_per_second)):
+		for candidate: Node in get_tree().get_nodes_in_group("enemy"):
+			if candidate is Character and level.is_ancestor_of(candidate):
+				level_enemy = candidate as Character
+				break
+		if level_enemy != null:
+			break
+		await get_tree().physics_frame
+	if level_enemy == null:
+		printerr("TEST FAILED: The LevelTemplate WaveObjective spawned no enemy.")
 		level.queue_free()
 		get_tree().quit(1)
 		return
@@ -1161,7 +1170,7 @@ func _ready() -> void:
 	var ordered: bool = false
 	for i: int in range(180):
 		if ranged_ai_sm.state != ranged_ai_attack and ranged_sm.state != ranged_attack:
-			ranged_ai_sm._transition_to_next_state("AIAttack")
+			ranged_ai_sm.request_state("AIAttack")
 		await get_tree().physics_frame
 		if ranged_sm.state == ranged_attack:
 			ordered = true
@@ -1312,11 +1321,7 @@ func _ready() -> void:
 		printerr("TEST FAILED: EnemyProjectile Timer configuration invalid (wait_time: ", timer.wait_time, ", autostart: ", timer.autostart, ")")
 		get_tree().quit(1)
 		return
-	if not timer.timeout.is_connected(proj._on_timer_timeout):
-		printerr("TEST FAILED: EnemyProjectile Timer timeout signal is not connected to _on_timer_timeout.")
-		get_tree().quit(1)
-		return
-	print("EnemyProjectile Timer (10s autostart -> _on_timer_timeout) verified.")
+	print("EnemyProjectile Timer (autostart) verified.")
 
 	add_child(proj)
 	var attack_comp_proj: AttackComponent = proj.get_node_or_null("AttackComponent") as AttackComponent
@@ -1332,14 +1337,14 @@ func _ready() -> void:
 		return
 	print("EnemyProjectile AttackComponent verified.")
 
-	# Test timeout queue_free
-	proj._on_timer_timeout()
+	# The lifetime timer running out frees the projectile.
+	(proj.get_node("Timer") as Timer).timeout.emit()
 	if not proj.is_queued_for_deletion():
-		printerr("TEST FAILED: _on_timer_timeout did not queue projectile for deletion.")
+		printerr("TEST FAILED: The lifetime timer running out did not free the projectile.")
 		proj.queue_free()
 		get_tree().quit(1)
 		return
-	print("EnemyProjectile _on_timer_timeout calls queue_free() verified.")
+	print("EnemyProjectile frees itself when its lifetime timer runs out.")
 	proj.queue_free()
 	await get_tree().physics_frame
 	await get_tree().process_frame

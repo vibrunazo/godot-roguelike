@@ -24,17 +24,13 @@ are in `CODE_REVIEW.md`; section numbers below point there.
    Until then, avoid deepening the per-level VoxelGI dependency. (§3.9)
 ## Test suite bugs (fix while migrating each suite to the harness, Phase B)
 
-4. **Migrate the remaining suites to the harness** (26 left; list them with
+4. **Migrate the remaining suites to the harness** (21 left; list them with
     `grep -L "test/lib/test_suite.gd" test/test_*.gd`). The whole suite passes
     at `--fps 20`. While migrating, remove the hardcoded balance and art
-    assertions listed in §3.1 (balance) and §3.2 (art/VFX/layout), and the
-    private-method calls still left in 4 suites: `_transition_to_next_state`
-    (`test_audio` ×2, `test_enemy_base`; use `StateMachine.request_state()`),
-    `_on_timer_timeout` (`test_enemy_base`), `_render_trail`
-    (`test_dungeon_progression_and_trail`) and `_get_damage_hitbox`
-    (`test_passive_abilities`). `test/test_utils.gd` goes away with its last
-    four users (`test_enemy_base`, `test_passive_abilities`,
-    `test_screenshake_controller_policy`, `test_spikes_hazard`).
+    assertions listed in §3.1 (balance) and §3.2 (art/VFX/layout). No test
+    calls a private method any more; two still read private fields:
+    `WaveObjective._enemy_difficulties` (`test_enemy_base`) and
+    `AttributeComponent._dots` (`test_level_transition_reset`).
 5. **`test_brute_level2_nav` saves screenshots during headless runs**
     (`_save_screenshot`, line 136), which logs engine errors because there is no
     renderer. Screenshots belong in `capture.py`/`tools/capture/scenarios/`.

@@ -1,228 +1,113 @@
-extends Node
+## Spikes trap:
+## - any living character stepping on it (player or enemy) triggers it,
+## - nobody is hurt during trigger_delay (the dodge window); then the spikes
+##   emerge and hurt whoever stands on them for the trap's damage,
+## - stepping off during the dodge window avoids the hit,
+## - after active_duration the spikes retract, the hitbox switches off, and
+##   after reset_cooldown the trap re-arms and triggers again.
+## Delays and damage are read from the hazard itself.
+extends "res://test/lib/test_suite.gd"
 
-const TestUtils = preload("res://test/test_utils.gd")
-const Character = preload("res://Character/character.gd")
-const AttackComponent = preload("res://Components/attack_component.gd")
+const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+const SPIKES_SCENE: PackedScene = preload("res://Hazards/spikes_hazard.tscn")
+## Physics ticks a body may take to be detected by the trigger area.
+const DETECT_FRAMES: int = 10
+## Where the trap sits, away from the arena's spawn markers.
+const TRAP_SPOT: Vector3 = Vector3(8.0, 0.0, -8.0)
 
-func _ready() -> void:
-	print("--- RUNNING SPIKES TRAP HAZARD TEST ---")
-	
-	var hazard_scene: PackedScene = load("res://Hazards/spikes_hazard.tscn")
-	if hazard_scene == null:
-		printerr("TEST FAILED: Failed to load Hazards/spikes_hazard.tscn")
-		get_tree().quit(1)
-		return
-	
-	var floor_body := StaticBody3D.new()
-	var floor_col := CollisionShape3D.new()
-	var floor_box := BoxShape3D.new()
-	floor_box.size = Vector3(20.0, 1.0, 20.0)
-	floor_col.shape = floor_box
-	floor_col.position = Vector3(0.0, -0.5, 0.0)
-	floor_body.add_child(floor_col)
-	add_child(floor_body)
+var _arena: Node3D
+var _trap: SpikesHazard
 
-	var hazard: SpikesHazard = hazard_scene.instantiate() as SpikesHazard
-	hazard.trigger_delay = 0.25
-	hazard.active_duration = 0.35
-	hazard.reset_cooldown = 0.2
-	hazard.damage = 5.0
-	hazard.knockback_force = 4.0
-	add_child(hazard)
-	hazard.global_position = Vector3(0.0, 0.0, 0.0)
-	
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	
-	# ---------------------------------------------------------
-	# PART 1: Node & Component Setup Verification
-	# ---------------------------------------------------------
-	print("\n>>> PART 1: Node & Configuration Checks")
-	if hazard.trigger_area == null:
-		printerr("TEST FAILED: TriggerArea not found.")
-		get_tree().quit(1)
+
+func before_each() -> void:
+	_arena = load_arena()
+	_trap = spawn(SPIKES_SCENE, _arena, Vector3(TRAP_SPOT.x, arena_floor_top(_arena), TRAP_SPOT.z)) as SpikesHazard
+	await wait_physics_frames(1)
+	check(_trap.is_idle() and not _trap.damage_hitbox.monitoring, "setup: the trap should start idle and harmless")
+
+
+func test_an_enemy_triggers_the_trap_and_is_hurt_only_after_the_dodge_window() -> void:
+	var enemy: Character = spawn(MELEE_SCENE, _arena, _on_trap()) as Character
+	disable_ai(enemy)
+	await _check_triggers_then_hurts(enemy)
+
+
+func test_the_player_triggers_the_trap_and_is_hurt_only_after_the_dodge_window() -> void:
+	var player: Character = _spawn_player(_on_trap())
+	await _check_triggers_then_hurts(player)
+
+
+func test_stepping_off_during_the_dodge_window_avoids_the_hit() -> void:
+	var player: Character = _spawn_player(_on_trap())
+	if not await wait_until(func() -> bool: return _trap.is_triggered(), "setup: the player should trigger the trap", DETECT_FRAMES):
 		return
-	if hazard.trigger_area.collision_layer != 32:
-		printerr("TEST FAILED: Expected TriggerArea collision_layer == 32 (layer 6 Triggers), got: ", hazard.trigger_area.collision_layer)
-		get_tree().quit(1)
+	player.global_position = _on_trap() + Vector3(6.0, 0.0, 0.0)
+	var health_before: float = _health(player)
+	if not await wait_until(func() -> bool: return _trap.is_active(), "the spikes should emerge after the dodge window", _frames_for(_trap.trigger_delay)):
 		return
-	if hazard.trigger_area.collision_mask != 1:
-		printerr("TEST FAILED: Expected TriggerArea collision_mask == 1, got: ", hazard.trigger_area.collision_mask)
-		get_tree().quit(1)
+	await wait_physics_frames(_frames_for(_trap.active_duration))
+	check_approx(_health(player), health_before, "a player who stepped off in time should not be hurt")
+
+
+func test_the_trap_retracts_and_rearms_after_its_cooldown() -> void:
+	var enemy: Character = spawn(MELEE_SCENE, _arena, _on_trap()) as Character
+	disable_ai(enemy)
+	if not await wait_until(func() -> bool: return _trap.is_active(), "setup: the spikes should emerge", DETECT_FRAMES + _frames_for(_trap.trigger_delay)):
 		return
-	print("TriggerArea layer (32) and mask (1) verified.")
-	
-	if hazard.damage_hitbox == null:
-		printerr("TEST FAILED: DamageHitbox not found.")
-		get_tree().quit(1)
+	enemy.global_position = _on_trap() + Vector3(-6.0, 0.0, 0.0)
+	# Test-owned cooldown, longer than the retract animation, so re-arming
+	# early can only mean the cooldown was skipped.
+	var retract_length: float = _trap.animation_player.get_animation(&"retract").length if _trap.animation_player.has_animation(&"retract") else 0.0
+	_trap.reset_cooldown = retract_length + 0.5
+	if not await wait_until(func() -> bool: return not _trap.is_active(), "the spikes should retract after active_duration", _frames_for(_trap.active_duration)):
 		return
-	if hazard.damage_hitbox.collision_mask != 192:
-		printerr("TEST FAILED: Expected DamageHitbox collision_mask == 192 (64 | 128), got: ", hazard.damage_hitbox.collision_mask)
-		get_tree().quit(1)
+	check(not _trap.damage_hitbox.monitoring, "retracted spikes should not hurt")
+	var rearm_ticks: Array[int] = [0]
+	if not await wait_until(func() -> bool:
+		rearm_ticks[0] += 1
+		return _trap.is_idle(), "the trap should re-arm after retracting and reset_cooldown", _frames_for(retract_length + _trap.reset_cooldown)):
 		return
-	if hazard.damage_hitbox.monitoring != false:
-		printerr("TEST FAILED: DamageHitbox should not be monitoring initially.")
-		get_tree().quit(1)
+	check(rearm_ticks[0] >= floori(_trap.reset_cooldown * Engine.physics_ticks_per_second), "the trap should not re-arm before reset_cooldown (took %d ticks)" % rearm_ticks[0])
+	enemy.global_position = _on_trap()
+	await wait_until(func() -> bool: return _trap.is_triggered(), "the re-armed trap should trigger again", DETECT_FRAMES)
+
+
+## Checks the victim triggers the trap, stays unhurt for the whole dodge
+## window, then takes the trap's damage when the spikes emerge.
+func _check_triggers_then_hurts(victim: Character) -> void:
+	if not await wait_until(func() -> bool: return not _trap.is_idle(), "stepping on the trap should trigger it", DETECT_FRAMES):
 		return
-	print("DamageHitbox mask (192) and initial monitoring (false) verified.")
-	
-	if hazard.attack_component == null:
-		printerr("TEST FAILED: AttackComponent not found on DamageHitbox.")
-		get_tree().quit(1)
+	var health_before: float = _health(victim)
+	var early_hit: Array[bool] = [false]
+	var window_ticks: Array[int] = [0]
+	if not await wait_until(func() -> bool:
+		window_ticks[0] += 1
+		early_hit[0] = early_hit[0] or (not _trap.is_active() and _health(victim) < health_before)
+		return _trap.is_active(), "the spikes should emerge after trigger_delay", _frames_for(_trap.trigger_delay)):
 		return
-	if not is_equal_approx(hazard.attack_component.damage, hazard.damage):
-		printerr("TEST FAILED: Expected AttackComponent.damage == hazard.damage (", hazard.damage, "), got: ", hazard.attack_component.damage)
-		get_tree().quit(1)
-		return
-	print("AttackComponent synced damage verified (", hazard.damage, ").")
-	
-	var spikes_root: Node3D = hazard.get_node_or_null("SpikesRoot") as Node3D
-	if spikes_root == null:
-		printerr("TEST FAILED: SpikesRoot node not found.")
-		get_tree().quit(1)
-		return
-	if spikes_root.position.y > -0.6:
-		printerr("TEST FAILED: Taller spikes should be submerged initially (position.y <= -0.6), got: ", spikes_root.position.y)
-		get_tree().quit(1)
-		return
-	print("SpikesRoot initial retracted position verified (Y = ", spikes_root.position.y, ")")
-	
-	# ---------------------------------------------------------
-	# PART 2: Enemy Trigger Activation & Damage
-	# ---------------------------------------------------------
-	print("\n>>> PART 2: Verifying Enemies CAN Trigger Spikes & Take Damage")
-	var enemy_scene: PackedScene = load("res://Enemy/melee_enemy.tscn")
-	var enemy: Character = enemy_scene.instantiate() as Character
-	add_child(enemy)
-	enemy.global_position = Vector3(0.0, 1.0, 0.0)
-	
-	# Wait for body_entered detection
-	for i: int in range(5):
-		await get_tree().physics_frame
-	
-	if not hazard.is_triggered():
-		printerr("TEST FAILED: Enemy did not trigger spikes hazard! Expected TRIGGERED.")
-		get_tree().quit(1)
-		return
-	print("Enemy triggered spikes hazard successfully (state == TRIGGERED).")
-	
-	var enemy_attrs: AttributeComponent = enemy.get_node("AttributeComponent") as AttributeComponent
-	var initial_enemy_hp: float = enemy_attrs.get_current(AttributeComponent.POOL_HEALTH)
-	
-	# During dodge delay, enemy should not have taken damage yet
-	if enemy_attrs.get_current(AttributeComponent.POOL_HEALTH) < initial_enemy_hp:
-		printerr("TEST FAILED: Enemy took damage prematurely during trigger delay window!")
-		get_tree().quit(1)
-		return
-	print("Dodge window verified for enemy trigger.")
-	
-	# Wait for spikes emergence and damage
-	var enemy_damaged := false
-	for i: int in range(30):
-		await get_tree().physics_frame
-		if enemy_attrs.get_current(AttributeComponent.POOL_HEALTH) < initial_enemy_hp:
-			enemy_damaged = true
-			break
-			
-	if not enemy_damaged:
-		printerr("TEST FAILED: Enemy did not take damage after spikes emerged! HP: ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
-		get_tree().quit(1)
-		return
-	print("Enemy damage confirmed on emergence! HP: ", initial_enemy_hp, " -> ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
-	
-	# Move enemy away and wait for reset
-	enemy.global_position = Vector3(-15.0, 1.0, -15.0)
-	var reset_to_idle := false
-	for i: int in range(90):
-		await get_tree().physics_frame
-		if hazard.is_idle():
-			reset_to_idle = true
-			break
-			
-	if not reset_to_idle:
-		printerr("TEST FAILED: Hazard did not return to IDLE after enemy trigger cycle.")
-		get_tree().quit(1)
-		return
-	print("Hazard reset to IDLE after enemy cycle.")
-	
-	# ---------------------------------------------------------
-	# PART 3: Player Trigger & Dodge Delay Window & Damage
-	# ---------------------------------------------------------
-	print("\n>>> PART 3: Player Triggering, Dodge Window & Damage")
-	var player_scene: PackedScene = load("res://Player/player.tscn")
-	var player: Character = player_scene.instantiate() as Character
-	add_child(player)
-	player.global_position = Vector3(0.0, 1.0, 0.0)
-	
-	for i: int in range(5):
-		await get_tree().physics_frame
-	
-	if not hazard.is_triggered():
-		printerr("TEST FAILED: Player did not trigger hazard. Expected TRIGGERED.")
-		get_tree().quit(1)
-		return
-	print("Player triggered hazard (is_triggered() == true).")
-	
-	var player_attrs: AttributeComponent = player.get_node("AttributeComponent") as AttributeComponent
-	var initial_player_hp: float = player_attrs.get_current(AttributeComponent.POOL_HEALTH)
-	
-	if player_attrs.get_current(AttributeComponent.POOL_HEALTH) < initial_player_hp:
-		printerr("TEST FAILED: Player took damage prematurely during trigger delay window!")
-		get_tree().quit(1)
-		return
-	print("Dodge window verified for player: No damage dealt during trigger_delay.")
-	
-	# Wait for spikes to emerge and strike player
-	var player_damaged := false
-	for i: int in range(30):
-		await get_tree().physics_frame
-		if player_attrs.get_current(AttributeComponent.POOL_HEALTH) < initial_player_hp:
-			player_damaged = true
-			break
-	
-	if not player_damaged:
-		printerr("TEST FAILED: Player did not take damage after spikes emerged! Current HP: ", player_attrs.get_current(AttributeComponent.POOL_HEALTH))
-		get_tree().quit(1)
-		return
-	print("Player damage confirmed! HP: ", initial_player_hp, " -> ", player_attrs.get_current(AttributeComponent.POOL_HEALTH))
-	
-	# ---------------------------------------------------------
-	# PART 4: Retraction & Cooldown
-	# ---------------------------------------------------------
-	print("\n>>> PART 4: Spikes Retraction & Cooldown Cycle")
-	player.global_position = Vector3(15.0, 1.0, 15.0)
-	
-	var returned_to_idle := false
-	for i: int in range(90):
-		await get_tree().physics_frame
-		if hazard.is_idle():
-			returned_to_idle = true
-			break
-	
-	if not returned_to_idle:
-		printerr("TEST FAILED: Hazard did not return to IDLE after cooldown!")
-		get_tree().quit(1)
-		return
-	print("Hazard successfully retracted and returned to IDLE state.")
-	
-	if hazard.damage_hitbox.monitoring:
-		printerr("TEST FAILED: DamageHitbox monitoring should be false at IDLE.")
-		get_tree().quit(1)
-		return
-	if spikes_root.position.y > -0.6:
-		printerr("TEST FAILED: SpikesRoot should be submerged at IDLE, position.y: ", spikes_root.position.y)
-		get_tree().quit(1)
-		return
-	print("Spikes submerged and hitbox disabled at IDLE.")
-	
-	print("\n====================================================")
-	print("  ALL SPIKES TRAP HAZARD TESTS PASSED!")
-	print("  1. Primitives, node hierarchy & collision layers verified")
-	print("  2. Enemies CAN trigger spikes and take damage")
-	print("  3. Players CAN trigger spikes and take damage")
-	print("  4. Configurable trigger_delay provides dodge window")
-	print("  5. Taller spikes submerged properly at idle")
-	print("  6. Retraction & cooldown cleanly re-arm hazard")
-	print("====================================================")
-	
-	get_tree().quit(0)
+	check(not early_hit[0], "nobody should be hurt during the dodge window")
+	check(window_ticks[0] >= floori(_trap.trigger_delay * Engine.physics_ticks_per_second), "the spikes should not emerge before trigger_delay (took %d ticks)" % window_ticks[0])
+	var expected: float = _trap.attack_component.damage * victim.attribute_component.get_damage_multiplier(&"physical")
+	await wait_until(func() -> bool: return _health(victim) < health_before, "the emerging spikes should hurt the victim", DETECT_FRAMES)
+	check_approx(health_before - _health(victim), expected, "the spikes should deal the trap's damage")
+
+
+func _spawn_player(at: Vector3) -> Character:
+	var player: Character = spawn(PLAYER_SCENE, _arena, at) as Character
+	(player.get_node("PlayerInputComponent") as PlayerInputComponent).set_physics_process(false)
+	return player
+
+
+## A standing spot on the trap.
+func _on_trap() -> Vector3:
+	return Vector3(TRAP_SPOT.x, arena_floor_top(_arena) + 1.0, TRAP_SPOT.z)
+
+
+func _health(character: Character) -> float:
+	return character.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+
+
+## Physics frames covering the given game time, plus a small margin.
+func _frames_for(seconds: float) -> int:
+	return ceili(seconds * Engine.physics_ticks_per_second) + 5

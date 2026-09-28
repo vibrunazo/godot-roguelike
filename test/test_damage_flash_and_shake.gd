@@ -4,6 +4,9 @@
 ##   mouse input.
 ## - Landing a hit with a weapon whose AttackComponent has shake_on_damage
 ##   shakes the camera; hits without it, and swings that hit nothing, do not.
+## - Only the player's own hits and hurts shake the camera: a trap or an enemy
+##   weapon hitting an enemy never does, even with shake_on_damage forced on,
+##   while a trap hitting the player does.
 ## - Every landed hit spawns a damage number showing the damage, anchored to
 ##   the victim and projected to the screen.
 ## - KnockbackComponent clamps to max_knockback, decays over time, and
@@ -15,6 +18,7 @@ extends "res://test/lib/test_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+const SPIKES_SCENE: PackedScene = preload("res://Hazards/spikes_hazard.tscn")
 ## Test-owned damage for direct hits.
 const TEST_DAMAGE: float = 5.0
 
@@ -81,6 +85,29 @@ func test_a_swing_that_hits_nothing_does_not_shake() -> void:
 	check(is_zero_approx(peak), "a swing that hits nothing must not shake the camera")
 
 
+func test_a_trap_hitting_an_enemy_never_shakes_the_camera() -> void:
+	var trap: AttackComponent = await _spawn_trap_weapon()
+	var enemy: Character = await _spawn_enemy()
+	trap.shake_on_damage = true
+	check(trap.deal_damage_to(enemy.hurtbox, TEST_DAMAGE, Vector3.ZERO), "the trap hit should land")
+	check(is_zero_approx(await _peak_trauma(_frames_for(_camera.shake_duration))), "a trap hitting an enemy must not shake the camera, even with shake_on_damage")
+
+
+func test_a_trap_hitting_the_player_shakes_the_camera() -> void:
+	var trap: AttackComponent = await _spawn_trap_weapon()
+	check(trap.deal_damage_to(_player.hurtbox, TEST_DAMAGE, Vector3.ZERO), "the trap hit should land")
+	await wait_until(func() -> bool: return _camera.trauma > 0.0, "a trap hitting the player should shake the camera", _frames_for(_camera.shake_duration))
+
+
+func test_an_enemy_weapon_hitting_an_enemy_never_shakes_the_camera() -> void:
+	var attacker: Character = await _spawn_enemy()
+	var victim: Character = await _spawn_enemy(Vector3(3.0, 0.0, 0.0))
+	var weapon: AttackComponent = (attacker.state_machine.get_node("EnemyAttack") as CharacterAttack).get_attack_component()
+	weapon.shake_on_damage = true
+	check(weapon.deal_damage_to(victim.hurtbox, TEST_DAMAGE, Vector3.ZERO), "the enemy weapon hit should land")
+	check(is_zero_approx(await _peak_trauma(_frames_for(_camera.shake_duration))), "an enemy hitting an enemy must not shake the camera, even with shake_on_damage")
+
+
 func test_a_landed_hit_spawns_a_damage_number_at_the_victim() -> void:
 	var dummy: Character = spawn(MELEE_SCENE, _arena, (_arena.get_node("EnemySpawn") as Node3D).global_position) as Character
 	disable_ai(dummy)
@@ -136,6 +163,21 @@ func _peak_trauma(frames: int) -> float:
 		await get_tree().physics_frame
 		peak = maxf(peak, _camera.trauma)
 	return peak
+
+
+## A still melee enemy near the arena's enemy spawn.
+func _spawn_enemy(offset: Vector3 = Vector3.ZERO) -> Character:
+	var enemy: Character = spawn(MELEE_SCENE, _arena, (_arena.get_node("EnemySpawn") as Node3D).global_position + offset) as Character
+	disable_ai(enemy)
+	await wait_physics_frames(1)
+	return enemy
+
+
+## The AttackComponent of a spikes trap parked far from everyone.
+func _spawn_trap_weapon() -> AttackComponent:
+	var spikes: SpikesHazard = spawn(SPIKES_SCENE, _arena, Vector3(15.0, 0.0, -15.0)) as SpikesHazard
+	await wait_physics_frames(1)
+	return spikes.attack_component
 
 
 ## The AttackComponent of the player's first combo attack (its weapon).

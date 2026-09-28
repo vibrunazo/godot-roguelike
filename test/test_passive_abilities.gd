@@ -1,19 +1,24 @@
 ## Behavioral contract suite for the passive ability system: item granting and
-## revoking, ability lifecycle event matching (tags, phases, prefix triggers),
-## cooldown and completion gates, payload spawning with property overrides, and
-## end-to-end dash detonation through the real state machine. No balance values
-## are asserted; damage checks compare against the payload's own configuration.
-extends Node
+## revoking, ability lifecycle event matching (tags, phases, prefix triggers,
+## character tag gates), cooldown and completion gates, payload spawning with
+## property overrides, end-to-end dash detonation through the real state
+## machine, payloads spawned from inside a physics callback, and the landing
+## blast. No balance values are asserted; damage checks compare against the
+## payload's own configuration.
+extends "res://test/lib/test_suite.gd"
 
-const TestUtils = preload("res://test/test_utils.gd")
-
-var passed_checks: int = 0
-var failed: bool = false
-## Cumulative count of GroundDamageArea payloads entering the tree. Counting
-## spawns (not live nodes) keeps assertions immune to payloads self-freeing on
-## their visual_duration while a test part is still awaiting frames.
-var payload_spawns: int = 0
-
+const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+const DASH_EXPLOSION_SCENE: PackedScene = preload("res://Passives/passive_dash_explosion.tscn")
+const LANDING_BLAST_SCENE: PackedScene = preload("res://Passives/passive_landing_blast.tscn")
+const EXPLOSION_SCENE: PackedScene = preload("res://Hazards/explosion.tscn")
+const DASH_TAG: StringName = &"ability.dash"
+## Test-owned override value for the payload radius.
+const TEST_RADIUS: float = 4.25
+## Frame budget for a dash or a jump.
+const ACTION_FRAMES: int = 600
+## Physics ticks allowed for a spawned payload to arm and land its hit.
+const PAYLOAD_FRAMES: int = 10
 
 ## Minimal counting passive used to probe trigger matching without payloads.
 class TriggerCounter extends AbilityLifecyclePassive:
@@ -23,576 +28,316 @@ class TriggerCounter extends AbilityLifecyclePassive:
 		activations += 1
 
 
-func _fail(message: String) -> void:
-	failed = true
-	printerr("TEST FAILED: " + message)
+var _arena: Node3D
+var _player: Character
+var _floor_y: float = 0.0
+## Payloads spawned during the current test. Counting spawns (not live nodes)
+## keeps checks immune to payloads freeing themselves after their visual.
+var _payload_spawns: int = 0
+var _newest_payload: WeakRef = weakref(null)
+## Context for the physics-callback probe (see
+## test_a_payload_spawned_during_a_physics_callback_still_lands_its_hit).
+var _flush_origin: Vector3 = Vector3.ZERO
+var _flush_armed: bool = false
 
 
-func _pass(message: String) -> void:
-	passed_checks += 1
-	print("ok: " + message)
+func before_each() -> void:
+	_payload_spawns = 0
+	_newest_payload = weakref(null)
+	get_tree().node_added.connect(_on_node_added)
+	_arena = load_arena()
+	_floor_y = arena_floor_top(_arena)
+	_player = spawn(PLAYER_SCENE, _arena, (_arena.get_node("PlayerSpawn") as Node3D).global_position) as Character
+	# Live input polling off: the test alone drives the player.
+	(_player.get_node("PlayerInputComponent") as PlayerInputComponent).set_physics_process(false)
+	await wait_until(func() -> bool: return _player.is_on_floor() and _state() == "PlayerRun", "the player should settle")
 
 
-func _make_event(tags: Array[StringName], phase: int, data: Dictionary = {}) -> AbilityEvent:
+func after_each() -> void:
+	get_tree().node_added.disconnect(_on_node_added)
+	_flush_armed = false
+
+
+# --- Granting ----------------------------------------------------------------
+
+func test_equipping_gear_grants_its_passive_and_unequipping_revokes_it() -> void:
+	var passive: PassiveAbility = DASH_EXPLOSION_SCENE.instantiate() as PassiveAbility
+	var passive_id: StringName = passive.id
+	var display_name: String = passive.display_name
+	passive.free()
+	var gear: GearItemResource = GearItemResource.new()
+	gear.id = &"test_passive_gear"
+	gear.granted_passives.append(DASH_EXPLOSION_SCENE)
+	if not check(_player.equipment_component.equip_gear(gear), "equipping passive-granting gear should succeed"):
+		return
+	check(_player.passive_ability_component.has_passive(passive_id), "equipping the gear should grant its passive")
+	check(gear.get_stat_summary(null).contains(display_name), "the gear summary should list the granted passive")
+	check(_player.equipment_component.unequip_gear(gear), "unequipping the gear should succeed")
+	check(not _player.passive_ability_component.has_passive(passive_id), "unequipping the gear should revoke its passive")
+
+
+# --- Trigger matching ---------------------------------------------------------
+
+func test_a_passive_fires_only_on_its_tag_and_phase() -> void:
+	var counter: TriggerCounter = _add_counter([DASH_TAG])
+	_broadcast([&"ability.jump"], AbilityEvent.Phase.ENDED)
+	check_eq(counter.activations, 0, "a different tag should not trigger the passive")
+	_broadcast([DASH_TAG], AbilityEvent.Phase.STARTED)
+	check_eq(counter.activations, 0, "a different phase should not trigger the passive")
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED)
+	check_eq(counter.activations, 1, "the passive's own tag and phase should trigger it once")
+
+
+func test_a_prefix_trigger_tag_matches_its_child_tags() -> void:
+	var counter: TriggerCounter = _add_counter([&"ability"])
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED)
+	check_eq(counter.activations, 1, "a parent trigger tag should match a child event tag")
+
+
+func test_character_tags_can_block_or_require_a_trigger() -> void:
+	var counter: TriggerCounter = _add_counter([DASH_TAG])
+	var blocked: Array[StringName] = [&"test.blocked"]
+	counter.blocked_tags = blocked
+	_player.add_tag(&"test.blocked")
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED)
+	check_eq(counter.activations, 0, "a blocked character tag should suppress the trigger")
+	_player.remove_tag(&"test.blocked")
+	var required: Array[StringName] = [&"test.ready"]
+	counter.required_tags = required
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED)
+	check_eq(counter.activations, 0, "a missing required character tag should suppress the trigger")
+	_player.add_tag(&"test.ready")
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED)
+	check_eq(counter.activations, 1, "a present required character tag should allow the trigger")
+	_player.remove_tag(&"test.ready")
+
+
+func test_the_cooldown_suppresses_retriggers_until_it_elapses() -> void:
+	var counter: TriggerCounter = _add_counter([DASH_TAG])
+	counter.cooldown = 0.25
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED)
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED)
+	check_eq(counter.activations, 1, "the cooldown should suppress an immediate retrigger")
+	counter.tick_cooldown(counter.cooldown)
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED)
+	check_eq(counter.activations, 2, "the passive should trigger again once its cooldown elapsed")
+
+
+func test_the_completion_filter_skips_interrupted_events() -> void:
+	var strict: TriggerCounter = _add_counter([DASH_TAG])
+	strict.require_completion = true
+	var lenient: TriggerCounter = _add_counter([DASH_TAG])
+	lenient.require_completion = false
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED, {"completed": false})
+	check(strict.activations == 0 and lenient.activations == 1, "an interrupted event should reach only passives that do not require completion (strict %d, lenient %d)" % [strict.activations, lenient.activations])
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED)
+	check(strict.activations == 1 and lenient.activations == 2, "an event without a completion report should count as completed (strict %d, lenient %d)" % [strict.activations, lenient.activations])
+
+
+# --- Payloads -----------------------------------------------------------------
+
+func test_a_payload_spawns_at_the_event_for_its_owner_and_deals_its_damage() -> void:
+	_player.passive_ability_component.add_passive(DASH_EXPLOSION_SCENE)
+	var origin: Vector3 = Vector3(6.0, _floor_y, -6.0)
+	var victim: Character = await _spawn_victim(origin)
+	var health_before: float = _health(victim)
+	_broadcast([DASH_TAG], AbilityEvent.Phase.STARTED, {}, origin)
+	var explosion: GroundDamageArea = _newest()
+	if not check(explosion != null, "the dash STARTED event should spawn the explosion"):
+		return
+	check(explosion.global_position.is_equal_approx(origin), "the payload should spawn at the event position")
+	check(explosion.wielder == _player, "the payload should belong to the passive's owner")
+	var expected: float = explosion.damage * victim.attribute_component.get_damage_multiplier(&"physical")
+	await wait_until(func() -> bool: return health_before - _health(victim) > 0.0, "the payload should hit the victim", PAYLOAD_FRAMES)
+	check_approx(health_before - _health(victim), expected, "the payload should deal its own damage")
+
+
+func test_payload_overrides_patch_the_payload_and_unknown_ones_are_ignored() -> void:
+	var radius_override: PayloadPropertyOverride = _float_override(&"radius", TEST_RADIUS)
+	var probe: PayloadPassiveAbility = PayloadPassiveAbility.new()
+	probe.id = &"override_probe"
+	var probe_tags: Array[StringName] = [&"ability.probe"]
+	probe.trigger_tags = probe_tags
+	probe.payload_scene = EXPLOSION_SCENE
+	probe.scale_with_attack = false
+	probe.payload_overrides.append(radius_override)
+	_player.passive_ability_component.add_passive_instance(probe)
+	_broadcast(probe_tags, AbilityEvent.Phase.ENDED, {}, Vector3(6.0, _floor_y, 0.0))
+	var payload: GroundDamageArea = _newest()
+	if check(payload != null and _payload_spawns == 1, "the probe should spawn exactly one payload"):
+		check_approx(payload.radius, TEST_RADIUS, "the override should set the payload's property")
+	probe.payload_overrides.append(_float_override(&"no_such_property", 99.0))
+	var position: Vector3 = Vector3(-6.0, _floor_y, 0.0)
+	_broadcast(probe_tags, AbilityEvent.Phase.ENDED, {}, position)
+	payload = _newest()
+	if check(payload != null and _payload_spawns == 2, "an unknown override property should not stop the spawn"):
+		check(payload.global_position.is_equal_approx(position), "the payload should still spawn at its event")
+		check_approx(payload.radius, TEST_RADIUS, "the valid override should still apply")
+
+
+# --- End to end -----------------------------------------------------------------
+
+func test_a_dash_detonates_once_at_takeoff_even_when_interrupted() -> void:
+	_player.passive_ability_component.add_passive(DASH_EXPLOSION_SCENE)
+	var takeoff: Vector3 = _player.global_position
+	_player.state_machine.request_state("PlayerDash", {"direction": Vector3.FORWARD})
+	var explosion: GroundDamageArea = _newest()
+	check(explosion != null and _horizontal(explosion.global_position - takeoff).length() < 1.0, "the dash should detonate at its takeoff point")
+	await _wait_running("the dash should end")
+	await wait_physics_frames(PAYLOAD_FRAMES)
+	check_eq(_payload_spawns, 1, "a dash should detonate exactly once")
+	_player.state_machine.request_state("PlayerDash", {"direction": Vector3.FORWARD})
+	await wait_physics_frames(1)
+	_player.state_machine.request_state("PlayerRun")
+	await wait_physics_frames(PAYLOAD_FRAMES)
+	check_eq(_payload_spawns, 2, "an interrupted dash should keep its takeoff detonation")
+
+
+func test_a_completion_gated_payload_fires_only_when_the_dash_completes() -> void:
+	var strict: PayloadPassiveAbility = PayloadPassiveAbility.new()
+	strict.id = &"strict_dash"
+	var dash_tags: Array[StringName] = [DASH_TAG]
+	strict.trigger_tags = dash_tags
+	strict.require_completion = true
+	strict.payload_scene = EXPLOSION_SCENE
+	_player.passive_ability_component.add_passive_instance(strict)
+	_player.state_machine.request_state("PlayerDash", {"direction": Vector3.FORWARD})
+	await wait_physics_frames(1)
+	_player.state_machine.request_state("PlayerRun")
+	await wait_physics_frames(PAYLOAD_FRAMES)
+	check_eq(_payload_spawns, 0, "an interrupted dash should not fire a completion-gated payload")
+	_player.state_machine.request_state("PlayerDash", {"direction": Vector3.FORWARD})
+	await _wait_running("the dash should end")
+	await wait_physics_frames(PAYLOAD_FRAMES)
+	check_eq(_payload_spawns, 1, "a completed dash should fire the completion-gated payload once")
+
+
+## Regression: a passive reacting inside an Area3D body_entered callback (the
+## exit portal's, during a scene transition) spawns its payload while Area3D
+## monitoring changes are locked; the payload must still arm and hit.
+func test_a_payload_spawned_during_a_physics_callback_still_lands_its_hit() -> void:
+	_player.passive_ability_component.add_passive(DASH_EXPLOSION_SCENE)
+	_flush_origin = Vector3(8.0, _floor_y, -8.0)
+	var victim: Character = await _spawn_victim(_flush_origin)
+	var health_before: float = _health(victim)
+	# Trigger area high above the floor, so only the dropped probe body enters.
+	var probe_point: Vector3 = Vector3(-8.0, _floor_y + 5.0, -8.0)
+	var trigger: Area3D = autofree(Area3D.new()) as Area3D
+	trigger.collision_layer = 0
+	trigger.collision_mask = 1
+	trigger.add_child(_sphere_shape(2.0))
+	_arena.add_child(trigger)
+	trigger.global_position = probe_point
+	await wait_physics_frames(1)
+	trigger.body_entered.connect(_on_probe_body_entered)
+	_flush_armed = true
+	var probe: StaticBody3D = autofree(StaticBody3D.new()) as StaticBody3D
+	probe.collision_layer = 1
+	probe.add_child(_sphere_shape(0.5))
+	_arena.add_child(probe)
+	probe.global_position = probe_point
+	if not await wait_until(func() -> bool: return _payload_spawns == 1, "the callback should spawn one payload", PAYLOAD_FRAMES):
+		return
+	var explosion: GroundDamageArea = _newest()
+	check(explosion != null and explosion.global_position.is_equal_approx(_flush_origin), "the payload should spawn at the event position")
+	var expected: float = explosion.damage * victim.attribute_component.get_damage_multiplier(&"physical") if explosion != null else 0.0
+	await wait_until(func() -> bool: return health_before - _health(victim) > 0.0, "the payload should arm and hit the victim", PAYLOAD_FRAMES)
+	check_approx(health_before - _health(victim), expected, "the payload should deal its own damage")
+	check_no_engine_errors("arming the payload inside the callback should not hit the Area3D lock")
+
+
+## The landing blast fires once per airborne episode, whatever state the
+## character lands in: a jump turned into a jump kick mid-flight still gives
+## exactly one blast, at the landing point.
+func test_a_jump_turned_into_a_kick_lands_exactly_one_blast() -> void:
+	_player.passive_ability_component.add_passive(LANDING_BLAST_SCENE)
+	_player.state_machine.request_state("PlayerJump", {"direction": Vector3.ZERO})
+	if not await wait_until(func() -> bool: return _player.has_tag(Character.TAG_AIRBORNE), "the jump should mark the player airborne", ACTION_FRAMES):
+		return
+	_player.state_machine.request_state("PlayerJumpKick")
+	if not await wait_until(func() -> bool: return not _player.has_tag(Character.TAG_AIRBORNE), "the player should land", ACTION_FRAMES):
+		return
+	await wait_physics_frames(PAYLOAD_FRAMES)
+	check_eq(_payload_spawns, 1, "one airborne episode should give exactly one landing blast")
+	var explosion: GroundDamageArea = _newest()
+	check(explosion != null and _horizontal(explosion.global_position - _player.global_position).length() < 1.0, "the blast should detonate at the landing point")
+
+
+# --- Helpers ------------------------------------------------------------------
+
+func _on_node_added(node: Node) -> void:
+	if node is GroundDamageArea:
+		_payload_spawns += 1
+		_newest_payload = weakref(node)
+
+
+## Broadcasts the dash STARTED event from inside the body_entered dispatch,
+## where Area3D monitoring toggles are locked.
+func _on_probe_body_entered(_body: Node3D) -> void:
+	if not _flush_armed:
+		return
+	_flush_armed = false
+	_broadcast([DASH_TAG], AbilityEvent.Phase.STARTED, {}, _flush_origin)
+
+
+## The most recently spawned payload, or null once it freed itself.
+func _newest() -> GroundDamageArea:
+	return _newest_payload.get_ref() as GroundDamageArea
+
+
+func _broadcast(tags: Array[StringName], phase: AbilityEvent.Phase, data: Dictionary = {}, at: Vector3 = Vector3.ZERO) -> void:
 	var event: AbilityEvent = AbilityEvent.new()
 	event.tags = tags
 	event.phase = phase
 	event.data = data
-	return event
+	event.position = at
+	_player.broadcast_ability_event(event)
 
 
-func _on_node_added(node: Node) -> void:
-	if node is GroundDamageArea:
-		payload_spawns += 1
-
-
-func _newest_payload() -> GroundDamageArea:
-	var children: Array[Node] = get_children()
-	for i: int in range(children.size() - 1, -1, -1):
-		var child: Node = children[i]
-		if child is GroundDamageArea and not child.is_queued_for_deletion():
-			return child as GroundDamageArea
-	return null
-
-
-## Context for the flush-spawn probe: the character to broadcast for and the
-## blast origin the payload should spawn at (see _part_flush_spawn).
-var _flush_player: Character = null
-var _flush_origin: Vector3 = Vector3.ZERO
-
-
-## Broadcasts a dash lifecycle event from inside an Area3D body_entered
-## dispatch: the physics query-flushing context where Area3D monitoring toggles
-## are locked (the exit portal's body_entered -> scene transition -> dash cancel
-## stack).
-func _on_flush_probe_body_entered(_body: Node3D) -> void:
-	if _flush_player == null:
-		return
-	var dash_trigger: Array[StringName] = [&"ability.dash"]
-	var event: AbilityEvent = _make_event(dash_trigger, AbilityEvent.Phase.STARTED)
-	event.position = _flush_origin
-	_flush_player.broadcast_ability_event(event)
-	_flush_player = null
-
-
-func _ready() -> void:
-	print("====================================================")
-	print("  STARTING PASSIVE ABILITY TEST SUITE")
-	print("====================================================")
-	get_tree().node_added.connect(_on_node_added)
-
-	# Physical floor so characters stand and payloads ground correctly.
-	var floor_body: StaticBody3D = StaticBody3D.new()
-	floor_body.collision_layer = 1
-	floor_body.collision_mask = 0
-	var floor_shape: CollisionShape3D = CollisionShape3D.new()
-	var box: BoxShape3D = BoxShape3D.new()
-	box.size = Vector3(80.0, 1.0, 80.0)
-	floor_shape.shape = box
-	floor_shape.position = Vector3(0.0, -0.5, 0.0)
-	floor_body.add_child(floor_shape)
-	add_child(floor_body)
-
-	var player_scene: PackedScene = load("res://Player/player.tscn") as PackedScene
-	if player_scene == null:
-		_fail("Could not load Player/player.tscn.")
-		return
-	var player: Character = player_scene.instantiate() as Character
-	player.position = Vector3(0.0, 0.0, 8.0)
-	add_child(player)
-	await get_tree().process_frame
-
-	if player.passive_ability_component == null:
-		_fail("Player has no PassiveAbilityComponent attached.")
-		return
-	if player.equipment_component == null:
-		_fail("Player has no EquipmentComponent attached.")
-		return
-	_pass("Player PassiveAbilityComponent and EquipmentComponent resolved.")
-
-	await _part_grant_and_revoke(player)
-	if failed:
-		get_tree().quit(1)
-		return
-	await _part_matching(player)
-	if failed:
-		get_tree().quit(1)
-		return
-	await _part_cooldown(player)
-	if failed:
-		get_tree().quit(1)
-		return
-	await _part_completion_filter(player)
-	if failed:
-		get_tree().quit(1)
-		return
-	await _part_payload(player)
-	if failed:
-		get_tree().quit(1)
-		return
-	await _part_dash_integration(player)
-	if failed:
-		get_tree().quit(1)
-		return
-	await _part_flush_spawn(player)
-	if failed:
-		get_tree().quit(1)
-		return
-	await _part_landing_blast(player)
-	if failed:
-		get_tree().quit(1)
-		return
-
-	print("\n====================================================")
-	print("  PASSIVE ABILITY TEST SUITE PASSED (%d checks)" % passed_checks)
-	print("====================================================")
-	get_tree().quit(0)
-
-
-## PART 1: gear equip grants a passive scene and unequip revokes it.
-func _part_grant_and_revoke(player: Character) -> void:
-	print("\n>>> PART 1: Item Grant and Revoke of Passive Scenes")
-	var passive_scene: PackedScene = load("res://Passives/passive_dash_explosion.tscn") as PackedScene
-	if passive_scene == null:
-		_fail("Could not load Passives/passive_dash_explosion.tscn (parse error?).")
-		return
-	var gear: GearItemResource = GearItemResource.new()
-	gear.id = &"test_passive_gear"
-	gear.granted_passives.append(passive_scene)
-
-	if not player.equipment_component.equip_gear(gear):
-		_fail("equip_gear returned false for passive-granting gear.")
-		return
-	if not player.passive_ability_component.has_passive(&"dash_explosion"):
-		_fail("Equipping gear did not grant the passive scene.")
-		return
-	_pass("Gear equip granted the passive scene.")
-
-	var summary: String = gear.get_stat_summary(null)
-	if not summary.contains("Dash Detonation"):
-		_fail("Stat summary does not list the granted passive display name. Got: " + summary)
-		return
-	_pass("Stat summary lists the granted passive.")
-
-	if not player.equipment_component.unequip_gear(gear):
-		_fail("unequip_gear returned false.")
-		return
-	if player.passive_ability_component.has_passive(&"dash_explosion"):
-		_fail("Unequipping gear did not revoke the passive.")
-		return
-	_pass("Gear unequip revoked the passive scene.")
-
-
-## PART 2: trigger matching across tags, phases, prefixes, and character gates.
-func _part_matching(player: Character) -> void:
-	print("\n>>> PART 2: Lifecycle Event Matching")
+func _add_counter(tags: Array[StringName]) -> TriggerCounter:
 	var counter: TriggerCounter = TriggerCounter.new()
-	counter.id = &"counter"
-	var dash_trigger: Array[StringName] = [&"ability.dash"]
-	counter.trigger_tags = dash_trigger
-	player.passive_ability_component.add_passive_instance(counter)
-
-	var jump_tag: Array[StringName] = [&"ability.jump"]
-	player.broadcast_ability_event(_make_event(jump_tag, AbilityEvent.Phase.ENDED))
-	if counter.activations != 0:
-		_fail("Passive fired on a non-matching tag.")
-		return
-	player.broadcast_ability_event(_make_event(dash_trigger, AbilityEvent.Phase.STARTED))
-	if counter.activations != 0:
-		_fail("Passive fired on a non-matching phase.")
-		return
-	player.broadcast_ability_event(_make_event(dash_trigger, AbilityEvent.Phase.ENDED))
-	if counter.activations != 1:
-		_fail("Passive did not fire exactly once on its trigger. Got %d" % counter.activations)
-		return
-	_pass("Tag and phase gates match correctly.")
-
-	# Prefix trigger: &"ability" answers &"ability.dash".
-	var prefix_trigger: Array[StringName] = [&"ability"]
-	counter.trigger_tags = prefix_trigger
-	player.broadcast_ability_event(_make_event(dash_trigger, AbilityEvent.Phase.ENDED))
-	if counter.activations != 2:
-		_fail("Prefix trigger tag did not match the hierarchical event tag.")
-		return
-	_pass("Prefix trigger tags match hierarchically.")
-	counter.trigger_tags = dash_trigger
-
-	# Character tag gates.
-	var blocked: Array[StringName] = [&"test.blocked"]
-	counter.blocked_tags = blocked
-	player.add_tag(&"test.blocked")
-	player.broadcast_ability_event(_make_event(dash_trigger, AbilityEvent.Phase.ENDED))
-	if counter.activations != 2:
-		_fail("Blocked character tag did not suppress the trigger.")
-		return
-	player.remove_tag(&"test.blocked")
-	var required: Array[StringName] = [&"test.ready"]
-	counter.required_tags = required
-	player.broadcast_ability_event(_make_event(dash_trigger, AbilityEvent.Phase.ENDED))
-	if counter.activations != 2:
-		_fail("Missing required character tag did not suppress the trigger.")
-		return
-	player.add_tag(&"test.ready")
-	player.broadcast_ability_event(_make_event(dash_trigger, AbilityEvent.Phase.ENDED))
-	if counter.activations != 3:
-		_fail("Required character tag did not allow the trigger.")
-		return
-	_pass("Character tag gates suppress and allow triggers.")
-	player.remove_tag(&"test.ready")
-	var empty_tags: Array[StringName] = []
-	counter.required_tags = empty_tags
-	counter.blocked_tags = empty_tags
-	player.passive_ability_component.remove_passive(counter)
+	counter.id = StringName("counter_%d" % _player.passive_ability_component.get_child_count())
+	counter.trigger_tags = tags
+	_player.passive_ability_component.add_passive_instance(counter)
+	return counter
 
 
-## PART 3: cooldown suppresses re-triggers until simulated time elapses.
-func _part_cooldown(player: Character) -> void:
-	print("\n>>> PART 3: Cooldown Gate (elapsed time simulated via tick_cooldown)")
-	var counter: TriggerCounter = TriggerCounter.new()
-	counter.id = &"cooldown_counter"
-	var dash_trigger: Array[StringName] = [&"ability.dash"]
-	counter.trigger_tags = dash_trigger
-	counter.cooldown = 0.25
-	player.passive_ability_component.add_passive_instance(counter)
-
-	player.broadcast_ability_event(_make_event(dash_trigger, AbilityEvent.Phase.ENDED))
-	player.broadcast_ability_event(_make_event(dash_trigger, AbilityEvent.Phase.ENDED))
-	if counter.activations != 1:
-		_fail("Cooldown did not suppress the immediate re-trigger. Got %d" % counter.activations)
-		return
-	counter.tick_cooldown(counter.cooldown)
-	player.broadcast_ability_event(_make_event(dash_trigger, AbilityEvent.Phase.ENDED))
-	if counter.activations != 2:
-		_fail("Passive did not re-trigger after its own cooldown elapsed.")
-		return
-	_pass("Cooldown gate suppresses and re-allows activations.")
-	player.passive_ability_component.remove_passive(counter)
+func _float_override(property: StringName, value: float) -> PayloadPropertyOverride:
+	var override: PayloadPropertyOverride = PayloadPropertyOverride.new()
+	override.value_type = PayloadPropertyOverride.ValueType.FLOAT
+	override.property = property
+	override.float_value = value
+	return override
 
 
-## PART 4: the completion filter discriminates interrupted vs completed events.
-func _part_completion_filter(player: Character) -> void:
-	print("\n>>> PART 4: Built-in Completion Filter")
-	var dash_trigger: Array[StringName] = [&"ability.dash"]
-	var strict: TriggerCounter = TriggerCounter.new()
-	strict.id = &"strict_counter"
-	strict.trigger_tags = dash_trigger
-	strict.require_completion = true
-	var lenient: TriggerCounter = TriggerCounter.new()
-	lenient.id = &"lenient_counter"
-	lenient.trigger_tags = dash_trigger
-	lenient.require_completion = false
-	player.passive_ability_component.add_passive_instance(strict)
-	player.passive_ability_component.add_passive_instance(lenient)
-
-	player.broadcast_ability_event(_make_event(dash_trigger, AbilityEvent.Phase.ENDED, {"completed": false}))
-	if strict.activations != 0 or lenient.activations != 1:
-		_fail("Interrupted event routing wrong (strict %d, lenient %d)." % [strict.activations, lenient.activations])
-		return
-	player.broadcast_ability_event(_make_event(dash_trigger, AbilityEvent.Phase.ENDED))
-	if strict.activations != 1 or lenient.activations != 2:
-		_fail("Unreported completion routing wrong (strict %d, lenient %d)." % [strict.activations, lenient.activations])
-		return
-	_pass("Completion filter discriminates interrupted vs completed events.")
-	player.passive_ability_component.remove_passive(strict)
-	player.passive_ability_component.remove_passive(lenient)
+## A still melee enemy standing on the given floor point.
+func _spawn_victim(at: Vector3) -> Character:
+	var victim: Character = spawn(MELEE_SCENE, _arena, at + Vector3.UP) as Character
+	disable_ai(victim)
+	await wait_until(func() -> bool: return victim.is_on_floor(), "setup: the victim should land")
+	victim.global_position = Vector3(at.x, victim.global_position.y, at.z)
+	return victim
 
 
-## PART 5: payloads spawn at the event position with wielder attribution and
-## relative damage; property overrides tune a shared payload scene per passive.
-func _part_payload(player: Character) -> void:
-	print("\n>>> PART 5: Payload Spawning, Attribution, and Property Overrides")
-	var passive_scene: PackedScene = load("res://Passives/passive_dash_explosion.tscn") as PackedScene
-	player.passive_ability_component.add_passive(passive_scene)
-
-	var enemy_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
-	var enemy: Character = enemy_scene.instantiate() as Character
-	enemy.position = Vector3(2.0, 0.0, 0.0)
-	add_child(enemy)
-	if enemy.ai_state_machine != null:
-		enemy.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
-	if enemy.state_machine != null:
-		enemy.state_machine.set_physics_process(false)
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	var hp_before: float = enemy.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-	var blast_origin: Vector3 = Vector3.ZERO
-	var dash_trigger: Array[StringName] = [&"ability.dash"]
-	var event: AbilityEvent = _make_event(dash_trigger, AbilityEvent.Phase.STARTED)
-	event.position = blast_origin
-	player.broadcast_ability_event(event)
-	for _i: int in range(5):
-		await get_tree().physics_frame
-	await get_tree().process_frame
-
-	var explosion: GroundDamageArea = _newest_payload()
-	if explosion == null:
-		_fail("No explosion payload spawned on the dash STARTED event.")
-		return
-	if not explosion.position.is_equal_approx(blast_origin):
-		_fail("Explosion did not spawn at the event position. Got %s" % explosion.position)
-		return
-	if explosion.wielder != player:
-		_fail("Explosion wielder is not the passive owner.")
-		return
-	var hp_after: float = enemy.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-	var expected: float = explosion.damage * enemy.attribute_component.get_damage_multiplier(&"physical")
-	if not is_equal_approx(hp_before - hp_after, expected):
-		_fail("Enemy took wrong relative damage. Expected %f, got %f" % [expected, hp_before - hp_after])
-		return
-	_pass("Payload spawns at event position with wielder attribution and scaled relative damage.")
-
-	# Property override plumbing: one shared payload scene, tuned per passive.
-	var radius_override: PayloadPropertyOverride = PayloadPropertyOverride.new()
-	radius_override.value_type = PayloadPropertyOverride.ValueType.FLOAT
-	radius_override.property = &"radius"
-	radius_override.float_value = 4.25
-	var probe: PayloadPassiveAbility = PayloadPassiveAbility.new()
-	probe.id = &"override_probe"
-	var probe_trigger: Array[StringName] = [&"ability.probe"]
-	probe.trigger_tags = probe_trigger
-	probe.payload_scene = load("res://Hazards/explosion.tscn") as PackedScene
-	probe.scale_with_attack = false
-	probe.payload_overrides.append(radius_override)
-	player.passive_ability_component.add_passive_instance(probe)
-
-	var probe_tag: Array[StringName] = [&"ability.probe"]
-	var before_probes: int = payload_spawns
-	var probe_event: AbilityEvent = _make_event(probe_tag, AbilityEvent.Phase.ENDED)
-	probe_event.position = Vector3(20.0, 0.0, 0.0)
-	player.broadcast_ability_event(probe_event)
-	for _i: int in range(5):
-		await get_tree().physics_frame
-	await get_tree().process_frame
-	var probe_payload: GroundDamageArea = _newest_payload()
-	if probe_payload == null or payload_spawns != before_probes + 1:
-		_fail("Override probe payload did not spawn exactly once.")
-		return
-	if not is_equal_approx(probe_payload.radius, radius_override.float_value):
-		_fail("Property override was not applied. Expected %f, got %f" % [radius_override.float_value, probe_payload.radius])
-		return
-	_pass("Property overrides patch shared payload scenes per passive.")
-
-	# Unknown property names warn loudly and leave the payload untouched.
-	var bogus: PayloadPropertyOverride = PayloadPropertyOverride.new()
-	bogus.value_type = PayloadPropertyOverride.ValueType.FLOAT
-	bogus.property = &"no_such_property"
-	bogus.float_value = 99.0
-	probe.payload_overrides.append(bogus)
-	var bogus_event: AbilityEvent = _make_event(probe_tag, AbilityEvent.Phase.ENDED)
-	bogus_event.position = Vector3(30.0, 0.0, 0.0)
-	player.broadcast_ability_event(bogus_event)
-	for _i: int in range(5):
-		await get_tree().physics_frame
-	var bogus_payload: GroundDamageArea = _newest_payload()
-	if bogus_payload == null or not bogus_payload.position.is_equal_approx(Vector3(30.0, 0.0, 0.0)):
-		_fail("Payload with an unknown override property failed to spawn at its position.")
-		return
-	if not is_equal_approx(bogus_payload.radius, radius_override.float_value):
-		_fail("An unknown override property modified the payload unexpectedly.")
-		return
-	_pass("Unknown override properties are ignored without breaking spawns.")
-
-	player.passive_ability_component.remove_passive(probe)
-	player.passive_ability_component.remove_passives(&"dash_explosion")
-	enemy.queue_free()
-	await get_tree().physics_frame
+func _sphere_shape(radius: float) -> CollisionShape3D:
+	var shape: CollisionShape3D = CollisionShape3D.new()
+	var sphere: SphereShape3D = SphereShape3D.new()
+	sphere.radius = radius
+	shape.shape = sphere
+	return shape
 
 
-## PART 6: end-to-end dash detonation through the real state machine, including
-## interrupted dashes and the require_completion gate.
-func _part_dash_integration(player: Character) -> void:
-	print("\n>>> PART 6: End-to-End Dash Detonation via the State Machine")
-	var passive_scene: PackedScene = load("res://Passives/passive_dash_explosion.tscn") as PackedScene
-	player.passive_ability_component.add_passive(passive_scene)
-	TestUtils.clear_lock_and_hold_facing(player)
-
-	var before: int = payload_spawns
-	var start_pos: Vector3 = player.global_position
-	player.state_machine.request_state("PlayerDash", {"direction": Vector3.FORWARD})
-	# The takeoff detonation spawns synchronously with the state enter. Assert
-	# its position now: payloads self-free on their visual_duration, so node
-	# references must never be held across waits in these assertions.
-	var takeoff: GroundDamageArea = _newest_payload()
-	if takeoff == null or not is_instance_valid(takeoff) or takeoff.position.distance_to(start_pos) > 1.0:
-		_fail("Dash explosion did not detonate at the dash start position.")
-		return
-	for _i: int in range(30):
-		await get_tree().physics_frame
-	await get_tree().process_frame
-	if payload_spawns != before + 1:
-		_fail("Dash did not spawn exactly one explosion. Got %d, expected 1" % (payload_spawns - before))
-		return
-	_pass("Dash detonates exactly once at takeoff.")
-
-	# A dash cancelled right after takeoff keeps its detonation: the STARTED
-	# event already fired before any interruption could happen.
-	before = payload_spawns
-	player.state_machine.request_state("PlayerDash", {"direction": Vector3.FORWARD})
-	await get_tree().physics_frame
-	player.state_machine.request_state("PlayerRun")
-	for _i: int in range(10):
-		await get_tree().physics_frame
-	await get_tree().process_frame
-	if payload_spawns != before + 1:
-		_fail("Interrupted dash lost its takeoff explosion. Got %d, expected 1" % (payload_spawns - before))
-		return
-	_pass("Interrupted dash keeps its takeoff detonation.")
-
-	# The same payload behind a require_completion passive stays silent on
-	# interruptions and fires on natural completion.
-	player.passive_ability_component.remove_passives(&"dash_explosion")
-	var strict: PayloadPassiveAbility = PayloadPassiveAbility.new()
-	strict.id = &"strict_dash"
-	var dash_trigger: Array[StringName] = [&"ability.dash"]
-	strict.trigger_tags = dash_trigger
-	strict.require_completion = true
-	strict.payload_scene = load("res://Hazards/explosion.tscn") as PackedScene
-	player.passive_ability_component.add_passive_instance(strict)
-
-	before = payload_spawns
-	player.state_machine.request_state("PlayerDash", {"direction": Vector3.FORWARD})
-	await get_tree().physics_frame
-	player.state_machine.request_state("PlayerRun")
-	for _i: int in range(10):
-		await get_tree().physics_frame
-	await get_tree().process_frame
-	if payload_spawns != before:
-		_fail("require_completion passive fired on an interrupted dash.")
-		return
-	player.state_machine.request_state("PlayerDash", {"direction": Vector3.FORWARD})
-	for _i: int in range(30):
-		await get_tree().physics_frame
-	await get_tree().process_frame
-	if payload_spawns != before + 1:
-		_fail("require_completion passive did not fire on a completed dash.")
-		return
-	_pass("Completion filter gates real dash interruptions end-to-end.")
-	player.passive_ability_component.remove_passives(&"strict_dash")
+func _wait_running(message: String) -> bool:
+	return await wait_until(func() -> bool: return _player.is_on_floor() and _state() == "PlayerRun", message, ACTION_FRAMES)
 
 
-## PART 7: payloads spawned from inside physics query flushing (a passive
-## reacting to a body_entered callback, e.g. the exit portal's during a scene
-## transition) must arm their hitbox without hitting the Area3D lock ("Function
-## blocked during in/out signal") and still land hits on pre-existing victims.
-func _part_flush_spawn(player: Character) -> void:
-	print("\n>>> PART 7: Flush-Context Payload Spawn (exit-portal regression)")
-	var passive_scene: PackedScene = load("res://Passives/passive_dash_explosion.tscn") as PackedScene
-	player.passive_ability_component.add_passive(passive_scene)
-
-	# Victim standing at the future blast origin.
-	var enemy_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
-	var enemy: Character = enemy_scene.instantiate() as Character
-	enemy.position = Vector3(40.0, 0.0, 0.0)
-	add_child(enemy)
-	if enemy.ai_state_machine != null:
-		enemy.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
-	if enemy.state_machine != null:
-		enemy.state_machine.set_physics_process(false)
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	# Probe trigger area whose body_entered dispatch runs during physics flush.
-	# Elevated clear of the floor so only the dropped probe body enters it.
-	var trigger_area: Area3D = Area3D.new()
-	trigger_area.collision_layer = 0
-	trigger_area.collision_mask = 1
-	var trigger_shape: CollisionShape3D = CollisionShape3D.new()
-	var trigger_sphere: SphereShape3D = SphereShape3D.new()
-	trigger_sphere.radius = 2.0
-	trigger_shape.shape = trigger_sphere
-	trigger_area.add_child(trigger_shape)
-	trigger_area.position = Vector3(40.0, 3.0, 6.0)
-	add_child(trigger_area)
-	await get_tree().physics_frame
-	trigger_area.body_entered.connect(_on_flush_probe_body_entered)
-
-	var hp_before: float = enemy.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-	var spawns_before: int = payload_spawns
-	_flush_player = player
-	_flush_origin = Vector3(40.0, 0.0, 0.0)
-
-	var probe_body: StaticBody3D = StaticBody3D.new()
-	probe_body.collision_layer = 1
-	var body_shape: CollisionShape3D = CollisionShape3D.new()
-	var body_sphere: SphereShape3D = SphereShape3D.new()
-	body_sphere.radius = 0.5
-	body_shape.shape = body_sphere
-	probe_body.add_child(body_shape)
-	probe_body.position = Vector3(40.0, 3.0, 6.0)
-	add_child(probe_body)
-
-	for _i: int in range(6):
-		await get_tree().physics_frame
-	await get_tree().process_frame
-
-	if payload_spawns != spawns_before + 1:
-		_fail("Flush-context spawn did not produce exactly one payload. Got %d" % (payload_spawns - spawns_before))
-		return
-	var explosion: GroundDamageArea = _newest_payload()
-	if explosion == null or not explosion.position.is_equal_approx(_flush_origin):
-		_fail("Flush-context payload missing or at the wrong position.")
-		return
-	var hitbox: Area3D = explosion._get_damage_hitbox()
-	if hitbox == null or not hitbox.monitoring:
-		_fail("Flush-context payload hitbox never armed (Area3D lock not worked around).")
-		return
-	var hp_after: float = enemy.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-	var expected: float = explosion.damage * enemy.attribute_component.get_damage_multiplier(&"physical")
-	if not is_equal_approx(hp_before - hp_after, expected):
-		_fail("Flush-context blast dealt wrong relative damage. Expected %f, got %f" % [expected, hp_before - hp_after])
-		return
-	_pass("Flush-context payload arms deferred and still lands hits.")
-
-	player.passive_ability_component.remove_passives(&"dash_explosion")
-	enemy.queue_free()
-	probe_body.queue_free()
-	trigger_area.queue_free()
-	await get_tree().physics_frame
+func _health(character: Character) -> float:
+	return character.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 
 
-## PART 8: the landing blast fires exactly once per airborne episode, from
-## whatever state the character touches down - a jump that turns into a jump
-## kick mid-flight must still give exactly one detonation, because the episode
-## is tracked on the Character (grounded<->airborne edge), not on any state.
-func _part_landing_blast(player: Character) -> void:
-	print("\n>>> PART 8: Landing Blast (jump -> jump kick -> land, one detonation)")
-	var passive_scene: PackedScene = load("res://Passives/passive_landing_blast.tscn") as PackedScene
-	if passive_scene == null:
-		_fail("Could not load Passives/passive_landing_blast.tscn (parse error?).")
-		return
-	player.passive_ability_component.add_passive(passive_scene)
-	TestUtils.clear_lock_and_hold_facing(player)
+func _horizontal(vector: Vector3) -> Vector3:
+	return Vector3(vector.x, 0.0, vector.z)
 
-	var spawns_before: int = payload_spawns
-	player.state_machine.request_state("PlayerJump", {"direction": Vector3.ZERO})
 
-	# Switch into the jump kick exactly like the attack input would mid-flight,
-	# then ride whatever states follow down to the ground. The movement.airborne
-	# character tag marks the episode's span and doubles as its lifecycle check.
-	var kick_switched: bool = false
-	var landed: bool = false
-	for _i: int in range(150):
-		await get_tree().physics_frame
-		if not kick_switched and player.has_tag(Character.TAG_AIRBORNE):
-			player.state_machine.request_state("PlayerJumpKick")
-			kick_switched = true
-		elif kick_switched and not player.has_tag(Character.TAG_AIRBORNE):
-			landed = true
-			break
-	if not kick_switched:
-		_fail("Player never reported the airborne episode during the jump.")
-		return
-	if not landed:
-		_fail("Player never landed after the mid-air jump kick.")
-		return
-
-	await get_tree().process_frame
-	if payload_spawns != spawns_before + 1:
-		_fail("Airborne episode produced %d detonations, expected exactly 1." % (payload_spawns - spawns_before))
-		return
-	var explosion: GroundDamageArea = _newest_payload()
-	if explosion == null or explosion.position.distance_to(player.global_position) > 1.0:
-		_fail("Landing blast did not detonate at the landing position.")
-		return
-	_pass("Jump -> jump kick -> land produced exactly one landing detonation.")
+func _state() -> String:
+	return str(_player.state_machine.state.name)

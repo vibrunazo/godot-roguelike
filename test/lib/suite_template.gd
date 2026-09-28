@@ -20,6 +20,9 @@
 ##   remember if it ever happened); one sample at the end misses anything that
 ##   already faded or decayed.
 ## - Drive input by action name (press_action(&"jump")), never physical keys.
+## - Engine errors only print as notes. When the regression is an engine error
+##   (a locked Area3D, an empty ImmediateMesh surface), end the test with
+##   check_no_engine_errors().
 ## - Use public methods only; if a test needs a hook, add a documented public one.
 ## - Everything the test creates goes through spawn()/autofree()/load_arena()
 ##   so teardown frees it; leaked orphan nodes fail the test.

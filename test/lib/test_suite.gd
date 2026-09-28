@@ -54,6 +54,14 @@ class _ErrorCapture extends Logger:
 	func _log_message(_message: String, _error: bool) -> void:
 		pass
 
+	## Engine errors (not script errors) reported since the last take(),
+	## without clearing them.
+	func peek_other() -> Array[String]:
+		_mutex.lock()
+		var result: Array[String] = _other_errors.duplicate()
+		_mutex.unlock()
+		return result
+
 	## Returns and clears [script_errors, other_errors].
 	func take() -> Array[Array]:
 		_mutex.lock()
@@ -205,6 +213,20 @@ func check_approx(actual: float, expected: float, message: String, tolerance: fl
 	var tolerance_text: String = "" if tolerance < 0.0 else ", tolerance %s" % str(tolerance)
 	_record_failure("%s (expected %s, got %s%s)" % [message, str(expected), str(actual), tolerance_text], _caller_location())
 	return false
+
+
+## Fails when the engine has reported an error (push_error, engine ERROR
+## lines) since the current test started. Engine errors are otherwise only
+## printed as notes; use this where an error is the regression under test.
+func check_no_engine_errors(message: String) -> bool:
+	var errors: Array[String] = _error_capture.peek_other()
+	if errors.is_empty():
+		return check(true, message)
+	var distinct: Array[String] = []
+	for error: String in errors:
+		if not distinct.has(error):
+			distinct.append(error)
+	return check(false, "%s (%d error(s), first: %s)" % [message, errors.size(), distinct[0]])
 
 
 ## Records an unconditional failure. Returns false for `return fail("...")`.
