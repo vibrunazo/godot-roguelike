@@ -1,26 +1,19 @@
-## AI state that evaluates conditions (cooldown, player distance < 5m) while inactive
-## and preemptively interrupts the active AI state to execute the leaping dodge ability.
+## AI state that evaluates conditions (cooldown, target within trigger_range)
+## while inactive and preemptively interrupts the active AI state to execute the
+## leaping dodge ability. Configure attack_state_name, trigger_range and
+## can_break_stun on the node like any AIConditionalAttack: this state never
+## rewrites them.
 class_name AILeapingDodge
 extends AIConditionalAttack
 
 ## The name of the physical leaping dodge state on the body StateMachine to execute.
 @export var ability_state_name: String = "EnemyLeapingDodge"
-## Maximum range of the leap in meters (15.0m default).
+## Maximum range of the leap in meters.
 @export var max_range: float = 15.0
 
 
-func _ready() -> void:
-	super._ready()
-	# Set default values for leaping dodge if not explicitly overridden
-	if attack_state_name == "EnemyAttack":
-		attack_state_name = ability_state_name
-	if is_equal_approx(trigger_range, 3.5):
-		trigger_range = 5.0
-	can_break_stun = false
-
-
 ## Evaluates whether this leaping dodge is ready to trigger and preempt the active state.
-## Triggers whenever target player is closer than 5 meters and cooldown is expired.
+## Triggers when the target is within trigger_range and the cooldown has expired.
 func evaluate_trigger(delta: float) -> bool:
 	var att: CharacterState = get_attack_state()
 	if att != null and att.has_method("tick_cooldown"):

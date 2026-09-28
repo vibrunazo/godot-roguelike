@@ -31,8 +31,9 @@ extends Resource
 @export var gameplay_effects: Array[GameplayEffect] = []
 ## Instant flat health restored to the character's health pool on apply.
 @export var instant_heal: float = 0.0
-## Instant percentage of max health restored to the character's health pool (e.g. 50.0 for 50%).
-@export var heal_percent: float = 0.0
+## Instant percentage of max health restored to the character's health pool,
+## always in percent (50.0 heals 50% of max health, 1.0 heals 1%).
+@export_range(0.0, 100.0, 0.1, "suffix:%") var heal_percent: float = 0.0
 ## Instant flat damage dealt to the character's health pool on apply.
 @export var instant_damage: float = 0.0
 
@@ -59,14 +60,17 @@ func apply(character: Character) -> bool:
 		if instant_heal > 0.0:
 			attrs.restore_pool(AttributeComponent.POOL_HEALTH, instant_heal)
 		if heal_percent > 0.0:
-			var ratio: float = heal_percent / 100.0 if heal_percent > 1.0 else heal_percent
-			var heal_amount: float = attrs.get_current(AttributeComponent.STAT_MAX_HEALTH) * ratio
-			attrs.restore_pool(AttributeComponent.POOL_HEALTH, heal_amount)
+			attrs.restore_pool(AttributeComponent.POOL_HEALTH, percent_heal_amount(attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)))
 		if instant_damage > 0.0:
 			attrs.damage_pool(AttributeComponent.POOL_HEALTH, instant_damage)
 
 	_custom_apply(character)
 	return true
+
+
+## Health restored by heal_percent for a character with the given max health.
+func percent_heal_amount(max_health: float) -> float:
+	return max_health * heal_percent / 100.0
 
 
 ## Optional virtual hook for bespoke item behavior. Standard items leave this empty.
@@ -96,8 +100,7 @@ func get_stat_summary(character: Character) -> String:
 			var max_hp: float = attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)
 			var heal_amount: float = instant_heal
 			if heal_percent > 0.0:
-				var ratio: float = heal_percent / 100.0 if heal_percent > 1.0 else heal_percent
-				heal_amount += max_hp * ratio
+				heal_amount += percent_heal_amount(max_hp)
 			if heal_amount > 0.0:
 				lines.append("HP: %s -> [color='7fffd4']%s[/color]" % [_format_amount(current_hp), _format_amount(minf(max_hp, current_hp + heal_amount))])
 			if instant_damage > 0.0:

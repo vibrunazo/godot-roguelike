@@ -112,7 +112,7 @@ Suggested split:
 - `LootComponent` or `EnemyResource`-driven drop on the enemy's `defeat` signal. `Character` should not know about `ProgressionState`.
 - A player-only listener (`PlayerDefeatHandler` or `GameFlow` autoload) that shows the game-over screen when the player's `defeat` fires. Rename the method: `reset_game_state` is misleading.
 
-**`cancel_movement_and_abilities()` (`:726-769`)** reaches into other nodes by hardcoded path and name: `"PlayerInputComponent"`, `"DamageTint"`, `"CameraRoot/ShakeCamera3D"`. It also frees any descendant whose name starts with `"Status"` or contains `"burning"` (`:766-769`), which would free an unrelated node named `StatusBar`. Replace this with a signal (`abilities_cancelled`) or an interface: each component implements `cancel_transient_state()` and `Character` calls it on children that have it. Status VFX are already tracked by `AttributeComponent._effect_vfx`, so `clear_temporary_effects()` should own their cleanup.
+**`cancel_movement_and_abilities()` (`:726-769`)** *(name-based status cleanup removed 2026-09-27; `test_cancel_abilities`)* reaches into other nodes by hardcoded path and name: `"PlayerInputComponent"`, `"DamageTint"`, `"CameraRoot/ShakeCamera3D"`. It also frees any descendant whose name starts with `"Status"` or contains `"burning"` (`:766-769`), which would free an unrelated node named `StatusBar`. Replace this with a signal (`abilities_cancelled`) or an interface: each component implements `cancel_transient_state()` and `Character` calls it on children that have it. Status VFX are already tracked by `AttributeComponent._effect_vfx`, so `clear_temporary_effects()` should own their cleanup.
 
 **`Components/attribute_component.gd` (771 lines)** holds stats and pools, and also gameplay tags, timed tag effects, DoTs, damage-type resistance mapping, **VFX spawning, skeleton lookup and bone-attachment creation** (`_find_skeleton`, `_find_or_create_bone_slot`). The VFX/bone code should move to a `StatusVisualsComponent` that listens to effect applied/removed signals. Tags could be a small `TagContainer` class. Also:
 
@@ -162,7 +162,7 @@ Renaming a node in a `.tscn` silently disables behavior. Recommendations:
 | UI scene refs | `UI.pause_menu_scene/hud_scene/level_title_overlay_scene` **and** `GlobalVars.*_scene` | `UI` is a script autoload (`project.godot`), so its `@export` overrides can never be set. They are dead code. |
 | Difficulty scaling | `GlobalVars.difficulty_curve` ("Legacy") **and** `ProgressionState.base_difficulty`/`difficulty_increase_per_level` | Nothing reads the curve, but `test_enemy_base.gd:1578` still requires it to be non-null. |
 | Default gold drop | `EnemyResource.gold_drop = 5` **and** `Character.on_defeat` literal `5` | These will drift. |
-| heal-percent unit | `item_resource.gd:62` and `:99` both guess the unit with `heal_percent > 1.0` | `heal_percent = 1.0` means 100%, while `1.5` means 1.5%. Pick one unit (0–1 fraction) and document it. |
+| heal-percent unit *(fixed 2026-09-27: always percent, one helper, inspector range; `test_item_healing`)* | `item_resource.gd:62` and `:99` both guess the unit with `heal_percent > 1.0` | `heal_percent = 1.0` means 100%, while `1.5` means 1.5%. Pick one unit (0–1 fraction) and document it. |
 
 ### 2.6 [MED] Backward-compat aliases (banned by AGENTS.md §1)
 
@@ -190,7 +190,7 @@ Pattern: `if export == null: export = load("res://…")`. This hides missing sce
 
 Wire these in the scenes and, in `_ready()`, `push_error` when a required export is null. The `GlobalVars` registry fallback pattern is fine when it's intentional, but fallbacks to hardcoded paths are what AGENTS.md forbids.
 
-### 2.8 [MED] Sentinel-value overrides
+### 2.8 [MED] Sentinel-value overrides *(fixed 2026-09-27: the overrides are removed; regression test in `test_firebomber_enemy`)*
 
 `StateMachine/AIStates/ai_leaping_dodge.gd:14-19`:
 
@@ -242,7 +242,7 @@ Designers can't see or change these in the inspector:
 - `player_input_component.gd:230`: the damage tint color and `0.2`/`0.5` values.
 - `exit_point.gd:36, 44`: trail color and `"Cuttoff", 0.41`. The shader parameter name is misspelled, and tests assert both the typo and the value.
 - `ui.gd:15`: `DEBUG_KILL_DAMAGE = 50.0` as a `const` in the UI singleton. Debug cheats belong in a debug-only autoload or `OS.is_debug_build()`-gated node.
-- `core_movement()` (`character_state.gd`): `move_toward(velocity.x, 0.0, speed)` decelerates by `speed` per *frame*, not per second. This depends on frame rate and is effectively an instant stop, so it's likely unintended.
+- *(Fixed 2026-09-27: braking is now `speed / Character.stop_time` per second; the default keeps the old 60 Hz feel; covered in `test_frame_rate_invariance`.)* `core_movement()` (`character_state.gd`): `move_toward(velocity.x, 0.0, speed)` decelerates by `speed` per *frame*, not per second. This depends on frame rate and is effectively an instant stop, so it's likely unintended.
 
 ### 2.11 [LOW] Smaller smells
 

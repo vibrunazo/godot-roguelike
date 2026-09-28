@@ -6,7 +6,8 @@
 ## fps_matrix below) and checks the mechanics that broke that way:
 ## - an enemy melee attack lands on an adjacent target,
 ## - every player combo attack lands on an adjacent target,
-## - the dash lasts its configured duration.
+## - the dash lasts its configured duration,
+## - braking to a stop takes the same game time at any physics tick rate.
 ##
 ## fps_matrix: 12, 20, 30, 60
 extends "res://test/lib/test_suite.gd"
@@ -20,6 +21,12 @@ const STATE_LATENCY_TICKS: int = 2
 const DUMMY_HEALTH: float = 100000.0
 ## Frame budget for one full attack animation.
 const ATTACK_FRAMES: int = 600
+## Test-owned braking setup: stop_time and how many times faster than the
+## movement speed the character is moving when it starts braking.
+const TEST_STOP_TIME: float = 0.2
+const OVERSPEED: float = 3.0
+## Physics tick rates the braking simulation is run at.
+const TICK_RATES: Array[int] = [60, 30, 20]
 
 var _arena: Node3D
 
@@ -73,6 +80,26 @@ func test_dash_lasts_its_configured_duration() -> void:
 		ticks += 1
 	check(ticks >= min_ticks and ticks <= min_ticks + STATE_LATENCY_TICKS, "dash should last its duration (%d..%d physics ticks), lasted %d" % [min_ticks, min_ticks + STATE_LATENCY_TICKS, ticks])
 	check(player.global_position.x - start.x > 0.0, "dash should move the player along its direction")
+
+
+func test_braking_takes_the_same_time_at_any_tick_rate() -> void:
+	var player: Character = spawn(PLAYER_SCENE, _arena, (_arena.get_node("PlayerSpawn") as Node3D).global_position) as Character
+	_stop_player_input(player)
+	if not await wait_until(func() -> bool: return player.is_on_floor() and player.state_machine.state.name == "PlayerRun", "player should settle into PlayerRun"):
+		return
+	player.stop_time = TEST_STOP_TIME
+	var run_state: CharacterState = player.state_machine.state as CharacterState
+	var speed: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
+	var expected: float = OVERSPEED * TEST_STOP_TIME
+	for tick_rate: int in TICK_RATES:
+		# Simulate ticks of this rate by calling the movement step with its delta.
+		var tick: float = 1.0 / tick_rate
+		player.velocity = Vector3(speed * OVERSPEED, 0.0, 0.0)
+		var elapsed: float = 0.0
+		while not is_zero_approx(player.velocity.x) and elapsed < expected * 10.0:
+			run_state.core_movement(tick, speed)
+			elapsed += tick
+		check(elapsed >= expected - 0.001 and elapsed <= expected + tick + 0.001, "at %d ticks/s braking from %sx speed should take %.3f s, took %.3f s" % [tick_rate, OVERSPEED, expected, elapsed])
 
 
 ## Spawns a character with its AI stopped, test-owned huge health and no

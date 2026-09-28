@@ -75,6 +75,11 @@ signal alerted
 ## balance on the apex. Normal top contacts keep their impact momentum
 ## untouched (wall-like); this only guarantees the slide-off.
 @export var head_slide_speed: float = 1.5
+## Seconds this character takes to brake from full movement speed to a stop
+## once it has no movement intent (0.0 = instant). Faster leftover motion
+## (e.g. after a dash) brakes at the same rate. Time-based, so braking is the
+## same at any physics tick rate; the default matches one 60 Hz tick.
+@export var stop_time: float = 1.0 / 60.0
 
 
 ## Desired movement direction vector (normalized), provided by PlayerInputComponent or AIStateMachine.
@@ -762,11 +767,9 @@ func cancel_movement_and_abilities() -> void:
 	if camera != null:
 		camera.trauma = 0.0
 	if attribute_component != null:
+		# Also frees every status visual (burning fire, ...): the component
+		# tracks the visual of each effect it applied.
 		attribute_component.clear_temporary_effects()
-	for child: Node in find_children("*", "Node3D", true, false):
-		if child.name.begins_with("Status") or child.name.to_lower().contains("burning"):
-			(child as Node3D).visible = false
-			child.queue_free()
 
 
 

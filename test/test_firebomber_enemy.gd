@@ -6,8 +6,9 @@
 ##   the bomb (size, duration, damage, no ground decal). Hitting the player in
 ##   flight damages them and leaves no fire trap.
 ## - A cast aims at the ground under the firebomber's current target.
-## - AILeapingDodge triggers only within trigger_range and off cooldown, and
-##   never breaks a stun it is not allowed to break.
+## - AILeapingDodge keeps the values it is configured with, triggers only
+##   within trigger_range and off cooldown, and never breaks a stun it is not
+##   allowed to break.
 ## - The leap rises to peak_height, lands within max_range, keeps hyper-armor
 ##   when uninterruptable, clamps explicit targets, survives a zero direction,
 ##   and never targets a landing point through a wall.
@@ -138,6 +139,19 @@ func test_leap_trigger_respects_range_and_cooldown() -> void:
 	var step: float = before * 0.25
 	ai_leap.evaluate_trigger(step)
 	check_approx(ai_leap.cooldown_timer, before - step, "the cooldown should count down by the elapsed time")
+
+
+func test_leap_ai_keeps_the_values_it_is_configured_with() -> void:
+	# The exact values an old _ready() silently overwrote (3.5 -> 5.0, stun
+	# breaking forced off): configured values must survive entering the tree.
+	var bomber: Character = FIREBOMBER_SCENE.instantiate() as Character
+	var ai_leap: AILeapingDodge = bomber.get_node("AIStateMachine/AILeapingDodge") as AILeapingDodge
+	ai_leap.trigger_range = 3.5
+	ai_leap.can_break_stun = true
+	autofree(bomber)
+	_arena.add_child(bomber)
+	check_approx(ai_leap.trigger_range, 3.5, "a configured trigger_range must not be rewritten")
+	check(ai_leap.can_break_stun, "a configured can_break_stun must not be rewritten")
 
 
 func test_leap_ai_does_not_break_a_stun_it_may_not_break() -> void:
