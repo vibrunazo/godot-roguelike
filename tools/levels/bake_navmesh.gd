@@ -14,7 +14,7 @@
 extends SceneTree
 
 
-func _init() -> void:
+func _initialize() -> void:
 	var level_path: String = "res://Levels/level_5.tscn"
 	var out_path: String = "res://tools/levels/out/navmesh_baked.txt"
 	for arg: String in OS.get_cmdline_user_args():
@@ -45,38 +45,8 @@ func _init() -> void:
 		quit(1)
 		return
 	var mesh: NavigationMesh = region.navigation_mesh
-	# Bake into a FRESH mesh first so an empty/unchanged result is detectable
-	# (baking over the region mesh in place would silently keep the scaffold
-	# and report success). The fresh mesh duplicates the region mesh's full
-	# settings: baking with defaults instead (e.g. a different
-	# region_min_size) silently changes the result, such as keeping walkable
-	# islands on top of furniture that the configured min region size removes.
-	var pre: PackedVector3Array = mesh.get_vertices().duplicate()
-	# Duplicate keeps the region mesh's full bake settings (verified: baking
-	# with defaults instead silently changes the result). No clearing needed:
-	# bake_from_source_geometry_data() replaces the mesh contents, like the
-	# editor Bake button does (verified: baking over uncleared data yields
-	# the same clean result, nothing appended).
-	var fresh: NavigationMesh = mesh.duplicate() as NavigationMesh
-	# Two-step bake: the one-step bake() returns an empty mesh in headless
-	# (-s) runs (verified), while parse + bake_from works. The parse stage
-	# makes the failure visible through has_data() instead of silent empties.
-	var data := NavigationMeshSourceGeometryData3D.new()
-	NavigationMeshGenerator.parse_source_geometry_data(fresh, data, level)
-	if not data.has_data():
-		printerr("[bake_navmesh] ERROR: parse found no geometry; ",
-			"the editor Bake button is required for this level")
-		quit(1)
-		return
-	NavigationMeshGenerator.bake_from_source_geometry_data(fresh, data)
-	if fresh.get_vertices().is_empty():
-		printerr("[bake_navmesh] ERROR: bake parsed no geometry (empty mesh); ",
-			"the editor Bake button is required for this level")
-		quit(1)
-		return
-	if _same_verts(pre, fresh.get_vertices()):
-		printerr("[bake_navmesh] ERROR: bake returned the input unchanged; ",
-			"mesh was NOT baked (scaffold passthrough refused)")
+	var fresh: NavigationMesh = _bake_fresh(mesh, level)
+	if fresh == null:
 		quit(1)
 		return
 	mesh.clear_polygons()
@@ -85,32 +55,65 @@ func _init() -> void:
 		mesh.add_polygon(fresh.get_polygon(i))
 	print("[bake_navmesh] baked: ", mesh.get_polygon_count(), " polygons, ",
 		mesh.get_vertices().size(), " vertices")
-
-	var out: FileAccess = FileAccess.open(out_path, FileAccess.WRITE)
-	if out == null:
-		printerr("[bake_navmesh] ERROR: cannot open ", out_path)
+	if not _write_snippet(mesh, out_path):
 		quit(1)
 		return
-	var verts: PackedVector3Array = mesh.get_vertices()
-	out.store_string("vertices = PackedVector3Array(")
-	var parts: PackedStringArray = PackedStringArray()
-	for v: Vector3 in verts:
-		parts.append("%s, %s, %s" % [_fmt(v.x), _fmt(v.y), _fmt(v.z)])
-	out.store_string(", ".join(parts))
-	out.store_string(")\npolygons = [")
-	var tris: PackedStringArray = PackedStringArray()
-	for i: int in range(mesh.get_polygon_count()):
-		var poly: PackedInt32Array = mesh.get_polygon(i)
-		var idx: PackedStringArray = PackedStringArray()
-		for v: int in poly:
-			idx.append(str(v))
-		tris.append("PackedInt32Array(" + ", ".join(idx) + ")")
-	out.store_string(", ".join(tris))
-	out.store_string("]\n")
-	out.close()
 	print("[bake_navmesh] wrote ", out_path)
 	quit(0)
 
+
+## Bakes level's geometry into a FRESH copy of mesh, so an empty or unchanged
+## result is detectable (baking over the region mesh in place would silently
+## keep the scaffold and report success). The copy keeps the region mesh's
+## full bake settings (verified: baking with defaults instead, e.g. a
+## different region_min_size, silently changes the result, such as keeping
+## walkable islands on top of furniture). Null (error printed) on failure.
+func _bake_fresh(mesh: NavigationMesh, level: Node3D) -> NavigationMesh:
+	var pre: PackedVector3Array = mesh.get_vertices().duplicate()
+	var fresh: NavigationMesh = mesh.duplicate() as NavigationMesh
+	# Two-step bake: the one-step bake() returns an empty mesh in headless
+	# (-s) runs (verified), while parse + bake_from works. The parse stage
+	# makes the failure visible through has_data() instead of silent empties.
+	# bake_from_source_geometry_data() replaces the mesh contents, like the
+	# editor Bake button does (verified: nothing is appended).
+	var data := NavigationMeshSourceGeometryData3D.new()
+	NavigationMeshGenerator.parse_source_geometry_data(fresh, data, level)
+	if not data.has_data():
+		printerr("[bake_navmesh] ERROR: parse found no geometry; ",
+			"the editor Bake button is required for this level")
+		return null
+	NavigationMeshGenerator.bake_from_source_geometry_data(fresh, data)
+	if fresh.get_vertices().is_empty():
+		printerr("[bake_navmesh] ERROR: bake parsed no geometry (empty mesh); ",
+			"the editor Bake button is required for this level")
+		return null
+	if _same_verts(pre, fresh.get_vertices()):
+		printerr("[bake_navmesh] ERROR: bake returned the input unchanged; ",
+			"mesh was NOT baked (scaffold passthrough refused)")
+		return null
+	return fresh
+
+
+## Writes mesh as the vertices/polygons lines of a .tscn NavigationMesh
+## sub-resource. False (error printed) when the file cannot be opened.
+func _write_snippet(mesh: NavigationMesh, out_path: String) -> bool:
+	var out: FileAccess = FileAccess.open(out_path, FileAccess.WRITE)
+	if out == null:
+		printerr("[bake_navmesh] ERROR: cannot open ", out_path)
+		return false
+	var parts: PackedStringArray = PackedStringArray()
+	for v: Vector3 in mesh.get_vertices():
+		parts.append("%s, %s, %s" % [_fmt(v.x), _fmt(v.y), _fmt(v.z)])
+	out.store_string("vertices = PackedVector3Array(" + ", ".join(parts) + ")\npolygons = [")
+	var tris: PackedStringArray = PackedStringArray()
+	for i: int in range(mesh.get_polygon_count()):
+		var idx: PackedStringArray = PackedStringArray()
+		for v: int in mesh.get_polygon(i):
+			idx.append(str(v))
+		tris.append("PackedInt32Array(" + ", ".join(idx) + ")")
+	out.store_string(", ".join(tris) + "]\n")
+	out.close()
+	return true
 
 ## True when two vertex arrays match exactly (bake changed nothing).
 func _same_verts(a: PackedVector3Array, b: PackedVector3Array) -> bool:

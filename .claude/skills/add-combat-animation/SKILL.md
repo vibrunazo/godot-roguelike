@@ -22,7 +22,7 @@ agent. Write a throwaway script in `.scratch/` and run it through the runner:
 # .scratch/extract_anim.gd
 extends SceneTree
 
-func _init() -> void:
+func _initialize() -> void:
 	var glb: Node3D = load("res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Rig_Medium_CombatMelee.glb").instantiate() as Node3D
 	var player: AnimationPlayer = glb.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	var animation: Animation = player.get_animation("Melee_2H_Attack_Chop").duplicate() as Animation

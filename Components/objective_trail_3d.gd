@@ -139,57 +139,38 @@ func _render_trail() -> void:
 	if _immediate_mesh == null:
 		return
 	_immediate_mesh.clear_surfaces()
-
-	if _current_path.size() < 2:
-		return
-
-	var cycle_length: float = dash_length + gap_length
-	var half_w: float = ribbon_width * 0.5
+	var vertices: PackedVector3Array = PackedVector3Array()
 	var v_offset: Vector3 = Vector3(0.0, vertical_offset, 0.0)
-	var surface_started: bool = false
-
 	for i: int in range(_current_path.size() - 1):
-		var p1: Vector3 = _current_path[i] + v_offset
-		var p2: Vector3 = _current_path[i + 1] + v_offset
-		var seg_vec: Vector3 = p2 - p1
-		var seg_len: float = seg_vec.length()
-		if seg_len < 0.01:
-			continue
+		vertices.append_array(_segment_dashes(_current_path[i] + v_offset, _current_path[i + 1] + v_offset))
+	if vertices.is_empty():
+		return
+	_immediate_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for vertex: Vector3 in vertices:
+		_immediate_mesh.surface_add_vertex(vertex)
+	_immediate_mesh.surface_end()
 
-		var dir: Vector3 = seg_vec / seg_len
-		var perp: Vector3 = Vector3(-dir.z, 0.0, dir.x)
-		if perp.is_zero_approx():
-			perp = Vector3.RIGHT * half_w
-		else:
-			perp = perp.normalized() * half_w
 
-		var dist_along: float = _anim_offset - cycle_length
-		while dist_along < seg_len:
-			var d_start: float = maxf(0.0, dist_along)
-			var d_end: float = minf(dist_along + dash_length, seg_len)
-			if d_end > d_start:
-				if not surface_started:
-					_immediate_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-					surface_started = true
-
-				var start_pt: Vector3 = p1 + dir * d_start
-				var end_pt: Vector3 = p1 + dir * d_end
-
-				var v0: Vector3 = start_pt - perp
-				var v1: Vector3 = start_pt + perp
-				var v2: Vector3 = end_pt + perp
-				var v3: Vector3 = end_pt - perp
-
-				# Quad as two triangles
-				_immediate_mesh.surface_add_vertex(v0)
-				_immediate_mesh.surface_add_vertex(v1)
-				_immediate_mesh.surface_add_vertex(v2)
-
-				_immediate_mesh.surface_add_vertex(v0)
-				_immediate_mesh.surface_add_vertex(v2)
-				_immediate_mesh.surface_add_vertex(v3)
-
-			dist_along += cycle_length
-
-	if surface_started:
-		_immediate_mesh.surface_end()
+## Triangle vertices of the dashes crawling along the p1 -> p2 path segment:
+## one flat ribbon quad (two triangles) per dash, phased by the crawl
+## animation.
+func _segment_dashes(p1: Vector3, p2: Vector3) -> PackedVector3Array:
+	var vertices: PackedVector3Array = PackedVector3Array()
+	var seg_len: float = p1.distance_to(p2)
+	if seg_len < 0.01:
+		return vertices
+	var half_w: float = ribbon_width * 0.5
+	var dir: Vector3 = (p2 - p1) / seg_len
+	var perp: Vector3 = Vector3(-dir.z, 0.0, dir.x)
+	perp = Vector3.RIGHT * half_w if perp.is_zero_approx() else perp.normalized() * half_w
+	var cycle_length: float = dash_length + gap_length
+	var dist_along: float = _anim_offset - cycle_length
+	while dist_along < seg_len:
+		var d_start: float = maxf(0.0, dist_along)
+		var d_end: float = minf(dist_along + dash_length, seg_len)
+		if d_end > d_start:
+			var start_pt: Vector3 = p1 + dir * d_start
+			var end_pt: Vector3 = p1 + dir * d_end
+			vertices.append_array([start_pt - perp, start_pt + perp, end_pt + perp, start_pt - perp, end_pt + perp, end_pt - perp])
+		dist_along += cycle_length
+	return vertices

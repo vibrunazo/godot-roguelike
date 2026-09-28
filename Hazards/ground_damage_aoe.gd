@@ -78,14 +78,7 @@ func _get_impact_audio() -> AudioStreamPlayer3D:
 
 
 func _ready() -> void:
-	# Ensure shapes and materials are duplicated to avoid cross-instance pollution
-	var col: CollisionShape3D = _get_collision_shape()
-	if col != null:
-		if col.shape == null or not (col.shape is CylinderShape3D):
-			col.shape = CylinderShape3D.new()
-		else:
-			col.shape = col.shape.duplicate()
-
+	_own_collision_shape()
 	_duplicate_visual_materials()
 	super._ready()
 	_apply_dimensions()
@@ -101,28 +94,39 @@ func _ready() -> void:
 	# step instead of the spawn-frame sweep below.
 	set_hitbox_active(true, true)
 
-	# Play impact sound if available
 	var audio: AudioStreamPlayer3D = _get_impact_audio()
 	if audio != null and not audio.playing:
 		audio.play()
 
 	# Immediately deal damage to anyone already inside the cylinder on spawn frame
 	deal_damage()
-
-	# Run visual animations
 	_start_visual_animations()
+	_arm_lifetime_timers()
 
-	# Arm active duration window to disable damage monitoring
-	if get_tree() != null:
-		# The damage window runs on the physics clock so its length never
-		# depends on the render frame rate; the visual timer below may not.
-		_active_timer = get_tree().create_timer(active_duration, true, true)
-		_active_timer.timeout.connect(_on_active_window_expired)
 
-		# Arm visual duration to queue_free
-		_visual_timer = get_tree().create_timer(visual_duration)
-		_visual_timer.timeout.connect(expire)
+## Gives this instance its own cylinder shape, so resizing it never changes
+## other instances sharing the scene's shape.
+func _own_collision_shape() -> void:
+	var col: CollisionShape3D = _get_collision_shape()
+	if col == null:
+		return
+	if col.shape is CylinderShape3D:
+		col.shape = col.shape.duplicate()
+	else:
+		col.shape = CylinderShape3D.new()
 
+
+## Ends the damage window after active_duration and frees the area after
+## visual_duration.
+func _arm_lifetime_timers() -> void:
+	if get_tree() == null:
+		return
+	# The damage window runs on the physics clock so its length never
+	# depends on the render frame rate; the visual timer below may not.
+	_active_timer = get_tree().create_timer(active_duration, true, true)
+	_active_timer.timeout.connect(_on_active_window_expired)
+	_visual_timer = get_tree().create_timer(visual_duration)
+	_visual_timer.timeout.connect(expire)
 
 func _duplicate_visual_materials() -> void:
 	var sw: MeshInstance3D = _get_shockwave_mesh()
@@ -187,50 +191,48 @@ func _apply_visual_styling() -> void:
 func _start_visual_animations() -> void:
 	if not is_inside_tree():
 		return
-
-	var sw: MeshInstance3D = _get_shockwave_mesh()
-	if sw != null and show_shockwave:
-		sw.visible = true
-		sw.scale = Vector3(0.1, 1.0, 0.1)
-		var sw_mat: StandardMaterial3D = sw.material_override as StandardMaterial3D
-
-		var tween: Tween = create_tween().set_parallel(true)
-		tween.tween_property(sw, "scale", Vector3(radius, 1.0, radius), visual_duration * 0.75)\
-			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-
-		if sw_mat != null:
-			var start_col: Color = aoe_color
-			start_col.a = 1.0
-			var end_col: Color = aoe_color
-			end_col.a = 0.0
-			sw_mat.albedo_color = start_col
-			tween.tween_property(sw_mat, "albedo_color", end_col, visual_duration)\
-				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	elif sw != null:
-		sw.visible = false
-
-	var gi: MeshInstance3D = _get_ground_indicator()
-	if gi != null and show_ground_indicator:
-		gi.visible = true
-		var gi_mat: StandardMaterial3D = gi.material_override as StandardMaterial3D
-		if gi_mat != null:
-			var start_col: Color = aoe_color
-			start_col.a = 0.35
-			var end_col: Color = aoe_color
-			end_col.a = 0.0
-			gi_mat.albedo_color = start_col
-			var fade_tween: Tween = create_tween()
-			fade_tween.tween_property(gi_mat, "albedo_color", end_col, visual_duration)\
-				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	elif gi != null:
-		gi.visible = false
-
+	_animate_shockwave()
+	_animate_ground_indicator()
 	var p: GPUParticles3D = _get_particles()
-	if p != null and show_particles:
-		p.emitting = true
-	elif p != null:
-		p.emitting = false
+	if p != null:
+		p.emitting = show_particles
 
+
+## Expands the shockwave ring from the center to the full radius while it
+## fades out (hidden when show_shockwave is off).
+func _animate_shockwave() -> void:
+	var sw: MeshInstance3D = _get_shockwave_mesh()
+	if sw == null:
+		return
+	sw.visible = show_shockwave
+	if not show_shockwave:
+		return
+	sw.scale = Vector3(0.1, 1.0, 0.1)
+	var tween: Tween = create_tween().set_parallel(true)
+	tween.tween_property(sw, "scale", Vector3(radius, 1.0, radius), visual_duration * 0.75)\
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	var sw_mat: StandardMaterial3D = sw.material_override as StandardMaterial3D
+	if sw_mat != null:
+		_fade_out(tween, sw_mat, 1.0)
+
+
+## Fades the ground impact disc out (hidden when show_ground_indicator is off).
+func _animate_ground_indicator() -> void:
+	var gi: MeshInstance3D = _get_ground_indicator()
+	if gi == null:
+		return
+	gi.visible = show_ground_indicator
+	var gi_mat: StandardMaterial3D = gi.material_override as StandardMaterial3D
+	if show_ground_indicator and gi_mat != null:
+		_fade_out(create_tween(), gi_mat, 0.35)
+
+
+## Tweens material from aoe_color at start_alpha to fully transparent over
+## visual_duration.
+func _fade_out(tween: Tween, material: StandardMaterial3D, start_alpha: float) -> void:
+	material.albedo_color = Color(aoe_color, start_alpha)
+	tween.tween_property(material, "albedo_color", Color(aoe_color, 0.0), visual_duration)\
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 
 ## Shuts down hitbox monitoring once active damage window has concluded.
 func _on_active_window_expired() -> void:

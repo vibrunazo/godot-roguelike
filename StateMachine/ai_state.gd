@@ -48,6 +48,15 @@ func is_facing_within_cone(target: Character, cone_degrees: float) -> bool:
 	return angle <= maxf(cone_degrees, 0.0) * 0.5 + 0.05
 
 
+## Steps the body along its navigation path toward the agent's current target
+## position (set target_position first).
+func follow_nav_path(nav_agent: NavigationAgent3D) -> void:
+	var destination: Vector3 = nav_agent.get_next_path_position()
+	var local_destination: Vector3 = destination - character.global_position
+	local_destination.y = 0.0
+	ai_state_machine.command_move(local_destination.normalized(), destination)
+
+
 ## Builds the {"aim": ...} facing intent payload for order_attack so the body
 ## snapshots the order-time facing and turns toward it at its rotation speed
 ## limit during the attack. Empty when the target stacks on the body.

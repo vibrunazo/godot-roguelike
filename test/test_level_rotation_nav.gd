@@ -69,90 +69,80 @@ func _append_unique(paths: Array[String], path: String) -> void:
 ## Verifies a single level scene. Returns true on success.
 func _verify_level(level_path: String) -> bool:
 	print("--- Verifying ", level_path, " ---")
-	if not ResourceLoader.exists(level_path):
-		fail(str("missing level scene: ", level_path))
+	var level: Node3D = _load_quiet_level(level_path)
+	if level == null:
 		return false
-	var packed: PackedScene = load(level_path) as PackedScene
-	if packed == null:
-		fail(str("could not load: ", level_path))
-		return false
-	var level: Node3D = packed.instantiate() as Node3D
-	add_child(level)
-
-	# Silence the wave spawner so no enemies interfere with the check.
-	var wave_obj: Node = level.find_child("WaveObjective", true, false)
-	if wave_obj == null:
-		fail(str("WaveObjective missing in ", level_path))
-		level.queue_free()
-		return false
-	(wave_obj as WaveObjective).stop_spawning()
-	for c: Node in wave_obj.get_children():
-		c.queue_free()
-
-	# The navigation server registers regions asynchronously; poll until the
-	# player spawn snaps onto the navmesh (or time out).
-	var synced: bool = false
-	for i: int in range(120):
-		await get_tree().physics_frame
-		if NavigationServer3D.map_get_iteration_id(get_viewport().find_world_3d().get_navigation_map()) == 0:
-			continue
-		var probe: Node3D = level.find_child("Player", true, false) as Node3D
-		if probe != null:
-			var snap: Vector3 = NavigationServer3D.map_get_closest_point(
-				get_viewport().find_world_3d().get_navigation_map(),
-				probe.global_position)
-			if snap != Vector3.ZERO:
-				synced = true
-				break
-	if not synced:
-		fail(str("navmesh never synced in ", level_path))
-		level.queue_free()
-		return false
-
-	var ok: bool = true
-	var player: Node3D = level.find_child("Player", true, false) as Node3D
-	var exit_point: Node3D = level.find_child("ExitPoint", true, false) as Node3D
-	if player == null:
-		fail(str("Player missing in ", level_path))
-		ok = false
-	if exit_point == null:
-		fail(str("ExitPoint missing in ", level_path))
-		ok = false
-
-	var gi: VoxelGI = level.find_child("VoxelGI", true, false) as VoxelGI
-	if gi == null:
-		fail(str("VoxelGI missing in ", level_path))
-		ok = false
-	elif gi.data == null:
-		fail(str("VoxelGI data not baked in ", level_path))
-		ok = false
-
-	if not _verify_gridmap_items_exist(level, level_path):
-		ok = false
-
+	var ok: bool = await _wait_for_level_navmesh(level, level_path)
 	if ok:
-		if not _verify_navmesh_covers_level(level, level_path):
-			ok = false
-		if not _verify_navmesh_is_baked(level, level_path):
-			ok = false
-		if not _verify_no_stray_islands(level, level_path):
-			ok = false
-		if not _verify_low_walls_ring_edges(level, level_path):
-			ok = false
-		if not _verify_pit_lining(level, level_path):
-			ok = false
-		if not _verify_cover_clearances(level, level_path):
-			ok = false
-		if not _verify_abyss_plane(level, level_path):
-			ok = false
-		if not _verify_path(player.global_position, exit_point.global_position, level_path):
-			ok = false
-
+		ok = _verify_level_contents(level, level_path)
 	level.queue_free()
 	if ok:
 		print("OK: ", level_path)
 	return ok
 
+
+## Loads level_path under the suite with its wave spawner silenced, so no
+## enemies interfere with the checks. Null (failure recorded) when it cannot.
+func _load_quiet_level(level_path: String) -> Node3D:
+	if not ResourceLoader.exists(level_path):
+		fail(str("missing level scene: ", level_path))
+		return null
+	var packed: PackedScene = load(level_path) as PackedScene
+	if packed == null:
+		fail(str("could not load: ", level_path))
+		return null
+	var level: Node3D = packed.instantiate() as Node3D
+	add_child(level)
+	var wave_obj: WaveObjective = level.find_child("WaveObjective", true, false) as WaveObjective
+	if wave_obj == null:
+		fail(str("WaveObjective missing in ", level_path))
+		level.queue_free()
+		return null
+	wave_obj.stop_spawning()
+	for c: Node in wave_obj.get_children():
+		c.queue_free()
+	return level
+
+
+## The navigation server registers regions asynchronously: waits until the
+## player spawn snaps onto the navmesh.
+func _wait_for_level_navmesh(level: Node3D, level_path: String) -> bool:
+	var nav_map: RID = get_viewport().find_world_3d().get_navigation_map()
+	var probe: Node3D = level.find_child("Player", true, false) as Node3D
+	var synced: Callable = func() -> bool:
+		if probe == null or NavigationServer3D.map_get_iteration_id(nav_map) == 0:
+			return false
+		return NavigationServer3D.map_get_closest_point(nav_map, probe.global_position) != Vector3.ZERO
+	return await wait_until(synced, str("navmesh never synced in ", level_path), 120)
+
+
+## The level's core nodes exist (Player, ExitPoint, baked VoxelGI, valid
+## GridMap items); only then are its geometry and navigation checked. Every
+## check of a stage runs, so one pass reports all of that stage's problems.
+func _verify_level_contents(level: Node3D, level_path: String) -> bool:
+	var player: Node3D = level.find_child("Player", true, false) as Node3D
+	var exit_point: Node3D = level.find_child("ExitPoint", true, false) as Node3D
+	var gi: VoxelGI = level.find_child("VoxelGI", true, false) as VoxelGI
+	var core: Array[bool] = [
+		check(player != null, str("Player missing in ", level_path)),
+		check(exit_point != null, str("ExitPoint missing in ", level_path)),
+		check(gi != null, str("VoxelGI missing in ", level_path)),
+		gi == null or check(gi.data != null, str("VoxelGI data not baked in ", level_path)),
+		_verify_gridmap_items_exist(level, level_path),
+	]
+	if core.has(false):
+		return false
+	var geometry: Array[bool] = [
+		_verify_navmesh_covers_level(level, level_path),
+		_verify_navmesh_is_baked(level, level_path),
+		_verify_no_stray_islands(level, level_path),
+		_verify_low_walls_ring_edges(level, level_path),
+		_verify_pit_lining(level, level_path),
+		_verify_cover_clearances(level, level_path),
+		_verify_abyss_plane(level, level_path),
+		_verify_path(player.global_position, exit_point.global_position, level_path),
+	]
+	return not geometry.has(false)
 
 ## Checks the navmesh spans the level footprint and the VoxelGI volume covers it.
 func _verify_navmesh_covers_level(level: Node3D, level_path: String) -> bool:
@@ -434,79 +424,75 @@ func _cover_mesh_rect(cell: Vector2i, orient: int) -> Array[float]:
 	return [cx, cz, cx + 2.0, cz + 2.0]
 
 
+## True when two [x0, z0, x1, z1] rects share an edge segment (not just a
+## corner).
 func _rects_share_edge(a: Array[float], b: Array[float]) -> bool:
 	var ox: float = minf(a[2], b[2]) - maxf(a[0], b[0])
 	var oz: float = minf(a[3], b[3]) - maxf(a[1], b[1])
 	return (ox > 0.01 and oz > -0.01) or (oz > 0.01 and ox > -0.01)
 
 
+## Freestanding tall cover keeps COVER_CLEARANCE of clear floor to every
+## interior pit tile (see COVER_CLEARANCE).
 func _verify_cover_clearances(level: Node3D, level_path: String) -> bool:
-	var floor: Dictionary = {}
-	var tall: Array[Vector2i] = []
-	var orients: Dictionary = {}
-	var floor_gm: GridMap = null
-	var wall_gm: GridMap = null
-	for gm_node: Node in level.find_children("*", "GridMap", true, false):
-		var gm: GridMap = gm_node as GridMap
-		if gm == null:
-			continue
-		if gm.name == "Floormap":
-			floor_gm = gm
-			for cell: Vector3i in gm.get_used_cells():
-				floor[Vector2i(cell.x, cell.z)] = true
-		elif gm.name == "Wallmap":
-			wall_gm = gm
+	var floor_gm: GridMap = level.find_child("Floormap", true, false) as GridMap
+	var wall_gm: GridMap = level.find_child("Wallmap", true, false) as GridMap
 	if floor_gm == null or wall_gm == null:
-		fail(str("Floormap/Wallmap missing in ", level_path))
-		return false
-	for cell: Vector3i in wall_gm.get_used_cells():
-		if cell.y == 0:
-			var w := Vector2i(cell.x, cell.z)
-			tall.append(w)
-			orients[w] = wall_gm.get_cell_item_orientation(cell)
-	var bonded_root: Dictionary = {}
-	for w: Vector2i in tall:
-		bonded_root[w] = w
-	for i: int in range(tall.size()):
-		var ra: Array[float] = _cover_mesh_rect(tall[i], int(orients[tall[i]]))
-		for j: int in range(i + 1, tall.size()):
-			var rb: Array[float] = _cover_mesh_rect(tall[j], int(orients[tall[j]]))
-			if _rects_share_edge(ra, rb):
-				bonded_root[tall[j]] = tall[i]
-	var lone: Array[Vector2i] = []
-	for w: Vector2i in tall:
-		var members: int = 0
-		for v: Vector2i in tall:
-			if _bonded_find(bonded_root, v) == _bonded_find(bonded_root, w):
-				members += 1
-		if members == 1:
-			lone.append(w)
+		return fail(str("Floormap/Wallmap missing in ", level_path))
+	var floor: Dictionary = {}
+	for cell: Vector3i in floor_gm.get_used_cells():
+		floor[Vector2i(cell.x, cell.z)] = true
 	var holes: Array[Vector2i] = _interior_holes(floor)
+	var lone: Dictionary[Vector2i, int] = _lone_tall_walls(wall_gm)
 	var ok: bool = true
 	for w: Vector2i in lone:
-		var r: Array[float] = _cover_mesh_rect(w, int(orients[w]))
+		var r: Array[float] = _cover_mesh_rect(w, lone[w])
 		for h: Vector2i in holes:
-			var hx0: float = float(h.x) * 4.0
-			var hx1: float = hx0 + 4.0
-			var hz0: float = float(h.y) * 4.0
-			var hz1: float = hz0 + 4.0
-			var dx: float = 0.0
-			if hx1 < r[0]:
-				dx = r[0] - hx1
-			elif r[2] < hx0:
-				dx = hx0 - r[2]
-			var dz: float = 0.0
-			if hz1 < r[1]:
-				dz = r[1] - hz1
-			elif r[3] < hz0:
-				dz = hz0 - r[3]
-			if sqrt(dx * dx + dz * dz) < COVER_CLEARANCE:
+			if _rect_to_tile_distance(r, h) < COVER_CLEARANCE:
 				fail(str("freestanding cover at ", w, " pinches pit tile ", h, " in ", level_path))
 				ok = false
 	if ok:
 		print("cover clearances OK (", lone.size(), " lone walls) in ", level_path)
 	return ok
 
+
+## Tall (y=0) wall cells whose mesh shares no edge with any other tall wall
+## (bonded masses are exempt from the clearance rule), mapped to their
+## orientation.
+func _lone_tall_walls(wall_gm: GridMap) -> Dictionary[Vector2i, int]:
+	var orients: Dictionary[Vector2i, int] = {}
+	for cell: Vector3i in wall_gm.get_used_cells():
+		if cell.y == 0:
+			orients[Vector2i(cell.x, cell.z)] = wall_gm.get_cell_item_orientation(cell)
+	var tall: Array[Vector2i] = []
+	tall.assign(orients.keys())
+	var bonded_root: Dictionary = {}
+	for w: Vector2i in tall:
+		bonded_root[w] = w
+	for i: int in range(tall.size()):
+		var ra: Array[float] = _cover_mesh_rect(tall[i], orients[tall[i]])
+		for j: int in range(i + 1, tall.size()):
+			if _rects_share_edge(ra, _cover_mesh_rect(tall[j], orients[tall[j]])):
+				bonded_root[tall[j]] = tall[i]
+	var lone: Dictionary[Vector2i, int] = {}
+	for w: Vector2i in tall:
+		var members: int = 0
+		for v: Vector2i in tall:
+			if _bonded_find(bonded_root, v) == _bonded_find(bonded_root, w):
+				members += 1
+		if members == 1:
+			lone[w] = orients[w]
+	return lone
+
+
+## Distance from the [x0, z0, x1, z1] rect r to floor tile h's 4 m square
+## (0 when they touch or overlap).
+func _rect_to_tile_distance(r: Array[float], h: Vector2i) -> float:
+	var hx0: float = float(h.x) * 4.0
+	var hz0: float = float(h.y) * 4.0
+	var dx: float = maxf(0.0, maxf(r[0] - (hx0 + 4.0), hx0 - r[2]))
+	var dz: float = maxf(0.0, maxf(r[1] - (hz0 + 4.0), hz0 - r[3]))
+	return sqrt(dx * dx + dz * dz)
 
 func _bonded_find(roots: Dictionary, w: Vector2i) -> Vector2i:
 	var r: Vector2i = roots[w] as Vector2i

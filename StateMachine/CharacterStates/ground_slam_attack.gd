@@ -68,44 +68,38 @@ func _spawn_ground_aoe() -> void:
 	if aoe_scene == null:
 		push_error("%s: aoe_scene is not set." % name)
 		return
-	var scene_to_spawn: PackedScene = aoe_scene
-
-	var forward: Vector3 = _get_forward_vector()
-	var prospective_pos: Vector3 = character.global_position + forward * aoe_forward_offset
-
-	# If weapon slot is available and extended in front of the body, prefer its XZ placement
-	var slot: WeaponSlot = get_weapon_slot()
-	if slot != null:
-		var slot_pos: Vector3 = slot.global_position
-		var to_slot: Vector3 = slot_pos - character.global_position
-		to_slot.y = 0.0
-		if to_slot.length() > 0.5 and to_slot.normalized().dot(forward) > 0.2:
-			prospective_pos.x = slot_pos.x
-			prospective_pos.z = slot_pos.z
-
-	# Locate true floor level via downward physics raycast
-	var floor_y: float = _detect_floor_height(prospective_pos)
-	prospective_pos.y = floor_y
-	print("GroundSlamAttack AOE spawned at: ", prospective_pos, " forward: ", forward)
-
-	var aoe_instance: GroundDamageArea = scene_to_spawn.instantiate() as GroundDamageArea
+	var aoe_instance: GroundDamageArea = aoe_scene.instantiate() as GroundDamageArea
 	if aoe_instance == null:
 		return
-
 	aoe_instance.radius = aoe_radius
 	aoe_instance.height = aoe_height
-	aoe_instance.damage = damage * (character.get_damage_modifier() if character.has_method("get_damage_modifier") else 1.0)
+	aoe_instance.damage = damage * character.get_damage_modifier()
 	aoe_instance.knockback_force = knockback
 	aoe_instance.aoe_color = aoe_color
-	aoe_instance.position = prospective_pos
+	aoe_instance.position = _impact_position()
 	aoe_instance.set_wielder(character)
-
-	var enemy_check: bool = character.is_enemy() if character.has_method("is_enemy") else true
-	aoe_instance.can_hit_player = enemy_check
-	aoe_instance.can_hit_enemies = not enemy_check
+	# The slam hits the other side: enemies' slams hit the player, and back.
+	aoe_instance.can_hit_player = character.is_enemy()
+	aoe_instance.can_hit_enemies = not character.is_enemy()
 	aoe_instance.friendly_fire = friendly_fire
-
 	VfxManager.spawn_world_entity(aoe_instance)
+
+
+## Where the slam lands: aoe_forward_offset ahead of the character, or under
+## the weapon slot when it reaches out in front, dropped to the real floor
+## height (so jumps, stairs and ledges place it correctly).
+func _impact_position() -> Vector3:
+	var forward: Vector3 = _get_forward_vector()
+	var impact: Vector3 = character.global_position + forward * aoe_forward_offset
+	var slot: WeaponSlot = get_weapon_slot()
+	if slot != null:
+		var to_slot: Vector3 = slot.global_position - character.global_position
+		to_slot.y = 0.0
+		if to_slot.length() > 0.5 and to_slot.normalized().dot(forward) > 0.2:
+			impact.x = slot.global_position.x
+			impact.z = slot.global_position.z
+	impact.y = _detect_floor_height(impact)
+	return impact
 
 
 ## Returns the forward facing unit vector in the horizontal XZ plane.

@@ -31,48 +31,63 @@ func equip(character: Character) -> Dictionary:
 	}
 	if character == null or not is_instance_valid(character):
 		return result
-
 	# Apply base instant effects (healing, instant damage)
 	apply(character)
-
-	# Apply persistent GameplayEffects to AttributeComponent
-	var attrs: AttributeComponent = character.attribute_component
-	if attrs != null:
-		var ids: Array[StringName] = []
-		for eff: GameplayEffect in gameplay_effects:
-			if eff != null:
-				var inst_id: StringName = attrs.apply_effect(eff)
-				if not inst_id.is_empty():
-					ids.append(inst_id)
-		result["effect_ids"] = ids
-
-	# Grant passive ability scenes to the character's passive component
-	var passive_nodes: Array[PassiveAbility] = []
-	if character.passive_ability_component != null:
-		for passive_scene: PackedScene in granted_passives:
-			if passive_scene == null:
-				continue
-			var granted: PassiveAbility = character.passive_ability_component.add_passive(passive_scene)
-			if granted != null:
-				passive_nodes.append(granted)
-	result["passives"] = passive_nodes
-
-	# Instantiate and mount 3D visual if present
-	if visual_scene != null:
-		var visual_inst: Node = visual_scene.instantiate()
-		if visual_inst is ItemVisual:
-			(visual_inst as ItemVisual).attach_to_character(character)
-			result["visual"] = visual_inst
-		elif visual_inst is Node3D:
-			if character.mesh_mount != null:
-				character.mesh_mount.add_child(visual_inst)
-			else:
-				character.add_child(visual_inst)
-			result["visual"] = visual_inst
-
+	result["effect_ids"] = _apply_persistent_effects(character)
+	result["passives"] = _grant_passives(character)
+	result["visual"] = _mount_visual(character)
 	_on_equipped(character)
 	return result
 
+
+## Applies the persistent GameplayEffects to the character's AttributeComponent
+## and returns their instance IDs.
+func _apply_persistent_effects(character: Character) -> Array[StringName]:
+	var ids: Array[StringName] = []
+	var attrs: AttributeComponent = character.attribute_component
+	if attrs == null:
+		return ids
+	for effect: GameplayEffect in gameplay_effects:
+		if effect == null:
+			continue
+		var instance_id: StringName = attrs.apply_effect(effect)
+		if not instance_id.is_empty():
+			ids.append(instance_id)
+	return ids
+
+
+## Grants the passive ability scenes to the character's passive component and
+## returns the granted nodes.
+func _grant_passives(character: Character) -> Array[PassiveAbility]:
+	var granted_nodes: Array[PassiveAbility] = []
+	if character.passive_ability_component == null:
+		return granted_nodes
+	for passive_scene: PackedScene in granted_passives:
+		if passive_scene == null:
+			continue
+		var granted: PassiveAbility = character.passive_ability_component.add_passive(passive_scene)
+		if granted != null:
+			granted_nodes.append(granted)
+	return granted_nodes
+
+
+## Instances visual_scene onto the character (an ItemVisual attaches itself;
+## any other Node3D mounts on the mesh mount, else the body). Null when the
+## gear has no visual.
+func _mount_visual(character: Character) -> Node3D:
+	if visual_scene == null:
+		return null
+	var visual: Node3D = visual_scene.instantiate() as Node3D
+	if visual == null:
+		push_error("%s: visual_scene must have a Node3D root." % resource_path)
+		return null
+	if visual is ItemVisual:
+		(visual as ItemVisual).attach_to_character(character)
+	elif character.mesh_mount != null:
+		character.mesh_mount.add_child(visual)
+	else:
+		character.add_child(visual)
+	return visual
 
 ## Unequips this gear: removes all active GameplayEffects from AttributeComponent,
 ## revokes every passive this gear granted, and frees the visual node.

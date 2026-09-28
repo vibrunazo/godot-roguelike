@@ -32,7 +32,27 @@ func _initialize() -> void:
 	nav_mesh.region_min_size = NAV_REGION_MIN_SIZE
 	nav_region.navigation_mesh = nav_mesh
 	_add(arena, nav_region, arena)
+	_add_floor(nav_region, arena)
+	_add_lighting(arena)
+	_add_marker(arena, "PlayerSpawn", Vector3(0.0, 1.0, 4.0))
+	_add_marker(arena, "EnemySpawn", Vector3(0.0, 1.0, -4.0))
 
+	nav_region.bake_navigation_mesh(false)
+	if nav_mesh.get_polygon_count() == 0:
+		printerr("build_arena: navmesh bake produced no polygons.")
+		quit(1)
+		return
+	if not _save(arena):
+		quit(1)
+		return
+	print("build_arena: saved %s (%d navmesh polygons)" % [OUTPUT_PATH, nav_mesh.get_polygon_count()])
+	arena.free()
+	quit(0)
+
+
+## The floor slab (top at y = 0) on the World layer, under the nav region so
+## the bake parses it.
+func _add_floor(nav_region: NavigationRegion3D, arena: Node3D) -> void:
 	var floor_body: StaticBody3D = StaticBody3D.new()
 	floor_body.name = "Floor"
 	floor_body.collision_layer = 1
@@ -54,6 +74,9 @@ func _initialize() -> void:
 	mesh_instance.mesh = mesh
 	_add(floor_body, mesh_instance, arena)
 
+
+## A shadowed sun and a flat ambient environment, so recordings are readable.
+func _add_lighting(arena: Node3D) -> void:
 	var light: DirectionalLight3D = DirectionalLight3D.new()
 	light.name = "DirectionalLight3D"
 	light.rotation_degrees = Vector3(-50.0, 35.0, 0.0)
@@ -70,36 +93,27 @@ func _initialize() -> void:
 	environment_node.environment = environment
 	_add(arena, environment_node, arena)
 
-	var player_spawn: Marker3D = Marker3D.new()
-	player_spawn.name = "PlayerSpawn"
-	player_spawn.position = Vector3(0.0, 1.0, 4.0)
-	_add(arena, player_spawn, arena)
 
-	var enemy_spawn: Marker3D = Marker3D.new()
-	enemy_spawn.name = "EnemySpawn"
-	enemy_spawn.position = Vector3(0.0, 1.0, -4.0)
-	_add(arena, enemy_spawn, arena)
+func _add_marker(arena: Node3D, marker_name: String, at: Vector3) -> void:
+	var marker: Marker3D = Marker3D.new()
+	marker.name = marker_name
+	marker.position = at
+	_add(arena, marker, arena)
 
-	nav_region.bake_navigation_mesh(false)
-	if nav_mesh.get_polygon_count() == 0:
-		printerr("build_arena: navmesh bake produced no polygons.")
-		quit(1)
-		return
 
+## Packs the arena and saves it to OUTPUT_PATH. False (error printed) on
+## failure.
+func _save(arena: Node3D) -> bool:
 	var packed: PackedScene = PackedScene.new()
 	var pack_err: Error = packed.pack(arena)
 	if pack_err != OK:
 		printerr("build_arena: pack failed: ", error_string(pack_err))
-		quit(1)
-		return
+		return false
 	var save_err: Error = ResourceSaver.save(packed, OUTPUT_PATH)
 	if save_err != OK:
 		printerr("build_arena: save failed: ", error_string(save_err))
-		quit(1)
-		return
-	print("build_arena: saved %s (%d navmesh polygons)" % [OUTPUT_PATH, nav_mesh.get_polygon_count()])
-	arena.free()
-	quit(0)
+		return false
+	return true
 
 
 func _add(parent: Node, child: Node, scene_root: Node) -> void:

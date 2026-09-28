@@ -155,30 +155,12 @@ func physics_update(delta: float) -> void:
 
 
 func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
-	queued_attack = false
-	lunging = false
-	lunge_direction = Vector3.ZERO
-	lunge_slot = null
-	hitstop_time_remaining = 0.0
-	hitstop_has_timescale = false
-	cooldown_timer = cooldown
+	_reset_attack_state()
 	if character == null:
 		return
 	if uninterruptable and character.knockback_component != null:
 		character.knockback_component.magnitude = Vector3.ZERO
-	var resolved_component: AttackComponent = get_attack_component()
-	if resolved_component != null:
-		resolved_component.reset_exceptions()
-		resolved_component.damage = damage * character.get_damage_modifier()
-		if character.mesh_mount != null:
-			resolved_component.knockback = character.mesh_mount.global_basis.z * knockback
-		else:
-			resolved_component.knockback = character.global_basis.z * knockback
-		resolved_component.rehit_interval = rehit_interval
-		resolved_component.effects_to_apply = effects_to_apply
-		if not resolved_component.hit_landed.is_connected(_on_hit_landed):
-			resolved_component.hit_landed.connect(_on_hit_landed)
-
+	_arm_attack_component()
 	if character.animation_tree != null:
 		character.animation_tree.change_immediate(attack_animation_name)
 		connect_one_shot(character.animation_tree.animation_finished, finish_attack)
@@ -189,26 +171,60 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	attack_timer = get_tree().create_timer(queued_attack_time, true, true)
 	attack_timer.timeout.connect(attempt_queue_attack)
 	character.is_attacking = true
-	var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
-	if input_comp != null and input_comp.is_physics_processing():
-		input_comp.update_aim_intent()
-		aim_direction = character.aim_direction
-	elif not character.aim_direction.is_zero_approx():
-		aim_direction = character.aim_direction
-	elif _data.get("aim") is Vector3:
-		aim_direction = _data["aim"]
-	elif not character.move_direction.is_zero_approx():
-		aim_direction = character.move_direction
-	elif character.mesh_mount != null:
-		aim_direction = character.mesh_mount.global_basis.z.normalized()
-	else:
-		aim_direction = Vector3.ZERO
+	aim_direction = _resolve_aim(_data)
 	_aim_at_current_target()
 	_arm_lunge()
 	_active_phase_slot = get_weapon_slot()
 	if _active_phase_slot != null:
 		connect_one_shot(_active_phase_slot.slash, _broadcast_active_phase)
 	broadcast_ability_event(AbilityEvent.Phase.STARTED, {}, aim_direction)
+
+
+## Clears everything a previous run of this attack may have left behind and
+## restarts its cooldown.
+func _reset_attack_state() -> void:
+	queued_attack = false
+	lunging = false
+	lunge_direction = Vector3.ZERO
+	lunge_slot = null
+	hitstop_time_remaining = 0.0
+	hitstop_has_timescale = false
+	cooldown_timer = cooldown
+
+
+## Loads this attack's damage, knockback, rehit rule and hit effects into the
+## weapon slot's AttackComponent and listens for its hits.
+func _arm_attack_component() -> void:
+	var component: AttackComponent = get_attack_component()
+	if component == null:
+		return
+	component.reset_exceptions()
+	component.damage = damage * character.get_damage_modifier()
+	var facing: Vector3 = character.mesh_mount.global_basis.z if character.mesh_mount != null else character.global_basis.z
+	component.knockback = facing * knockback
+	component.rehit_interval = rehit_interval
+	component.effects_to_apply = effects_to_apply
+	if not component.hit_landed.is_connected(_on_hit_landed):
+		component.hit_landed.connect(_on_hit_landed)
+
+
+## The direction this attack is aimed at, snapshotted on entry: the player's
+## live aim, else the character's aim, the order's "aim", the movement
+## direction, the facing, in that order.
+func _resolve_aim(data: Dictionary) -> Vector3:
+	var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
+	if input_comp != null and input_comp.is_physics_processing():
+		input_comp.update_aim_intent()
+		return character.aim_direction
+	if not character.aim_direction.is_zero_approx():
+		return character.aim_direction
+	if data.get("aim") is Vector3:
+		return data["aim"]
+	if not character.move_direction.is_zero_approx():
+		return character.move_direction
+	if character.mesh_mount != null:
+		return character.mesh_mount.global_basis.z.normalized()
+	return Vector3.ZERO
 
 
 ## Overrides the snapshotted aim with the direction to the character's

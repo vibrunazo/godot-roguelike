@@ -41,6 +41,19 @@ var is_leaping: bool = false
 ## Remaining cooldown time in seconds before this ability can be executed again.
 var cooldown_timer: float = 0.0
 
+## Escape angles tried in order, relative to the primary leap direction.
+const LANDING_ANGLES: Array[float] = [0.0, PI / 4.0, -PI / 4.0, PI / 2.0, -PI / 2.0, 3.0 * PI / 4.0, -3.0 * PI / 4.0]
+
+
+## One evaluated landing candidate.
+class LandingProbe:
+	## Landing point, at standing height when has_floor.
+	var position: Vector3 = Vector3.ZERO
+	## Distance from the leap's start.
+	var distance: float = 0.0
+	## Whether there is floor to land on.
+	var has_floor: bool = false
+
 
 func _ready() -> void:
 	cooldown_timer = starting_cooldown
@@ -75,126 +88,117 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	if audio != null:
 		audio.play()
 
-	# Resolve target position
-	if _data.has("target_position") and _data["target_position"] is Vector3:
-		target_position = _data["target_position"] as Vector3
-		var disp: Vector3 = target_position - start_position
-		if disp.length() > max_range:
-			target_position = start_position + disp.normalized() * max_range
-	else:
-		var dir: Vector3 = Vector3.ZERO
-		if _data.has("direction") and _data["direction"] is Vector3:
-			dir = _data["direction"] as Vector3
-		if dir.is_zero_approx():
-			var threat: Character = character.get_nearest_target("player")
-			if threat != null:
-				dir = character.global_position - threat.global_position
-				dir.y = 0.0
-		if dir.is_zero_approx() and character.mesh_mount != null:
-			dir = -character.mesh_mount.global_basis.z.normalized()
-		if dir.is_zero_approx():
-			dir = Vector3.BACK
-
-		dir = dir.normalized()
-		var candidate: Vector3 = start_position + dir * max_range
-
-		if character.is_inside_tree():
-			var space_state: PhysicsDirectSpaceState3D = character.get_world_3d().direct_space_state
-			candidate = _find_best_landing_position(space_state, dir)
-
-		target_position = candidate
-
-	# Ensure displacement does not exceed max_range
-	var horiz_disp: Vector3 = target_position - start_position
-	horiz_disp.y = 0.0
-	if horiz_disp.length() > max_range:
-		horiz_disp = horiz_disp.normalized() * max_range
-		target_position = Vector3(start_position.x + horiz_disp.x, target_position.y, start_position.z + horiz_disp.z)
-
-	# Calculate ballistic trajectory parameters
-	var duration: float = maxf(leap_duration, 0.1)
-	horizontal_velocity = horiz_disp / duration
-	gravity_accel = (8.0 * peak_height) / (duration * duration)
-	vertical_velocity = (4.0 * peak_height / duration) + ((target_position.y - start_position.y) / duration)
-
-	character.velocity = Vector3(horizontal_velocity.x, vertical_velocity, horizontal_velocity.z)
-
-	if not horizontal_velocity.is_zero_approx():
-		character.look_toward_direction(horizontal_velocity.normalized(), character.get_physics_process_delta_time())
-
+	target_position = _resolve_target_position(_data)
+	_launch_toward_target()
 	_trigger_animation()
 
 
-## Finds the best open landing location evaluating primary direction and lateral escape angles when cornered.
+## Where to land: the ordered "target_position" (clamped to max_range), else
+## the best open landing along the escape direction.
+func _resolve_target_position(data: Dictionary) -> Vector3:
+	if data.get("target_position") is Vector3:
+		var target: Vector3 = data["target_position"] as Vector3
+		var displacement: Vector3 = target - start_position
+		if displacement.length() > max_range:
+			target = start_position + displacement.normalized() * max_range
+		return target
+	return _find_best_landing_position(character.get_world_3d().direct_space_state, _escape_direction(data))
+
+
+## The leap direction: the ordered "direction", else away from the nearest
+## player, else backwards from the facing.
+func _escape_direction(data: Dictionary) -> Vector3:
+	var direction: Vector3 = data["direction"] as Vector3 if data.get("direction") is Vector3 else Vector3.ZERO
+	if direction.is_zero_approx():
+		var threat: Character = character.get_nearest_target("player")
+		if threat != null:
+			direction = character.global_position - threat.global_position
+			direction.y = 0.0
+	if direction.is_zero_approx() and character.mesh_mount != null:
+		direction = -character.mesh_mount.global_basis.z.normalized()
+	if direction.is_zero_approx():
+		direction = Vector3.BACK
+	return direction.normalized()
+
+
+## Sets the ballistic launch toward target_position (horizontal reach clamped
+## to max_range) and turns the body along it.
+func _launch_toward_target() -> void:
+	var horizontal: Vector3 = target_position - start_position
+	horizontal.y = 0.0
+	if horizontal.length() > max_range:
+		horizontal = horizontal.normalized() * max_range
+		target_position = Vector3(start_position.x + horizontal.x, target_position.y, start_position.z + horizontal.z)
+	var duration: float = maxf(leap_duration, 0.1)
+	horizontal_velocity = horizontal / duration
+	gravity_accel = (8.0 * peak_height) / (duration * duration)
+	vertical_velocity = (4.0 * peak_height / duration) + ((target_position.y - start_position.y) / duration)
+	character.velocity = Vector3(horizontal_velocity.x, vertical_velocity, horizontal_velocity.z)
+	if not horizontal_velocity.is_zero_approx():
+		character.look_toward_direction(horizontal_velocity.normalized(), character.get_physics_process_delta_time())
+
+
+## Finds the best open landing location: the primary direction first, then
+## lateral escape angles when cornered. Returns the first probe with floor at
+## least min_range away, else the farthest probe with floor, else a short hop
+## along the primary direction.
 func _find_best_landing_position(space_state: PhysicsDirectSpaceState3D, primary_dir: Vector3) -> Vector3:
-	var angles_to_try: Array[float] = [0.0, PI / 4.0, -PI / 4.0, PI / 2.0, -PI / 2.0, 3.0 * PI / 4.0, -3.0 * PI / 4.0]
-	var best_candidate: Vector3 = start_position + primary_dir * min_range
-	var best_distance: float = -1.0
-	var found_adequate: bool = false
-
-	for angle: float in angles_to_try:
-		var cur_dir: Vector3 = primary_dir.rotated(Vector3.UP, angle).normalized()
-		var ray_start: Vector3 = start_position + Vector3(0.0, 0.5, 0.0)
-		var ray_end: Vector3 = start_position + cur_dir * max_range + Vector3(0.0, 0.5, 0.0)
-		var ray_query := PhysicsRayQueryParameters3D.create(ray_start, ray_end, 1)
-		var ray_res: Dictionary = space_state.intersect_ray(ray_query)
-
-		var available_dist: float = max_range
-		if not ray_res.is_empty():
-			var hit_dist: float = (ray_res["position"] as Vector3).distance_to(start_position)
-			available_dist = maxf(hit_dist - 1.0, 0.5)
-
-		var test_pos: Vector3 = start_position + cur_dir * available_dist
-
-		# Snap to navigation mesh if available and safe (does not cross walls)
-		var map_rid: RID = character.get_world_3d().navigation_map
-		if map_rid.is_valid() and NavigationServer3D.map_get_iteration_id(map_rid) > 0 and not NavigationServer3D.map_get_regions(map_rid).is_empty():
-			var nav_point: Vector3 = NavigationServer3D.map_get_closest_point(map_rid, test_pos)
-			if nav_point.is_finite() and not nav_point.is_zero_approx() and nav_point.distance_to(start_position) <= (max_range + 1.0):
-				var wall_check := PhysicsRayQueryParameters3D.create(ray_start, nav_point + Vector3(0.0, 0.5, 0.0), 1)
-				var wall_res: Dictionary = space_state.intersect_ray(wall_check)
-				if wall_res.is_empty():
-					test_pos = nav_point
-					available_dist = (test_pos - start_position).length()
-
-		# Check for floor at test_pos
-		var floor_query := PhysicsRayQueryParameters3D.create(
-			test_pos + Vector3(0.0, 2.0, 0.0),
-			test_pos + Vector3(0.0, -4.0, 0.0),
-			1
-		)
-		var floor_res: Dictionary = space_state.intersect_ray(floor_query)
-		var floor_y: float = start_position.y
-		var has_floor: bool = false
-		if not floor_res.is_empty():
-			has_floor = true
-			floor_y = (floor_res["position"] as Vector3).y + 1.0
-		else:
-			for fraction: float in [0.75, 0.5, 0.25]:
-				var fb_pos: Vector3 = start_position.lerp(test_pos, fraction)
-				floor_query.from = fb_pos + Vector3(0.0, 2.0, 0.0)
-				floor_query.to = fb_pos + Vector3(0.0, -4.0, 0.0)
-				floor_res = space_state.intersect_ray(floor_query)
-				if not floor_res.is_empty():
-					has_floor = true
-					test_pos = fb_pos
-					floor_y = (floor_res["position"] as Vector3).y + 1.0
-					available_dist = (test_pos - start_position).length()
-					break
-
-		if has_floor:
-			test_pos.y = floor_y
-			if available_dist >= min_range:
-				return test_pos
-			if available_dist > best_distance:
-				best_distance = available_dist
-				best_candidate = test_pos
-				found_adequate = true
-
-	if found_adequate:
-		return best_candidate
-
+	var best: LandingProbe = null
+	for angle: float in LANDING_ANGLES:
+		var probe: LandingProbe = _probe_landing(space_state, primary_dir.rotated(Vector3.UP, angle).normalized())
+		if not probe.has_floor:
+			continue
+		if probe.distance >= min_range:
+			return probe.position
+		if best == null or probe.distance > best.distance:
+			best = probe
+	if best != null:
+		return best.position
 	return start_position + primary_dir * minf(min_range, max_range)
+
+
+## One candidate landing along direction: as far as walls allow (up to
+## max_range), snapped onto the navmesh when that does not cross a wall, and
+## dropped onto the floor (falling back to shorter distances over gaps).
+func _probe_landing(space_state: PhysicsDirectSpaceState3D, direction: Vector3) -> LandingProbe:
+	var probe: LandingProbe = LandingProbe.new()
+	var ray_start: Vector3 = start_position + Vector3(0.0, 0.5, 0.0)
+	var wall: Dictionary = space_state.intersect_ray(PhysicsRayQueryParameters3D.create(ray_start, start_position + direction * max_range + Vector3(0.0, 0.5, 0.0), 1))
+	var clear_distance: float = max_range if wall.is_empty() else maxf((wall["position"] as Vector3).distance_to(start_position) - 1.0, 0.5)
+	probe.position = _snap_to_navmesh(space_state, ray_start, start_position + direction * clear_distance)
+	probe.distance = (probe.position - start_position).length()
+	var floor_y: float = _floor_height_at(space_state, probe.position)
+	if is_nan(floor_y):
+		for fraction: float in [0.75, 0.5, 0.25]:
+			var closer: Vector3 = start_position.lerp(probe.position, fraction)
+			floor_y = _floor_height_at(space_state, closer)
+			if not is_nan(floor_y):
+				probe.position = closer
+				probe.distance = (closer - start_position).length()
+				break
+	probe.has_floor = not is_nan(floor_y)
+	if probe.has_floor:
+		probe.position.y = floor_y
+	return probe
+
+
+## The closest navmesh point to point, when the navmesh is ready, that is
+## within reach and no wall stands between ray_start and it; else point.
+func _snap_to_navmesh(space_state: PhysicsDirectSpaceState3D, ray_start: Vector3, point: Vector3) -> Vector3:
+	var map_rid: RID = character.get_world_3d().navigation_map
+	if not map_rid.is_valid() or NavigationServer3D.map_get_iteration_id(map_rid) == 0 or NavigationServer3D.map_get_regions(map_rid).is_empty():
+		return point
+	var nav_point: Vector3 = NavigationServer3D.map_get_closest_point(map_rid, point)
+	if not nav_point.is_finite() or nav_point.is_zero_approx() or nav_point.distance_to(start_position) > max_range + 1.0:
+		return point
+	var wall: Dictionary = space_state.intersect_ray(PhysicsRayQueryParameters3D.create(ray_start, nav_point + Vector3(0.0, 0.5, 0.0), 1))
+	return nav_point if wall.is_empty() else point
+
+
+## Standing height (floor + 1 m) under point, or NAN over a gap.
+func _floor_height_at(space_state: PhysicsDirectSpaceState3D, point: Vector3) -> float:
+	var hit: Dictionary = space_state.intersect_ray(PhysicsRayQueryParameters3D.create(point + Vector3(0.0, 2.0, 0.0), point + Vector3(0.0, -4.0, 0.0), 1))
+	return NAN if hit.is_empty() else (hit["position"] as Vector3).y + 1.0
 
 
 func physics_update(delta: float) -> void:

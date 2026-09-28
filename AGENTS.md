@@ -22,12 +22,12 @@ prints the error and idles forever. `--quit-after` does not help.
     the suites (`--fps N` emulates a slow device, `--verbose` prints every
     suite's output). Lint alone: `python tools/lint_project.py` (no Godot).
     Every lint violation fails the run; there are no suppressions. Fix the
-    code, or the rule if it is wrong. **A red lint is never acceptable**: the
-    violations it reports today are open bugs (`TODO.md` item 12), and fixing
-    them comes before new features. Never add a violation, and never finish a
-    change that leaves a new one behind.
+    code, or the rule if it is wrong. **A red lint is never acceptable**:
+    never finish a change that leaves a violation behind.
   - `python run_scratch.py <script.gd> [--timeout N] [-- args]` runs a
-    throwaway `-s` script (it must `extends SceneTree` and call `quit(code)`).
+    throwaway `-s` script. It must `extends SceneTree`, do its work in
+    `_initialize()` (in `_init()` autoloads do not exist yet, so game scripts
+    it loads fail to compile) and call `quit(code)`.
   - `python capture.py <map|anim|combat|test> ...` captures screenshots and
     video into `movies/`.
 - Any new Python launcher must go through `godot_env.run_godot()` (or

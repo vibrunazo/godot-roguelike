@@ -48,30 +48,26 @@ func physics_update(delta: float) -> void:
 	if nav_agent == null:
 		return
 
-	var dist_sq: float = character.global_position.distance_squared_to(target.global_position)
-	if dist_sq < (attack_range * attack_range):
-		ai_state_machine.command_stop()
-		# Only face the target when the body is not executing an attack. Once
-		# the attack starts the enemy commits to its initial facing direction and
-		# should not track the player mid-swing.
-		var is_attacking: bool = (
-			character.state_machine != null
-			and character.state_machine.state != null
-			and character.state_machine.state.name == attack_state_name
-		)
-		if not is_attacking:
-			character.look_at_target(target.global_position, delta)
-		# Order only inside the facing cone: the per-tick facing above turns
-		# the body toward the target first, and the order carries the aim so
-		# the body keeps converging during the swing. Failed orders (stunned
-		# body) simply retry next tick since pursue never leaves this branch.
-		if cooldown_timer <= 0.0 and is_facing_within_cone(target, desired_angle):
-			if ai_state_machine.order_attack(attack_state_name, can_break_stun, build_aim_order_data(target)):
-				cooldown_timer = attack_cooldown
+	if character.global_position.distance_squared_to(target.global_position) < attack_range * attack_range:
+		_engage(target, delta)
 		return
-
 	nav_agent.target_position = target.global_position
-	var destination: Vector3 = nav_agent.get_next_path_position()
-	var local_destination: Vector3 = destination - character.global_position
-	local_destination.y = 0.0
-	ai_state_machine.command_move(local_destination.normalized(), destination)
+	follow_nav_path(nav_agent)
+
+
+## In attack range: stop, turn toward the target unless mid-swing (an attack
+## commits to its starting facing), and order the attack once the body faces
+## the target and the cooldown allows. Failed orders (stunned body) simply
+## retry next tick, since pursue stays in this branch.
+func _engage(target: Character, delta: float) -> void:
+	ai_state_machine.command_stop()
+	var is_attacking: bool = (
+		character.state_machine != null
+		and character.state_machine.state != null
+		and character.state_machine.state.name == attack_state_name
+	)
+	if not is_attacking:
+		character.look_at_target(target.global_position, delta)
+	if cooldown_timer <= 0.0 and is_facing_within_cone(target, desired_angle):
+		if ai_state_machine.order_attack(attack_state_name, can_break_stun, build_aim_order_data(target)):
+			cooldown_timer = attack_cooldown

@@ -28,6 +28,8 @@ const DEFAULT_ROTATION_SPEED: float = 360.0
 const TAG_AIRBORNE: StringName = &"movement.airborne"
 ## Extra tag on an airborne episode's ENDED event: the character just landed.
 const TAG_LANDED: StringName = &"movement.landed"
+## Gold awarded for an enemy with no EnemyResource of its own or registered.
+const DEFAULT_GOLD_DROP: int = 5
 ## Seconds between player defeat and the game-over screen, letting the death
 ## animation and corpse read before the menu takes over.
 const DEFEAT_MENU_DELAY: float = 2.0
@@ -141,13 +143,16 @@ var home_position: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
-	if attribute_component == null:
-		attribute_component = get_node_or_null("AttributeComponent") as AttributeComponent
-	if attribute_component == null:
-		for child: Node in get_children():
-			if child is AttributeComponent:
-				attribute_component = child as AttributeComponent
-				break
+	_resolve_body_nodes()
+	_resolve_components()
+	_auto_configure_navigation()
+	_check_enemy_states()
+	_connect_combat_signals()
+
+
+## Fills in every body node reference the scene left unset, by its
+## conventional name.
+func _resolve_body_nodes() -> void:
 	if knockback_component == null:
 		knockback_component = get_node_or_null("KnockbackComponent") as KnockbackComponent
 	if state_machine == null:
@@ -158,7 +163,6 @@ func _ready() -> void:
 		navigation_agent_3d = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
 	if collision_shape_3d == null:
 		collision_shape_3d = get_node_or_null("CollisionShape3D") as CollisionShape3D
-	_auto_configure_navigation()
 	if hurtbox == null:
 		hurtbox = get_node_or_null("Hurtbox") as Hurtbox
 	if dash_cooldown == null:
@@ -169,49 +173,69 @@ func _ready() -> void:
 			mesh_mount = get_node_or_null("GamedevTV_Mannequin_Medium") as Node3D
 	if animation_tree == null:
 		animation_tree = find_child("AnimationTree", true, false) as AnimationTree
+
+
+## Finds the attribute, equipment and passive components (by conventional
+## name, else by type) and hands the latter two their character.
+func _resolve_components() -> void:
+	if attribute_component == null:
+		attribute_component = _find_child_of(AttributeComponent, "AttributeComponent") as AttributeComponent
 	if equipment_component == null:
-		equipment_component = get_node_or_null("EquipmentComponent") as EquipmentComponent
-	if equipment_component == null:
-		for child: Node in get_children():
-			if child is EquipmentComponent:
-				equipment_component = child as EquipmentComponent
-				break
+		equipment_component = _find_child_of(EquipmentComponent, "EquipmentComponent") as EquipmentComponent
 	if equipment_component != null:
 		equipment_component.character = self
 	if passive_ability_component == null:
-		passive_ability_component = get_node_or_null("PassiveAbilityComponent") as PassiveAbilityComponent
-	if passive_ability_component == null:
-		for child: Node in get_children():
-			if child is PassiveAbilityComponent:
-				passive_ability_component = child as PassiveAbilityComponent
-				break
+		passive_ability_component = _find_child_of(PassiveAbilityComponent, "PassiveAbilityComponent") as PassiveAbilityComponent
 	if passive_ability_component != null:
 		passive_ability_component.character = self
-	if is_enemy():
-		if stun_state == null:
-			push_warning("Character '%s' in 'enemy' group has no stun_state assigned." % name)
-		if defeat_state == null:
-			push_warning("Character '%s' in 'enemy' group has no defeat_state assigned." % name)
 
+
+## The child named node_name when it is of the given class, else the first
+## direct child of that class, else null.
+func _find_child_of(type: Variant, node_name: String) -> Node:
+	var named: Node = get_node_or_null(node_name)
+	if named != null and is_instance_of(named, type):
+		return named
+	for child: Node in get_children():
+		if is_instance_of(child, type):
+			return child
+	return null
+
+
+## Enemies need a stun and a defeat state to react to hits.
+func _check_enemy_states() -> void:
+	if not is_enemy():
+		return
+	if stun_state == null:
+		push_warning("Character '%s' in 'enemy' group has no stun_state assigned." % name)
+	if defeat_state == null:
+		push_warning("Character '%s' in 'enemy' group has no defeat_state assigned." % name)
+
+
+## Wires defeat (and, for the player, the game-over flow), hit reactions, and
+## every attack component this character owns.
+func _connect_combat_signals() -> void:
 	if attribute_component != null:
 		if not attribute_component.defeat.is_connected(_on_attribute_defeat):
 			attribute_component.defeat.connect(_on_attribute_defeat)
 		if is_player() and not attribute_component.defeat.is_connected(reset_game_state):
 			attribute_component.defeat.connect(reset_game_state)
-	if hurtbox != null:
-		if not hurtbox.struck.is_connected(_on_hurtbox_struck):
-			hurtbox.struck.connect(_on_hurtbox_struck)
-
+	if hurtbox != null and not hurtbox.struck.is_connected(_on_hurtbox_struck):
+		hurtbox.struck.connect(_on_hurtbox_struck)
 	if weapon_hitbox != null:
-		var att_comp: AttackComponent = weapon_hitbox.get_node_or_null("AttackComponent") as AttackComponent
-		if att_comp != null:
-			att_comp.add_exception(self)
-			if not att_comp.hit_landed.is_connected(_on_attack_component_hit_landed):
-				att_comp.hit_landed.connect(_on_attack_component_hit_landed.bind(att_comp))
-	for ac: AttackComponent in find_children("*", "AttackComponent"):
-		ac.add_exception(self)
-		if not ac.hit_landed.is_connected(_on_attack_component_hit_landed):
-			ac.hit_landed.connect(_on_attack_component_hit_landed.bind(ac))
+		var weapon_component: AttackComponent = weapon_hitbox.get_node_or_null("AttackComponent") as AttackComponent
+		if weapon_component != null:
+			_register_attack_component(weapon_component)
+	for component: AttackComponent in find_children("*", "AttackComponent"):
+		_register_attack_component(component)
+
+
+## Keeps the component from hitting its own character and forwards its hits
+## as this character's hit_landed.
+func _register_attack_component(component: AttackComponent) -> void:
+	component.add_exception(self)
+	if not component.hit_landed.is_connected(_on_attack_component_hit_landed):
+		component.hit_landed.connect(_on_attack_component_hit_landed.bind(component))
 
 
 ## Calibrates NavigationAgent3D parameters to match this character's collision shape.
@@ -277,6 +301,14 @@ func move_character() -> bool:
 	var enemy: Character = _get_enemy_head_support()
 	if enemy == null:
 		return collided
+	_slide_off_enemy_head(enemy, start_transform, intended_velocity)
+	return true
+
+
+## Redoes this frame's step from start_transform as if the enemy's head were a
+## wall: floating mode, no steering back onto the crown, and a minimum outward
+## drift (see move_character).
+func _slide_off_enemy_head(enemy: Character, start_transform: Transform3D, intended_velocity: Vector3) -> void:
 	var support_normal: Vector3 = get_floor_normal()
 	if support_normal.is_zero_approx():
 		support_normal = up_direction
@@ -307,7 +339,6 @@ func move_character() -> bool:
 	global_position += outward * head_slide_speed * get_physics_process_delta_time()
 	if velocity.y > -0.5:
 		velocity.y = -0.5
-	return true
 
 
 ## Returns the enemy currently supporting the player from below, or null.
@@ -726,6 +757,25 @@ func alert() -> void:
 ## Called when this character is carried into a new level so no dash, attack, sound,
 ## red flash, camera shake, or fire leak across the transition.
 func cancel_movement_and_abilities() -> void:
+	_clear_intents_and_motion()
+	if knockback_component != null:
+		knockback_component.magnitude = Vector3.ZERO
+	if state_machine != null and state_machine.state != null:
+		var home: State = state_machine.initial_state
+		if home == null and state_machine.get_child_count() > 0:
+			home = state_machine.get_child(0) as State
+		if home != null and state_machine.state != home:
+			state_machine.request_state(home.name)
+	_silence_weapons_and_feedback()
+	if attribute_component != null:
+		# Also frees every status visual (burning fire, ...): the component
+		# tracks the visual of each effect it applied.
+		attribute_component.clear_temporary_effects()
+
+
+## Drops every pending intent, the aim and facing requests, the auto-aim
+## target and the attacking flag, and stops the body.
+func _clear_intents_and_motion() -> void:
 	move_direction = Vector3.ZERO
 	aim_direction = Vector3.ZERO
 	face_target = Vector3.ZERO
@@ -735,14 +785,11 @@ func cancel_movement_and_abilities() -> void:
 	is_attacking = false
 	_set_current_target(null)
 	velocity = Vector3.ZERO
-	if knockback_component != null:
-		knockback_component.magnitude = Vector3.ZERO
-	if state_machine != null and state_machine.state != null:
-		var home: State = state_machine.initial_state
-		if home == null and state_machine.get_child_count() > 0:
-			home = state_machine.get_child(0) as State
-		if home != null and state_machine.state != home:
-			state_machine.request_state(home.name)
+
+
+## Closes every weapon hit window and trail, stops every character sound, and
+## clears the damage flash and camera shake.
+func _silence_weapons_and_feedback() -> void:
 	for slot: Node in find_children("*", "WeaponSlot"):
 		if slot is WeaponSlot:
 			var ws: WeaponSlot = slot as WeaponSlot
@@ -763,10 +810,6 @@ func cancel_movement_and_abilities() -> void:
 	var camera: ShakeCamera3D = get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
 	if camera != null:
 		camera.trauma = 0.0
-	if attribute_component != null:
-		# Also frees every status visual (burning fire, ...): the component
-		# tracks the visual of each effect it applied.
-		attribute_component.clear_temporary_effects()
 
 
 ## Centralized idempotent defeat handler that halts motion, disables AI & input, and enters defeat state.
@@ -776,24 +819,9 @@ func on_defeat() -> void:
 	_is_defeated = true
 	defeat.emit()
 	_clear_airborne_tracking()
-
-	if is_enemy() and ProgressionState != null:
-		var gold: int = 5
-		if enemy_resource != null:
-			gold = enemy_resource.gold_drop
-		elif GlobalVars != null and not scene_file_path.is_empty():
-			for er: EnemyResource in GlobalVars.enemies:
-				if er != null and er.scene != null and er.scene.resource_path == scene_file_path:
-					gold = er.gold_drop
-					break
-		ProgressionState.add_gold(gold)
-	move_direction = Vector3.ZERO
-	aim_direction = Vector3.ZERO
-	face_target = Vector3.ZERO
-	jump_requested = false
-	_set_current_target(null)
-	is_attacking = false
-	velocity = Vector3.ZERO
+	if is_enemy():
+		ProgressionState.add_gold(_gold_drop())
+	_clear_intents_and_motion()
 	if ai_state_machine != null:
 		ai_state_machine.command_stop()
 		ai_state_machine.set_physics_process(false)
@@ -802,8 +830,25 @@ func on_defeat() -> void:
 		input_comp.set_physics_process(false)
 	if defeat_state != null and state_machine != null and state_machine.state != null:
 		state_machine.state.finished.emit(defeat_state.name)
-	# The body shape is shut off so corpses never block movement. They still
-	# rest where they fell: the defeat states pin velocity to zero every frame.
+	_switch_corpse_off()
+
+
+## Gold this enemy awards on defeat: its own resource's, else its registered
+## archetype's, else the default.
+func _gold_drop() -> int:
+	if enemy_resource != null:
+		return enemy_resource.gold_drop
+	if not scene_file_path.is_empty():
+		for resource: EnemyResource in GlobalVars.enemies:
+			if resource != null and resource.scene != null and resource.scene.resource_path == scene_file_path:
+				return resource.gold_drop
+	return DEFAULT_GOLD_DROP
+
+
+## Shuts off the body shape and the hurtbox, so the corpse never blocks
+## movement or takes hits. It still rests where it fell: the defeat states pin
+## velocity to zero every frame.
+func _switch_corpse_off() -> void:
 	if collision_shape_3d != null:
 		collision_shape_3d.set_deferred("disabled", true)
 	if hurtbox != null:

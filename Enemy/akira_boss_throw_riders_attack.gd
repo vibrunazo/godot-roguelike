@@ -40,9 +40,7 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 
 
 func _throw_riders() -> void:
-	if character == null or not is_instance_valid(character):
-		return
-	if not character.is_alive():
+	if character == null or not is_instance_valid(character) or not character.is_alive():
 		return
 	if character.state_machine == null or character.state_machine.state != self:
 		return
@@ -52,7 +50,23 @@ func _throw_riders() -> void:
 		character.attribute_component.remove_effect(&"has_riders")
 		character.attribute_component.remove_tag(&"has_riders")
 
-	# Resolve target ground position
+	# The riders land side by side, spread across the throw direction.
+	var target_pos: Vector3 = _throw_target_position()
+	var to_target: Vector3 = target_pos - character.global_position
+	to_target.y = 0.0
+	var right_vec: Vector3 = to_target.normalized().cross(Vector3.UP)
+	if right_vec.is_zero_approx():
+		right_vec = Vector3.RIGHT
+
+	var left_pos: Vector3 = left_spawn_point.global_position if left_spawn_point != null and is_instance_valid(left_spawn_point) else character.global_position + Vector3(-0.75, 1.8, -0.45)
+	var right_pos: Vector3 = right_spawn_point.global_position if right_spawn_point != null and is_instance_valid(right_spawn_point) else character.global_position + Vector3(0.75, 1.8, -0.45)
+	_spawn_rider_projectile(left_pos, target_pos - right_vec * 1.5)
+	_spawn_rider_projectile(right_pos, target_pos + right_vec * 1.5)
+
+
+## Where the riders are thrown: the boss's current target, else the nearest
+## player, else 8 m ahead of the boss.
+func _throw_target_position() -> Vector3:
 	var target: Character = null
 	if character.current_target != null and is_instance_valid(character.current_target) and character.current_target is Character:
 		target = character.current_target as Character
@@ -60,27 +74,9 @@ func _throw_riders() -> void:
 		target = character.get_nearest_target("player")
 	if target == null and is_inside_tree():
 		target = get_tree().get_first_node_in_group("player") as Character
-
-	var target_pos: Vector3 = character.global_position + character.global_basis.z * 8.0
 	if target != null and is_instance_valid(target):
-		target_pos = target.global_position
-
-	# Calculate spread for landing
-	var to_target: Vector3 = target_pos - character.global_position
-	to_target.y = 0.0
-	var right_vec: Vector3 = to_target.normalized().cross(Vector3.UP)
-	if right_vec.is_zero_approx():
-		right_vec = Vector3.RIGHT
-
-	var left_land: Vector3 = target_pos - right_vec * 1.5
-	var right_land: Vector3 = target_pos + right_vec * 1.5
-
-	var left_pos: Vector3 = left_spawn_point.global_position if left_spawn_point != null and is_instance_valid(left_spawn_point) else character.global_position + Vector3(-0.75, 1.8, -0.45)
-	var right_pos: Vector3 = right_spawn_point.global_position if right_spawn_point != null and is_instance_valid(right_spawn_point) else character.global_position + Vector3(0.75, 1.8, -0.45)
-
-	_spawn_rider_projectile(left_pos, left_land)
-	_spawn_rider_projectile(right_pos, right_land)
-
+		return target.global_position
+	return character.global_position + character.global_basis.z * 8.0
 
 func _spawn_rider_projectile(spawn_pos: Vector3, land_pos: Vector3) -> void:
 	if projectile_scene == null:

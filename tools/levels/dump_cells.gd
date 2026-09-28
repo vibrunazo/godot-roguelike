@@ -12,7 +12,7 @@
 extends SceneTree
 
 
-func _init() -> void:
+func _initialize() -> void:
 	var level_path: String = "res://Levels/level_2.tscn"
 	var out_path: String = ""
 	for arg: String in OS.get_cmdline_user_args():

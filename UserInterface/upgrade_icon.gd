@@ -166,27 +166,30 @@ func setup_label() -> void:
 	# Cost and stock live in the pinned footer so they stay readable no
 	# matter how long the description above grows. Inspect contexts hide
 	# the footer: the item is already owned, so cost is meaningless.
-	var footer_text: String = ""
-	if card_mode == CardMode.SHOP:
-		if item_resource.cost > 0:
-			footer_text += "[color=gold]Cost: %d Gold[/color]" % item_resource.cost
-
-		if player != null and player.equipment_component != null and item_resource.max_purchases > 0:
-			var owned: int = player.equipment_component.get_purchase_count(item_resource)
-			if not footer_text.is_empty():
-				footer_text += "  "
-			footer_text += "[color=gray](%d/%d owned)[/color]" % [owned, item_resource.max_purchases]
-
+	var footer_text: String = _shop_footer_text() if card_mode == CardMode.SHOP else ""
 	cost_label.visible = not footer_text.is_empty()
 	cost_label.text = footer_text
-
-	# Update button interactability based on affordability and stock.
-	# The currency check is runtime-only; editor previews stay enabled.
 	if texture_button != null and not _already_taken:
-		var can_buy: bool = true
-		if player != null and player.equipment_component != null:
-			can_buy = player.equipment_component.can_purchase(item_resource)
-		elif not Engine.is_editor_hint() and ProgressionState != null and item_resource.cost > 0:
-			can_buy = ProgressionState.has_gold(item_resource.cost)
+		texture_button.disabled = not _can_buy()
 
-		texture_button.disabled = not can_buy
+
+## The shop footer: the cost, then how many of the item's stock the player
+## already owns.
+func _shop_footer_text() -> String:
+	var parts: Array[String] = []
+	if item_resource.cost > 0:
+		parts.append("[color=gold]Cost: %d Gold[/color]" % item_resource.cost)
+	if player != null and player.equipment_component != null and item_resource.max_purchases > 0:
+		var owned: int = player.equipment_component.get_purchase_count(item_resource)
+		parts.append("[color=gray](%d/%d owned)[/color]" % [owned, item_resource.max_purchases])
+	return "  ".join(parts)
+
+
+## Whether the player can take the item now (affordability and stock). The
+## currency check is runtime-only; editor previews stay enabled.
+func _can_buy() -> bool:
+	if player != null and player.equipment_component != null:
+		return player.equipment_component.can_purchase(item_resource)
+	if not Engine.is_editor_hint() and item_resource.cost > 0:
+		return ProgressionState.has_gold(item_resource.cost)
+	return true

@@ -36,23 +36,7 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 	var ratio_override: Variant = _data.get("movement_speed_ratio", -1.0)
 	if (ratio_override is float or ratio_override is int) and float(ratio_override) >= 0.0:
 		movement_speed_ratio = float(ratio_override)
-
-	var speed: float = character.attribute_component.get_current(AttributeComponent.STAT_SPEED) if character.attribute_component != null else 8.0
-	var max_jump_speed: float = maxf(0.0, speed * movement_speed_ratio)
-	_launch_velocity = Vector3(character.velocity.x, 0.0, character.velocity.z)
-	var direction: Vector3 = _data.get("direction", character.move_direction)
-	if not direction.is_zero_approx() and max_jump_speed > 0.0:
-		_launch_velocity = direction * max_jump_speed
-		character.velocity.x = _launch_velocity.x
-		character.velocity.z = _launch_velocity.z
-	elif max_jump_speed <= 0.0:
-		_launch_velocity = Vector3.ZERO
-		character.velocity.x = 0.0
-		character.velocity.z = 0.0
-	elif _launch_velocity.length() > max_jump_speed:
-		_launch_velocity = _launch_velocity.normalized() * max_jump_speed
-		character.velocity.x = _launch_velocity.x
-		character.velocity.z = _launch_velocity.z
+	_launch_horizontally(_data.get("direction", character.move_direction))
 
 	var gravity_mag: float = character.get_gravity().length()
 	if is_zero_approx(gravity_mag):
@@ -65,6 +49,23 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 		character.animation_tree.change_immediate("Jump")
 
 	broadcast_ability_event(AbilityEvent.Phase.STARTED, {}, _launch_velocity)
+
+
+## Sets the horizontal launch velocity: along direction at the jump speed
+## (walk speed times movement_speed_ratio), or the current momentum capped at
+## that speed when direction is zero.
+func _launch_horizontally(direction: Vector3) -> void:
+	var speed: float = character.attribute_component.get_current(AttributeComponent.STAT_SPEED) if character.attribute_component != null else 8.0
+	var max_jump_speed: float = maxf(0.0, speed * movement_speed_ratio)
+	_launch_velocity = Vector3(character.velocity.x, 0.0, character.velocity.z)
+	if max_jump_speed <= 0.0:
+		_launch_velocity = Vector3.ZERO
+	elif not direction.is_zero_approx():
+		_launch_velocity = direction * max_jump_speed
+	elif _launch_velocity.length() > max_jump_speed:
+		_launch_velocity = _launch_velocity.normalized() * max_jump_speed
+	character.velocity.x = _launch_velocity.x
+	character.velocity.z = _launch_velocity.z
 
 
 func physics_update(delta: float) -> void:
