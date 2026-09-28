@@ -174,7 +174,7 @@ Renaming a node in a `.tscn` silently disables behavior. Recommendations:
 | `Player/weapon_slot.gd:29` | `shapecast` → `hitbox` | Delete. |
 | `Enemy/enemy_resource.gd:20` | `difficulty` → `difficulty_level` | Delete. |
 | `Levels/exit_point.gd:8` | `next_level_path` → `next_scene_path` | Delete. |
-| `UserInterface/pause_menu.gd:40` | `resume_button`/`restart_button` forwarders "for test compatibility" | Tests should use `buttons_panel.resume_button`. |
+| `UserInterface/pause_menu.gd:40` | `resume_button`/`restart_button` forwarders "for test compatibility" | *(Fixed 2026-09-28: all eight panel forwarders deleted; tests use the panels.)* Tests should use `buttons_panel.resume_button`. |
 | `StateMachine/character_attack.gd:28, 233, 245, 267` | "legacy `attack_component` export" path next to `weapon_slot` | Migrate the scenes to `weapon_slot` and remove the fallback branch. |
 | `Singletons/global_vars.gd:13` | "Legacy difficulty scaling curve" | Delete it and the test that requires it. |
 
@@ -251,6 +251,7 @@ Designers can't see or change these in the inspector:
 - **32 null checks on autoloads** (`if ProgressionState != null`, `VfxManager.has_method("clear_temporary_effects")`). Autoloads always exist in game runs. The checks make it look like a missing singleton is supported, and they hide real errors.
 - **26 `get("prop")` / `has_method()` duck-typing sites**. Examples: `jump_state.get("jump_height")` in `player_input_component.gd:214`, `state.get("uninterruptable")` in `character.gd:682`. Prefer typed casts (`as PlayerJump`) or a declared base-class property.
 - **Constants declared mid-file** (`character.gd:520-529, 660-662`). The Godot style guide puts `const` at the top.
+- *(Found 2026-09-28.)* **Duplicate wiring, found by negative controls during migration:** `FireTrap._ready()` connects the life timer to `extinguish()` while `DamageArea._setup_duration_timer()` already connects it to `expire()` (which `FireTrap` overrides to call `extinguish()`); `ExitPoint._ready()` duplicates a wisp material the scene already marks `resource_local_to_scene`. Both are harmless (idempotent), but each is a second copy of one mechanism. Keep one.
 - **Duplicate defeat cleanup**: `Hurtbox._on_defeat()` and `Character.on_defeat()` (`:811-816`) both disable the same hurtbox.
 - `StateMachine`: `request_state` and `_transition_to_next_state` both do the `has_node` check. `await owner.ready` crashes if `owner` is null (a runtime-built machine).
 - `SceneTransition.load_scene_path(path_in, args)`: `args` is never used.
@@ -670,7 +671,7 @@ Caveats:
 | A1 Harden the runner | Done 2026-09-24 |
 | A2 Fix the leak and UID bugs | Done 2026-09-24 |
 | A3 Harness, arena, template, reference suite | Done 2026-09-24 |
-| B4 Migrate the suites | In progress: 32 of 46 suites migrated, 14 left (`TODO.md` item 4) |
+| B4 Migrate the suites | In progress: 41 of 46 suites migrated, 5 left (`TODO.md` item 4) |
 | B5 Frame-rate workstream | Done 2026-09-26, apart from the mobile renderer/GI decision |
 | C6 AGENTS.md, skills, TODO, README | Partly done |
 | C7 `tools/lint_project.py` | Not started |
@@ -701,7 +702,7 @@ The harness depends on the runner being trustworthy and fast, so the runner is f
 
 **Phase B: the merged step, plus a parallel track**
 
-4. *(In progress. 32 of 46 suites are migrated, 14 are left (`TODO.md` item 4); the count shrank because some suites were merged or deleted, e.g. `test_brute_level2_nav`, a one-off visual check that no longer tested its corridor claim. Done across the whole suite already: no physical-key checks, no private method calls (two private field reads remain), no suite strips `WaveObjective`'s script, and `TestUtils` is gone. `test_enemy_base.gd` has not been split yet (`TODO.md` item 6). In practice several suites went into one commit; each migration was still checked with negative controls.)* **Migrate the suites to the harness, one suite per commit. This is where the bad tests get fixed.** Each migration:
+4. *(In progress. 41 of 46 suites are migrated, 5 are left (`TODO.md` item 4); the count shrank because some suites were merged or deleted, e.g. `test_brute_level2_nav`, a one-off visual check that no longer tested its corridor claim. Done across the whole suite already: no physical-key checks, no private method calls (two private field reads remain), no suite strips `WaveObjective`'s script, and `TestUtils` is gone. `test_enemy_base.gd` has not been split yet (`TODO.md` item 6). In practice several suites went into one commit; each migration was still checked with negative controls.)* **Migrate the suites to the harness, one suite per commit. This is where the bad tests get fixed.** Each migration:
    - switches to the harness API
    - removes that suite's literal, key and art assertions (§3.1–3.3)
    - replaces private calls with public APIs (§3.4.4)
@@ -728,7 +729,7 @@ The harness depends on the runner being trustworthy and fast, so the runner is f
 
 **Phase D: production cleanup (now protected by trustworthy tests)**
 
-9. *(Partly done. Removed: the `PlayerJump` aliases. Fixed: the `AILeapingDodge` sentinel (§2.8). Still open: the other §2.6 aliases and all §2.7 fallbacks.)* **Remove the aliases and legacy paths** (§2.6) and the hardcoded fallbacks (§2.7). Fix the `AILeapingDodge` sentinel (§2.8). The migrated tests no longer depend on the aliases, so this is safe.
+9. *(Partly done. Removed: the `PlayerJump` aliases and the `PauseMenu` panel forwarders. Fixed: the `AILeapingDodge` sentinel (§2.8). Still open: the other §2.6 aliases and all §2.7 fallbacks.)* **Remove the aliases and legacy paths** (§2.6) and the hardcoded fallbacks (§2.7). Fix the `AILeapingDodge` sentinel (§2.8). The migrated tests no longer depend on the aliases, so this is safe.
 10. *(Not started. The heal-percent unit in §2.5 is fixed.)* **Unify the level registry and the other duplicated owners** (§2.5).
 11. *(Partly done: the input bridge.)* **Structural refactors:**
     - string state names → exports (§2.2)

@@ -1,228 +1,83 @@
-extends Node
+## Character palette recoloring (CharacterColorComponent):
+## - every character (player and each enemy type) recolors all of its body
+##   meshes with its own palette material and never its weapons or VFX, and
+##   the shader uses the component's palette mode,
+## - only slots with an assigned gradient are recolored; setting and clearing
+##   a slot switches exactly that slot,
+## - the global tint reaches the shader,
+## - a component always exposes one gradient slot per palette column.
+## Colors, gradients and mesh counts are the artists' choice and are not
+## asserted.
+extends "res://test/lib/test_suite.gd"
 
-func _ready() -> void:
-	print("--- RUNNING CHARACTER PALETTE RECOLOR TEST ---")
-	
-	# ---------------------------------------------------------
-	# PART 1: Component Unit Defaults & Gradient Population
-	# ---------------------------------------------------------
-	print("\n>>> PART 1: Component Defaults & Defaults Population")
-	var comp: CharacterColorComponent = CharacterColorComponent.new()
-	add_child(comp)
-	
-	if comp.palette_mode != CharacterColorComponent.PaletteMode.ENEMY:
-		printerr("TEST FAILED: Default palette_mode should be ENEMY.")
-		get_tree().quit(1)
-		return
-	if comp.global_tint != Color.WHITE:
-		printerr("TEST FAILED: Default global_tint should be Color.WHITE.")
-		get_tree().quit(1)
-		return
-	if comp.gradients.size() != 8:
-		printerr("TEST FAILED: Expected 8 default gradients, got: %d" % comp.gradients.size())
-		get_tree().quit(1)
-		return
-	if comp.material == null or comp.material.shader == null:
-		printerr("TEST FAILED: ShaderMaterial or shader not initialized.")
-		get_tree().quit(1)
-		return
-	
-	print("[OK] Component defaults & 8-gradient auto-population verified.")
-	comp.queue_free()
+const CHARACTER_SCENES: Array[String] = [
+	"res://Player/player.tscn",
+	"res://Enemy/melee_enemy.tscn",
+	"res://Enemy/ranged_enemy.tscn",
+	"res://Enemy/enemy_brute.tscn",
+	"res://Enemy/firebomber_enemy.tscn",
+	"res://Enemy/enemy_thunder_mage.tscn",
+]
+const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+## Palette columns the shader reads.
+const SLOT_COUNT: int = 8
+## Test-owned colors.
+const TEST_TINT: Color = Color(0.2, 0.8, 0.4, 1.0)
+const TEST_SLOT_COLOR: Color = Color.PURPLE
 
-	# ---------------------------------------------------------
-	# PART 2: Ranged Enemy Scene Wiring & Mesh Discovery
-	# ---------------------------------------------------------
-	print("\n>>> PART 2: Ranged Enemy Scene Wiring")
-	var ranged_scene: PackedScene = load("res://Enemy/ranged_enemy.tscn") as PackedScene
-	var ranged: Character = ranged_scene.instantiate() as Character
-	add_child(ranged)
-	
+
+func test_every_character_recolors_its_body_but_never_its_gear() -> void:
+	for path: String in CHARACTER_SCENES:
+		var character: Character = spawn(load(path) as PackedScene) as Character
+		await get_tree().process_frame
+		var colors: CharacterColorComponent = character.color_component
+		if not check(colors != null, "%s should have a color component" % path.get_file()):
+			continue
+		var body: Array[MeshInstance3D] = colors.get_body_meshes()
+		check(not body.is_empty(), "%s should have body meshes to recolor" % path.get_file())
+		for mesh: MeshInstance3D in body:
+			check(mesh.material_override == colors.material, "%s body mesh %s should use the palette material" % [path.get_file(), mesh.name])
+		# Gear: anything carried by a weapon slot (weapons, trails, hitbox shapes).
+		for slot: Node in character.find_children("*", "WeaponSlot", true, false):
+			for mesh: Node in slot.find_children("*", "MeshInstance3D", true, false):
+				check((mesh as MeshInstance3D).material_override != colors.material, "%s must not recolor its gear (%s)" % [path.get_file(), mesh.name])
+		check_eq(int(colors.material.get_shader_parameter("palette_mode")), int(colors.palette_mode), "%s shader should use the component's palette mode" % path.get_file())
+		character.queue_free()
+
+
+func test_only_slots_with_a_gradient_are_recolored() -> void:
+	var colors: CharacterColorComponent = (spawn(MELEE_SCENE) as Character).color_component
 	await get_tree().process_frame
-	
-	if ranged.color_component == null:
-		printerr("TEST FAILED: RangedEnemy color_component is null.")
-		get_tree().quit(1)
-		return
-	
-	var ranged_body_meshes: Array[MeshInstance3D] = ranged.color_component.get_body_meshes()
-	if ranged_body_meshes.size() != 6:
-		printerr("TEST FAILED: Expected 6 body meshes on RangedEnemy, got: %d" % ranged_body_meshes.size())
-		get_tree().quit(1)
-		return
-	
-	for mi: MeshInstance3D in ranged_body_meshes:
-		if mi.material_override != ranged.color_component.material:
-			printerr("TEST FAILED: Mesh %s material_override does not match component material." % mi.name)
-			get_tree().quit(1)
-			return
-	
-	# Verify weapon hitbox mesh is NOT overridden
-	var weapon_mesh: MeshInstance3D = ranged.find_child("MeshInstance3D", true, false) as MeshInstance3D
-	if weapon_mesh and weapon_mesh.material_override == ranged.color_component.material:
-		printerr("TEST FAILED: Weapon hitbox cylinder mesh was incorrectly overridden!")
-		get_tree().quit(1)
-		return
-	
-	print("[OK] RangedEnemy wired color_component verified; 6/6 meshes overridden; weapon hitbox unaffected.")
+	check_eq(_mask(colors), _expected_mask(colors), "the shader mask should match the assigned slots")
+	colors.set_gradient(0, null)
+	check_eq(_mask(colors) & 1, 0, "clearing a slot should stop recoloring it")
+	colors.set_slot_color(0, TEST_SLOT_COLOR)
+	check_eq(_mask(colors) & 1, 1, "setting a slot color should recolor that slot")
+	check_eq(_mask(colors), _expected_mask(colors), "only that slot should change")
 
-	# ---------------------------------------------------------
-	# PART 3: Shader Parameter Updates & Runtime API
-	# ---------------------------------------------------------
-	print("\n>>> PART 3: Runtime Tint and Gradient Updates")
-	var test_tint: Color = Color(0.2, 0.8, 0.4, 1.0)
-	ranged.color_component.set_global_tint(test_tint)
-	var mat_tint: Variant = ranged.color_component.material.get_shader_parameter("global_tint")
-	if mat_tint != test_tint:
-		printerr("TEST FAILED: Shader global_tint not updated. Expected %s, got %s" % [str(test_tint), str(mat_tint)])
-		get_tree().quit(1)
-		return
-	
-	ranged.color_component.set_slot_color(7, Color.PURPLE)
-	var palettes: Variant = ranged.color_component.material.get_shader_parameter("gradient_palettes")
-	if not (palettes is Array) or (palettes as Array).size() != 8:
-		printerr("TEST FAILED: Shader gradient_palettes parameter invalid or wrong size.")
-		get_tree().quit(1)
-		return
-	
-	print("[OK] Global tint and slot color updates verified on ShaderMaterial.")
-	ranged.queue_free()
 
-	# ---------------------------------------------------------
-	# PART 4: Enemy Brute Scene Wiring & Application
-	# ---------------------------------------------------------
-	print("\n>>> PART 4: Enemy Brute Scene Wiring")
-	var brute_scene: PackedScene = load("res://Enemy/enemy_brute.tscn") as PackedScene
-	var brute: Character = brute_scene.instantiate() as Character
-	add_child(brute)
-	
+func test_the_global_tint_reaches_the_shader() -> void:
+	var colors: CharacterColorComponent = (spawn(MELEE_SCENE) as Character).color_component
 	await get_tree().process_frame
-	
-	if brute.color_component == null:
-		printerr("TEST FAILED: EnemyBrute color_component is null.")
-		get_tree().quit(1)
-		return
-	
-	var brute_body_meshes: Array[MeshInstance3D] = brute.color_component.get_body_meshes()
-	if brute_body_meshes.size() != 6:
-		printerr("TEST FAILED: Expected 6 body meshes on EnemyBrute, got: %d" % brute_body_meshes.size())
-		get_tree().quit(1)
-		return
-	
-	for mi: MeshInstance3D in brute_body_meshes:
-		if mi.material_override != brute.color_component.material:
-			printerr("TEST FAILED: Brute mesh %s material_override does not match component material." % mi.name)
-			get_tree().quit(1)
-			return
-	
-	print("[OK] EnemyBrute wired color_component verified (6/6 body meshes overridden).")
-	brute.queue_free()
+	colors.set_global_tint(TEST_TINT)
+	check_eq(colors.material.get_shader_parameter("global_tint"), TEST_TINT, "the tint should reach the shader")
 
-	# ---------------------------------------------------------
-	# PART 5: Player Scene Wiring & Player Palette Mode
-	# ---------------------------------------------------------
-	print("\n>>> PART 5: Player Character Scene Wiring")
-	var player_scene: PackedScene = load("res://Player/player.tscn") as PackedScene
-	var player: Character = player_scene.instantiate() as Character
-	add_child(player)
-	
-	await get_tree().process_frame
-	
-	if player.color_component == null:
-		printerr("TEST FAILED: Player color_component is null.")
-		get_tree().quit(1)
-		return
-	
-	var player_body_meshes: Array[MeshInstance3D] = player.color_component.get_body_meshes()
-	if player_body_meshes.size() != 6:
-		printerr("TEST FAILED: Expected 6 body meshes on Player, got: %d" % player_body_meshes.size())
-		get_tree().quit(1)
-		return
-	
-	for mi: MeshInstance3D in player_body_meshes:
-		if mi.material_override != player.color_component.material:
-			printerr("TEST FAILED: Player mesh %s material_override does not match component material." % mi.name)
-			get_tree().quit(1)
-			return
-	
-	# Verify LazerSword mesh is NOT overridden
-	var sword_mesh: MeshInstance3D = player.find_child("LazerSword", true, false) as MeshInstance3D
-	if sword_mesh and sword_mesh.material_override == player.color_component.material:
-		printerr("TEST FAILED: Player LazerSword was incorrectly overridden by CharacterColorComponent!")
-		get_tree().quit(1)
-		return
-	
-	# Verify SlashVFX mesh is NOT overridden
-	var slash_mesh: MeshInstance3D = player.find_child("SlashVFX", true, false) as MeshInstance3D
-	if slash_mesh and slash_mesh.material_override == player.color_component.material:
-		printerr("TEST FAILED: Player SlashVFX was incorrectly overridden by CharacterColorComponent!")
-		get_tree().quit(1)
-		return
-	
-	var mode_val: Variant = player.color_component.material.get_shader_parameter("palette_mode")
-	if int(mode_val) != 1:
-		printerr("TEST FAILED: Player palette_mode should be 1, got: %s" % str(mode_val))
-		get_tree().quit(1)
-		return
-	
-	print("[OK] Player wired color_component verified (palette_mode = PLAYER); LazerSword & SlashVFX unaffected.")
-	player.queue_free()
 
-	# ---------------------------------------------------------
-	# PART 6: Other Concrete Enemies (Melee & Firebomber)
-	# ---------------------------------------------------------
-	print("\n>>> PART 6: Inherited Enemies Verification (Melee & Firebomber)")
-	var melee_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
-	var melee: Character = melee_scene.instantiate() as Character
-	add_child(melee)
-	
-	var firebomber_scene: PackedScene = load("res://Enemy/firebomber_enemy.tscn") as PackedScene
-	var firebomber: Character = firebomber_scene.instantiate() as Character
-	add_child(firebomber)
-	
-	await get_tree().process_frame
-	
-	if melee.color_component == null:
-		printerr("TEST FAILED: MeleeEnemy inherited color_component is null.")
-		get_tree().quit(1)
-		return
-	if firebomber.color_component == null:
-		printerr("TEST FAILED: FirebomberEnemy inherited color_component is null.")
-		get_tree().quit(1)
-		return
-	
-	var fb_grad: Gradient = firebomber.color_component.gradients[7]
-	if fb_grad == null or fb_grad.colors.size() < 2 or fb_grad.colors[0].g < 0.4:
-		printerr("TEST FAILED: Expected Firebomber slot 7 to be customized Orange gradient, got: %s" % str(fb_grad))
-		get_tree().quit(1)
-		return
-	print("[OK] FirebomberEnemy orange gradient on slot 7 verified (color: %s)." % str(fb_grad.colors[0]))
-	
-	# ---------------------------------------------------------
-	# PART 7: Pass-Through & Gradient Mask Verification
-	# ---------------------------------------------------------
-	print("\n>>> PART 7: Pass-Through & Gradient Mask Verification")
-	var fb_mask: Variant = firebomber.color_component.material.get_shader_parameter("gradient_mask")
-	if int(fb_mask) != (1 << 7):
-		printerr("TEST FAILED: Firebomber gradient_mask should be %d (slot 7 only), got: %s" % [1 << 7, str(fb_mask)])
-		get_tree().quit(1)
-		return
-	print("[OK] Firebomber gradient_mask = 128 (slot 7 only; slots 0..6 pass-through untouched).")
-	
-	var pl_test: Character = player_scene.instantiate() as Character
-	add_child(pl_test)
-	await get_tree().process_frame
-	var pl_mask: Variant = pl_test.color_component.material.get_shader_parameter("gradient_mask")
-	if int(pl_mask) != 0:
-		printerr("TEST FAILED: Player gradient_mask should be 0 by default (face & outfit untouched), got: %s" % str(pl_mask))
-		get_tree().quit(1)
-		return
-	print("[OK] Player gradient_mask = 0 (base texture & face 100% preserved).")
-	pl_test.queue_free()
-	
-	print("[OK] MeleeEnemy and FirebomberEnemy inherited color_component verified.")
-	melee.queue_free()
-	firebomber.queue_free()
+func test_a_component_exposes_one_slot_per_palette_column() -> void:
+	var colors: CharacterColorComponent = autofree(CharacterColorComponent.new()) as CharacterColorComponent
+	add_child(colors)
+	check_eq(colors.gradients.size(), SLOT_COUNT, "a component should expose one gradient slot per palette column")
+	check(colors.material != null and colors.material.shader != null, "a component should build its palette material")
 
-	print("\nALL CHARACTER RECOLOR TESTS PASSED SUCCESSFULLY!")
-	get_tree().quit(0)
+
+func _mask(colors: CharacterColorComponent) -> int:
+	return int(colors.material.get_shader_parameter("gradient_mask"))
+
+
+## The mask the assigned (non-null) gradient slots should produce.
+func _expected_mask(colors: CharacterColorComponent) -> int:
+	var mask: int = 0
+	for slot: int in range(colors.gradients.size()):
+		if colors.gradients[slot] != null:
+			mask |= 1 << slot
+	return mask

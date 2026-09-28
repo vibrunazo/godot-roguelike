@@ -1,328 +1,158 @@
-## Comprehensive behavioral contract test suite for the Item and Equipment system.
-## Tests relative stat deltas, unequip cleanup, consumable lifecycle, currency drops,
-## purchase limits, and visual bone attachments without asserting hardcoded balance numbers.
-extends Node
+## Items and equipment:
+## - equipping gear changes the stat by the effect's magnitude; unequipping
+##   restores it exactly,
+## - every gear item in the shop pool changes the stats it targets when
+##   equipped and restores them exactly when unequipped,
+## - a consumable heals and is never kept as equipment,
+## - defeating an enemy awards its gold_drop; gold can be spent down to zero
+##   but never below,
+## - purchase limits: an item can be bought max_purchases times, then no more,
+## - an item visual attaches to a bone of the character and detaches cleanly,
+## - the persistent HUD is the only gold display and follows the gold count,
+## - leaving the shop needs no purchase. That changes the scene, so it runs
+##   last.
+## Magnitudes, gold amounts and limits are test-owned or read from the items.
+extends "res://test/lib/test_suite.gd"
+
+const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+const SHOP_SCENE: PackedScene = preload("res://UserInterface/upgrade_shop.tscn")
+const LEVEL_TEMPLATE_SCENE: PackedScene = preload("res://Levels/level_template.tscn")
+## Test-owned values.
+const TEST_MAGNITUDE: float = 35.0
+const TEST_HEAL_PERCENT: float = 25.0
+const TEST_GOLD: int = 12
+const TEST_STACK: int = 3
+## GameplayEffect.operation value for a flat addition ("ADD").
+const OPERATION_ADD: int = 0
+
+var _player: Character
+var _saved_gold: int = 0
 
 
-func _ready() -> void:
-	print("--- RUNNING ITEM SYSTEM BEHAVIORAL TEST ---")
-
-	var player_scene: PackedScene = load("res://Player/player.tscn")
-	var player: Character = player_scene.instantiate() as Character
-	add_child(player)
+func before_each() -> void:
+	_saved_gold = ProgressionState.currency_gold
+	_player = spawn(PLAYER_SCENE) as Character
 	await get_tree().process_frame
 
-	if player.equipment_component == null:
-		printerr("TEST FAILED: Player has no EquipmentComponent attached.")
-		get_tree().quit(1)
-		return
-	print("ok: Player EquipmentComponent resolved.")
 
-	# ---------------------------------------------------------
-	# PART 1: Gear Equip and Dynamic Stat Application
-	# ---------------------------------------------------------
-	print("\n>>> PART 1: Gear Equip and Dynamic Stat Application")
-	var test_effect: GameplayEffect = GameplayEffect.new()
-	test_effect.effect_name = "test_gear_effect"
-	test_effect.target_attribute = AttributeComponent.STAT_ATTACK
-	test_effect.operation = 0 # ADD
-	test_effect.magnitude = 35.0
+func after_each() -> void:
+	ProgressionState.currency_gold = _saved_gold
+	ProgressionState.currency_gold_changed.emit(_saved_gold)
 
-	var test_gear: GearItemResource = GearItemResource.new()
-	test_gear.id = &"test_gear"
-	test_gear.title = "Test Gear"
-	test_gear.gameplay_effects.append(test_effect)
 
-	var initial_atk: float = player.attribute_component.get_current(AttributeComponent.STAT_ATTACK)
-	var equip_success: bool = player.equipment_component.equip_gear(test_gear)
-	if not equip_success or not player.equipment_component.is_equipped(test_gear):
-		printerr("TEST FAILED: equip_gear returned false or item not marked equipped.")
-		get_tree().quit(1)
-		return
+func test_equipping_gear_adds_its_effect_and_unequipping_restores_the_stat() -> void:
+	var gear: GearItemResource = _gear(&"test_gear", AttributeComponent.STAT_ATTACK, TEST_MAGNITUDE)
+	var before: float = _stat(AttributeComponent.STAT_ATTACK)
+	check(_player.equipment_component.equip_gear(gear) and _player.equipment_component.is_equipped(gear), "equipping should succeed")
+	check_approx(_stat(AttributeComponent.STAT_ATTACK), before + TEST_MAGNITUDE, "equipping should add the effect's magnitude")
+	check(_player.equipment_component.unequip_gear(gear) and not _player.equipment_component.is_equipped(gear), "unequipping should succeed")
+	check_approx(_stat(AttributeComponent.STAT_ATTACK), before, "unequipping should restore the stat exactly")
 
-	var atk_equipped: float = player.attribute_component.get_current(AttributeComponent.STAT_ATTACK)
-	if not is_equal_approx(atk_equipped, initial_atk + test_effect.magnitude):
-		printerr("TEST FAILED: Equipped gear did not modify stat by relative magnitude. Expected: ", initial_atk + test_effect.magnitude, ", got: ", atk_equipped)
-		get_tree().quit(1)
-		return
-	print("ok: Gear successfully equipped, stat modified by dynamic relative delta.")
 
-	# ---------------------------------------------------------
-	# PART 2: Gear Unequip and Reversal
-	# ---------------------------------------------------------
-	print("\n>>> PART 2: Gear Unequip and Stat Reversal")
-	var unequip_success: bool = player.equipment_component.unequip_gear(test_gear)
-	if not unequip_success or player.equipment_component.is_equipped(test_gear):
-		printerr("TEST FAILED: unequip_gear returned false or item remains equipped.")
-		get_tree().quit(1)
-		return
+func test_every_shop_gear_applies_and_reverts_its_stats() -> void:
+	var tested: int = 0
+	for item: ItemResource in GlobalVars.items:
+		var gear: GearItemResource = item as GearItemResource
+		if gear == null or gear.gameplay_effects.is_empty():
+			continue
+		tested += 1
+		var baseline: Dictionary[StringName, float] = {}
+		for effect: GameplayEffect in gear.gameplay_effects:
+			baseline[effect.target_attribute] = _stat(effect.target_attribute)
+		if not check(_player.equipment_component.apply_item(gear), "%s should equip" % gear.id):
+			continue
+		for attribute: StringName in baseline:
+			check(not is_equal_approx(_stat(attribute), baseline[attribute]), "%s should change %s" % [gear.id, attribute])
+		_player.equipment_component.unequip_gear(gear)
+		for attribute: StringName in baseline:
+			check_approx(_stat(attribute), baseline[attribute], "unequipping %s should restore %s" % [gear.id, attribute])
+	check(tested > 0, "setup: the shop pool should offer gear with effects")
 
-	var atk_unequipped: float = player.attribute_component.get_current(AttributeComponent.STAT_ATTACK)
-	if not is_equal_approx(atk_unequipped, initial_atk):
-		printerr("TEST FAILED: Unequipping gear did not cleanly restore original stat value. Expected: ", initial_atk, ", got: ", atk_unequipped)
-		get_tree().quit(1)
-		return
-	print("ok: Gear successfully unequipped, stat cleanly restored to baseline.")
 
-	# ---------------------------------------------------------
-	# PART 3: Consumable Application & Lifecycle
-	# ---------------------------------------------------------
-	print("\n>>> PART 3: Consumable Application & Lifecycle")
-	var max_hp: float = player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
-	var damage_amount: float = max_hp * 0.3
-	player.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, damage_amount)
-	var hp_before: float = player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+func test_a_consumable_heals_and_is_not_kept() -> void:
+	var attributes: AttributeComponent = _player.attribute_component
+	attributes.damage_pool(AttributeComponent.POOL_HEALTH, attributes.get_current(AttributeComponent.STAT_MAX_HEALTH) * 0.5)
+	var before: float = attributes.get_current(AttributeComponent.POOL_HEALTH)
+	var potion: ConsumableItemResource = ConsumableItemResource.new()
+	potion.id = &"test_potion"
+	potion.heal_percent = TEST_HEAL_PERCENT
+	check(_player.equipment_component.use_consumable(potion), "using the consumable should succeed")
+	check(attributes.get_current(AttributeComponent.POOL_HEALTH) > before, "the consumable should heal")
+	check(not _player.equipment_component.is_equipped(potion), "a consumable must not be kept as equipment")
 
-	var test_potion: ConsumableItemResource = ConsumableItemResource.new()
-	test_potion.id = &"test_potion"
-	test_potion.title = "Test Potion"
-	test_potion.heal_percent = 25.0
 
-	var consume_success: bool = player.equipment_component.use_consumable(test_potion)
-	if not consume_success:
-		printerr("TEST FAILED: use_consumable returned false.")
-		get_tree().quit(1)
-		return
-
-	var hp_after: float = player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-	if hp_after <= hp_before:
-		printerr("TEST FAILED: Consumable did not restore health pool. Got: ", hp_after, ", was: ", hp_before)
-		get_tree().quit(1)
-		return
-
-	if player.equipment_component.is_equipped(test_potion):
-		printerr("TEST FAILED: Consumable should not be retained in equipped_gear.")
-		get_tree().quit(1)
-		return
-	print("ok: Consumable successfully healed character without persisting in equipped gear.")
-
-	# ---------------------------------------------------------
-	# PART 4: Currency & Enemy Defeat Gold Drops
-	# ---------------------------------------------------------
-	print("\n>>> PART 4: Currency & Enemy Defeat Gold Drops")
-	ProgressionState.reset_run()
-	if ProgressionState.currency_gold != 0:
-		printerr("TEST FAILED: ProgressionState.currency_gold not 0 after reset_run.")
-		get_tree().quit(1)
-		return
-
-	var enemy_scene: PackedScene = load("res://Enemy/melee_enemy.tscn")
-	var enemy: Character = enemy_scene.instantiate() as Character
-	add_child(enemy)
+func test_defeating_an_enemy_awards_its_gold_and_gold_never_goes_negative() -> void:
+	var enemy: Character = spawn(MELEE_SCENE) as Character
 	await get_tree().process_frame
-
-	var test_gold_drop: int = 12
-	var enemy_res: EnemyResource = EnemyResource.new()
-	enemy_res.gold_drop = test_gold_drop
-	enemy.enemy_resource = enemy_res
-
-	var gold_before_kill: int = ProgressionState.currency_gold
+	var resource: EnemyResource = EnemyResource.new()
+	resource.gold_drop = TEST_GOLD
+	enemy.enemy_resource = resource
+	var before: int = ProgressionState.currency_gold
 	enemy.on_defeat()
-	var gold_after_kill: int = ProgressionState.currency_gold
-	if gold_after_kill != gold_before_kill + test_gold_drop:
-		printerr("TEST FAILED: Enemy defeat did not award enemy_resource.gold_drop. Expected: ", gold_before_kill + test_gold_drop, ", got: ", gold_after_kill)
-		get_tree().quit(1)
-		return
-	print("ok: Enemy defeat awarded relative gold drop to ProgressionState.")
+	check_eq(ProgressionState.currency_gold, before + TEST_GOLD, "a defeat should award the enemy's gold_drop")
+	check(ProgressionState.spend_gold(ProgressionState.currency_gold), "all gold should be spendable")
+	check_eq(ProgressionState.currency_gold, 0, "spending everything should leave zero")
+	check(not ProgressionState.spend_gold(1), "spending more than the balance should be refused")
 
-	# Test spend_gold
-	var spend_success: bool = ProgressionState.spend_gold(test_gold_drop)
-	if not spend_success or ProgressionState.currency_gold != 0:
-		printerr("TEST FAILED: spend_gold failed to deduct exact balance.")
-		get_tree().quit(1)
-		return
-	var overspend: bool = ProgressionState.spend_gold(1)
-	if overspend:
-		printerr("TEST FAILED: spend_gold allowed spending more than available balance.")
-		get_tree().quit(1)
-		return
-	print("ok: Gold spending and insufficient balance guards verified.")
 
-	enemy.queue_free()
+func test_an_item_can_be_bought_up_to_its_limit_and_no_more() -> void:
+	ProgressionState.add_gold(1000)
+	for limit: int in [1, TEST_STACK]:
+		var gear: GearItemResource = _gear(StringName("test_limit_%d" % limit), AttributeComponent.STAT_ATTACK, TEST_MAGNITUDE)
+		gear.cost = 1
+		gear.max_purchases = limit
+		for purchase: int in range(limit):
+			check(_player.equipment_component.can_purchase(gear), "purchase %d of %d should be allowed" % [purchase + 1, limit])
+			_player.equipment_component.record_purchase(gear)
+		check_eq(_player.equipment_component.get_purchase_count(gear), limit, "the purchase count should reach the limit")
+		check(not _player.equipment_component.can_purchase(gear), "a purchase past max_purchases (%d) should be refused" % limit)
 
-	# ---------------------------------------------------------
-	# PART 5: Purchase Limits & Stock Management
-	# ---------------------------------------------------------
-	print("\n>>> PART 5: Purchase Limits & Stock Management")
-	var unique_gear: GearItemResource = GearItemResource.new()
-	unique_gear.id = &"unique_sword"
-	unique_gear.cost = 10
-	unique_gear.max_purchases = 1
 
-	ProgressionState.add_gold(100)
-	if not player.equipment_component.can_purchase(unique_gear):
-		printerr("TEST FAILED: can_purchase should be true when player has gold and item not purchased.")
-		get_tree().quit(1)
-		return
+func test_an_item_visual_attaches_to_a_bone_and_detaches() -> void:
+	var visual: ItemVisual = ItemVisual.new()
+	visual.target_bone = "hand.r"
+	visual.attach_to_character(_player)
+	check(visual.get_parent() is BoneAttachment3D, "the visual should hang from a bone attachment")
+	var visual_ref: WeakRef = weakref(visual)
+	visual.detach_from_character()
+	await wait_until(func() -> bool: return visual_ref.get_ref() == null, "detaching should free the visual", 5)
 
-	player.equipment_component.record_purchase(unique_gear)
-	if player.equipment_component.get_purchase_count(unique_gear) != 1:
-		printerr("TEST FAILED: get_purchase_count did not return 1.")
-		get_tree().quit(1)
-		return
 
-	if player.equipment_component.can_purchase(unique_gear):
-		printerr("TEST FAILED: can_purchase should be false once max_purchases reached.")
-		get_tree().quit(1)
-		return
-	print("ok: Single purchase limit (unique gear) enforced.")
-
-	# Stackable gear test
-	var stackable_gear: GearItemResource = GearItemResource.new()
-	stackable_gear.id = &"stackable_ring"
-	stackable_gear.cost = 10
-	stackable_gear.max_purchases = 3
-
-	for i: int in 3:
-		if not player.equipment_component.can_purchase(stackable_gear):
-			printerr("TEST FAILED: stackable_gear should be purchasable at iteration ", i)
-			get_tree().quit(1)
-			return
-		player.equipment_component.record_purchase(stackable_gear)
-
-	if player.equipment_component.can_purchase(stackable_gear):
-		printerr("TEST FAILED: stackable_gear should not be purchasable after 3 purchases.")
-		get_tree().quit(1)
-		return
-	print("ok: Stackable purchase limit (3 stacks) enforced.")
-
-	# ---------------------------------------------------------
-	# PART 6: Winged Boots Shop Item & Single-Purchase Speed Gear
-	# ---------------------------------------------------------
-	print("\n>>> PART 6: Winged Boots Shop Item & Single-Purchase Speed Gear")
-	var wing_boots: GearItemResource = load("res://Items/ItemResources/item_wing_boots.tres") as GearItemResource
-	if wing_boots == null:
-		printerr("TEST FAILED: Could not load res://Items/ItemResources/item_wing_boots.tres as GearItemResource.")
-		get_tree().quit(1)
-		return
-	print("ok: Winged Boots item registered on GlobalVars as a GearItemResource.")
-
-	if wing_boots.max_purchases != 1:
-		printerr("TEST FAILED: Winged Boots max_purchases should be 1 (buy once). Got: ", wing_boots.max_purchases)
-		get_tree().quit(1)
-		return
-	print("ok: Winged Boots is a buy-once item (max_purchases == 1).")
-
-	if not GlobalVars.items.has(wing_boots):
-		printerr("TEST FAILED: Winged Boots not present in GlobalVars.items shop pool.")
-		get_tree().quit(1)
-		return
-	print("ok: Winged Boots offered in the UpgradeShop item pool.")
-
-	# Apply it via the equipment component and verify a relative speed delta.
-	var initial_speed: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
-	var apply_success: bool = player.equipment_component.apply_item(wing_boots)
-	if not apply_success or not player.equipment_component.is_equipped(wing_boots):
-		printerr("TEST FAILED: Winged Boots did not equip via EquipmentComponent.")
-		get_tree().quit(1)
-		return
-
-	var speed_after: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
-	if not is_equal_approx(speed_after, initial_speed + wing_boots.gameplay_effects[0].magnitude):
-		printerr("TEST FAILED: Winged Boots did not raise speed by its relative magnitude. Expected: ", initial_speed + wing_boots.gameplay_effects[0].magnitude, ", got: ", speed_after)
-		get_tree().quit(1)
-		return
-	print("ok: Winged Boots raised movement speed by its relative magnitude.")
-
-	player.equipment_component.unequip_gear(wing_boots)
-	var speed_restored: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
-	if not is_equal_approx(speed_restored, initial_speed):
-		printerr("TEST FAILED: Unequipping Winged Boots did not restore baseline speed. Expected: ", initial_speed, ", got: ", speed_restored)
-		get_tree().quit(1)
-		return
-	print("ok: Unequipping Winged Boots cleanly restored baseline speed.")
-
-	# ---------------------------------------------------------
-	# PART 7: Visual Scene Bone Attachment & Cleanup
-	# ---------------------------------------------------------
-	print("\n>>> PART 6: Visual Scene Bone Attachment & Cleanup")
-	var visual_gear: GearItemResource = GearItemResource.new()
-	visual_gear.id = &"visual_hat"
-	var custom_visual: ItemVisual = ItemVisual.new()
-	custom_visual.target_bone = "hand.r"
-
-	# Package into PackedScene dynamically for test
-	custom_visual.attach_to_character(player)
-	var parent_slot: Node = custom_visual.get_parent()
-	if parent_slot == null or not (parent_slot is BoneAttachment3D):
-		printerr("TEST FAILED: ItemVisual did not attach under a BoneAttachment3D. Parent: ", parent_slot)
-		get_tree().quit(1)
-		return
-	print("ok: ItemVisual dynamically discovered or created BoneAttachment3D on skeleton.")
-
-	custom_visual.detach_from_character()
+func test_the_hud_is_the_only_gold_display_and_follows_the_gold() -> void:
+	var shop: Control = spawn(SHOP_SCENE) as Control
 	await get_tree().process_frame
-	print("ok: ItemVisual detachment cleanly queued visual for deletion.")
-
-	player.queue_free()
-
-	# ---------------------------------------------------------
-	# PART 7: UpgradeShop Cancel / Leave & Gold Display
-	# ---------------------------------------------------------
-	print("\n>>> PART 7: UpgradeShop Cancel / Leave & Gold Display")
-	var shop_scene: PackedScene = load("res://UserInterface/upgrade_shop.tscn") as PackedScene
-	var shop_inst: Control = shop_scene.instantiate() as Control
-	add_child(shop_inst)
+	check(shop.get_node_or_null("%GoldLabel") == null, "the shop must not keep its own gold display")
+	var level: Node3D = spawn(LEVEL_TEMPLATE_SCENE) as Node3D
+	(level.get_node("WaveObjective") as WaveObjective).stop_spawning()
 	await get_tree().process_frame
-
-	var leave_btn: Button = shop_inst.get_node_or_null("%LeaveButton") as Button
-	if leave_btn == null:
-		printerr("TEST FAILED: UpgradeShop missing LeaveButton.")
-		get_tree().quit(1)
+	var hud: HUD = get_tree().get_first_node_in_group("hud") as HUD
+	if not check(hud != null, "a level should show the persistent HUD"):
 		return
-	print("ok: UpgradeShop LeaveButton present.")
+	ProgressionState.add_gold(TEST_GOLD)
+	check(hud.gold_label.text.contains(str(ProgressionState.currency_gold)), "the HUD should show the new gold count")
 
-	var shop_gold_lbl: RichTextLabel = shop_inst.get_node_or_null("%GoldLabel") as RichTextLabel
-	if shop_gold_lbl != null:
-		printerr("TEST FAILED: UpgradeShop must not keep its own gold label; the persistent HUD is the single gold count.")
-		get_tree().quit(1)
-		return
-	print("ok: UpgradeShop has no separate gold label (persistent HUD is the single gold count).")
 
-	if shop_inst.get("exiting_shop") != false:
-		printerr("TEST FAILED: UpgradeShop exiting_shop should be false initially.")
-		get_tree().quit(1)
-		return
-
-	# Test leave_shop without purchase
-	shop_inst.call("leave_shop")
-	if shop_inst.get("exiting_shop") != true:
-		printerr("TEST FAILED: leave_shop() did not set exiting_shop to true.")
-		get_tree().quit(1)
-		return
-	print("ok: UpgradeShop leave_shop() cleanly exits without requiring purchase.")
-	shop_inst.queue_free()
+## Changes the scene: keep it the last test.
+func test_leaving_the_shop_needs_no_purchase() -> void:
+	var shop: Control = spawn(SHOP_SCENE) as Control
 	await get_tree().process_frame
+	check(shop.get("exiting_shop") == false, "setup: the shop should start open")
+	(shop.get_node("%LeaveButton") as Button).pressed.emit()
+	check(shop.get("exiting_shop") == true, "the leave button should exit the shop without a purchase")
 
-	# ---------------------------------------------------------
-	# PART 8: Arena Level HUD Presence & In-Level Integration
-	# ---------------------------------------------------------
-	print("\n>>> PART 8: Arena Level HUD Presence & In-Level Integration")
-	var template_scene: PackedScene = load("res://Levels/level_template.tscn") as PackedScene
-	var level_inst: Node3D = template_scene.instantiate() as Node3D
-	add_child(level_inst)
-	await get_tree().process_frame
 
-	var huds: Array[Node] = get_tree().get_nodes_in_group("hud")
-	var hud_node: HUD = huds[0] as HUD if not huds.is_empty() else null
-	if hud_node == null:
-		printerr("TEST FAILED: LevelTemplate did not register the persistent HUD overlay.")
-		get_tree().quit(1)
-		return
-	print("ok: LevelTemplate registers the persistent HUD overlay (owned by UI autoload).")
+func _gear(id: StringName, attribute: StringName, magnitude: float) -> GearItemResource:
+	var effect: GameplayEffect = GameplayEffect.new()
+	effect.effect_name = String(id) + "_effect"
+	effect.target_attribute = attribute
+	effect.operation = OPERATION_ADD
+	effect.magnitude = magnitude
+	var gear: GearItemResource = GearItemResource.new()
+	gear.id = id
+	gear.gameplay_effects.append(effect)
+	return gear
 
-	var test_gold_val: int = 42
-	ProgressionState.currency_gold = test_gold_val
-	ProgressionState.currency_gold_changed.emit(test_gold_val)
-	if not hud_node.gold_label.text.contains(str(test_gold_val)):
-		printerr("TEST FAILED: HUD gold_label did not update with gold amount. Got: ", hud_node.gold_label.text)
-		get_tree().quit(1)
-		return
-	print("ok: Arena HUD dynamically updates from ProgressionState currency.")
-	level_inst.queue_free()
-	await get_tree().process_frame
 
-	print("\n====================================================")
-	print("  ALL ITEM SYSTEM BEHAVIORAL TESTS PASSED!          ")
-	print("====================================================")
-	get_tree().quit(0)
+func _stat(attribute: StringName) -> float:
+	return _player.attribute_component.get_current(attribute)

@@ -1,232 +1,109 @@
-extends Node3D
+## Fire trap (a floor fire that is always burning):
+## - a character touching it is hurt at once, then not again until
+##   damage_interval has passed (no stunlock), then again while it lingers,
+## - it hurts the player too,
+## - resizing it grows the area that hurts, its hitbox and ground plate, and
+##   scales its particle count with the area,
+## - the ground plate can be hidden,
+## - a fire with a duration goes out when it ends: it stops hurting and stops
+##   emitting.
+## Damage intervals and durations are read from the trap or set by the test.
+extends "res://test/lib/test_suite.gd"
 
-var _trap_strikes: int = 0
+const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+const TRAP_SCENE: PackedScene = preload("res://Hazards/fire_trap.tscn")
+## Where the trap sits, away from the arena's spawn markers.
+const TRAP_SPOT: Vector3 = Vector3(8.0, 0.0, -8.0)
+## Physics ticks allowed for a first touch to register.
+const TOUCH_FRAMES: int = 10
+## Test-owned sizes and duration.
+const LARGE_SIZE: Vector2 = Vector2(3.0, 2.0)
+const TEST_DURATION: float = 0.2
+## Offset from the trap center that is outside a 1 x 1 fire but inside a
+## LARGE_SIZE one, even counting the character's capsule radius.
+const EDGE_OFFSET: float = 1.2
 
-func _on_trap_test_strike(_value: float) -> void:
-	_trap_strikes += 1
+var _arena: Node3D
+var _trap: FireTrap
 
-func _ready() -> void:
-	print("\n--- RUNNING FIRE TRAP HAZARD TEST ---")
 
-	var trap_scene: PackedScene = load("res://Hazards/fire_trap.tscn")
-	if trap_scene == null:
-		printerr("TEST FAILED: Could not load res://Hazards/fire_trap.tscn")
-		get_tree().quit(1)
+func before_each() -> void:
+	_arena = load_arena()
+	_trap = spawn(TRAP_SCENE, _arena, _trap_center()) as FireTrap
+	await wait_physics_frames(1)
+
+
+func test_touching_the_fire_hurts_at_once_and_then_only_every_damage_interval() -> void:
+	var enemy: Character = _spawn_enemy(_standing(Vector3.ZERO))
+	var strikes: Array[int] = [0]
+	enemy.hurtbox.struck.connect(func(_damage: float) -> void: strikes[0] += 1)
+	if not await wait_until(func() -> bool: return strikes[0] == 1, "touching the fire should hurt at once", TOUCH_FRAMES):
 		return
-
-	# Floor for characters to stand on
-	var floor_body := StaticBody3D.new()
-	var floor_col := CollisionShape3D.new()
-	var floor_box := BoxShape3D.new()
-	floor_box.size = Vector3(20.0, 1.0, 20.0)
-	floor_col.shape = floor_box
-	floor_col.position = Vector3(0.0, -0.5, 0.0)
-	floor_body.add_child(floor_col)
-	add_child(floor_body)
-
-	var trap: FireTrap = trap_scene.instantiate() as FireTrap
-	add_child(trap)
-	trap.global_position = Vector3.ZERO
-
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-
-	# ---------------------------------------------------------
-	# PART 1: Node & Configuration Checks
-	# ---------------------------------------------------------
-	print("\n>>> PART 1: Node & Configuration Checks")
-	if trap.damage_hitbox == null:
-		printerr("TEST FAILED: DamageHitbox node not found.")
-		get_tree().quit(1)
-		return
-
-	if trap.damage_hitbox.collision_mask != 192:
-		printerr("TEST FAILED: Expected DamageHitbox collision_mask == 192, got: ", trap.damage_hitbox.collision_mask)
-		get_tree().quit(1)
-		return
-
-	if not trap.damage_hitbox.monitoring:
-		printerr("TEST FAILED: DamageHitbox should be monitoring = true initially (always active).")
-		get_tree().quit(1)
-		return
-	print("DamageHitbox mask (192) and always-active monitoring verified.")
-
-	if trap.attack_component == null:
-		printerr("TEST FAILED: AttackComponent not found on DamageHitbox.")
-		get_tree().quit(1)
-		return
-
-	if not is_equal_approx(trap.attack_component.damage, trap.damage):
-		printerr("TEST FAILED: Expected AttackComponent.damage == trap.damage (", trap.damage, "), got: ", trap.attack_component.damage)
-		get_tree().quit(1)
-		return
-
-	if not is_equal_approx(trap.attack_component.rehit_interval, trap.damage_interval):
-		printerr("TEST FAILED: Expected AttackComponent.rehit_interval == trap.damage_interval (", trap.damage_interval, "), got: ", trap.attack_component.rehit_interval)
-		get_tree().quit(1)
-		return
-	print("AttackComponent damage (", trap.damage, ") and rehit_interval (", trap.damage_interval, "s) verified.")
-
-	# ---------------------------------------------------------
-	# PART 2: Dynamic Sizing Checks
-	# ---------------------------------------------------------
-	print("\n>>> PART 2: Dynamic Sizing Verification")
-	trap.set_trap_size(Vector2(3.0, 2.0))
-	var box_shape: BoxShape3D = trap.collision_shape.shape as BoxShape3D
-	if box_shape.size != Vector3(3.0, 1.0, 2.0):
-		printerr("TEST FAILED: CollisionShape size not updated properly. Got: ", box_shape.size)
-		get_tree().quit(1)
-		return
-
-	var mesh_box: BoxMesh = trap.ground_mesh.mesh as BoxMesh
-	if mesh_box.size != Vector3(3.0, 0.02, 2.0):
-		printerr("TEST FAILED: GroundMesh size not updated properly. Got: ", mesh_box.size)
-		get_tree().quit(1)
-		return
-
-	var part_mat: ParticleProcessMaterial = trap.particles.process_material as ParticleProcessMaterial
-	if part_mat.emission_box_extents != Vector3(3.0 * 0.42, 0.05, 2.0 * 0.42):
-		printerr("TEST FAILED: Particle emission extents not updated properly. Got: ", part_mat.emission_box_extents)
-		get_tree().quit(1)
-		return
-	var expected_particles: int = int(round(float(trap.base_particle_amount) * 3.0 * 2.0))
-	if trap.particles.amount != expected_particles:
-		printerr("TEST FAILED: Particle amount should scale with base_particle_amount. Expected: ", expected_particles, " got: ", trap.particles.amount)
-		get_tree().quit(1)
-		return
-	print("Dynamic sizing properly scaled hitbox, mesh, particle emission volume, and particle amount (", trap.particles.amount, ").")
-
-	# Reset back to default 1.0 x 1.0 for gameplay test
-	trap.set_trap_size(Vector2(1.0, 1.0))
-	if trap.particles.amount != trap.base_particle_amount:
-		printerr("TEST FAILED: Resetting to 1x1 should restore base_particle_amount. Expected: ", trap.base_particle_amount, " got: ", trap.particles.amount)
-		get_tree().quit(1)
-		return
-
-	# Test show_ground_mesh toggle
-	trap.show_ground_mesh = false
-	if trap.ground_mesh.visible:
-		printerr("TEST FAILED: GroundMesh should be hidden when show_ground_mesh = false.")
-		get_tree().quit(1)
-		return
-	trap.show_ground_mesh = true
-	if not trap.ground_mesh.visible:
-		printerr("TEST FAILED: GroundMesh should be visible when show_ground_mesh = true.")
-		get_tree().quit(1)
-		return
-	print("GroundMesh visibility toggling verified.")
-
-	# ---------------------------------------------------------
-	# PART 3: Instant Contact Damage & Lingering Interval (Enemy)
-	# ---------------------------------------------------------
-	print("\n>>> PART 3: Instant Contact Damage & Lingering Re-Hit Interval (Enemy)")
-	var enemy_scene: PackedScene = load("res://Enemy/melee_enemy.tscn")
-	var enemy: Character = enemy_scene.instantiate() as Character
-	add_child(enemy)
-	enemy.global_position = Vector3(0.0, 1.0, 0.0)
-
-	var enemy_attrs: AttributeComponent = enemy.get_node("AttributeComponent") as AttributeComponent
-	var initial_hp: float = enemy_attrs.get_current(AttributeComponent.POOL_HEALTH)
-
-	# Wait a couple physics frames for instant contact damage
-	for i: int in range(3):
+	var interval_ticks: int = floori(_trap.damage_interval * Engine.physics_ticks_per_second)
+	var early: bool = false
+	for tick: int in range(interval_ticks - 2):
 		await get_tree().physics_frame
+		early = early or strikes[0] > 1
+	check(not early, "the fire must not hit again before damage_interval (no stunlock)")
+	await wait_until(func() -> bool: return strikes[0] > 1, "a character lingering in the fire should be hurt again after damage_interval", TOUCH_FRAMES + 5)
 
-	if enemy_attrs.get_current(AttributeComponent.POOL_HEALTH) >= initial_hp:
-		printerr("TEST FAILED: Enemy did not take immediate damage on contact with fire trap!")
-		get_tree().quit(1)
+
+func test_the_fire_hurts_the_player_too() -> void:
+	var player: Character = spawn(PLAYER_SCENE, _arena, _standing(Vector3.ZERO)) as Character
+	(player.get_node("PlayerInputComponent") as PlayerInputComponent).set_physics_process(false)
+	var health_before: float = player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
+	await wait_until(func() -> bool: return player.attribute_component.get_current(AttributeComponent.POOL_HEALTH) < health_before, "the fire should hurt the player", TOUCH_FRAMES)
+
+
+func test_resizing_grows_the_area_that_hurts() -> void:
+	var enemy: Character = _spawn_enemy(_standing(Vector3(EDGE_OFFSET, 0.0, 0.0)))
+	var strikes: Array[int] = [0]
+	enemy.hurtbox.struck.connect(func(_damage: float) -> void: strikes[0] += 1)
+	await wait_physics_frames(TOUCH_FRAMES)
+	if not check(strikes[0] == 0, "setup: a character beside a 1 x 1 fire should not be hurt"):
 		return
-	print("Instant touch damage confirmed on first contact! HP: ", initial_hp, " -> ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
+	_trap.set_trap_size(LARGE_SIZE)
+	await wait_until(func() -> bool: return strikes[0] > 0, "after growing the fire, the same character should be hurt", TOUCH_FRAMES)
+	var hitbox: Vector3 = (_trap.collision_shape.shape as BoxShape3D).size
+	check(is_equal_approx(hitbox.x, LARGE_SIZE.x) and is_equal_approx(hitbox.z, LARGE_SIZE.y), "the hitbox should match the new size (got %s)" % hitbox)
+	var plate: Vector3 = (_trap.ground_mesh.mesh as BoxMesh).size
+	check(is_equal_approx(plate.x, LARGE_SIZE.x) and is_equal_approx(plate.z, LARGE_SIZE.y), "the ground plate should match the new size (got %s)" % plate)
+	check_eq(_trap.particles.amount, roundi(_trap.base_particle_amount * LARGE_SIZE.x * LARGE_SIZE.y), "the particle count should scale with the area")
+	_trap.set_trap_size(Vector2.ONE)
+	check_eq(_trap.particles.amount, _trap.base_particle_amount, "back to 1 x 1, the particle count should return to its base amount")
 
-	# Verify enemy is not hit again within 0.5s (EnemyStun completes and enemy is free to move).
-	# Burn ticks keep draining the pool silently, so count landed hits via
-	# health_changed (struck-gated) instead of comparing pool values.
-	_trap_strikes = 0
-	enemy.health_changed.connect(_on_trap_test_strike)
-	for i: int in range(30): # ~0.5s at 60 FPS
-		await get_tree().physics_frame
-		if _trap_strikes > 0:
-			printerr("TEST FAILED: Enemy re-hit within 0.5s! Stunlock prevention violated.")
-			get_tree().quit(1)
-			return
-	print("Stunlock prevention verified: no re-hit within 0.5s.")
 
-	# Fast-forward / wait for 2.0s damage interval to trigger second tick
-	# 2.0s = ~120 frames. We already waited ~30 frames. Wait another 100 frames (~1.65s).
-	var strikes_before: int = _trap_strikes
-	var second_hit := false
-	for i: int in range(110):
-		await get_tree().physics_frame
-		if _trap_strikes > strikes_before:
-			second_hit = true
-			break
+func test_the_ground_plate_can_be_hidden() -> void:
+	_trap.show_ground_mesh = false
+	check(not _trap.ground_mesh.visible, "hiding the ground plate should hide it")
+	_trap.show_ground_mesh = true
+	check(_trap.ground_mesh.visible, "showing the ground plate should show it")
 
-	if not second_hit:
-		printerr("TEST FAILED: Lingering enemy did not receive second damage tick after 2.0s interval! HP: ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
-		get_tree().quit(1)
+
+func test_a_fire_with_a_duration_goes_out_when_it_ends() -> void:
+	var timed: FireTrap = autofree(TRAP_SCENE.instantiate()) as FireTrap
+	timed.duration = TEST_DURATION
+	_arena.add_child(timed)
+	timed.global_position = _trap_center() + Vector3(-16.0, 0.0, 0.0)
+	var frames: int = ceili(TEST_DURATION * Engine.physics_ticks_per_second) + 5
+	if not await wait_until(func() -> bool: return timed.is_extinguished(), "the fire should go out when its duration ends", frames):
 		return
-	print("Lingering re-hit tick confirmed after 2.0s interval! HP: ", enemy_attrs.get_current(AttributeComponent.POOL_HEALTH))
+	await wait_physics_frames(1)
+	check(not timed.damage_hitbox.monitoring, "a fire that went out should stop hurting")
+	check(not timed.particles.emitting, "a fire that went out should stop emitting")
 
-	# Move enemy away
-	enemy.global_position = Vector3(-20.0, 1.0, -20.0)
 
-	# ---------------------------------------------------------
-	# PART 4: Player Instant Touch Damage
-	# ---------------------------------------------------------
-	print("\n>>> PART 4: Player Instant Touch Damage")
-	var player_scene: PackedScene = load("res://Player/player.tscn")
-	var player: Character = player_scene.instantiate() as Character
-	add_child(player)
-	player.global_position = Vector3(0.0, 1.0, 0.0)
+func _spawn_enemy(at: Vector3) -> Character:
+	var enemy: Character = spawn(MELEE_SCENE, _arena, at) as Character
+	disable_ai(enemy)
+	return enemy
 
-	var player_attrs: AttributeComponent = player.get_node("AttributeComponent") as AttributeComponent
-	var initial_player_hp: float = player_attrs.get_current(AttributeComponent.POOL_HEALTH)
 
-	for i: int in range(3):
-		await get_tree().physics_frame
+func _trap_center() -> Vector3:
+	return Vector3(TRAP_SPOT.x, arena_floor_top(_arena), TRAP_SPOT.z)
 
-	if player_attrs.get_current(AttributeComponent.POOL_HEALTH) >= initial_player_hp:
-		printerr("TEST FAILED: Player did not take instant contact damage from fire trap!")
-		get_tree().quit(1)
-		return
-	print("Player instant touch damage confirmed! HP: ", initial_player_hp, " -> ", player_attrs.get_current(AttributeComponent.POOL_HEALTH))
 
-	player.global_position = Vector3(20.0, 1.0, 20.0)
-
-	# ---------------------------------------------------------
-	# PART 5: Configurable Duration & Extinction
-	# ---------------------------------------------------------
-	print("\n>>> PART 5: Configurable Duration & Dynamic Extinction")
-	var timed_trap: FireTrap = trap_scene.instantiate() as FireTrap
-	timed_trap.duration = 0.2
-	add_child(timed_trap)
-	timed_trap.global_position = Vector3(5.0, 0.0, 5.0)
-
-	await get_tree().create_timer(0.35).timeout
-
-	if not timed_trap.is_extinguished():
-		printerr("TEST FAILED: Timed trap did not extinguish after duration expired.")
-		get_tree().quit(1)
-		return
-
-	if timed_trap.damage_hitbox.monitoring:
-		printerr("TEST FAILED: Extinguished trap hitbox is still monitoring.")
-		get_tree().quit(1)
-		return
-
-	if timed_trap.particles.emitting:
-		printerr("TEST FAILED: Extinguished trap particles are still emitting.")
-		get_tree().quit(1)
-		return
-	print("Dynamic duration expiration and extinction verified.")
-
-	print("\n====================================================")
-	print("  ALL FIRE TRAP HAZARD TESTS PASSED!")
-	print("  1. Always-active monitoring & collision masks verified")
-	print("  2. Dynamic sizing properly scales hitbox, mesh, and VFX")
-	print("  3. Instant contact damage works immediately on touch")
-	print("  4. 2.0s lingering interval prevents permanent stunlock")
-	print("  5. Both players and enemies receive fire damage")
-	print("  6. Configurable duration extinguishes dynamic spawns")
-	print("====================================================")
-	get_tree().quit(0)
+## A standing spot at the given offset from the trap center.
+func _standing(offset: Vector3) -> Vector3:
+	return _trap_center() + offset + Vector3.UP

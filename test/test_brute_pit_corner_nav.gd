@@ -1,239 +1,87 @@
-## Regression test verifying that tall enemies (Brute and Akira boss)
-## negotiate pit corners without falling into pit voids during pursuit.
-extends Node3D
+## Regression suite: tall enemies (the brute and the Akira boss) pursue the
+## player around Level 2's south-east pit corner without falling into the pit,
+## both clockwise and counter-clockwise. The player is led around the corner
+## by the test; positions are this level's corner.
+## Caveat (2026-09-28): the suite no longer reproduces the bug it was written
+## for. With the pre-fix navigation tuning (path_desired_distance 2.5, no path
+## height offset) it still passes, so Level 2's corner no longer invites
+## corner-cutting. It stays as a pursuit smoke test on a real level; see
+## TODO.md for a reproducing scenario.
+extends "res://test/lib/test_suite.gd"
 
-var _failed: bool = false
+const LEVEL_SCENE: PackedScene = preload("res://Levels/level_2.tscn")
+const BRUTE_SCENE: PackedScene = preload("res://Enemy/enemy_brute.tscn")
+const AKIRA_SCENE: PackedScene = preload("res://Enemy/akira_boss.tscn")
+## Where the player waits before leading the enemy around the corner.
+const PLAYER_START: Vector3 = Vector3(1.5, 1.0, -14.0)
+## Test-owned speed (meters per tick) the player is led at.
+const LEAD_STEP: float = 0.05
+## Physics ticks the enemy gets to round the corner.
+const ROUND_FRAMES: int = 200
+## Test-owned player health, so no hit here can end the run.
+const PLAYER_HEALTH: float = 100000.0
+## Height below which the enemy has dropped off the floor into the pit.
+const PIT_HEIGHT: float = 0.2
 
-
-func _ready() -> void:
-	print("====================================================")
-	print("  STARTING PIT CORNER NAVIGATION REGRESSION TEST")
-	print("====================================================")
-
-	var st: CanvasLayer = get_node_or_null("/root/SceneTransition") as CanvasLayer
-	if st != null:
-		st.visible = false
-		st.set("player_cache", null)
-
-	var lvl_scene: PackedScene = load("res://Levels/level_2.tscn")
-	if lvl_scene == null:
-		_fail("Could not load Levels/level_2.tscn")
-		return
-
-	var level: Node3D = lvl_scene.instantiate() as Node3D
-	add_child(level)
-
-	# Disable WaveObjective to avoid extraneous enemy spawns
-	var wave_obj: Node = level.find_child("WaveObjective", true, false)
-	if wave_obj != null:
-		(wave_obj as WaveObjective).stop_spawning()
-		for c in wave_obj.get_children():
-			c.queue_free()
-
-	# Remove litter props so pathing tests pure floor and pit edge navigation
-	var litter: Node = level.find_child("Litter", true, false)
-	if litter != null:
-		litter.queue_free()
-
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-
-	var player: Character = level.find_child("Player", true, false) as Character
-	if player == null:
-		_fail("Player not found in Level 2")
-		return
-
-	# Prevent player reload on defeat
-	if player.attribute_component != null and player.attribute_component.defeat.is_connected(player.reset_game_state):
-		player.attribute_component.defeat.disconnect(player.reset_game_state)
-
-	# Part 1: Brute rounding SE pit corner (Clockwise)
-	await _test_brute_se_corner(level, player)
-	if _failed:
-		return
-
-	# Part 2: Akira Boss rounding SE pit corner (Clockwise)
-	await _test_akira_se_corner(level, player)
-	if _failed:
-		return
-
-	# Part 3: Brute rounding SE pit corner in reverse (Counter-Clockwise)
-	await _test_brute_counter_clockwise(level, player)
-	if _failed:
-		return
-
-	print("====================================================")
-	print("  ALL PIT CORNER NAVIGATION TESTS PASSED! (3/3)")
-	print("====================================================")
-	level.queue_free()
-	get_tree().quit(0)
+var _level: Node3D
+var _player: Character
 
 
-func _fail(msg: String) -> void:
-	_failed = true
-	printerr("TEST FAILED: ", msg)
-	get_tree().quit(1)
+func before_each() -> void:
+	SceneTransition.player_cache = null
+	_level = spawn(LEVEL_SCENE) as Node3D
+	(_level.get_node("WaveObjective") as WaveObjective).stop_spawning()
+	# No props: the enemy paths on floor and pit edges only.
+	_level.find_child("Litter", true, false).queue_free()
+	_player = _level.get_node("Player") as Character
+	(_player.get_node("PlayerInputComponent") as PlayerInputComponent).set_physics_process(false)
+	_player.attribute_component.set_base(AttributeComponent.STAT_MAX_HEALTH, PLAYER_HEALTH)
+	_player.global_position = PLAYER_START
+	await wait_physics_frames(2)
 
 
-func _wait_settle(enemy: Character) -> void:
-	for _i in range(15):
+func after_each() -> void:
+	UI.resume_game()
+
+
+func test_the_brute_rounds_the_corner_clockwise() -> void:
+	var brute: Character = await _spawn_pursuer(BRUTE_SCENE, Vector3(1.5, 1.5, -20.0))
+	await _lead_around(brute, Vector3(-5.0, 1.0, -14.0), func() -> bool: return brute.global_position.x < -0.5 and brute.global_position.z > -16.0)
+
+
+func test_the_akira_boss_rounds_the_corner_clockwise() -> void:
+	var akira: Character = await _spawn_pursuer(AKIRA_SCENE, Vector3(1.5, 1.98, -20.0))
+	# Pursuit only: no ranged or slam attacks interrupting the walk.
+	for ability: String in ["AIFirebomb", "AISlam"]:
+		var node: Node = akira.find_child(ability, true, false)
+		if node != null:
+			node.queue_free()
+	await _lead_around(akira, Vector3(-5.0, 1.0, -14.0), func() -> bool: return akira.global_position.x < -0.5 and akira.global_position.z > -16.0)
+
+
+func test_the_brute_rounds_the_corner_counter_clockwise() -> void:
+	var brute: Character = await _spawn_pursuer(BRUTE_SCENE, Vector3(-4.0, 1.5, -14.0))
+	await _lead_around(brute, Vector3(1.5, 1.0, -21.0), func() -> bool: return brute.global_position.x > 0.0 and brute.global_position.z < -17.0)
+
+
+## Spawns the enemy and waits until it lands and starts moving.
+func _spawn_pursuer(scene: PackedScene, at: Vector3) -> Character:
+	var enemy: Character = spawn(scene, _level, at) as Character
+	await wait_until(func() -> bool: return enemy.is_on_floor() and enemy.state_machine.state.name == "EnemyMove", "setup: %s should land and start pursuing" % enemy.name)
+	return enemy
+
+
+## Leads the player toward the destination and checks the enemy follows it
+## around the corner (rounded) without ever falling into the pit.
+func _lead_around(enemy: Character, destination: Vector3, rounded: Callable) -> void:
+	var fell: bool = false
+	for frame: int in range(ROUND_FRAMES):
 		await get_tree().physics_frame
-	while enemy.state_machine.state.name != "EnemyMove" or not enemy.is_on_floor():
-		await get_tree().physics_frame
-
-
-func _test_brute_se_corner(level: Node3D, player: Character) -> void:
-	print("\n>>> PART 1: Brute navigating SE pit corner (Clockwise)")
-	var brute_scene: PackedScene = load("res://Enemy/enemy_brute.tscn") as PackedScene
-	if brute_scene == null:
-		_fail("Could not load Enemy/enemy_brute.tscn")
-		return
-
-	var brute: Character = brute_scene.instantiate() as Character
-	level.add_child(brute)
-	brute.global_position = Vector3(1.5, 1.5, -20.0)
-
-	player.global_position = Vector3(1.5, 1.0, -14.0)
-
-	await _wait_settle(brute)
-
-	var corner_negotiated: bool = false
-	var target_dest: Vector3 = Vector3(-5.0, 1.0, -14.0)
-
-	for frame in range(180):
-		await get_tree().physics_frame
-
-		# Move player toward target destination to lead brute around corner
-		player.global_position = player.global_position.move_toward(target_dest, 0.05)
-
-		# Verify brute remains grounded and on floor
-		if brute.state_machine.state.name == "EnemyFall" or not brute.is_on_floor() or brute.global_position.y < 0.2:
-			_fail("Brute fell into pit at frame %d! Pos: (%.2f, %.2f, %.2f) State: %s OnFloor: %s" % [
-				frame, brute.global_position.x, brute.global_position.y, brute.global_position.z,
-				brute.state_machine.state.name, str(brute.is_on_floor())
-			])
-			brute.queue_free()
-			return
-
-		# Check if brute safely rounded SE corner into the south corridor (X < -0.5, Z > -16.0)
-		if brute.global_position.x < -0.5 and brute.global_position.z > -16.0:
-			corner_negotiated = true
-			print("Brute successfully rounded SE pit corner at frame %d! Pos: (%.2f, %.2f, %.2f)" % [
-				frame, brute.global_position.x, brute.global_position.y, brute.global_position.z
-			])
+		_player.global_position = _player.global_position.move_toward(destination, LEAD_STEP)
+		if enemy.state_machine.state.name == "EnemyFall" or not enemy.is_on_floor() or enemy.global_position.y < PIT_HEIGHT:
+			fell = true
 			break
-
-	if not corner_negotiated:
-		_fail("Brute did not round corner within time limit. Pos: (%.2f, %.2f, %.2f)" % [
-			brute.global_position.x, brute.global_position.y, brute.global_position.z
-		])
-
-	brute.queue_free()
-	await get_tree().physics_frame
-
-
-func _test_akira_se_corner(level: Node3D, player: Character) -> void:
-	print("\n>>> PART 2: Akira Boss navigating SE pit corner (Clockwise)")
-	var akira_scene: PackedScene = load("res://Enemy/akira_boss.tscn") as PackedScene
-	if akira_scene == null:
-		_fail("Could not load Enemy/akira_boss.tscn")
-		return
-
-	var akira: Character = akira_scene.instantiate() as Character
-	level.add_child(akira)
-	akira.global_position = Vector3(1.5, 1.98, -20.0)
-
-	player.global_position = Vector3(1.5, 1.0, -14.0)
-
-	await _wait_settle(akira)
-
-	var firebomb: Node = akira.find_child("AIFirebomb", true, false)
-	if firebomb != null:
-		firebomb.queue_free()
-	var slam: Node = akira.find_child("AISlam", true, false)
-	if slam != null:
-		slam.queue_free()
-
-	var corner_negotiated: bool = false
-	var target_dest: Vector3 = Vector3(-5.0, 1.0, -14.0)
-
-	for frame in range(200):
-		await get_tree().physics_frame
-
-		# Move player toward target destination to lead akira around corner
-		player.global_position = player.global_position.move_toward(target_dest, 0.05)
-
-		# Verify akira remains grounded and on floor
-		if akira.state_machine.state.name == "EnemyFall" or not akira.is_on_floor() or akira.global_position.y < 0.2:
-			_fail("Akira Boss fell into pit at frame %d! Pos: (%.2f, %.2f, %.2f) State: %s OnFloor: %s" % [
-				frame, akira.global_position.x, akira.global_position.y, akira.global_position.z,
-				akira.state_machine.state.name, str(akira.is_on_floor())
-			])
-			akira.queue_free()
-			return
-
-		# Check if akira safely rounded SE corner into the south corridor (X < -0.5, Z > -16.0)
-		if akira.global_position.x < -0.5 and akira.global_position.z > -16.0:
-			corner_negotiated = true
-			print("Akira Boss successfully rounded SE pit corner at frame %d! Pos: (%.2f, %.2f, %.2f)" % [
-				frame, akira.global_position.x, akira.global_position.y, akira.global_position.z
-			])
+		if rounded.call():
 			break
-
-	if not corner_negotiated:
-		_fail("Akira Boss did not round corner within time limit. Pos: (%.2f, %.2f, %.2f)" % [
-			akira.global_position.x, akira.global_position.y, akira.global_position.z
-		])
-
-	akira.queue_free()
-	await get_tree().physics_frame
-
-
-func _test_brute_counter_clockwise(level: Node3D, player: Character) -> void:
-	print("\n>>> PART 3: Brute navigating SE pit corner in reverse (Counter-Clockwise)")
-	var brute_scene: PackedScene = load("res://Enemy/enemy_brute.tscn") as PackedScene
-	if brute_scene == null:
-		_fail("Could not load Enemy/enemy_brute.tscn")
-		return
-
-	var brute: Character = brute_scene.instantiate() as Character
-	level.add_child(brute)
-	brute.global_position = Vector3(-4.0, 1.5, -14.0)
-
-	player.global_position = Vector3(1.5, 1.0, -14.0)
-
-	await _wait_settle(brute)
-
-	var corner_negotiated: bool = false
-	var target_dest: Vector3 = Vector3(1.5, 1.0, -21.0)
-
-	for frame in range(180):
-		await get_tree().physics_frame
-
-		# Move player north into the east corridor
-		player.global_position = player.global_position.move_toward(target_dest, 0.05)
-
-		# Verify brute remains grounded and on floor
-		if brute.state_machine.state.name == "EnemyFall" or not brute.is_on_floor() or brute.global_position.y < 0.2:
-			_fail("Brute fell into pit in counter-clockwise test at frame %d! Pos: (%.2f, %.2f, %.2f) State: %s OnFloor: %s" % [
-				frame, brute.global_position.x, brute.global_position.y, brute.global_position.z,
-				brute.state_machine.state.name, str(brute.is_on_floor())
-			])
-			brute.queue_free()
-			return
-
-		# Check if brute safely rounded SE corner into the east corridor (X > 0.0, Z < -17.0)
-		if brute.global_position.x > 0.0 and brute.global_position.z < -17.0:
-			corner_negotiated = true
-			print("Brute successfully rounded SE pit corner into East corridor at frame %d! Pos: (%.2f, %.2f, %.2f)" % [
-				frame, brute.global_position.x, brute.global_position.y, brute.global_position.z
-			])
-			break
-
-	if not corner_negotiated:
-		_fail("Brute did not round corner into corridor within time limit. Pos: (%.2f, %.2f, %.2f)" % [
-			brute.global_position.x, brute.global_position.y, brute.global_position.z
-		])
-
-	brute.queue_free()
-	await get_tree().physics_frame
+	check(not fell, "%s must not fall into the pit (at %s, in %s)" % [enemy.name, enemy.global_position, enemy.state_machine.state.name])
+	check(fell or rounded.call(), "%s should round the corner in time (at %s)" % [enemy.name, enemy.global_position])

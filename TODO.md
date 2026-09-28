@@ -37,13 +37,18 @@ are in `CODE_REVIEW.md`; section numbers below point there.
 
 ## Test suite bugs (fix while migrating each suite to the harness, Phase B)
 
-4. **Migrate the remaining suites to the harness** (14 left; list them with
+4. **Migrate the remaining suites to the harness** (5 left; list them with
     `grep -L "test/lib/test_suite.gd" test/test_*.gd`). The whole suite passes
     at `--fps 20`. While migrating, remove the hardcoded balance and art
     assertions listed in §3.1 (balance) and §3.2 (art/VFX/layout). No test
     calls a private method any more; two still read private fields:
     `WaveObjective._enemy_difficulties` (`test_enemy_base`) and
     `AttributeComponent._dots` (`test_level_transition_reset`).
+10. **`test_brute_pit_corner_nav` no longer reproduces its bug.** Tall enemies
+    used to cut pit corners and fall (fixed by the navigation agent tuning now
+    in `Character`); on today's Level 2 the old tuning passes too. Build a
+    fixture (e.g. an arena variant with an L-shaped pit) where the old tuning
+    fails, and test it there.
 6. **`test_enemy_base.gd` is one 3,064-line `_ready()`.** Split it into feature
     suites during its migration. (§3.4)
 

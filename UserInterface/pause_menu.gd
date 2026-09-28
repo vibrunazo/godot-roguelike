@@ -37,55 +37,6 @@ signal restart_requested
 ## Menu buttons column (concept column 4).
 @onready var buttons_panel: MenuButtonsPanel = %MenuButtonsPanel
 
-## Resume button forwarded from the buttons column (kept for test compatibility).
-var resume_button: Button:
-	get:
-		if buttons_panel != null and is_instance_valid(buttons_panel):
-			return buttons_panel.resume_button
-		return null
-## Restart button forwarded from the buttons column.
-var restart_button: Button:
-	get:
-		if buttons_panel != null and is_instance_valid(buttons_panel):
-			return buttons_panel.restart_button
-		return null
-## Controls button forwarded from the buttons column.
-var controls_button: Button:
-	get:
-		if buttons_panel != null and is_instance_valid(buttons_panel):
-			return buttons_panel.controls_button
-		return null
-## Fullscreen button forwarded from the buttons column.
-var fullscreen_button: Button:
-	get:
-		if buttons_panel != null and is_instance_valid(buttons_panel):
-			return buttons_panel.fullscreen_button
-		return null
-## Exit-to-menu button forwarded from the buttons column.
-var exit_menu_button: Button:
-	get:
-		if buttons_panel != null and is_instance_valid(buttons_panel):
-			return buttons_panel.exit_menu_button
-		return null
-## Quit button forwarded from the buttons column.
-var quit_button: Button:
-	get:
-		if buttons_panel != null and is_instance_valid(buttons_panel):
-			return buttons_panel.quit_button
-		return null
-## Gear list forwarded from the inventory column.
-var gear_list: ItemList:
-	get:
-		if list_panel != null and is_instance_valid(list_panel):
-			return list_panel.gear_list
-		return null
-## Details card forwarded from the item details column.
-var details_card: UpgradeIcon:
-	get:
-		if detail_panel != null and is_instance_valid(detail_panel):
-			return detail_panel.details_card
-		return null
-
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
