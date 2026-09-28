@@ -98,7 +98,7 @@ func test_the_slam_has_hyper_armor() -> void:
 
 
 func test_the_punch_hurts_after_its_windup_and_can_be_interrupted() -> void:
-	var punch: CharacterAttack = _brute.state_machine.get_node(NodePath(_pursue.attack_state_name)) as CharacterAttack
+	var punch: CharacterAttack = _pursue.body_state as CharacterAttack
 	var hitbox: Area3D = punch.get_weapon_slot().hitbox
 	# Inside the range the pursue AI orders the punch from.
 	var target: Character = await _spawn_target(_brute.global_position + Vector3(0.0, 0.0, _pursue.attack_range * 0.9))
@@ -185,7 +185,7 @@ func _spawn_target(at: Vector3) -> Character:
 
 
 func _mind_slam_state() -> String:
-	return _mind_slam.attack_state_name
+	return _mind_slam.body_state.name
 
 
 func _expected_damage(attack: CharacterAttack, attacker: Character, victim: Character) -> float:

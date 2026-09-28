@@ -33,6 +33,12 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 	character.navigation_agent_3d.target_position = target_pt
 
 
+## Alerted, a meandering mind engages: pursuit when it has a pursue state,
+## else its attack state.
+func alert_transition() -> AIState:
+	return pursue_state if pursue_state != null else attack_state
+
+
 func physics_update(delta: float) -> void:
 	if character == null or not character.is_inside_tree() or ai_state_machine == null or not character.is_alive():
 		return

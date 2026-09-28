@@ -228,17 +228,20 @@ func test_hits_interrupt_boss_abilities_only_when_interruptable() -> void:
 func test_stun_cancels_follow_each_mind_states_can_break_stun() -> void:
 	var boss: Character = await _settled_boss()
 	var mind: AIStateMachine = boss.ai_state_machine
-	var orders: Dictionary[String, bool] = {
-		"EnemyAttack": (mind.get_node("AISlam") as AIConditionalAttack).can_break_stun,
-		"EnemyPunch": (mind.get_node("AIPursue") as AIPursue).can_break_stun,
-		"EnemyFirebomb": (mind.get_node("AIFirebomb") as AIConditionalAttack).can_break_stun,
+	var slam: AIConditionalAttack = mind.get_node("AISlam") as AIConditionalAttack
+	var pursue: AIPursue = mind.get_node("AIPursue") as AIPursue
+	var firebomb: AIConditionalAttack = mind.get_node("AIFirebomb") as AIConditionalAttack
+	var orders: Dictionary[CharacterState, bool] = {
+		slam.body_state: slam.can_break_stun,
+		pursue.body_state: pursue.can_break_stun,
+		firebomb.body_state: firebomb.can_break_stun,
 	}
-	for ability_name: String in orders:
+	for ability: CharacterState in orders:
 		boss.state_machine.request_state(str(boss.stun_state.name))
-		var may_break: bool = orders[ability_name]
-		check_eq(mind.order_attack(ability_name, may_break), may_break, "ordering %s from a stun should succeed exactly when its mind state may break stun" % ability_name)
-		var expected: State = boss.state_machine.get_node(ability_name) as State if may_break else boss.stun_state
-		check(boss.state_machine.state == expected, "after the %s order the boss should be in %s" % [ability_name, expected.name])
+		var may_break: bool = orders[ability]
+		check_eq(mind.order_attack(ability, may_break), may_break, "ordering %s from a stun should succeed exactly when its mind state may break stun" % ability.name)
+		var expected: State = ability if may_break else boss.stun_state
+		check(boss.state_machine.state == expected, "after the %s order the boss should be in %s" % [ability.name, expected.name])
 		boss.state_machine.request_state(str(boss.state_machine.initial_state.name))
 
 

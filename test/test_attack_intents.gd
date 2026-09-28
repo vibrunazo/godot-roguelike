@@ -72,7 +72,7 @@ func test_a_dash_starts_the_cooldown() -> void:
 func test_request_state_and_order_attack_validate_the_target() -> void:
 	check(not _player.state_machine.request_state("NoSuchState"), "request_state() should reject a missing state")
 	check(_player.state_machine.request_state("PlayerRun") and _state(_player) == "PlayerRun", "request_state() should transition to an existing state")
-	check(not _mind.order_attack("NoSuchState"), "order_attack() should reject a missing state")
+	check(not _mind.order_attack(null), "order_attack() should reject a missing state")
 
 
 func test_player_orders_drive_transitions() -> void:
@@ -102,14 +102,14 @@ func test_an_enemy_body_runs_the_shared_attack_from_ai_intents() -> void:
 	attack.queued_attack_time = TEST_QUEUE_TIME
 	attack.dash_cancel = true
 	attack.dash_state = move
-	if not check(_mind.order_attack(attack.name) and _state(_enemy) == attack.name, "the AI should order the shared attack onto the enemy body"):
+	if not check(_mind.order_attack(attack) and _state(_enemy) == attack.name, "the AI should order the shared attack onto the enemy body"):
 		return
 	_mind.command_attack()
 	if not await wait_until(func() -> bool: return _state(_enemy) == follow_up.name, "an AI attack intent should chain combo_next through the queue window", ATTACK_FRAMES):
 		return
 	follow_up.finish_attack(follow_up.attack_animation_name)
 	check_eq(_state(_enemy), move.name, "the follow-up should end back in its next state")
-	if not check(_mind.order_attack(attack.name), "the AI should order the attack again"):
+	if not check(_mind.order_attack(attack), "the AI should order the attack again"):
 		return
 	_mind.command_dash()
 	await wait_until(func() -> bool: return _state(_enemy) == move.name, "an AI dash intent should dash-cancel the attack", ATTACK_FRAMES)

@@ -19,6 +19,13 @@ extends State
 @export var jump_state: CharacterState
 
 
+## Whether a controller may order the body out of this state (see
+## Character.can_accept_order()). States no order may interrupt (falling,
+## defeat) override this to return false.
+func accepts_orders() -> bool:
+	return true
+
+
 ## Consumes a pending dash intent and transitions to dash_state if available.
 ## Returns true when the intent was consumed and acted upon. Intents are consumed
 ## on read even when gated off, so a press never leaks into a later state.

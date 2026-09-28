@@ -2,15 +2,17 @@
 class_name AIPursue
 extends AIState
 
-## The name of the physical attack state on the body StateMachine to execute when in range.
-@export var attack_state_name: String = "EnemyAttack"
+## The body attack state (on the body StateMachine) this state orders when in
+## range.
+@export var body_state: CharacterState
 ## Attack range threshold in meters.
 @export var attack_range: float = 3.0
 ## AI state to transition to if the target is lost or defeated.
 @export var lost_target_state: AIState
 ## Cooldown time in seconds between attack executions (0.0 = attack whenever ready).
 @export var attack_cooldown: float = 0.0
-## Whether this attack can be ordered even if the physical body is currently in EnemyStun.
+## Whether this attack can be ordered even while the body is in its stun state
+## (Character.stun_state).
 @export var can_break_stun: bool = false
 ## Total facing cone in degrees toward the target required before ordering the
 ## attack (90.0 = within 45 degrees either side). 360.0 orders regardless of
@@ -21,6 +23,12 @@ extends AIState
 
 ## Remaining cooldown time in seconds before this state can order an attack again.
 var cooldown_timer: float = 0.0
+
+
+func _ready() -> void:
+	super._ready()
+	if body_state == null:
+		push_error("%s: body_state is not set." % name)
 
 
 ## Updates the cooldown timer while this state is inactive so cooldown progresses.
@@ -61,13 +69,9 @@ func physics_update(delta: float) -> void:
 ## retry next tick, since pursue stays in this branch.
 func _engage(target: Character, delta: float) -> void:
 	ai_state_machine.command_stop()
-	var is_attacking: bool = (
-		character.state_machine != null
-		and character.state_machine.state != null
-		and character.state_machine.state.name == attack_state_name
-	)
+	var is_attacking: bool = character.state_machine != null and character.state_machine.state == body_state
 	if not is_attacking:
 		character.look_at_target(target.global_position, delta)
 	if cooldown_timer <= 0.0 and is_facing_within_cone(target, desired_angle):
-		if ai_state_machine.order_attack(attack_state_name, can_break_stun, build_aim_order_data(target)):
+		if ai_state_machine.order_attack(body_state, can_break_stun, build_aim_order_data(target)):
 			cooldown_timer = attack_cooldown

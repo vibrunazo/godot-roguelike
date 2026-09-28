@@ -28,6 +28,11 @@ func exit() -> void:
 		disconnect_safe(timer.timeout, end_wait)
 
 
+## Alerted, the wait ends early into next_state.
+func alert_transition() -> AIState:
+	return next_state
+
+
 func end_wait() -> void:
 	if character != null and not character.is_alive():
 		return

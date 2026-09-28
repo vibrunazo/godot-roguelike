@@ -3,7 +3,11 @@
 ##   resolution picks the closest living opponent.
 ## - Player input (by action name) sets the player's movement intent.
 ## - The AI mind commands the body; a hit stuns the body, and the mind cannot
-##   attack until the body recovers; defeated characters stop acting entirely.
+##   attack until the body recovers; defeated characters stop acting entirely;
+##   a falling body takes no orders, and an order never restarts the attack
+##   the body is already running.
+## - alert() wakes an idle mind (waiting or meandering) into combat and leaves
+##   an engaged mind alone.
 ## - Projectiles are parented to the world, so they outlive their shooter.
 ## - Ranged AI attacks a player in range and then moves on to one of its
 ##   configured next states; enemies never use auto-aim.
@@ -31,6 +35,8 @@ const TEST_BUDGET: int = 10
 const WAVE_SAMPLES: int = 25
 ## Test-owned level number for the level title test.
 const TITLE_LEVEL: int = 7
+## Test-owned drop height that makes a spawned enemy fall.
+const DROP_HEIGHT: float = 8.0
 
 var _arena: Node3D
 
@@ -97,13 +103,64 @@ func test_a_hit_stuns_the_body_and_the_mind_cannot_attack_until_it_recovers() ->
 	disable_ai(enemy)
 	var body: StateMachine = enemy.state_machine
 	var stun_name: String = str(enemy.stun_state.name)
+	var attack: CharacterState = (enemy.ai_state_machine.get_node("AIPursue") as AIPursue).body_state
 	check(enemy.hurtbox.receive_hit(1.0, Vector3.ZERO), "the hit should land")
 	check_eq(str(body.state.name), stun_name, "a hit should put the body in its stun state")
-	check(not enemy.ai_state_machine.order_attack("EnemyAttack"), "the mind must not be able to order an attack while stunned")
+	check(not enemy.ai_state_machine.order_attack(attack), "the mind must not be able to order an attack while stunned")
 	check_eq(str(body.state.name), stun_name, "a refused order must not interrupt the stun")
 	await wait_until(func() -> bool: return str(body.state.name) != stun_name, "the body should recover from the stun", DECISION_FRAMES)
-	check(enemy.ai_state_machine.order_attack("EnemyAttack"), "after recovering, the mind should be able to order an attack")
-	check_eq(str(body.state.name), "EnemyAttack", "the ordered attack should run on the body")
+	check(enemy.ai_state_machine.order_attack(attack), "after recovering, the mind should be able to order an attack")
+	check_eq(body.state, attack, "the ordered attack should run on the body")
+
+
+func test_a_falling_body_takes_no_orders() -> void:
+	var spawn_point: Vector3 = (_arena.get_node("EnemySpawn") as Node3D).global_position
+	var enemy: Character = _spawn(MELEE_SCENE, spawn_point + Vector3.UP * DROP_HEIGHT)
+	disable_ai(enemy)
+	var fall: CharacterState = (enemy.state_machine.initial_state as CharacterState).fall_state
+	if not await wait_until(func() -> bool: return enemy.state_machine.state == fall, "setup: an enemy dropped from above should fall", DECISION_FRAMES):
+		return
+	var attack: CharacterState = (enemy.ai_state_machine.get_node("AIPursue") as AIPursue).body_state
+	check(not enemy.ai_state_machine.order_attack(attack, true), "the mind must not order a falling body, even when it may break stun")
+	check_eq(enemy.state_machine.state, fall, "a refused order must not interrupt the fall")
+
+
+func test_an_order_never_restarts_the_running_attack() -> void:
+	var enemy: Character = await _grounded_enemy(MELEE_SCENE)
+	disable_ai(enemy)
+	var attack: CharacterState = (enemy.ai_state_machine.get_node("AIPursue") as AIPursue).body_state
+	if not check(enemy.ai_state_machine.order_attack(attack), "setup: the first order should start the attack"):
+		return
+	check(not enemy.ai_state_machine.order_attack(attack), "ordering the attack the body is already running must be refused")
+
+
+func test_alert_skips_the_wait_and_leaves_an_engaged_mind_alone() -> void:
+	var enemy: Character = await _grounded_enemy(MELEE_SCENE)
+	var mind: AIStateMachine = enemy.ai_state_machine
+	var wait: AIWait = mind.get_node("AIWait") as AIWait
+	mind.request_state(wait.name)
+	# Calm, like an enemy in a room that has not been triggered yet.
+	enemy.is_alerted = false
+	enemy.alert()
+	if not check_eq(mind.state, wait.next_state, "an alerted waiting mind should skip the wait"):
+		return
+	# The character alerts only once; the mind's own alert() is what an
+	# engaged mind must ignore.
+	mind.alert()
+	check_eq(mind.state, wait.next_state, "alerting an engaged mind should leave it as it is")
+
+
+func test_alert_engages_a_meandering_mind() -> void:
+	var enemy: Character = await _grounded_enemy(RANGED_SCENE)
+	var mind: AIStateMachine = enemy.ai_state_machine
+	var meander: AIMeander = mind.get_node("AIMeander") as AIMeander
+	if not check(meander.pursue_state == null and meander.attack_state != null, "setup: the ranged enemy engages by attacking (no pursuit state)"):
+		return
+	mind.request_state(meander.name)
+	# Calm, like an enemy in a room that has not been triggered yet.
+	enemy.is_alerted = false
+	enemy.alert()
+	check_eq(mind.state, meander.attack_state, "an alerted meandering mind should engage its attack state")
 
 
 func test_defeated_characters_stop_acting() -> void:
@@ -120,7 +177,7 @@ func test_defeated_characters_stop_acting() -> void:
 	check(enemy.mesh_mount.global_rotation.is_equal_approx(rotation_before), "a corpse must never turn")
 	mind.command_move(Vector3(1.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0))
 	check(enemy.move_direction.is_zero_approx(), "the mind must not move a corpse")
-	check(not mind.order_attack("EnemyAttack"), "the mind must not order a corpse to attack")
+	check(not mind.order_attack((mind.get_node("AIPursue") as AIPursue).body_state), "the mind must not order a corpse to attack")
 	check_eq(enemy.state_machine.state, enemy.defeat_state, "a corpse should stay defeated")
 
 
@@ -150,7 +207,7 @@ func test_ranged_ai_attacks_a_player_in_range_then_moves_on() -> void:
 	var meander: AIMeander = mind.get_node("AIMeander") as AIMeander
 	var attack: AIAttack = mind.get_node("AIAttack") as AIAttack
 	var player: Character = _spawn_quiet_player(enemy.global_position + Vector3(meander.attack_range * 0.75, 0.0, 0.0))
-	if not await wait_until(func() -> bool: return enemy.state_machine.state.name == attack.attack_state_name, "a ranged enemy should attack a player within its attack range", DECISION_FRAMES):
+	if not await wait_until(func() -> bool: return enemy.state_machine.state.name == attack.body_state.name, "a ranged enemy should attack a player within its attack range", DECISION_FRAMES):
 		return
 	check(_alignment(enemy, player) >= _cone_alignment(attack.desired_angle), "the attack should start with the target inside the aim cone")
 	check(enemy.current_target == null, "enemies never use auto-aim targeting")
@@ -169,7 +226,7 @@ func test_ai_attack_holds_fire_while_it_cannot_face_the_target() -> void:
 	_freeze_rotation(enemy)
 	enemy.ai_state_machine.request_state("AIAttack")
 	await wait_physics_frames(_hold_frames(attack.cooldown_timer))
-	check(enemy.state_machine.state.name != attack.attack_state_name, "AIAttack must not fire while the target is outside its cone")
+	check(enemy.state_machine.state.name != attack.body_state.name, "AIAttack must not fire while the target is outside its cone")
 	check(enemy.ai_state_machine.state == attack, "AIAttack should keep aiming instead of giving up")
 
 
@@ -179,7 +236,7 @@ func test_ai_attack_with_a_full_cone_fires_regardless_of_facing() -> void:
 	var attack: AIAttack = setup[1]
 	attack.desired_angle = 360.0
 	_freeze_rotation(enemy)
-	await _order_until_attacking(enemy, "AIAttack", attack.attack_state_name, "a 360-degree cone should fire even while facing away")
+	await _order_until_attacking(enemy, "AIAttack", attack.body_state.name, "a 360-degree cone should fire even while facing away")
 
 
 func test_ai_attack_with_a_zero_cone_fires_only_on_exact_alignment() -> void:
@@ -191,9 +248,9 @@ func test_ai_attack_with_a_zero_cone_fires_only_on_exact_alignment() -> void:
 	var turn_speed: float = _freeze_rotation(enemy)
 	enemy.ai_state_machine.request_state("AIAttack")
 	await wait_physics_frames(_hold_frames(attack.cooldown_timer))
-	check(enemy.state_machine.state.name != attack.attack_state_name, "a zero cone must hold fire while misaligned")
+	check(enemy.state_machine.state.name != attack.body_state.name, "a zero cone must hold fire while misaligned")
 	enemy.attribute_component.set_base(AttributeComponent.STAT_ROTATION_SPEED, turn_speed)
-	if await _order_until_attacking(enemy, "AIAttack", attack.attack_state_name, "a zero cone should fire once the AI has turned to face the target exactly"):
+	if await _order_until_attacking(enemy, "AIAttack", attack.body_state.name, "a zero cone should fire once the AI has turned to face the target exactly"):
 		check(_alignment(enemy, player) >= _cone_alignment(0.0), "a zero cone should only fire on (near) exact alignment")
 
 
@@ -210,9 +267,9 @@ func test_melee_pursue_turns_to_face_the_target_before_attacking() -> void:
 	enemy.ai_state_machine.request_state("AIPursue")
 	await wait_physics_frames(_hold_frames(maxf(pursue.cooldown_timer, pursue.attack_cooldown)))
 	check(enemy.ai_state_machine.state == pursue, "setup: the mind should be pursuing during the hold")
-	check(enemy.state_machine.state.name != pursue.attack_state_name, "a melee enemy must not attack while facing away")
+	check(enemy.state_machine.state.name != pursue.body_state.name, "a melee enemy must not attack while facing away")
 	enemy.attribute_component.set_base(AttributeComponent.STAT_ROTATION_SPEED, turn_speed)
-	if await wait_until(func() -> bool: return enemy.state_machine.state.name == pursue.attack_state_name, "the melee enemy should turn and attack", DECISION_FRAMES):
+	if await wait_until(func() -> bool: return enemy.state_machine.state.name == pursue.body_state.name, "the melee enemy should turn and attack", DECISION_FRAMES):
 		check(_alignment(enemy, player) >= _cone_alignment(pursue.desired_angle), "the attack should start inside the pursue cone")
 
 

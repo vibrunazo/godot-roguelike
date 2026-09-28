@@ -3,13 +3,15 @@
 class_name AIConditionalAttack
 extends AIState
 
-## The name of the physical attack state on the body StateMachine to execute.
-@export var attack_state_name: String = "EnemyAttack"
+## The body state (an attack or ability on the body StateMachine) this state
+## orders.
+@export var body_state: CharacterState
 ## Maximum distance to target to trigger this attack.
 @export var trigger_range: float = 3.5
 ## Minimum distance to target to trigger this attack (0.0 = no minimum).
 @export var min_range: float = 0.0
-## Whether this attack can be ordered even if the physical body is currently in EnemyStun.
+## Whether this attack can be ordered even while the body is in its stun state
+## (Character.stun_state).
 @export var can_break_stun: bool = true
 ## Total facing cone in degrees toward the target required before ordering the
 ## attack (90.0 = within 45 degrees either side). 360.0 orders regardless of
@@ -51,16 +53,15 @@ var cooldown_timer: float:
 			att.cooldown_timer = val
 
 
-## Helper to look up the physical attack state on the body StateMachine.
+func _ready() -> void:
+	super._ready()
+	if body_state == null:
+		push_error("%s: body_state is not set." % name)
+
+
+## The body state this state orders (see body_state).
 func get_attack_state() -> CharacterState:
-	if character == null or character.state_machine == null:
-		return null
-	var target_name: String = attack_state_name
-	if target_name.is_empty() and "ability_state_name" in self:
-		var custom_name: Variant = self.get("ability_state_name")
-		if custom_name is String and not (custom_name as String).is_empty():
-			target_name = custom_name as String
-	return character.state_machine.get_node_or_null(target_name) as CharacterState
+	return body_state
 
 
 ## Returns true if this attack is currently on cooldown.
@@ -98,13 +99,7 @@ func evaluate_trigger(delta: float) -> bool:
 	if min_range > 0.0 and dist_sq < (min_range * min_range):
 		return false
 
-	if character.state_machine == null or character.state_machine.state == null:
-		return false
-
-	var current_body_state: String = character.state_machine.state.name
-	if current_body_state == attack_state_name or current_body_state == "EnemyDefeat" or current_body_state == "EnemyFall":
-		return false
-	if current_body_state == "EnemyStun" and not can_break_stun:
+	if not character.can_accept_order(body_state, can_break_stun):
 		return false
 
 	ai_state_machine.request_state(name)
@@ -125,7 +120,7 @@ func physics_update(delta: float) -> void:
 		return
 	ai_state_machine.command_stop()
 	if _attack_ordered:
-		if character.state_machine == null or character.state_machine.state == null or character.state_machine.state.name != attack_state_name:
+		if character.state_machine == null or character.state_machine.state != body_state:
 			_finish_attack()
 		return
 	_try_order_attack(delta)
@@ -149,7 +144,7 @@ func _try_order_attack(delta: float) -> void:
 	# The order only sets the desired facing; the body turns toward it at
 	# its rotation speed limit once the attack state snapshots this aim.
 	var order_data: Dictionary = build_aim_order_data(target)
-	_attack_ordered = ai_state_machine.order_attack(attack_state_name, can_break_stun, order_data)
+	_attack_ordered = ai_state_machine.order_attack(body_state, can_break_stun, order_data)
 	if not _attack_ordered:
 		# The body is unable to attack (e.g. stunned): leave like a finished
 		# attack. Already inside physics_update, so no deferral is needed for

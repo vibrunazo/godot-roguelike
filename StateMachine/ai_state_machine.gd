@@ -82,35 +82,21 @@ func command_dash() -> void:
 		character.dash_requested = true
 
 
-## Orders the physical body StateMachine to execute an attack state if available.
-## AI-side policy (liveness, stun/defeat/fall veto) wraps the shared transition API.
-## When can_break_stun is true, attacks can break out of EnemyStun.
-func order_attack(attack_state_name: String = "", can_break_stun: bool = false, data: Dictionary = {}) -> bool:
-	if character == null or not character.is_alive():
+## Orders the body into attack_state (an attack or ability on the body
+## StateMachine) when the body accepts the order (Character.can_accept_order():
+## not dead, falling or already in it; out of stun only when can_break_stun).
+## Returns whether the body took the order.
+func order_attack(attack_state: CharacterState, can_break_stun: bool = false, data: Dictionary = {}) -> bool:
+	if character == null or not character.can_accept_order(attack_state, can_break_stun):
 		return false
-	if character.state_machine == null or character.state_machine.state == null:
-		return false
-	var current_body_state: String = character.state_machine.state.name
-	if current_body_state == attack_state_name or current_body_state == "EnemyDefeat" or current_body_state == "EnemyFall":
-		return false
-	if current_body_state == "EnemyStun" and not can_break_stun:
-		return false
-	if character.state_machine.get_node_or_null(attack_state_name) == null:
-		push_warning("AIStateMachine: order_attack('%s') requested non-existent state on body StateMachine." % attack_state_name)
-		return false
-	return character.state_machine.request_state(attack_state_name, data)
+	return character.state_machine.request_state(attack_state.name, data)
 
 
-## Wakes the AI mind from idle or meandering and commands pursuit/combat.
+## Wakes the mind from an idle state (waiting, meandering) into combat: the
+## current state's alert_transition(). A mind already engaged stays as it is.
 func alert() -> void:
-	if character == null or not character.is_alive():
+	if character == null or not character.is_alive() or not state is AIState:
 		return
-	if state != null and (state.name == "AIMeander" or state.name == "AIWait"):
-		var pursue_node: Node = get_node_or_null("AIPursue")
-		if pursue_node != null:
-			request_state("AIPursue")
-		else:
-			for child: Node in get_children():
-				if child is AIState and child != state and child.name != "AIMeander" and child.name != "AIWait":
-					request_state(child.name)
-					break
+	var next: AIState = (state as AIState).alert_transition()
+	if next != null and next != state:
+		request_state(next.name)

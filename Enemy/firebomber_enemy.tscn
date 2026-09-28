@@ -159,18 +159,19 @@ attack_range = 5.0
 wait_state = NodePath("../AIWait")
 ai_state_machine = NodePath("..")
 
-[node name="AIAttack" type="Node" parent="AIStateMachine" index="2" unique_id=984729104 node_paths=PackedStringArray("next_states", "ai_state_machine")]
+[node name="AIAttack" type="Node" parent="AIStateMachine" index="2" unique_id=984729104 node_paths=PackedStringArray("body_state", "next_states", "ai_state_machine")]
 script = ExtResource("5_attack")
 next_states = [NodePath("../AIWait"), NodePath("../AIMeander")]
 ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemyAttack")
 
-[node name="AILeapingDodge" type="Node" parent="AIStateMachine" index="3" unique_id=1483920194 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+[node name="AILeapingDodge" type="Node" parent="AIStateMachine" index="3" unique_id=1483920194 node_paths=PackedStringArray("body_state", "next_state", "ai_state_machine")]
 script = ExtResource("9_ai_leap_dodge")
-attack_state_name = "EnemyLeapingDodge"
 trigger_range = 5.0
 can_break_stun = false
 next_state = NodePath("../AIMeander")
 ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemyLeapingDodge")
 
 [node name="ProjectileSpawnerComponent" type="Node" parent="." index="10" unique_id=1948271058 node_paths=PackedStringArray("spawn_point", "character")]
 script = ExtResource("3_proj")

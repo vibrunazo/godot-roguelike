@@ -15,3 +15,8 @@ func physics_update(_delta: float) -> void:
 func enter(_previous_state_path: String, _data := {}) -> void:
 	if character != null and character.animation_tree != null:
 		character.animation_tree.change_immediate("Defeat")
+
+
+## A defeated body takes no orders.
+func accepts_orders() -> bool:
+	return false

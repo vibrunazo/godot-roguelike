@@ -636,6 +636,21 @@ func can_dash() -> bool:
 	return dash_cooldown == null or dash_cooldown.is_stopped()
 
 
+## Whether a controller may order the body into target_state now: never while
+## dead, already in target_state, or in a state that refuses orders (see
+## CharacterState.accepts_orders()); out of stun_state only when
+## can_break_stun.
+func can_accept_order(target_state: CharacterState, can_break_stun: bool = false) -> bool:
+	if target_state == null or not is_alive() or state_machine == null or state_machine.state == null:
+		return false
+	var current: State = state_machine.state
+	if current == target_state:
+		return false
+	if current is CharacterState and not (current as CharacterState).accepts_orders():
+		return false
+	return can_break_stun or current != stun_state
+
+
 ## Consumes a pending attack request, returning true exactly once per request.
 func consume_attack_request() -> bool:
 	if not attack_requested:

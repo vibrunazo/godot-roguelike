@@ -41,11 +41,11 @@ attack_range = 4.0
 wait_state = NodePath("../AIWait")
 ai_state_machine = NodePath("..")
 
-[node name="AIAttack" type="Node" parent="AIStateMachine" index="2" unique_id=984729104 node_paths=PackedStringArray("next_states", "ai_state_machine")]
+[node name="AIAttack" type="Node" parent="AIStateMachine" index="2" unique_id=984729104 node_paths=PackedStringArray("body_state", "next_states", "ai_state_machine")]
 script = ExtResource("5_attack")
-attack_state_name = "EnemyAttack"
 next_states = [NodePath("../AIWait"), NodePath("../AIMeander")]
 ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemyAttack")
 
 [connection signal="ranged_attack" from="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="ProjectileSpawnerComponent" method="spawn_projectile"]
 

@@ -27,7 +27,9 @@ prints the error and idles forever. `--quit-after` does not help.
   - `python run_scratch.py <script.gd> [--timeout N] [-- args]` runs a
     throwaway `-s` script. It must `extends SceneTree`, do its work in
     `_initialize()` (in `_init()` autoloads do not exist yet, so game scripts
-    it loads fail to compile) and call `quit(code)`.
+    it loads fail to compile) and call `quit(code)`. Its own declarations
+    must not use game class types (`var c: Character`): those compile with
+    the script, before autoloads exist. Use `Node` and `get()` instead.
   - `python capture.py <map|anim|combat|test> ...` captures screenshots and
     video into `movies/`.
 - Any new Python launcher must go through `godot_env.run_godot()` (or
@@ -97,7 +99,10 @@ prints the error and idles forever. `--quit-after` does not help.
   `AIState`s (enemies). Minds only raise intents (`command_*`) or request body
   states (`order_*`, `StateMachine.request_state()`); body states read only
   the `Character`. Transitions go through `request_state()` or the state's
-  `finished` signal.
+  `finished` signal. States refer to each other by typed exports, never by
+  name strings: an AI state's `body_state` is the body state it orders, and
+  `Character.can_accept_order()` is the one rule for when the body takes an
+  order.
 - **Components** on each character: `AttributeComponent` (health/mana pools,
   buffable stats, timed effects and DoTs; `defeat` fires once on the killing
   transition), `Hurtbox` (receives hits), `KnockbackComponent`,

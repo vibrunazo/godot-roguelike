@@ -53,13 +53,9 @@ func physics_update(delta: float) -> void:
 func _cancel_on_landing() -> void:
 	if character == null or character.state_machine == null:
 		return
-	var target_attack: CharacterState = attack_state
-	if target_attack == null and character.state_machine != null:
-		target_attack = character.state_machine.get_node_or_null("PlayerAttack") as CharacterState
-
-	var should_attack: bool = queued_attack or (character != null and character.consume_attack_request())
-	if should_attack and target_attack != null:
-		character.state_machine.request_state(target_attack.name, {"direction": character.move_direction})
+	var should_attack: bool = queued_attack or character.consume_attack_request()
+	if should_attack and attack_state != null:
+		character.state_machine.request_state(attack_state.name, {"direction": character.move_direction})
 	elif running_state != null:
 		if character.animation_tree != null:
 			character.animation_tree.change_immediate("WalkSpace")

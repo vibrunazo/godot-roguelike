@@ -166,7 +166,7 @@ func test_leap_ai_does_not_break_a_stun_it_may_not_break() -> void:
 		return
 	bomber.ai_state_machine.request_state("AILeapingDodge")
 	await wait_physics_frames(1)
-	check(bomber.state_machine.state.name != ai_leap.attack_state_name, "the leap must not break a stun when can_break_stun is off")
+	check(bomber.state_machine.state.name != ai_leap.body_state.name, "the leap must not break a stun when can_break_stun is off")
 
 
 func test_leap_rises_to_its_peak_height_and_lands_within_max_range() -> void:

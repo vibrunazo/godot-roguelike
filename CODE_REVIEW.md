@@ -122,7 +122,7 @@ Suggested split:
 - The docstring for `is_stat()` says "the six buffable stat names", but there are eight (`:145`).
 - Adding a stat currently takes a const, an array entry, an `@export base_*`, and a seeding line. Consider a `Dictionary[StringName, float]` of base values, or an `AttributeSet` resource.
 
-### 2.2 [MED] String state names and duplicated veto logic
+### 2.2 [MED] String state names and duplicated veto logic *(fixed 2026-09-28, D11: AI states order a typed `body_state: CharacterState` export; the veto is one method, `Character.can_accept_order()`, with `CharacterState.accepts_orders()` overridden by the fall and defeat states and stun read from `Character.stun_state`; `alert()` asks the current state's `alert_transition()` (waiting skips to its next state, meandering engages its pursue or attack state), so no scene needed new wiring for it; `PlayerJumpKick`'s `"PlayerAttack"` lookup was dead (its `attack_state` is wired) and is gone. New tests: a falling body takes no orders, an order never restarts the running attack, alert wakes an idle mind and leaves an engaged one alone.)*
 
 State transitions and checks are done with string literals:
 
@@ -678,7 +678,7 @@ Caveats:
 | C8 Shared launcher, `GODOT_BIN`, CI | Done 2026-09-28 for the local parts; CI skipped (owner decision: single developer, local lint and tests are the gate) |
 | D9 Aliases, fallbacks, sentinel | Done 2026-09-28 |
 | D10 Level registry and duplicated owners | Done 2026-09-28 |
-| D11 Structural refactors | Partly done (input bridge) |
+| D11 Structural refactors | Partly done (input bridge, state names) |
 
 **The key point:** "fix the bad tests" and "move to the new harness" are **one step** (step 4), not two. Rewriting a suite onto the harness means rewriting each of its checks anyway, and that's when its hardcoded values get removed. Revision 1 had these as separate steps (first and last), which would have touched every assertion twice.
 
@@ -731,8 +731,8 @@ The harness depends on the runner being trustworthy and fast, so the runner is f
 
 9. *(Done 2026-09-28: every §2.6 alias and §2.7 fallback is gone (the lint's `compat-wording` and `hardcoded-load` rules now report zero), and the `AILeapingDodge` sentinel (§2.8) was fixed earlier.)* **Remove the aliases and legacy paths** (§2.6) and the hardcoded fallbacks (§2.7). Fix the `AILeapingDodge` sentinel (§2.8). The migrated tests no longer depend on the aliases, so this is safe.
 10. *(Done 2026-09-28: every §2.5 row has a single owner.)* **Unify the level registry and the other duplicated owners** (§2.5).
-11. *(Partly done: the input bridge.)* **Structural refactors:**
-    - string state names → exports (§2.2)
+11. *(Partly done: the input bridge and the state names.)* **Structural refactors:**
+    - *(done 2026-09-28)* string state names → exports (§2.2)
     - *(done 2026-09-27)* input bridge out of `StateMachine` (§2.3)
     - `BallisticProjectile`, `AIAttackBase`, and body-owned cooldown ticking (§2.9)
     - split `Character`/`AttributeComponent` (§2.1)

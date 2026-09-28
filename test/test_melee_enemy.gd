@@ -30,7 +30,7 @@ func test_the_pursue_ai_attacks_a_player_in_range() -> void:
 	await _spawn_player(_melee.global_position + Vector3(pursue.attack_range * 0.5, 0.0, 0.0))
 	_melee.ai_state_machine.process_mode = Node.PROCESS_MODE_INHERIT
 	_melee.ai_state_machine.request_state(pursue.name)
-	await wait_until(func() -> bool: return _melee.state_machine.state.name == pursue.attack_state_name, "the pursue AI should attack a player in range", ATTACK_FRAMES)
+	await wait_until(func() -> bool: return _melee.state_machine.state.name == pursue.body_state.name, "the pursue AI should attack a player in range", ATTACK_FRAMES)
 
 
 func test_the_weapon_hurts_the_player_but_never_another_enemy() -> void:

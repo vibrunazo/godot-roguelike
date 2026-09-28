@@ -16,3 +16,8 @@ func physics_update(delta: float) -> void:
 		finished.emit(run_state.name)
 	character.velocity += character.get_gravity()
 	character.move_character()
+
+
+## A falling body takes no orders.
+func accepts_orders() -> bool:
+	return false

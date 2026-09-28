@@ -13,3 +13,8 @@ func physics_update(_delta: float) -> void:
 	character.move_and_slide()
 	if character.is_on_floor() and land_state != null:
 		finished.emit(land_state.name)
+
+
+## A falling body takes no orders.
+func accepts_orders() -> bool:
+	return false

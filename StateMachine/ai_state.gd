@@ -24,6 +24,13 @@ func evaluate_trigger(_delta: float) -> bool:
 	return false
 
 
+## The state AIStateMachine.alert() moves the mind to from this state, or null
+## when alerting leaves it alone (the mind is already engaged). Idle states
+## (waiting, meandering) override this.
+func alert_transition() -> AIState:
+	return null
+
+
 ## True when the character's mount facing falls inside a cone (in degrees,
 ## centered on the target direction; 360.0 = anywhere, 0.0 = perfect
 ## alignment only). Shared aim-gate predicate for ordered attacks: callers

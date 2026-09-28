@@ -537,52 +537,53 @@ script = ExtResource("14_aism")
 character = NodePath("..")
 initial_state = NodePath("AIPursue")
 
-[node name="AIThrowRiders" type="Node" parent="AIStateMachine" unique_id=1849201941 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+[node name="AIThrowRiders" type="Node" parent="AIStateMachine" unique_id=1849201941 node_paths=PackedStringArray("body_state", "next_state", "ai_state_machine")]
 script = ExtResource("17_slam_ai")
-attack_state_name = "EnemyThrowRiders"
 trigger_range = 25.0
 priority = 10
 can_break_stun = true
 next_state = NodePath("../AIPursue")
 ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemyThrowRiders")
 
-[node name="AISummonHelpers" type="Node" parent="AIStateMachine" unique_id=1849201942 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+[node name="AISummonHelpers" type="Node" parent="AIStateMachine" unique_id=1849201942 node_paths=PackedStringArray("body_state", "next_state", "ai_state_machine")]
 script = ExtResource("17_slam_ai")
-attack_state_name = "EnemySummonHelpers"
 trigger_range = 30.0
 priority = 10
 can_break_stun = true
 next_state = NodePath("../AIPursue")
 ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemySummonHelpers")
 
-[node name="AISlam" type="Node" parent="AIStateMachine" unique_id=1366128415 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+[node name="AISlam" type="Node" parent="AIStateMachine" unique_id=1366128415 node_paths=PackedStringArray("body_state", "next_state", "ai_state_machine")]
 script = ExtResource("17_slam_ai")
 trigger_range = 4.5
 priority = 5
 next_state = NodePath("../AIPursue")
 ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemyAttack")
 
 [node name="AIWait" type="Node" parent="AIStateMachine" unique_id=1642228081 node_paths=PackedStringArray("next_state", "ai_state_machine")]
 script = ExtResource("16_wait")
 next_state = NodePath("../AIPursue")
 ai_state_machine = NodePath("..")
 
-[node name="AIPursue" type="Node" parent="AIStateMachine" unique_id=955249008 node_paths=PackedStringArray("lost_target_state", "ai_state_machine")]
+[node name="AIPursue" type="Node" parent="AIStateMachine" unique_id=955249008 node_paths=PackedStringArray("body_state", "lost_target_state", "ai_state_machine")]
 script = ExtResource("15_pursue")
-attack_state_name = "EnemyPunch"
 lost_target_state = NodePath("../AIWait")
 attack_cooldown = 2.0
 can_break_stun = true
 ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemyPunch")
 
-[node name="AIFirebomb" type="Node" parent="AIStateMachine" unique_id=557645300 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+[node name="AIFirebomb" type="Node" parent="AIStateMachine" unique_id=557645300 node_paths=PackedStringArray("body_state", "next_state", "ai_state_machine")]
 script = ExtResource("17_slam_ai")
-attack_state_name = "EnemyFirebomb"
 trigger_range = 14.0
 min_range = 5.0
 priority = 1
 next_state = NodePath("../AIPursue")
 ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemyFirebomb")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=1492277192]
 path_desired_distance = 0.9

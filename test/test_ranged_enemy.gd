@@ -51,7 +51,7 @@ func test_the_ai_attacks_a_player_in_range() -> void:
 	if not await wait_until(func() -> bool: return _shooter.state_machine.state.name == "EnemyMove", "setup: the shooter should be ready to act"):
 		return
 	_shooter.ai_state_machine.process_mode = Node.PROCESS_MODE_INHERIT
-	await wait_until(func() -> bool: return _shooter.state_machine.state.name == ai_attack.attack_state_name, "the AI should attack a player in range", ACTION_FRAMES)
+	await wait_until(func() -> bool: return _shooter.state_machine.state.name == ai_attack.body_state.name, "the AI should attack a player in range", ACTION_FRAMES)
 
 
 func test_a_shot_leaves_the_spawn_point_facing_the_shooters_way() -> void:

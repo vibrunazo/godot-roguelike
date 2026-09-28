@@ -2,8 +2,8 @@
 class_name AIAttack
 extends AIState
 
-## The name of the physical attack state on the body StateMachine to execute.
-@export var attack_state_name: String = "EnemyAttack"
+## The body attack state (on the body StateMachine) this state orders.
+@export var body_state: CharacterState
 ## Potential AI states to transition to randomly after the attack finishes.
 @export var next_states: Array[AIState] = []
 ## Total facing cone in degrees toward the target required before ordering the
@@ -44,11 +44,15 @@ var cooldown_timer: float:
 			att.cooldown_timer = val
 
 
-## Helper to look up the physical attack state on the body StateMachine.
+func _ready() -> void:
+	super._ready()
+	if body_state == null:
+		push_error("%s: body_state is not set." % name)
+
+
+## The body attack state this state orders (see body_state).
 func get_attack_state() -> CharacterState:
-	if character == null or character.state_machine == null:
-		return null
-	return character.state_machine.get_node_or_null(attack_state_name) as CharacterState
+	return body_state
 
 
 ## Returns true if this attack is currently on cooldown.
@@ -88,7 +92,7 @@ func physics_update(delta: float) -> void:
 		return
 	ai_state_machine.command_stop()
 	if _attack_ordered:
-		if character.state_machine == null or character.state_machine.state == null or character.state_machine.state.name != attack_state_name:
+		if character.state_machine == null or character.state_machine.state != body_state:
 			_finish_attack()
 		return
 	_try_order_attack(delta)
@@ -112,7 +116,7 @@ func _try_order_attack(delta: float) -> void:
 	# The order only sets the desired facing; the body turns toward it at
 	# its rotation speed limit once the attack state snapshots this aim.
 	var order_data: Dictionary = build_aim_order_data(target)
-	_attack_ordered = ai_state_machine.order_attack(attack_state_name, false, order_data)
+	_attack_ordered = ai_state_machine.order_attack(body_state, false, order_data)
 	if not _attack_ordered:
 		# The body is unable to attack (e.g. stunned/falling): leave like a
 		# finished attack. Already inside physics_update, so no deferral is
