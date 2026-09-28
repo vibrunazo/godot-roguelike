@@ -4,8 +4,6 @@
 class_name AkiraBossThrowRidersAttack
 extends CharacterAttack
 
-const LobbedSpawnProjectileClass = preload("res://Enemy/lobbed_spawn_projectile.gd")
-
 ## Projectile scene instantiated for the thrown riders.
 @export var projectile_scene: PackedScene
 ## Delay in seconds after entering before riders are thrown (synced to slash apex).
@@ -27,9 +25,9 @@ const LobbedSpawnProjectileClass = preload("res://Enemy/lobbed_spawn_projectile.
 func _ready() -> void:
 	super._ready()
 	if projectile_scene == null:
-		projectile_scene = load("res://Enemy/lobbed_spawn_projectile.tscn") as PackedScene
+		push_error("%s: projectile_scene is not set." % name)
 	if rider_effect == null:
-		rider_effect = load("res://Components/effect_has_riders.tres") as GameplayEffect
+		push_error("%s: rider_effect is not set." % name)
 
 
 func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
@@ -87,7 +85,7 @@ func _throw_riders() -> void:
 func _spawn_rider_projectile(spawn_pos: Vector3, land_pos: Vector3) -> void:
 	if projectile_scene == null:
 		return
-	var proj: LobbedSpawnProjectileClass = projectile_scene.instantiate() as LobbedSpawnProjectileClass
+	var proj: LobbedSpawnProjectile = projectile_scene.instantiate() as LobbedSpawnProjectile
 	if proj == null:
 		return
 	proj.shooter = character

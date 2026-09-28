@@ -16,10 +16,3 @@ extends Resource
 
 ## Gold currency awarded to the player when an enemy of this archetype is defeated.
 @export var gold_drop: int = 5
-
-## Alias for difficulty_level.
-var difficulty: int:
-	get:
-		return difficulty_level
-	set(value):
-		difficulty_level = value

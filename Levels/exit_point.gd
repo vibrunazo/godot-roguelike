@@ -6,12 +6,6 @@ extends Node3D
 ## Shop scene opened when next_scene_path is empty. Leave unset to use the GlobalVars registry.
 @export var shop_fallback_scene: PackedScene
 
-var next_level_path: String:
-	get:
-		return next_scene_path
-	set(value):
-		next_scene_path = value
-
 var locked: bool = true
 
 @onready var animation_player: AnimationPlayer = $AnimationPlayer

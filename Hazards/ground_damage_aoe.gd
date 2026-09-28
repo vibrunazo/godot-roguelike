@@ -238,32 +238,3 @@ func _on_active_window_expired() -> void:
 	if hitbox != null:
 		hitbox.set_deferred("monitoring", false)
 		hitbox.set_deferred("monitorable", false)
-
-
-## Static helper to spawn a GroundDamageArea with configurable parameters into the world.
-static func spawn_ground_aoe(
-	tree_node: Node,
-	pos: Vector3,
-	aoe_radius: float = 3.0,
-	aoe_height: float = 0.4,
-	aoe_damage: float = 25.0,
-	aoe_knockback: float = 35.0,
-	caster: Character = null,
-	color: Color = Color(1.0, 0.65, 0.2, 1.0)
-) -> GroundDamageArea:
-	var scene: PackedScene = load("res://Hazards/ground_damage_aoe.tscn") as PackedScene
-	if scene == null:
-		return null
-	var instance: GroundDamageArea = scene.instantiate() as GroundDamageArea
-	if instance == null:
-		return null
-	instance.radius = aoe_radius
-	instance.height = aoe_height
-	instance.damage = aoe_damage
-	instance.knockback_force = aoe_knockback
-	instance.aoe_color = color
-	instance.position = pos
-	if caster != null:
-		instance.set_wielder(caster)
-	VfxManager.spawn_world_entity(instance)
-	return instance

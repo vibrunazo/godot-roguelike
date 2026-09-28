@@ -60,7 +60,7 @@ func _ready() -> void:
 	if attack_component != null:
 		attack_component.damage = area_damage
 	if enemy_scene == null:
-		enemy_scene = load("res://Enemy/melee_enemy.tscn") as PackedScene
+		push_error("%s: enemy_scene is not set." % name)
 
 
 func _physics_process(delta: float) -> void:

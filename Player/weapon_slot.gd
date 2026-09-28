@@ -31,13 +31,6 @@ enum mode {NONE, SLASH, STAB}
 				hitbox.monitoring = enabled
 				hitbox.monitorable = enabled
 
-## Backward-compatible alias for hitbox
-var shapecast: Area3D:
-	get:
-		return hitbox
-	set(val):
-		hitbox = val
-
 
 func _ready() -> void:
 	if hitbox:

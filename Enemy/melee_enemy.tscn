@@ -157,13 +157,13 @@ base_max_health = 60.0
 [node name="CharacterColorComponent" parent="." index="7" unique_id=1409284102]
 gradients = Array[Gradient]([SubResource("Gradient_2d2of"), SubResource("Gradient_3w52u"), SubResource("Gradient_bp76g"), SubResource("Gradient_7q86h"), SubResource("Gradient_oyy5o"), SubResource("Gradient_lje1f"), SubResource("Gradient_u2l8l"), SubResource("Gradient_qdnsb")])
 
-[node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=1290511765 node_paths=PackedStringArray("next_states", "attack_component", "character", "fall_state")]
+[node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=1290511765 node_paths=PackedStringArray("next_states", "weapon_slot", "character", "fall_state")]
 script = ExtResource("3_7r01i")
 damage = 8.0
 knockback = 20.0
 next_states = [NodePath("../EnemyMove")]
 attack_animation_name = "MeleeAttack"
-attack_component = NodePath("../../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
+weapon_slot = NodePath("../../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
 self_hitstop_duration = 0.2
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")

@@ -52,7 +52,7 @@ func _ready() -> void:
 	if attack_component != null:
 		attack_component.damage = damage
 	if fire_trap_scene == null:
-		fire_trap_scene = load("res://Hazards/fire_trap.tscn") as PackedScene
+		push_error("%s: fire_trap_scene is not set." % name)
 
 
 func _physics_process(delta: float) -> void:
@@ -225,12 +225,9 @@ func _detonate_on_ground(impact_pos: Vector3) -> void:
 
 
 func _spawn_fire_trap(pos: Vector3) -> void:
-	var scene: PackedScene = fire_trap_scene
-	if scene == null:
-		scene = load("res://Hazards/fire_trap.tscn") as PackedScene
-	if scene == null:
+	if fire_trap_scene == null:
 		return
-	var trap: FireTrap = scene.instantiate() as FireTrap
+	var trap: FireTrap = fire_trap_scene.instantiate() as FireTrap
 	if trap == null:
 		return
 	trap.trap_size = trap_size

@@ -667,7 +667,7 @@ attack_state = NodePath("../PlayerJumpKick")
 script = ExtResource("27_defeat")
 character = NodePath("../..")
 
-[node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("next_states", "combo_next", "attack_component", "character", "dash_state", "jump_state")]
+[node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("next_states", "combo_next", "weapon_slot", "character", "dash_state", "jump_state")]
 script = ExtResource("13_gu6f8")
 movement_speed = 1.0
 dash_cancel = true
@@ -675,12 +675,12 @@ damage = 8.0
 ability_tags = Array[StringName]([&"ability.attack"])
 next_states = [NodePath("../PlayerRun")]
 combo_next = NodePath("../PlayerAttack2")
-attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
+weapon_slot = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
 character = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
 jump_state = NodePath("../PlayerJump")
 
-[node name="PlayerAttack2" type="Node" parent="StateMachine" unique_id=210489082 node_paths=PackedStringArray("next_states", "combo_next", "attack_component", "character", "dash_state", "jump_state")]
+[node name="PlayerAttack2" type="Node" parent="StateMachine" unique_id=210489082 node_paths=PackedStringArray("next_states", "combo_next", "weapon_slot", "character", "dash_state", "jump_state")]
 script = ExtResource("13_gu6f8")
 dash_cancel = true
 damage = 14.0
@@ -688,7 +688,7 @@ ability_tags = Array[StringName]([&"ability.attack"])
 next_states = [NodePath("../PlayerRun")]
 combo_next = NodePath("../PlayerAttack3")
 attack_animation_name = "StabAttack"
-attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
+weapon_slot = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
 dash_speed = 12.0
 dash_duration = 0.12
 self_hitstop_duration = 0.15
@@ -696,21 +696,21 @@ character = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
 jump_state = NodePath("../PlayerJump")
 
-[node name="PlayerAttack3" type="Node" parent="StateMachine" unique_id=484078479 node_paths=PackedStringArray("next_states", "attack_component", "character", "dash_state", "jump_state")]
+[node name="PlayerAttack3" type="Node" parent="StateMachine" unique_id=484078479 node_paths=PackedStringArray("next_states", "weapon_slot", "character", "dash_state", "jump_state")]
 script = ExtResource("13_gu6f8")
 movement_speed = 4.0
 knockback = 7.5
 ability_tags = Array[StringName]([&"ability.attack"])
 next_states = [NodePath("../PlayerRun")]
 attack_animation_name = "SpinAttack"
-attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
+weapon_slot = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
 rehit_interval = 0.32
 self_hitstop_duration = 0.17
 character = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
 jump_state = NodePath("../PlayerJump")
 
-[node name="PlayerJumpKick" type="Node" parent="StateMachine" unique_id=210489083 node_paths=PackedStringArray("running_state", "next_states", "attack_component", "weapon_slot", "character", "fall_state", "dash_state", "attack_state", "jump_state")]
+[node name="PlayerJumpKick" type="Node" parent="StateMachine" unique_id=210489083 node_paths=PackedStringArray("running_state", "next_states", "weapon_slot", "character", "fall_state", "dash_state", "attack_state", "jump_state")]
 script = ExtResource("30_kick")
 running_state = NodePath("../PlayerRun")
 dash_cancel = true
@@ -719,7 +719,6 @@ ability_tags = Array[StringName]([&"ability.attack"])
 knockback = 20.0
 next_states = [NodePath("../PlayerRun")]
 attack_animation_name = "JumpKick"
-attack_component = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 weapon_slot = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/FeetSlot")
 dash_speed = 5.0
 dash_duration = 0.15

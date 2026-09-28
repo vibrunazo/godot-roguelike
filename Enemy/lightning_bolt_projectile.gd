@@ -15,22 +15,13 @@ func _init() -> void:
 func _ready() -> void:
 	super._ready()
 	if hit_effect_scene == null:
-		if GlobalVars != null and "lightning_hit_scene" in GlobalVars and GlobalVars.lightning_hit_scene != null:
-			hit_effect_scene = GlobalVars.lightning_hit_scene
-		else:
-			hit_effect_scene = load("res://Enemy/lightning_hit.tscn") as PackedScene
+		push_error("%s: hit_effect_scene is not set." % name)
 
 
 ## Spawns the electric burst hit effect upon collision.
 func hit_effect() -> void:
-	var scene: PackedScene = hit_effect_scene
-	if scene == null and GlobalVars != null and "lightning_hit_scene" in GlobalVars and GlobalVars.lightning_hit_scene != null:
-		scene = GlobalVars.lightning_hit_scene
-	if scene == null:
-		scene = load("res://Enemy/lightning_hit.tscn") as PackedScene
-	
-	if scene != null:
-		var hit: Node3D = scene.instantiate() as Node3D
+	if hit_effect_scene != null:
+		var hit: Node3D = hit_effect_scene.instantiate() as Node3D
 		VfxManager.spawn_world_entity(hit)
 		hit.global_position = global_position
 	else:

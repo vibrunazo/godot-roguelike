@@ -166,7 +166,7 @@ Renaming a node in a `.tscn` silently disables behavior. Recommendations:
 | Default gold drop | `EnemyResource.gold_drop = 5` **and** `Character.on_defeat` literal `5` | These will drift. |
 | heal-percent unit *(fixed 2026-09-27: always percent, one helper, inspector range; `test_item_healing`)* | `item_resource.gd:62` and `:99` both guess the unit with `heal_percent > 1.0` | `heal_percent = 1.0` means 100%, while `1.5` means 1.5%. Pick one unit (0–1 fraction) and document it. |
 
-### 2.6 [MED] Backward-compat aliases (banned by AGENTS.md §1)
+### 2.6 [MED] Backward-compat aliases (banned by AGENTS.md §1) *(fixed 2026-09-28: every alias, forwarder and the legacy `attack_component` path removed; attacks resolve their hitbox only through `weapon_slot`)*
 
 | Where | Alias | Action |
 |---|---|---|
@@ -178,7 +178,7 @@ Renaming a node in a `.tscn` silently disables behavior. Recommendations:
 | `StateMachine/character_attack.gd:28, 233, 245, 267` | "legacy `attack_component` export" path next to `weapon_slot` | Migrate the scenes to `weapon_slot` and remove the fallback branch. |
 | `Singletons/global_vars.gd:13` | "Legacy difficulty scaling curve" | Delete it and the test that requires it. |
 
-### 2.7 [MED] Hardcoded asset fallbacks (violates AGENTS.md §2.4)
+### 2.7 [MED] Hardcoded asset fallbacks (violates AGENTS.md §2.4) *(fixed 2026-09-28: every fallback removed; required exports are wired in the scenes and a missing one is a `push_error`. Removing them exposed real wiring bugs the fallbacks had hidden: the Akira boss's two rider attacks never set `projectile_scene`, and their `rider_effect` was listed in `node_paths`, so Godot read it as a node path and left it null. The unused `GroundDamageArea.spawn_ground_aoe()` and the redundant `GlobalVars.lightning_hit_scene` were deleted.)*
 
 Pattern: `if export == null: export = load("res://…")`. This hides missing scene wiring and pins asset paths in code:
 
@@ -676,7 +676,7 @@ Caveats:
 | C6 AGENTS.md, skills, TODO, README | Done 2026-09-28, apart from the add-enemy/item/passive checklist skills (they wait for the registry unification, §2.5) |
 | C7 `tools/lint_project.py` | Done 2026-09-28 (a pre-commit hook and the headless UID step for binary resources are still open) |
 | C8 Shared launcher, `GODOT_BIN`, CI | Done 2026-09-28 for the local parts; CI skipped (owner decision: single developer, local lint and tests are the gate) |
-| D9 Aliases, fallbacks, sentinel | Partly done |
+| D9 Aliases, fallbacks, sentinel | Done 2026-09-28 |
 | D10 Level registry and duplicated owners | Not started |
 | D11 Structural refactors | Partly done (input bridge) |
 
@@ -729,7 +729,7 @@ The harness depends on the runner being trustworthy and fast, so the runner is f
 
 **Phase D: production cleanup (now protected by trustworthy tests)**
 
-9. *(Partly done. Removed: the `PlayerJump` aliases and the `PauseMenu` panel forwarders. Fixed: the `AILeapingDodge` sentinel (§2.8). Still open: the other §2.6 aliases and all §2.7 fallbacks.)* **Remove the aliases and legacy paths** (§2.6) and the hardcoded fallbacks (§2.7). Fix the `AILeapingDodge` sentinel (§2.8). The migrated tests no longer depend on the aliases, so this is safe.
+9. *(Done 2026-09-28: every §2.6 alias and §2.7 fallback is gone (the lint's `compat-wording` and `hardcoded-load` rules now report zero), and the `AILeapingDodge` sentinel (§2.8) was fixed earlier.)* **Remove the aliases and legacy paths** (§2.6) and the hardcoded fallbacks (§2.7). Fix the `AILeapingDodge` sentinel (§2.8). The migrated tests no longer depend on the aliases, so this is safe.
 10. *(Not started. The heal-percent unit in §2.5 is fixed.)* **Unify the level registry and the other duplicated owners** (§2.5).
 11. *(Partly done: the input bridge.)* **Structural refactors:**
     - string state names → exports (§2.2)

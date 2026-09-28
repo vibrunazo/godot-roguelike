@@ -21,12 +21,10 @@ extends CharacterState
 @export var queued_attack_time: float = 0.5
 ## Name of the animation to trigger on the animation tree for this attack.
 @export var attack_animation_name: String = "SlashAttack"
-## Reference to the AttackComponent handling damage dealing and hit collision exceptions.
-@export var attack_component: AttackComponent
-## Weapon slot this attack strikes with (sword, feet, ...). When assigned, the
-## AttackComponent is resolved from the slot's hitbox and the slot drives the
-## hit window; the legacy attack_component export above is used only when no
-## slot is assigned, so existing sword attacks and enemies need no rewiring.
+## Weapon slot this attack strikes with (sword, feet, fists, ...). Its hitbox's
+## AttackComponent deals the hits, and the slot's enabled track (keyed by the
+## attack animation) opens the hit window. Attacks that hit through something
+## else (ranged attacks firing projectiles) leave it empty.
 @export var weapon_slot: WeaponSlot = null
 ## Minimum interval (in seconds) before the same target can be hit again during this attack state.
 @export var rehit_interval: float = 0.0
@@ -231,27 +229,21 @@ func _aim_at_current_target() -> void:
 	character.aim_direction = aim_direction
 
 
-## Resolves the AttackComponent for this attack: the weapon slot's hitbox
-## component when a slot is assigned, otherwise the legacy attack_component
-## export (possibly null). Warns when an assigned slot has no component.
+## The AttackComponent under the weapon slot's hitbox, or null for attacks
+## without a slot. A slot whose hitbox has no AttackComponent is a wiring error.
 func get_attack_component() -> AttackComponent:
-	if weapon_slot != null and weapon_slot.hitbox != null:
-		var slot_component: AttackComponent = weapon_slot.hitbox.get_node_or_null("AttackComponent") as AttackComponent
-		if slot_component != null:
-			return slot_component
-		push_warning("CharacterAttack '%s' has weapon_slot '%s' without an AttackComponent child; falling back to attack_component." % [name, weapon_slot.name])
-	return attack_component
+	if weapon_slot == null or weapon_slot.hitbox == null:
+		return null
+	var slot_component: AttackComponent = weapon_slot.hitbox.get_node_or_null("AttackComponent") as AttackComponent
+	if slot_component == null:
+		push_error("CharacterAttack '%s': weapon_slot '%s' has no AttackComponent under its hitbox." % [name, weapon_slot.name])
+	return slot_component
 
 
-## Resolves the WeaponSlot driving this attack's hit window: the assigned slot,
-## otherwise the slot parenting the legacy attack component's hitbox. Returns
-## null for slot-less hitboxes, which then skip lunge timing and slot cleanup.
+## The WeaponSlot driving this attack's hit window, or null for attacks without
+## one (they then skip lunge timing and slot cleanup).
 func get_weapon_slot() -> WeaponSlot:
-	if weapon_slot != null:
-		return weapon_slot
-	if attack_component != null and attack_component.attack_area != null:
-		return attack_component.attack_area.get_parent() as WeaponSlot
-	return null
+	return weapon_slot
 
 
 ## Arms the forward lunge when dash exports are set. The lunge starts when the
@@ -266,8 +258,8 @@ func _arm_lunge() -> void:
 
 
 ## Reports this attack's ACTIVE lifecycle event, fired by the weapon slot's
-## slash signal (exactly when the hit window opens). Slot-less legacy hitboxes
-## never report ACTIVE; they still report STARTED/ENDED from enter/exit.
+## slash signal (exactly when the hit window opens). Attacks without a weapon
+## slot never report ACTIVE; they still report STARTED/ENDED from enter/exit.
 func _broadcast_active_phase() -> void:
 	broadcast_ability_event(AbilityEvent.Phase.ACTIVE, {}, aim_direction)
 
@@ -432,8 +424,8 @@ func exit() -> void:
 
 
 ## Transitions to a random pick of next_states when the attack animation finishes.
-## A queued intent does NOT chain here (matching legacy behavior): chaining happens
-## in attempt_queue_attack inside the queue window; late presses are dropped.
+## A queued intent does NOT chain here: chaining happens in attempt_queue_attack
+## inside the queue window; late presses are dropped.
 func finish_attack(_animation_name: String) -> void:
 	if character == null or character.state_machine == null or next_states.is_empty():
 		return

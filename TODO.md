@@ -85,12 +85,10 @@ Every suite now runs on the harness (Phase B step 4 is done).
     go away. `test_level_transition_reset` covers today's carry-over and would
     become the contract for the new one.
 12. **Make the lint green** (`python tools/lint_project.py`; its output is
-    the exact list). This comes before any new feature work. 14
-    `hardcoded-load` and 8 `compat-wording` findings are the D9 alias and
-    fallback cleanup (§2.6, §2.7). The 27 `long-function` findings are
-    functions to split: 18 production functions over 40 lines (the
-    worst: `Character._ready()`, `EnemyLeapingDodge.enter()` and
-    `_find_best_landing_position()`, `WaveObjective.generate_wave_enemies()`,
+    the exact list). This comes before any new feature work. What is left is
+    27 `long-function` findings, functions to split: 18 production functions
+    over 40 lines (the worst: `Character._ready()`, `EnemyLeapingDodge.enter()`
+    and `_find_best_landing_position()`, `WaveObjective.generate_wave_enemies()`,
     `ObjectiveTrail3D._render_trail()`, `CharacterAttack.enter()`), 8 tests
     over 60 and 1 tool over 80.
 15. The remaining review phases: Phase C guardrails (docs, skills, lint,

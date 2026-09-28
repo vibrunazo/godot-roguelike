@@ -33,6 +33,8 @@
 [ext_resource type="Script" path="res://Enemy/akira_boss_throw_riders_attack.gd" id="27_throw_attack"]
 [ext_resource type="Script" path="res://Enemy/akira_boss_summon_helpers_attack.gd" id="28_summon_attack"]
 [ext_resource type="Resource" path="res://Components/effect_has_riders.tres" id="29_riders_effect"]
+[ext_resource type="PackedScene" path="res://Enemy/lobbed_spawn_projectile.tscn" id="90_lobbed_proj"]
+[ext_resource type="PackedScene" path="res://Hazards/ground_damage_aoe.tscn" id="91_ground_aoe"]
 
 [sub_resource type="Gradient" id="Gradient_ib8qb"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -457,14 +459,14 @@ land_state = NodePath("../EnemyStun")
 character = NodePath("../..")
 fall_state = NodePath(".")
 
-[node name="EnemyAttack" type="Node" parent="StateMachine" unique_id=765968905 node_paths=PackedStringArray("next_states", "weapon_slot", "attack_component", "character", "fall_state")]
+[node name="EnemyAttack" type="Node" parent="StateMachine" unique_id=765968905 node_paths=PackedStringArray("next_states", "weapon_slot", "character", "fall_state")]
 script = ExtResource("13_slam_attack")
+aoe_scene = ExtResource("91_ground_aoe")
 damage = 30.0
 knockback = 35.0
 next_states = [NodePath("../EnemyMove")]
 attack_animation_name = "MeleeAttack"
 weapon_slot = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot")
-attack_component = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 self_hitstop_duration = 0.25
 uninterruptable = true
 cooldown = 20.0
@@ -476,13 +478,13 @@ friendly_fire = true
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
-[node name="EnemyPunch" type="Node" parent="StateMachine" unique_id=1995456948 node_paths=PackedStringArray("next_states", "attack_component", "character", "fall_state")]
+[node name="EnemyPunch" type="Node" parent="StateMachine" unique_id=1995456948 node_paths=PackedStringArray("next_states", "weapon_slot", "character", "fall_state")]
 script = ExtResource("13_attack")
 damage = 15.0
 knockback = 14.0
 next_states = [NodePath("../EnemyMove")]
 attack_animation_name = "PunchAttack"
-attack_component = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/PunchSlot/HitboxArea/AttackComponent")
+weapon_slot = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/PunchSlot")
 self_hitstop_scale = 0.1
 uninterruptable = true
 character = NodePath("../..")
@@ -499,8 +501,9 @@ starting_cooldown = 1.5
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
-[node name="EnemyThrowRiders" type="Node" parent="StateMachine" unique_id=2081734912 node_paths=PackedStringArray("left_spawn_point", "right_spawn_point", "rider_effect", "next_states", "character", "fall_state")]
+[node name="EnemyThrowRiders" type="Node" parent="StateMachine" unique_id=2081734912 node_paths=PackedStringArray("left_spawn_point", "right_spawn_point", "next_states", "character", "fall_state")]
 script = ExtResource("27_throw_attack")
+projectile_scene = ExtResource("90_lobbed_proj")
 next_states = [NodePath("../EnemyMove")]
 attack_animation_name = "DualWieldSlash"
 uninterruptable = true
@@ -513,8 +516,9 @@ rider_effect = ExtResource("29_riders_effect")
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
-[node name="EnemySummonHelpers" type="Node" parent="StateMachine" unique_id=2081734913 node_paths=PackedStringArray("left_backpack", "right_backpack", "rider_effect", "next_states", "character", "fall_state")]
+[node name="EnemySummonHelpers" type="Node" parent="StateMachine" unique_id=2081734913 node_paths=PackedStringArray("left_backpack", "right_backpack", "next_states", "character", "fall_state")]
 script = ExtResource("28_summon_attack")
+projectile_scene = ExtResource("90_lobbed_proj")
 next_states = [NodePath("../EnemyMove")]
 attack_animation_name = "Flexing"
 uninterruptable = true

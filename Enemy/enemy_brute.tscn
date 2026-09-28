@@ -21,6 +21,7 @@
 [ext_resource type="Script" uid="uid://ccsy0o7o6ccoh" path="res://StateMachine/AIStates/ai_conditional_attack.gd" id="17_slam_ai"]
 [ext_resource type="Script" uid="uid://c8j4cclflxm5n" path="res://Components/character_color_component.gd" id="18_color"]
 [ext_resource type="Script" uid="uid://d1jynuos72fph" path="res://Components/attribute_component.gd" id="19_attr"]
+[ext_resource type="PackedScene" path="res://Hazards/ground_damage_aoe.tscn" id="90_ground_aoe"]
 
 [sub_resource type="Gradient" id="Gradient_8pxb0"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -210,14 +211,14 @@ land_state = NodePath("../EnemyStun")
 character = NodePath("../..")
 fall_state = NodePath(".")
 
-[node name="EnemyAttack" type="Node" parent="StateMachine" unique_id=281509853 node_paths=PackedStringArray("next_states", "weapon_slot", "attack_component", "character", "fall_state")]
+[node name="EnemyAttack" type="Node" parent="StateMachine" unique_id=281509853 node_paths=PackedStringArray("next_states", "weapon_slot", "character", "fall_state")]
 script = ExtResource("13_slam_attack")
+aoe_scene = ExtResource("90_ground_aoe")
 damage = 25.0
 knockback = 35.0
 next_states = [NodePath("../EnemyMove")]
 attack_animation_name = "MeleeAttack"
 weapon_slot = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot")
-attack_component = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot/HitboxArea/AttackComponent")
 self_hitstop_duration = 0.25
 uninterruptable = true
 cooldown = 8.0
@@ -229,12 +230,12 @@ friendly_fire = true
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 
-[node name="EnemyPunch" type="Node" parent="StateMachine" unique_id=703411773 node_paths=PackedStringArray("next_states", "attack_component", "character", "fall_state")]
+[node name="EnemyPunch" type="Node" parent="StateMachine" unique_id=703411773 node_paths=PackedStringArray("next_states", "weapon_slot", "character", "fall_state")]
 script = ExtResource("13_attack")
 knockback = 12.0
 next_states = [NodePath("../EnemyMove")]
 attack_animation_name = "PunchAttack"
-attack_component = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/PunchSlot/HitboxArea/AttackComponent")
+weapon_slot = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/PunchSlot")
 self_hitstop_scale = 0.1
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")

@@ -6,7 +6,7 @@ class_name GroundSlamAttack
 extends CharacterAttack
 
 ## Scene instantiated for the ground damage AOE.
-@export var aoe_scene: PackedScene = preload("res://Hazards/ground_damage_aoe.tscn")
+@export var aoe_scene: PackedScene
 
 ## Radius in meters of the spawned ground damage AOE.
 @export var aoe_radius: float = 3.0
@@ -65,11 +65,10 @@ func _on_slam_impact() -> void:
 func _spawn_ground_aoe() -> void:
 	_aoe_spawned = true
 
-	var scene_to_spawn: PackedScene = aoe_scene
-	if scene_to_spawn == null:
-		scene_to_spawn = load("res://Hazards/ground_damage_aoe.tscn") as PackedScene
-	if scene_to_spawn == null:
+	if aoe_scene == null:
+		push_error("%s: aoe_scene is not set." % name)
 		return
+	var scene_to_spawn: PackedScene = aoe_scene
 
 	var forward: Vector3 = _get_forward_vector()
 	var prospective_pos: Vector3 = character.global_position + forward * aoe_forward_offset

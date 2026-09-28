@@ -10,8 +10,6 @@
 ## `VfxManager`, `SceneTransition`), never here.
 extends Node
 
-## Legacy difficulty scaling curve.
-@export var difficulty_curve: Curve
 ## Base item card icon scene used to display item cards in the UpgradeShop.
 @export var upgrade_icon_scene: PackedScene
 ## Item resources offered by the UpgradeShop (e.g. damage, health, speed, potion,
@@ -30,8 +28,6 @@ extends Node
 @export var lightning_bolt_scene: PackedScene
 ## Impact effect spawned by EnemyProjectile on collision.
 @export var fireball_hit_scene: PackedScene
-## Impact effect spawned by LightningBoltProjectile on collision.
-@export var lightning_hit_scene: PackedScene
 ## Floating combat text spawned by VfxManager on damage.
 @export var damage_number_scene: PackedScene
 ## Player-only target reticle spawned once by VfxManager. Enemies never spawn it.
