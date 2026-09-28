@@ -62,36 +62,16 @@ prints the error and idles forever. `--quit-after` does not help.
     parse there. Leave optional AABB properties (e.g. `visibility_aabb`) out
     instead of writing them.
 
-## 3. Verifying work vs. adding tests
+## 3. Tests and verification
 
-- **Verifying your change is not the same as adding a regression test.** By
-  default, verify with a throwaway script or scene in `.scratch/`
-  (git-ignored), run through `run_scratch.py` or `capture.py`. Visual changes
-  (colors, meshes, VFX, UI layout) are verified with `capture.py`, never with
-  suite tests.
-- Add or change files in `test/` **only** when the task asks for tests, or
-  when you fix a bug or add a mechanic whose behavior can regress. A permanent
-  test must: (1) assert behavior a player or designer would call a bug if it
-  broke; (2) still pass after any exported value is retuned, anything is
-  recolored or remodeled, or any key is rebound; (3) use only the public API
-  and the test harness. Use the `write-test` skill.
-- **Three hard test rules:** never assert balance or tuning values (including
-  comparisons between two tuned values); drive input by `InputMap` action
-  name, never physical keys; hit things through `Hurtbox.receive_hit()`, not
-  direct pool writes.
-- `test/` holds only suites (`test_*.tscn`/`.gd`), `test/lib/` and
-  `test/fixtures/`. Throwaway work goes in `.scratch/`; reusable capture
-  scenarios in `tools/capture/`; level-pipeline intermediates in
-  `tools/levels/out/`.
-- If you believe an existing test is wrong, report it instead of weakening it.
-
-### Roles (when the task assigns one)
-
-| Role | May change | Must not |
-|---|---|---|
-| Test author | `test/`, the harness, fixtures, public interfaces | weaken a test to make it pass |
-| Implementer | production code, `.scratch/` | edit `test/`; if a test looks wrong, stop and report it |
-| Reviewer | nothing (read-only) | change files; report design and practice problems |
+- **Before creating or changing anything in `test/`, read the `write-test`
+  skill.** It says when a permanent test is worth adding and how to write one.
+- To check your own change, a throwaway script in `.scratch/` (run with
+  `run_scratch.py`) is often enough; verify visual changes with `capture.py`.
+- Where files go: throwaway work in `.scratch/` (git-ignored), reusable
+  capture scenarios in `tools/capture/`, level-pipeline intermediates in
+  `tools/levels/out/`, and only suites, `test/lib/` and `test/fixtures/` in
+  `test/`.
 
 ## 4. Git and workspace
 

@@ -1,13 +1,31 @@
 ---
 name: write-test
-description: Use when writing, migrating, fixing or reviewing a test suite in test/ - the in-house harness (test/lib/test_suite.gd), the arena fixture, fps_matrix, run_tests.py, check()/wait_until()/spawn(), and what a permanent regression test may and may not assert.
+description: Use before creating or changing anything in test/, or when deciding whether a change needs a regression test - when to add one, the in-house harness (test/lib/test_suite.gd), the arena fixture, fps_matrix, run_tests.py, check()/wait_until()/spawn(), and what a permanent regression test may and may not assert.
 ---
 
 # Writing a test suite
 
-First decide whether this belongs in `test/` at all (AGENTS.md §3): a
-permanent test protects behavior that can regress. To just verify your change,
-use `.scratch/` and `run_scratch.py`/`capture.py` instead.
+## When to add a test
+
+- **Add one** when you fix a bug, or add or change a mechanic whose behavior
+  can regress (a player or designer would call it a bug if it broke). You
+  don't need to be asked.
+- **Don't add one** for purely visual changes (colors, meshes, VFX, UI layout:
+  verify those with `capture.py`), for content that the existing suites
+  already cover (e.g. `test_level_rotation_nav` checks every level), or just
+  to prove to yourself that your change works (use a throwaway script in
+  `.scratch/` with `run_scratch.py`).
+- **Admission check** for every permanent test: (1) it asserts behavior that
+  would be a bug if it broke; (2) it still passes after any exported value is
+  retuned, anything is recolored or remodeled, or any key is rebound; (3) it
+  uses only the public API and the harness.
+- **Hard rules:** never assert balance or tuning values, including
+  comparisons between two tuned values (set the values the mechanism needs in
+  the test instead); drive input by `InputMap` action name, never physical
+  keys; hit things through `Hurtbox.receive_hit()`, not direct pool writes.
+- **When an existing test fails after your change:** if the behavior change
+  was intended, update the test and say so in your report; if not, fix the
+  code. Never loosen a test just to make it pass.
 
 ## Start here
 
