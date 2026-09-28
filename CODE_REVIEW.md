@@ -54,7 +54,7 @@ Severity labels are words, not colors: **HIGH** = correctness risk or blocks sca
 
 ## 1. AGENTS.md consistency
 
-### 1.1 [HIGH] AGENTS.md vs. the code (factually stale)
+### 1.1 [HIGH] AGENTS.md vs. the code (factually stale) *(fixed 2026-09-28 by the AGENTS.md rewrite; the alias, preload and worktree rows are tracked in §2.6, §2.7 and §4.1)*
 
 | AGENTS.md says | Reality | Fix |
 |---|---|---|
@@ -70,7 +70,7 @@ Severity labels are words, not colors: **HIGH** = correctness risk or blocks sca
 | §3 "Never assert balance values"; "never physical key constants (`KEY_F`)". | About 40 violations (§3). | Fix the tests. |
 | Worktree rule: only under `.worktrees/<branch>`. | `git worktree list` shows 5 worktrees under `C:/Users/vibru/.gemini/antigravity/worktrees/…` and one prunable `/mnt/d/…` (WSL) path. | Prune them (§4.1). |
 
-### 1.2 [MED] AGENTS.md internal contradictions and duplication
+### 1.2 [MED] AGENTS.md internal contradictions and duplication *(fixed 2026-09-28: one scratch location, one Godot-launch section, capture and troubleshooting moved to skills, no implementation constants)*
 
 - **Scratch location conflict.** §5 tells agents to put extraction scripts in `tools/levels/out/`. §8 (and CAPTURE.md) say throwaway scripts go in `.scratch/` and that `tools/levels/out/` is *"intended for level-pipeline extraction scripts"*, which an animation extractor is not. Pick one: `.scratch/` for throwaway work, `tools/levels/out/` for pipeline intermediates only.
 - **§3 and §7 overlap heavily.** Both list the runners and both explain watchdog/`shell=False`/`timeout`. Keep one "Running Godot" section.
@@ -80,7 +80,7 @@ Severity labels are words, not colors: **HIGH** = correctness risk or blocks sca
 - **Implementation constants in docs.** "`KnockbackComponent` … Active if magnitude > 1.0" and "`xfade_time = 0.2`" will drift the moment someone tunes them. Document the contract (for example "active while knockback dominates movement"), not the number.
 - **"Every variable … must be explicitly typed (`var x: float = 0.0`)"** vs. 24 inferred `:=` declarations. **Decision (owner):** both `:=` inference and typed dictionaries count as static typing and are allowed. Reword the rule to "every declaration must be statically typed, explicitly or by `:=` inference; `untyped_declaration` warnings must be zero", and give both forms as examples. Typed dictionaries (`Dictionary[StringName, float]`) are *encouraged* for new code. The 67 untyped `Dictionary` declarations are fine to leave alone and can be converted when touched.
 
-### 1.3 [LOW] AGENTS.md vs. other docs
+### 1.3 [LOW] AGENTS.md vs. other docs *(fixed 2026-09-28)*
 
 - **README.md is wrong about the project.** It says the project follows *"Create a Complete **2D** Roguelike Game"*. AGENTS.md says a 3D course, and the reference repo is the 3D hack-n-slash one. README also has no setup, run or test instructions.
 - **CAPTURE.md** hardcodes "Forward+/**D3D12** display server" and says actor cameras use `CameraRoot/ShakeCamera3D` in `Player.tscn`. The file is `Player/player.tscn`, and a `CameraRig3D` was recently added (commit `49b54e0`). Verify that this section still matches.
@@ -673,7 +673,7 @@ Caveats:
 | A3 Harness, arena, template, reference suite | Done 2026-09-24 |
 | B4 Migrate the suites | Done 2026-09-28: all 49 suites run on the harness |
 | B5 Frame-rate workstream | Done 2026-09-26, apart from the mobile renderer/GI decision |
-| C6 AGENTS.md, skills, TODO, README | Partly done |
+| C6 AGENTS.md, skills, TODO, README | Done 2026-09-28, apart from the add-enemy/item/passive checklist skills (they wait for the registry unification, §2.5) |
 | C7 `tools/lint_project.py` | Not started |
 | C8 Shared launcher, `GODOT_BIN`, CI | Partly done |
 | D9 Aliases, fallbacks, sentinel | Partly done |
@@ -723,7 +723,7 @@ The harness depends on the runner being trustworthy and fast, so the runner is f
 
 **Phase C: guardrails (after step 4, so they describe what actually exists)**
 
-6. *(Partly done. AGENTS.md gained the physics-clock rule, the harness section, `fps_matrix`, the tuned-value-relations rule, `check_no_engine_errors()` and `resolve_godot()`, and TODO.md was trimmed. Not done: the full AGENTS.md restructure, the skills, the scratch-vs-suite rule and role table, and the README fix.)* **Rewrite AGENTS.md and create the skills** (§1, §5.1), including the scratch-vs-suite rule and the role table (§5.4). Trim TODO.md and fix README.
+6. *(Done 2026-09-28. AGENTS.md is now the always-loaded rulebook (287 -> 150 lines: runners and hang prevention, code rules, the scratch-vs-suite rule with the admission check, the hard test rules, a role table, git, a corrected architecture map and a skill index). Procedures moved to `.claude/skills/`: `add-combat-animation`, `build-level` (reference: `tools/levels/README.md`), `capture-media` (reference: `CAPTURE.md`), `write-test` and `debug-test-hang`. `CLAUDE.md` and `GEMINI.md` import AGENTS.md. README.md was rewritten (3D course, requirements, runners, doc map); CAPTURE.md and `tools/levels/README.md` were corrected. Still to do: the add-enemy/item/passive checklist skills, after §2.5.)* **Rewrite AGENTS.md and create the skills** (§1, §5.1), including the scratch-vs-suite rule and the role table (§5.4). Trim TODO.md and fix README.
 7. *(Not started.)* **`tools/lint_project.py`**, including the UID checks (§5.2, §4.4). Adopt it with a baseline, fail on *new* violations, and burn the backlog down.
 8. *(Partly done. `godot_env.resolve_godot()` is shared by `run_tests.py`, `run_scratch.py`, `capture.py` and `tools/levels/build_level.py`, honors `GODOT_BIN` and unwraps `.cmd` shims; the runner has per-suite `fps_matrix`. Not done: one shared launch-and-watchdog module, CI with the frame-rate matrix job, runner self-tests, and the `test/` change check.)* **Shared Godot launcher module, `GODOT_BIN`, and CI** (§4.2–4.3), including the frame-rate matrix job (§3.9) and the `test/` change check (§5.4).
 

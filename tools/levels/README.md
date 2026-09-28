@@ -47,7 +47,9 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 | `examples/level13_design.py` | Worked example: the Level 13 design ("Twin Terrace", two combat floors at 0 m/2 m joined by two stair flights, per-layer wall GridMaps). The reference for any future multi-floor level. |
 
 The gate for every level is the committed test `test/test_level_rotation_nav.tscn`:
-it loads each `SceneTransition.levels` entry and checks core nodes, baked
+it loads every level the run can load (the `SceneTransition.levels` fallback
+rotation, every `GlobalVars.dungeons` scene and every
+`SceneTransition.boss_arenas` scene) and checks core nodes, baked
 VoxelGI data, navmesh/GI footprint coverage, a spawn→exit nav path, pit
 shaft-wall lining, abyss-plane presence (the template `Pit` must be visible
 and giant — per-level pit quads are obsolete), and navmesh bake authenticity

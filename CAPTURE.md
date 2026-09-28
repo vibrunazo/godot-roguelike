@@ -181,7 +181,7 @@ python capture.py test test/test_enemy_brute.tscn --duration 6.0 --gif
 ### 1. Rendering Server Requirement
 Godot's headless mode (`godot --headless`) uses the dummy display server, which does not allocate GPU viewport textures. Therefore:
 - Standard test runs (`run_tests.py`) execute headlessly.
-- Visual captures (`capture.py`) run with Godot's Forward+/D3D12 display server enabled.
+- Visual captures (`capture.py`) run with a real display server and the project's GPU renderer (Forward+), so they need a machine with a display and a GPU.
 - All commands are invoked through Python with OS watchdog timeouts (25s for screenshots, 90s for video) to guarantee that Godot never hangs the terminal.
 
 ### 2. Video Pipeline & FFmpeg
@@ -200,7 +200,7 @@ All scripts under `res://tools/capture/` (`map_capturer.gd`, `anim_capturer.gd`,
 ## 4. Troubleshooting & Visual Diagnostics
 
 ### Internal Actor Cameras & Viewport Overrides
-Certain character scenes (notably `Player.tscn`) have built-in `Camera3D` nodes (e.g. `CameraRoot/ShakeCamera3D`) initialized with `current = true`. When instantiated into a scene tree, their internal camera can hijack Godot's viewport and cause captures to render black or from unexpected angles.
+Certain character scenes (notably `Player/player.tscn`) carry their own `Camera3D` (the player's `CameraRoot` is a `CameraRig3D` with a `ShakeCamera3D` child). When such a scene enters the tree, its camera can become the viewport's current camera and make captures render black or from unexpected angles.
 - **Automatic Suppression**: Both `anim_capturer.gd` and `combat_scenario_template.gd` automatically scan spawned actors, set internal cameras to `current = false`, remove `CameraRoot` nodes, and re-assert the studio camera every physics frame.
 - **Custom Scenarios**: When staging custom scenes or actors from scratch, check whether spawned actors contain active `Camera3D` nodes and suppress them so the studio camera remains dominant.
 

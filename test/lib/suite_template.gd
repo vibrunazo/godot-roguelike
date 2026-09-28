@@ -7,7 +7,8 @@
 ## "Dashing moves the character dash_speed * dash_duration meters and starts
 ## the dash cooldown; a second dash is refused until the cooldown elapses."
 ##
-## Rules (AGENTS.md has the full list):
+## Rules (the write-test skill, .claude/skills/write-test/SKILL.md, adds the
+## workflow and known pitfalls):
 ## - Assert behavior, never tuning: every expected number is either set by the
 ##   test itself or read from the live node (attack.damage, dash.cooldown...).
 ##   Comparing two tuned values ("boss hits harder than the brute") is tuning

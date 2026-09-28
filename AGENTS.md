@@ -1,287 +1,150 @@
-# AGENT.md - Project Context & Guidelines
+# AGENTS.md - Rules for every task
 
-## 1. Project Overview
-- **Engine**: Godot 4.7.2 stable official (Windows, Forward+ / D3D12).
-- **Genre**: 3D Top-Down Action Roguelite (based on GameDev.tv Godot 3D Course, already completed).
-- **Phase**: Adding custom gameplay improvements, combat polish, and balance.
+Godot 4.7.2 (Forward+) 3D top-down action roguelite, built from the GameDev.tv
+Godot 3D course and now extended with our own combat, progression and levels.
+We are early in development: **no backwards compatibility**. When a refactor
+changes an interface, update its callers; never leave aliases, forwarders or
+"legacy" fallbacks behind.
 
-Because we are very early in development stage, do NOT worry about backwards compatibility. 
-If a refactor breaks old clients of an interface then refactor the clients to use the new interface rather than writing fallbacks of deprecated functions for clients to use.
-
----
-
-## 2. Coding Guidelines
-1. **Strict GDScript Typing**:
-   - `warnings/untyped_declaration=1` is enforced in `project.godot`.
-   - Every variable, parameter, and function return type must be explicitly typed (e.g. `var x: float = 0.0`, `func foo(bar: int) -> void:`).
-2. **Documentation Integrity**:
-   - Preserve and maintain all docstrings (`## ...`) and comments on classes, exported variables, and functions.
-3. **Git Commits**:
-   - The user manages git commits. **Never run `git commit` or `git push` unless explicitly told so by the user**.
-4. Use good coding practices.
-   - Prefer designing long term scalable and maintainable systems rather than quick and dirty hacks.
-   - Avoid hardcoding preload() PackedScenes. Prefer configurable export variables instead.
-5. **Gameplay timing runs on the physics clock** (the game targets slow devices, where render frames are long):
-   - Anything that decides gameplay (hit windows, damage windows, durations, cooldowns, spawn pacing) must not depend on the render frame rate.
-   - `AnimationTree`/`AnimationPlayer` driving gameplay tracks (e.g. `WeaponSlot:enabled`): `callback_mode_process = PHYSICS`. Gameplay `Timer` nodes: `process_callback = PHYSICS`. Code timers: `get_tree().create_timer(t, true, true)`. Gameplay tweens: `.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)`.
-   - Purely visual or audio timing (fades, UI, VFX) may stay on the render clock.
-   - `test/test_frame_rate_invariance.gd` runs at 12-60 fps; extend it when adding timed mechanics.
-
-### Worktree Rules
-- IF you are told to create a new branch, then create a worktree under `.worktrees/<branch-name>` inside the project root.
-- Never create worktrees outside the repository tree.
+Procedures (adding animations, building levels, capturing media, writing
+tests, debugging a timed-out suite) live in skills: see "Skills" at the end.
 
 ---
 
-## 3. Testing & CLI Execution Policy (CRITICAL TIMEOUT RULES)
+## 1. Running Godot (never hang the terminal)
 
-### The Godot Hang Problem & Watchdog Requirement
-Godot does not exit on GDScript compilation errors, cyclic preloads, or unhandled runtime exceptions. If an error occurs, Godot prints the error to the console, skips the rest of the function, and idles indefinitely. Because `--quit-after` only counts process frames after the engine initializes, scripts that fail to compile or hit missing autoloads will hang the terminal forever.
+Godot does not exit on script errors, bad preloads or missing autoloads: it
+prints the error and idles forever. `--quit-after` does not help.
 
-> **When launching Godot, never execute bare `godot` commands without an external OS timeout.**
->
-> All Godot invocations must run through an external OS watchdog that forcefully terminates the process after a hard timeout (e.g. Python `timeout=N`).
->
-> *Note*: Agents are encouraged to run whatever standard CLI commands they need (`git status`, `git diff`, Python scripts, filesystem inspection, etc.). The timeout rule applies specifically when invoking the Godot engine process.
+- **NEVER run a bare `godot` command.** Always go through a runner with a
+  watchdog:
+  - `python run_tests.py [test/test_x.tscn ...]` runs the suites (`--fps N`
+    emulates a slow device, `--verbose` prints every suite's output).
+  - `python run_scratch.py <script.gd> [--timeout N] [-- args]` runs a
+    throwaway `-s` script (it must `extends SceneTree` and call `quit(code)`).
+  - `python capture.py <map|anim|combat|test> ...` captures screenshots and
+    video into `movies/`.
+- Custom Python launchers must resolve the engine with
+  `godot_env.resolve_godot()` (honors `GODOT_BIN`, unwraps Windows shims), use
+  `subprocess.run([...], shell=False, timeout=N)` and catch
+  `subprocess.TimeoutExpired`. A killed shim leaves the engine running.
+- A suite that times out: use the `debug-test-hang` skill.
 
-### Watchdog-Kill Artifacts (Don't Chase These)
-A run terminated by the watchdog can print misleading tree-membership errors (`get_tree()` null, `in_tree=false`, null parent) produced by the engine shutdown sequence itself. They look exactly like game code evicting the scene, but no scene change occurred. If a log shows no error before the `[TIMEOUT]` line, assume budget overrun first: time the suite and shrink waits (see frame-budget rule below) before inventing eviction theories.
+## 2. Code rules
 
-### Built-in Project Runners & Shortcuts
-Agents can write and execute whatever custom scripts or commands their task requires. For common Godot workflows, prefer using these built-in runners because they already implement watchdog timeouts, portable executable resolution, and engine validation:
+1. **Static typing everywhere.** Every declaration is typed, explicitly
+   (`var x: float = 0.0`, `func f(a: int) -> void:`) or by `:=` inference.
+   Typed collections (`Array[Node]`, `Dictionary[StringName, float]`) are
+   preferred. `untyped_declaration` warnings must stay at zero.
+2. **Keep and maintain docstrings** (`## ...`) on classes, exports and
+   functions.
+3. **No hardcoded asset loads in logic.** Wire scenes and resources through
+   `@export` or the `GlobalVars` registry; never `preload()`/`load()` a scene
+   as a fallback for a missing export. A required export that is missing is a
+   `push_error`, not a silent default.
+4. **Reference nodes by typed exports**, not name strings or `get_node` paths,
+   wherever the scene can wire them.
+5. **Gameplay timing runs on the physics clock** (the game targets slow
+   devices): gameplay `AnimationTree`/`AnimationPlayer` use
+   `callback_mode_process = PHYSICS`; gameplay `Timer`s use
+   `process_callback = PHYSICS`; code timers use
+   `get_tree().create_timer(t, true, true)`; gameplay tweens use
+   `Tween.TWEEN_PROCESS_PHYSICS`. Purely visual/audio timing may stay on the
+   render clock.
+6. **Never hand-write resource UIDs** in `.tscn`/`.tres`/`.uid` files. Let
+   Godot generate them (open/save via a runner script) or omit the `uid=`.
+7. **Parent runtime visuals to the nearest `Node3D`**, never to a plain `Node`
+   (it would not inherit the transform).
+8. **Balance lives in data** (`.tres` resources, exported properties), never
+   in `const` values inside logic.
+9. **Autoloads always exist** in game runs: do not null-check them.
+10. **Hand-edited `.tscn` files:** the 6-float `AABB(...)` literal does not
+    parse there. Leave optional AABB properties (e.g. `visibility_aabb`) out
+    instead of writing them.
 
-- **Run Full Test Suite (Preferred):**
-  ```bash
-  python run_tests.py
-  ```
+## 3. Verifying work vs. adding tests
 
-- **Run a Single Test Suite:**
-  ```bash
-  python run_tests.py test/test_combo_and_dash_cancel.tscn
-  ```
-  The runner collects `test/test_*.tscn`, runs each suite with `--fixed-fps 60` (frames run back to back, so the whole suite takes ~35s), and fails a suite on a non-zero exit **or** any `SCRIPT ERROR`/`Parse Error` in its output. Output is printed only for failing suites (`--verbose` prints all). `--fps N` runs the suites at another render rate (physics still ticks at 60 Hz), e.g. `--fps 20` to emulate a slow device.
+- **Verifying your change is not the same as adding a regression test.** By
+  default, verify with a throwaway script or scene in `.scratch/`
+  (git-ignored), run through `run_scratch.py` or `capture.py`. Visual changes
+  (colors, meshes, VFX, UI layout) are verified with `capture.py`, never with
+  suite tests.
+- Add or change files in `test/` **only** when the task asks for tests, or
+  when you fix a bug or add a mechanic whose behavior can regress. A permanent
+  test must: (1) assert behavior a player or designer would call a bug if it
+  broke; (2) still pass after any exported value is retuned, anything is
+  recolored or remodeled, or any key is rebound; (3) use only the public API
+  and the test harness. Use the `write-test` skill.
+- **Three hard test rules:** never assert balance or tuning values (including
+  comparisons between two tuned values); drive input by `InputMap` action
+  name, never physical keys; hit things through `Hurtbox.receive_hit()`, not
+  direct pool writes.
+- `test/` holds only suites (`test_*.tscn`/`.gd`), `test/lib/` and
+  `test/fixtures/`. Throwaway work goes in `.scratch/`; reusable capture
+  scenarios in `tools/capture/`; level-pipeline intermediates in
+  `tools/levels/out/`.
+- If you believe an existing test is wrong, report it instead of weakening it.
 
-- **Run Scratch / Diagnostic Scripts via Watchdog Runner:**
-  ```bash
-  python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
-  python run_scratch.py tools/levels/dump_cells.gd --timeout 15 -- --level=Levels/level_2.tscn
-  ```
+### Roles (when the task assigns one)
 
-- **Visual Media Capture & Recording:**
-  ```bash
-  python capture.py map Levels/level_1.tscn --preset isometric
-  python capture.py anim Enemy/enemy_brute.tscn --state EnemyPunch --video
-  python capture.py combat --player --enemy brute --action "enemy:state:EnemyPunch@15" --video
-  python capture.py test test/test_combo_and_dash_cancel.tscn --video
-  ```
-  *(See `CAPTURE.md` for full command line options and syntax).*
+| Role | May change | Must not |
+|---|---|---|
+| Test author | `test/`, the harness, fixtures, public interfaces | weaken a test to make it pass |
+| Implementer | production code, `.scratch/` | edit `test/`; if a test looks wrong, stop and report it |
+| Reviewer | nothing (read-only) | change files; report design and practice problems |
 
-### Critical Engine Invariants for Standalone GDScripts (`-s`)
-Scripts executed standalone via Godot's `-s` flag **strictly require** two rules:
-1. **The script MUST inherit `SceneTree` (or `MainLoop`)**: e.g. `extends SceneTree`.
-   - Standalone execution bypasses the scene tree root. If the script extends `Node` or `Node3D`, Godot fails to start the main loop, `--quit-after` will never count process frames, and Godot idles indefinitely.
-2. **The script MUST explicitly call `quit(code)`** when done (e.g. `quit(0)`).
-3. **Consider using `run_scratch.py`**: It automatically validates these invariants before launching Godot and enforces an external OS watchdog timeout.
+## 4. Git and workspace
 
-### Writing Test Suites
-- **New and migrated suites extend the harness:** `extends "res://test/lib/test_suite.gd"`. Start from `test/lib/suite_template.gd`; `test/test_character_rotation.gd` is the reference suite. The harness runs every `test_*` method in isolation and gives `check()`, `check_eq()`, `check_approx()`, `wait_until()`, `wait_signal()`, `spawn()`, `autofree()`, `load_arena()`, `wait_for_navigation()`, `disable_ai()`, `press_action()`/`hold_action()` and `check_no_engine_errors()`. A test fails on a failed check, a script error, or leaked orphan nodes; engine errors (e.g. `Function blocked during in/out signal`) are only printed as notes unless the test calls `check_no_engine_errors()`, so use it wherever an engine error is the regression under test.
-- **Mechanics tests run in the arena fixture** (`load_arena()`: flat floor, baked navmesh, no enemies or waves), not in real levels. Regenerate it with `python run_scratch.py test/fixtures/build_arena.gd`; never hand-edit `test/fixtures/arena.tscn`.
-- A suite that must hold at any frame rate declares `## fps_matrix: 12, 20, 30, 60` in its script; the runner runs it once per listed rate.
-- Only suites (`test_*.tscn`/`.gd`), `test/lib/` and `test/fixtures/` belong in `test/`. Recording or capture scenes go in `tools/capture/scenarios/`.
+- **Never run `git commit` or `git push`** unless the user explicitly asks.
+  The user manages commits.
+- Branches, when asked for, go in a worktree under `.worktrees/<branch-name>`
+  inside the project. Never create worktrees elsewhere.
 
-### Testing Philosophy & Invariants
-- **Never assert balance values or tuning constants:** Do not test for hardcoded damage numbers, cooldown lengths, movement speeds, or specific keyboard scancodes. Comparisons between two tuned values ("the boss is tougher than the brute", "these bombs are bigger than those") are balance assertions too; when a mechanism needs a value (e.g. fire immunity), the test sets it itself.
-- **Test behavioral contracts and state transitions:** 
-  - Test that entering cooldown prevents reactivation until elapsed, using the node's own exported variable (e.g., `simulate_time(node.cooldown_time)`).
-  - Test relative damage application (`target.health == previous_health - attack.damage`), not arbitrary final integers.
-  - Test actions via `InputMap` action names (e.g., `"toggle_fullscreen"`), never physical key constants (`KEY_F`).
-- **If a test fails due to intentional balance changes, the test design was flawed.** Fix the test to evaluate the mechanic dynamically, never hardcode the new value.
-- **Simulate hits via `Hurtbox.receive_hit()`, never direct pool writes:** `damage_pool()` / `restore_pool()` are silent resource changes by design (no stun, flash, or shake); only `receive_hit()` emits `struck`. Tests asserting hit reactions must go through the hurtbox.
-- **Mind the timeout (10s/suite):** with `--fixed-fps` game time is no longer tied to the wall clock, so frame and timer waits are cheap; wait on conditions (`wait_until`) rather than fixed frame counts. Code that deliberately uses wall-clock time (`Time.get_ticks_msec()`, timers with `ignore_time_scale`) does not line up with game time under `--fixed-fps`; keep tests of such behavior in small dedicated suites.
+## 5. Architecture map
 
-### Suite Hygiene Recommendations
-- **Scene-changing calls sit better at the end of a suite:** methods like `exit_shop()`, `SceneTransition.load_scene_path()` / `load_next_level()`, or `change_scene_to_file()` free the running suite about a second later (transition tween), which can read as a mysterious stall near the end. Tests run in declaration order, so make such a test the last one in its suite (as `test_main_menu`, `test_item_system` and `test_upgrade_card_layout` do).
-- **Suspected hangs benefit from engine timestamps:** Godot stdout can lag the engine noticeably under some setups (e.g. Windows engine via WSL interop), so wall-clock log reading may point at the wrong part. Flushed marker files (`FileAccess` to `user://` plus `Time.get_ticks_msec()`) tend to show where the engine actually stopped.
-- **Leftover engine processes are worth a glance:** a timed-out suite can leave its headless Godot running, slowing later suites. `run_tests.py` reaps those automatically; manual runs can check with the platform process list.
+- **Characters** (`Character/character.gd`, a `CharacterBody3D`) are driven by
+  two state machines. The **body** `StateMachine` runs `CharacterState`s
+  (attacks extend `CharacterAttack`) and owns movement and animation. The
+  **mind** is either `PlayerInputComponent` (player) or `AIStateMachine` with
+  `AIState`s (enemies). Minds only raise intents (`command_*`) or request body
+  states (`order_*`, `StateMachine.request_state()`); body states read only
+  the `Character`. Transitions go through `request_state()` or the state's
+  `finished` signal.
+- **Components** on each character: `AttributeComponent` (health/mana pools,
+  buffable stats, timed effects and DoTs; `defeat` fires once on the killing
+  transition), `Hurtbox` (receives hits), `KnockbackComponent`,
+  `EquipmentComponent` (gear, consumables, purchase counts),
+  `PassiveAbilityComponent` (passives triggered by ability lifecycle events),
+  `CharacterColorComponent` (palette), and on the player `ScreenShakeComponent`.
+- **Damage pipeline:** a `WeaponSlot` (bone attachment) switches its
+  `Area3D` hitbox with its `enabled` property, which animations key. The
+  hitbox's `AttackComponent` hits `Hurtbox.receive_hit()`, which damages the
+  `AttributeComponent` and emits `struck` (stun, flash, shake).
+  `damage_pool()`/`restore_pool()` are silent. Lethal hits report `defeat`
+  before `struck` reaches handlers, so reaction handlers must ignore the dead.
+  `AttackComponent.rehit_interval <= 0` hits a target once per attack;
+  `> 0` lets it hit again after that interval.
+- **Registries:** `GlobalVars` (items, enemies, dungeons, shared scenes),
+  `ProgressionState` (run state: difficulty, dungeon level, gold, planned
+  encounter), `SceneTransition` (level loading, boss arenas, the carried
+  player), `UI` (HUD, pause and game-over menus, fullscreen), `VfxManager`
+  (world VFX, damage numbers, the target reticle). All five are autoloads.
+- **Levels** inherit `Levels/level_template.tscn` (lighting, wave objective,
+  kill plane, exit). The run picks levels from `GlobalVars.dungeons`
+  (`DungeonResource`s); `SceneTransition.boss_arenas` routes boss levels.
 
----
+## 6. Skills
 
-## 4. Architecture & Key Patterns
-- **State Machine**:
-  - Located in `StateMachine/`. States extend `PlayerState` or `EnemyState`.
-  - Transitions emit `finished.emit(next_state_name, data_dict)`.
-- **Combat Components**:
-  - `AttackComponent`: Sits under an `Area3D` hitbox or projectile. Listens to `body_entered` / `area_entered` signals to deal damage and knockback, handles screen shake, and manages `rehit_interval`.
-  - `KnockbackComponent`: Handles physics impulse and exponential decay (`lerp` with `exp(-decay * delta)`). Active if magnitude > 1.0.
-  - `AttributeComponent`: Owns pools (health/mana) and buffable stats. `damage_pool()` / `restore_pool()` are silent value changes; `defeat` fires exactly on the killing health transition.
-  - `WeaponSlot`: Extends `BoneAttachment3D`. Has exported `hitbox: Area3D`. Animating `WeaponSlot:enabled` automatically toggles `hitbox.monitoring` and `hitbox.monitorable`.
-- **VFX & Attachment Parenting**:
-  - A `Node3D` parented under a plain `Node` inherits no transform (it renders at its local position in world space). Always parent runtime visuals to the nearest `Node3D` ancestor (e.g. the character body, never its `AttributeComponent`).
-- **Hit Reaction Ordering**:
-  - Lethal hits report `defeat` (inside `damage_pool()`) *before* `Hurtbox.struck` reaches handlers. Reaction handlers must early-out when the target is dead, or stun re-entry overrides the defeat state (corpse stuck standing).
-- **Scene File Literals**:
-  - The 6-float `Aabb(...)` constructor does not parse in `.tscn` text (verified via `str_to_var` → null). Omit optional AABB properties (e.g. `visibility_aabb`) instead of hand-writing them; defaults cover body-sized effects.
-- **Hit Timing & Multi-Hit Logic**:
-  - `AttackComponent.rehit_interval`: Minimum interval (seconds) before a target can take damage again.
-  - If `<= 0.0`, target is hit once per attack until `reset_exceptions()`.
-  - If `> 0.0`, target exception is cleared after `rehit_interval` expires (used for SpinAttack).
+Read the matching file before starting such a task (Claude Code loads them
+automatically; other agents follow these paths):
 
----
+| Task | Skill |
+|---|---|
+| Adding or wiring a combat animation (`.res`, `AnimationTree`, `WeaponSlot` tracks) | `.claude/skills/add-combat-animation/SKILL.md` |
+| Building or editing a level (`GridMap`, navmesh, `VoxelGI`, level rotation) | `.claude/skills/build-level/SKILL.md` |
+| Capturing screenshots or video (`capture.py`, `movies/`) | `.claude/skills/capture-media/SKILL.md` |
+| Writing, migrating or fixing a test suite (`test/`, harness, arena) | `.claude/skills/write-test/SKILL.md` |
+| A suite timed out or a Godot run hung | `.claude/skills/debug-test-hang/SKILL.md` |
 
-## 5. Animation & Character Mesh Extraction Guide
-
-### Source Asset Locations
-- **Animation GLBs**: `Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/` (e.g. `Rig_Medium_CombatMelee.glb`, `Rig_Medium_General.glb`, `Rig_Medium_Movement.glb`).
-- **Character Model GLBs**: `Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/` (e.g. `Enemy_Medium.glb`).
-- **Extracted `.res` Destination**: `Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/<AnimationName>.res`.
-
-### Headless Animation Extraction Recipe
-Godot's GUI "Save to File" import option is unavailable to headless CLI agents. Instead, create a temporary script extending `SceneTree` under `tools/levels/out/` (git-ignored and importer-ignored) and execute it via `run_scratch.py`:
-
-```gdscript
-# tools/levels/out/extract_anim.gd
-extends SceneTree
-
-func _init() -> void:
-    var glb: Node3D = load("res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Rig_Medium_CombatMelee.glb").instantiate() as Node3D
-    var ap: AnimationPlayer = glb.find_child("AnimationPlayer", true, false) as AnimationPlayer
-    var anim: Animation = ap.get_animation("Melee_2H_Attack_Chop").duplicate() as Animation
-    ResourceSaver.save(anim, "res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_2H_Attack_Chop.res")
-    glb.queue_free()
-    quit(0)
-```
-
-Run via the runner:
-```bash
-python run_scratch.py tools/levels/out/extract_anim.gd
-```
-
-### The 3 Mandatory Combat Animation Tracks
-When adding any attack animation for the Player or Melee Enemies, the animation `.res` MUST include the following project-specific tracks to interact with the combat systems:
-
-1. **`Rig_Medium/Skeleton3D/WeaponSlot:enabled`** (Value track, discrete update):
-   - `0.0s`: `false` (disabled during windup)
-   - Strike apex: `true` (enables hitbox `ShapeCast3D`)
-   - Strike bottom: `false` (disables hitbox during recovery)
-2. **`Rig_Medium/Skeleton3D/WeaponSlot:attack_mode`** (Value track, discrete update):
-   - Key: `1` for `Slash`, `2` for `Stab`.
-3. **`Rig_Medium/Skeleton3D/WeaponSlot:vfx_threshold`** (Value track, continuous update):
-   - Eased float curve (`1.0` -> `0.0` -> `1.0`) driving the slash trail shader sweep.
-
-### AnimationTree & Library Integration
-1. In `animated_player.tscn` or `animated_enemy.tscn`, add the `.res` file to the `PlayerAnimations` or `EnemyAnimations` library on `AnimationPlayer`.
-2. In the `AnimationTree` root state machine (`AnimationNodeStateMachine`):
-   - Add an `AnimationNodeAnimation` node pointing to `LibraryName/AnimationName`.
-   - Add transition from `WalkSpace` -> `AttackState`: `advance_mode = 1` (manual trigger).
-   - Add transition from `AttackState` -> `WalkSpace`: `switch_mode = 2` (At End), `advance_mode = 2` (Auto), `xfade_time = 0.2`.
-
----
-
-## 6. Level Creation & Environment Guidelines
-
-These are practical conventions and lessons learned from the course lectures rather than rigid rules:
-
-### 1. Level Inheritance & Template Structure
-- Create new levels as inherited scenes from `res://Levels/level_template.tscn` (`Levels/level_template.tscn`).
-- The template already provides the standard lighting (`DirectionalLight3D`), sky environment (`WorldEnvironment`), wave spawner (`WaveObjective`), fall-kill plane (`WorldBoundary`), and exit portal (`ExitPoint`).
-- Prefer the scripted pipeline in `tools/levels/` over hand-editing scenes: dump/validate/pack GridMap data, assemble from a JSON spec, bake navmesh + VoxelGI. Full guide, per-tool usage, and lessons learned: `tools/levels/README.md`. Every level must pass `test/test_level_rotation_nav.tscn` (load, baked GI, navmesh coverage, spawn→exit path).
-
-### 2. GridMaps & Metrics
-- **Floormap**: Uses `res://Levels/Gridmap/floormap.tres` with `cell_size = Vector3(4, 0.5, 4)`.
-- **Wallmap**: Uses `res://Levels/Gridmap/wall_map.tres` with `cell_size = Vector3(2, 4, 2)`.
-- Decorative litter / props can be grouped under a dedicated `Litter` (Node3D) container to keep the scene tree clean.
-- Gaps in the floor serve as pits; the template's giant unshaded `Pit` abyss plane bottoms every hole and cliff edge, so levels never add their own pit quads (ring interior holes with `y=-1` shaft walls via `pit_lining()`). Rely on `WorldBoundary` (at `y = -4`) to detect and eliminate fallen entities.
-
-### 3. VoxelGI Baking & Coverage (Crucial)
-- Every level must have its own baked `VoxelGI` data saved to `res://Levels/GlobalIlluminationData/<level_name>_voxel_gi_data.res`.
-- **Volume Bounds**: Adjust the `VoxelGI` node's `transform` and `size` so the bounding box completely encloses the playable geometry, player spawn, pits, and exit door.
-- **Dynamic Entities Exclusion**: Ensure dynamic entities (characters, weapons, animated props) have `gi_mode = 0` (`GI_MODE_DISABLED`) so they don't bake permanent static shadow artifacts into the global illumination.
-
-### 4. NavigationMesh Coverage
-- Ensure `NavigationRegion3D` has its `NavigationMesh` baked to cover the new floor layout.
-- Verify that the navmesh wraps cleanly around wall obstacles and stays clear of pits so enemy pathfinding doesn't stall or try to walk off ledges.
-
-### 5. Level Rotation & Exit Wiring
-- Position `Player` at the starting spawn point and `ExitPoint` at the end of the dungeon.
-- Ensure `WaveObjective.finished` is connected to `ExitPoint.unlock()` (wired by default in `level_template.tscn`).
-- To include the new level in the random run rotation, add its scene path to `SceneTransition.levels` in `res://Singletons/scene_transition.tscn` (`Singletons/scene_transition.tscn`).
-
-
-
----
-
-## 7. Universal Subprocess & Execution Policy (All Platforms)
-
-To ensure scripts run reliably without hangs, pipe deadlocks, or process leaks across any operating system (Linux, WSL, macOS, Windows):
-
-1. **Prefer Dedicated Project Runners When Applicable**:
-   - **Test Suites**: `python run_tests.py [path]`
-   - **Scratch / Diagnostic Scripts**: `python run_scratch.py <path> [--timeout N]`
-   - **Visual Media Capture & Scenarios**: `python capture.py <subcommand>`
-   - *Custom Scripts & Commands*: If a task requires custom scripts or commands not covered by the above, agents can write and run them following the guidelines below.
-
-2. **Resolve the Godot Binary via `godot_env.resolve_godot()`**:
-   - From Python, launch Godot with `from godot_env import resolve_godot` (repo root). It honors a `GODOT_BIN` override and unwraps a Windows `godot.cmd`/`.bat` shim to the real `.exe`. A watchdog kill only reaches the process Python started: killing a shim orphans the engine, which keeps the output pipes open and hangs any runner that captures output.
-   - Other tools (e.g. `ffmpeg`) resolve via `shutil.which(...)`. Unix wrapper scripts for Godot must `exec` the engine.
-
-3. **Use `shell=False` with Argument Lists**:
-   - `shell=True` spawns an intermediate shell process. On timeout, Python terminates the shell while the child engine process may remain orphaned, holding standard I/O pipes open and stalling execution.
-   - `shell=False` connects Python directly to the process, ensuring timeout termination forcefully kills the engine immediately.
-
-4. **Enforce Hard OS Watchdog Timeouts**:
-   - Avoid running unbounded processes; pass `timeout=<seconds>`.
-   - Catch `subprocess.TimeoutExpired` explicitly to handle timeouts gracefully.
-
-#### Portable Subprocess Pattern:
-```python
-import shutil
-import subprocess
-
-from godot_env import resolve_godot
-
-godot_bin = resolve_godot()
-cmd = [
-    godot_bin,
-    "--headless",
-    "--path", ".",
-    "--quit-after", "60",
-    "-s", "tools/levels/dump_cells.gd",
-]
-
-try:
-    res = subprocess.run(cmd, shell=False, capture_output=True, text=True, timeout=15)
-    if res.stdout:
-        print(res.stdout)
-    if res.returncode != 0:
-        print(f"Process failed (exit code {res.returncode}):\n{res.stderr}")
-except subprocess.TimeoutExpired:
-    print("ERROR: Godot process timed out and was forcefully terminated.")
-```
-
----
-
-## 8. Visual Media Capture & Staging Guidelines
-
-Practical suggestions for capturing animations, combat scenarios, and level layouts efficiently:
-
-1. **Start with the Simplest Capture Tool**:
-   - For solo abilities, leap animations, attacks, or inspectable states, `python capture.py anim <scene> --state <StateName> --video` is typically the fastest approach. It provides an isolated studio, key lights, and a neutral backdrop.
-   - Staging multi-entity scenarios via `python capture.py combat` is best suited for interactions that specifically require two or more characters (such as testing hit reactions, damage counters, or combo timings).
-
-2. **Framing High-Mobility Abilities**:
-   - Abilities that cover significant distance (e.g. `EnemyLeapingDodge`, dashes, leap slams) can travel outside the default camera frame.
-   - Use `--cam-dist` (e.g. `--cam-dist 2.5`) and `--cam-height` to comfortably widen the framing rather than hand-crafting custom camera trajectories.
-
-3. **Mind Internal Actor Cameras**:
-   - Some character scenes (e.g. `Player.tscn`) contain built-in `Camera3D` components (`CameraRoot/ShakeCamera3D`). When these scenes enter the scene tree, their internal cameras may attempt to claim active viewport status.
-   - The built-in capture runners automatically suppress actor cameras, but when writing custom staging scripts, remember to check spawned scenes to ensure actor cameras do not override the studio camera.
-
-4. **Custom Combat Scenarios**:
-   - `--enemy` accepts a registry name (`brute`, `melee`, `ranged`, `firebomber`, `thunder_mage`) or any enemy scene path (e.g. `--enemy Enemy/akira_boss.tscn`); `--action "enemy:callback:MethodName@30"` calls a zero-argument method on the combatant at that frame.
-   - **Designated Scratch Path:** If you need temporary staging scripts, inspection scripts, or other throwaway scripts, it is recommended to use the gitignored `.scratch/` folder. Scripts kept there are a good fit when the work is exploratory and unlikely to be reused.
-   - When a staging script proves reusable (a standard encounter worth re-running), consider promoting it to `tools/capture/`. `tools/levels/out/` is intended for level-pipeline extraction scripts.
-   - For a clean still of a live interaction, `--freeze` is available to hold combatants in place (actors keep their spawn position, so spawning at rest height is recommended); `--verbose` streams full engine output when debugging staging.
-
-
-
-
+Open work is in `TODO.md`; the review behind it and the work plan are in
+`CODE_REVIEW.md`.
