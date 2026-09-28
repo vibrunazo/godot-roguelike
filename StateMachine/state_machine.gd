@@ -3,6 +3,7 @@
 class_name StateMachine 
 extends Node
 
+## State entered when the owner is ready. Null uses the first child state.
 @export var initial_state: State = null
 
 @onready var state: State = (func get_initial_state() -> State:

@@ -1,6 +1,7 @@
 class_name ExitPoint
 extends Node3D
 
+## Scene loaded when the player enters the unlocked exit. Empty opens the shop instead.
 @export_file("*.tscn") var next_scene_path: String = ""
 ## Shop scene opened when next_scene_path is empty. Leave unset to use the GlobalVars registry.
 @export var shop_fallback_scene: PackedScene

@@ -22,6 +22,16 @@ are in `CODE_REVIEW.md`; section numbers below point there.
    camera would not follow the player down to it. Recreating the player per
    level (item 11) fixes this for free; until then, re-base the floor when the
    level places the carried player (`level_template.gd`).
+6. **An enemy that tries to attack while stunned loses its attack and wanders
+   off.** `AIAttack.enter()` starts the attack cooldown when the mind decides
+   to attack, before the body accepts the order. A refused order (the body is
+   stunned or falling) still costs the whole cooldown, so the mind drops back
+   to `AIMeander`, which cannot attack either and walks away from a player
+   standing in range. Seen with the ranged enemy landing stunned from its
+   spawn; a player's hit landing as the enemy decides to attack does the same.
+   Start the cooldown only when the order is accepted; first add a failing
+   regression test (an attack attempted while stunned must still be available
+   once the stun ends).
 
 ## Decisions needed
 
@@ -74,6 +84,15 @@ Every suite now runs on the harness (Phase B step 4 is done).
     `cancel_movement_and_abilities()` and the `player_cache` reparenting then
     go away. `test_level_transition_reset` covers today's carry-over and would
     become the contract for the new one.
+12. **Make the lint green** (`python tools/lint_project.py`; its output is
+    the exact list). This comes before any new feature work. 14
+    `hardcoded-load` and 8 `compat-wording` findings are the D9 alias and
+    fallback cleanup (§2.6, §2.7). The 27 `long-function` findings are
+    functions to split: 18 production functions over 40 lines (the
+    worst: `Character._ready()`, `EnemyLeapingDodge.enter()` and
+    `_find_best_landing_position()`, `WaveObjective.generate_wave_enemies()`,
+    `ObjectiveTrail3D._render_trail()`, `CharacterAttack.enter()`), 8 tests
+    over 60 and 1 tool over 80.
 15. The remaining review phases: Phase C guardrails (docs, skills, lint,
     shared launcher, CI) and Phase D cleanup (aliases, fallbacks, registries,
     refactors). See the status table in §5.5.

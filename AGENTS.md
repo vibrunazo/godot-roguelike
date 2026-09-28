@@ -18,8 +18,14 @@ prints the error and idles forever. `--quit-after` does not help.
 
 - **NEVER run a bare `godot` command.** Always go through a runner with a
   watchdog:
-  - `python run_tests.py [test/test_x.tscn ...]` runs the suites (`--fps N`
-    emulates a slow device, `--verbose` prints every suite's output).
+  - `python run_tests.py [test/test_x.tscn ...]` runs the project lint, then
+    the suites (`--fps N` emulates a slow device, `--verbose` prints every
+    suite's output). Lint alone: `python tools/lint_project.py` (no Godot).
+    Every lint violation fails the run; there are no suppressions. Fix the
+    code, or the rule if it is wrong. **A red lint is never acceptable**: the
+    violations it reports today are open bugs (`TODO.md` item 12), and fixing
+    them comes before new features. Never add a violation, and never finish a
+    change that leaves a new one behind.
   - `python run_scratch.py <script.gd> [--timeout N] [-- args]` runs a
     throwaway `-s` script (it must `extends SceneTree` and call `quit(code)`).
   - `python capture.py <map|anim|combat|test> ...` captures screenshots and

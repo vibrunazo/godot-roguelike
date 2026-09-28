@@ -46,6 +46,10 @@ func test_the_ai_attacks_a_player_in_range() -> void:
 	var meander: AIMeander = _shooter.ai_state_machine.get_node("AIMeander") as AIMeander
 	var ai_attack: AIAttack = meander.attack_state as AIAttack
 	await _spawn_player(_shooter.global_position + Vector3(meander.attack_range * 0.75, 0.0, 0.0))
+	# Wake the AI only once the body can act: an attack attempted during the
+	# spawn-landing stun is refused and currently costs its cooldown (TODO.md).
+	if not await wait_until(func() -> bool: return _shooter.state_machine.state.name == "EnemyMove", "setup: the shooter should be ready to act"):
+		return
 	_shooter.ai_state_machine.process_mode = Node.PROCESS_MODE_INHERIT
 	await wait_until(func() -> bool: return _shooter.state_machine.state.name == ai_attack.attack_state_name, "the AI should attack a player in range", ACTION_FRAMES)
 

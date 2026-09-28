@@ -1,7 +1,9 @@
 @tool
 extends MeshInstance3D
 
+## Weapon slot whose attack_mode and vfx_threshold drive this trail.
 @export var weapon_slot: WeaponSlot
+## The slot attack mode this trail shows for (e.g. SLASH).
 @export var attack_type: WeaponSlot.mode
 
 

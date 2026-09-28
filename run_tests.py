@@ -18,6 +18,10 @@ Usage:
     python run_tests.py test/test_audio.tscn         # specific suite(s)
     python run_tests.py --fps 20                     # emulate a 20 fps device
     python run_tests.py --verbose                    # print engine output for passing suites too
+    python run_tests.py --no-lint                    # skip the project lint
+
+The project lint (tools/lint_project.py) runs first. Any lint violation fails
+the run, but the suites still run so both results are visible.
 
 A suite whose script (test/test_x.gd next to test/test_x.tscn) contains a line
     ## fps_matrix: 12, 20, 30, 60
@@ -143,13 +147,28 @@ def declared_fps_matrix(scene_path: str) -> list[int] | None:
     return rates or None
 
 
+def run_lint() -> bool:
+    """Runs tools/lint_project.py; returns True when it reports no new violations."""
+    try:
+        result = subprocess.run([sys.executable, os.path.join("tools", "lint_project.py")],
+                                shell=False, capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        print("[lint] timed out.", flush=True)
+        return False
+    print((result.stdout + result.stderr).rstrip(), flush=True)
+    return result.returncode == 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run Godot test suites headlessly under a watchdog.")
     parser.add_argument("tests", nargs="*", help="Suite scenes to run (default: test/test_*.tscn)")
     parser.add_argument("--fps", type=int, default=DEFAULT_FPS, help=f"Fixed render frame rate (default: {DEFAULT_FPS})")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help=f"Seconds per suite (default: {DEFAULT_TIMEOUT})")
     parser.add_argument("--verbose", action="store_true", help="Print engine output for passing suites too")
+    parser.add_argument("--no-lint", action="store_true", help="Skip the project lint (tools/lint_project.py)")
     args = parser.parse_args()
+
+    lint_ok = True if args.no_lint else run_lint()
 
     tests = collect_tests(args.tests)
     if not tests:
@@ -221,13 +240,17 @@ def main() -> int:
     print("\n" + "=" * 60, flush=True)
     if not failed:
         print(f"ALL {passed} TESTS PASSED! ({total_time:.2f}s total, fixed {args.fps} fps)", flush=True)
+        if not lint_ok:
+            print("LINT FAILED: lint violations (see the top of this output).", flush=True)
         print("=" * 60, flush=True)
-        return 0
+        return 0 if lint_ok else 1
     print(f"TESTS FAILED: {passed}/{total} passed, {len(failed)} failed "
           f"({total_time:.2f}s total, fixed {args.fps} fps)", flush=True)
     print("\nFailures:", flush=True)
     for t, reason in failed:
         print(f"  - {t}: {reason}", flush=True)
+    if not lint_ok:
+        print("  - lint: violations (see the top of this output)", flush=True)
     print("=" * 60, flush=True)
     return 1
 

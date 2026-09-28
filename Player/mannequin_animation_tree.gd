@@ -1,5 +1,6 @@
 extends AnimationTree
 
+## How fast the walk/run blend follows the character's movement (blend units per second).
 @export var animation_speed := 6.0
 
 @onready var playback: AnimationNodeStateMachinePlayback = self["parameters/playback"]

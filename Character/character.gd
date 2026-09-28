@@ -18,6 +18,20 @@ signal hit_landed(target: Node, attack_component: AttackComponent)
 ## Emitted when this character is alerted into active combat.
 signal alerted
 
+## Fallback rotation speed in degrees per second when no AttributeComponent is
+## attached. Mirrors AttributeComponent.base_rotation_speed.
+const DEFAULT_ROTATION_SPEED: float = 360.0
+## Gameplay tag carried while the character is airborne (left the floor and not
+## grounded again). Passive required/blocked gates can use it ("only while
+## airborne"); the grounded->airborne and airborne->grounded edges are also
+## broadcast as movement lifecycle events (see _update_airborne_state).
+const TAG_AIRBORNE: StringName = &"movement.airborne"
+## Extra tag on an airborne episode's ENDED event: the character just landed.
+const TAG_LANDED: StringName = &"movement.landed"
+## Seconds between player defeat and the game-over screen, letting the death
+## animation and corpse read before the menu takes over.
+const DEFEAT_MENU_DELAY: float = 2.0
+
 ## The visual mount node rotated to face movement or aim directions.
 @export var mesh_mount: Node3D
 ## Reference to the character's AttributeComponent (stat store). Owns movement
@@ -522,18 +536,6 @@ func get_tags() -> Array[StringName]:
 	return []
 
 
-## Fallback rotation speed in degrees per second when no AttributeComponent is
-## attached. Mirrors AttributeComponent.base_rotation_speed.
-const DEFAULT_ROTATION_SPEED: float = 360.0
-## Gameplay tag carried while the character is airborne (left the floor and not
-## grounded again). Passive required/blocked gates can use it ("only while
-## airborne"); the grounded->airborne and airborne->grounded edges are also
-## broadcast as movement lifecycle events (see _update_airborne_state).
-const TAG_AIRBORNE: StringName = &"movement.airborne"
-## Extra tag on an airborne episode's ENDED event: the character just landed.
-const TAG_LANDED: StringName = &"movement.landed"
-
-
 ## Requests facing toward the given desired direction. The actual rotation only
 ## ever advances toward it by at most get_rotation_speed() * delta, so every
 ## caller (movement, AI auto-aim, attack aiming) merely sets intent while this
@@ -662,11 +664,6 @@ func get_nearest_target(group_name: String = "") -> Character:
 	return closest_char
 
 
-## Seconds between player defeat and the game-over screen, letting the death
-## animation and corpse read before the menu takes over.
-const DEFEAT_MENU_DELAY: float = 2.0
-
-
 ## Shows the game-over screen shortly after player defeat instead of
 ## reloading instantly. The run itself resets only when restart is chosen
 ## from the menu.
@@ -770,7 +767,6 @@ func cancel_movement_and_abilities() -> void:
 		# Also frees every status visual (burning fire, ...): the component
 		# tracks the visual of each effect it applied.
 		attribute_component.clear_temporary_effects()
-
 
 
 ## Centralized idempotent defeat handler that halts motion, disables AI & input, and enters defeat state.

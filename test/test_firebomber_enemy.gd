@@ -26,6 +26,10 @@ const FAR_TARGET_DISTANCE: float = 1000.0
 const WALL_DISTANCE: float = 2.0
 ## Frame budget for a whole bomb flight or leap.
 const FLIGHT_FRAMES: int = 600
+## Test-owned fall gravity multiplier for the Area3D gravity check.
+const TEST_FALL_GRAVITY: float = 0.8
+## A trigger range the old AILeapingDodge._ready() used to overwrite.
+const TEST_TRIGGER_RANGE: float = 3.5
 
 var _arena: Node3D
 var _floor_top: float
@@ -82,8 +86,8 @@ func test_ground_impact_leaves_a_fire_trap_configured_from_the_bomb() -> void:
 
 func test_fall_gravity_drives_the_area_gravity() -> void:
 	var bomb: FirebombProjectile = _spawn_bomb(Vector3(0.0, _floor_top + 5.0, 0.0))
-	bomb.fall_gravity = 0.8
-	check_approx(bomb.gravity, 0.8 * FirebombProjectile.EARTH_GRAVITY, "the Area3D gravity should follow fall_gravity")
+	bomb.fall_gravity = TEST_FALL_GRAVITY
+	check_approx(bomb.gravity, TEST_FALL_GRAVITY * FirebombProjectile.EARTH_GRAVITY, "the Area3D gravity should follow fall_gravity")
 
 
 func test_hitting_the_player_in_flight_damages_them_without_a_fire_trap() -> void:
@@ -146,11 +150,11 @@ func test_leap_ai_keeps_the_values_it_is_configured_with() -> void:
 	# breaking forced off): configured values must survive entering the tree.
 	var bomber: Character = FIREBOMBER_SCENE.instantiate() as Character
 	var ai_leap: AILeapingDodge = bomber.get_node("AIStateMachine/AILeapingDodge") as AILeapingDodge
-	ai_leap.trigger_range = 3.5
+	ai_leap.trigger_range = TEST_TRIGGER_RANGE
 	ai_leap.can_break_stun = true
 	autofree(bomber)
 	_arena.add_child(bomber)
-	check_approx(ai_leap.trigger_range, 3.5, "a configured trigger_range must not be rewritten")
+	check_approx(ai_leap.trigger_range, TEST_TRIGGER_RANGE, "a configured trigger_range must not be rewritten")
 	check(ai_leap.can_break_stun, "a configured can_break_stun must not be rewritten")
 
 

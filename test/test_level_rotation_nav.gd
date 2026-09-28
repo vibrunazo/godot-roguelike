@@ -15,6 +15,17 @@
 ## symptom).
 extends "res://test/lib/test_suite.gd"
 
+## Freestanding tall (y=0) cover must keep COVER_CLEARANCE of clear floor to
+## every interior pit edge, measured rect-to-rect between the wall mesh and
+## the pit tile. Tighter slots bake into sub-meter navmesh slivers that wedge
+## enemies (Level 10's old pillar ring left 1.5 m corner gaps). Cells whose
+## meshes share an edge segment are one bonded mass (tiling runs, colonnades,
+## blocks) and are exempt; only lone cells are measured, using mesh footprints
+## (4 m x 1 m runs centered on the cell grid point, matching
+## generate_walls.py). Pure corner proximity with 4 m+ diagonal clearance
+## (Level 8's arena pillar) passes.
+const COVER_CLEARANCE: float = 3.0
+
 
 func before_each() -> void:
 	SceneTransition.player_cache = null
@@ -410,18 +421,6 @@ func _verify_pit_layer(floor: Dictionary, lined_below: Dictionary, level_path: S
 		return false
 	print("pit lining OK (", checked_sides, " hole-tile sides) in ", level_path)
 	return true
-
-
-## Freestanding tall (y=0) cover must keep COVER_CLEARANCE of clear floor to
-## every interior pit edge, measured rect-to-rect between the wall mesh and
-## the pit tile. Tighter slots bake into sub-meter navmesh slivers that wedge
-## enemies (Level 10's old pillar ring left 1.5 m corner gaps). Cells whose
-## meshes share an edge segment are one bonded mass (tiling runs, colonnades,
-## blocks) and are exempt; only lone cells are measured, using mesh footprints
-## (4 m x 1 m runs centered on the cell grid point, matching
-## generate_walls.py). Pure corner proximity with 4 m+ diagonal clearance
-## (Level 8's arena pillar) passes.
-const COVER_CLEARANCE: float = 3.0
 
 
 ## World-space mesh footprint for a y=0 wall cell (see extents above).

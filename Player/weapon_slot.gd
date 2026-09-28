@@ -5,9 +5,14 @@ signal ranged_attack
 signal slash
 enum mode {NONE, SLASH, STAB}
 
+## Area3D hitbox this slot switches on and off (its AttackComponent deals the hits).
 @export var hitbox: Area3D
+## Which trail VFX is showing (keyed by attack animations: SLASH or STAB, NONE otherwise).
 @export var attack_mode: mode = mode.NONE
+## Slash-trail shader sweep (keyed by attack animations, 1.0 -> 0.0 -> 1.0).
 @export var vfx_threshold: float = 0.0
+## The hit window: animations key it on at the strike apex and off after it.
+## Turning it on emits slash and switches the hitbox monitoring on.
 @export var enabled: bool = false:
 	set(value):
 		if enabled == false and value == true:

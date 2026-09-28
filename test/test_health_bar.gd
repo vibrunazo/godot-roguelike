@@ -34,7 +34,7 @@ func test_characters_wire_the_bar_to_their_own_attributes() -> void:
 
 func test_bar_starts_at_the_current_health_fraction() -> void:
 	var fresh: HealthBar = _spawn(PLAYER_SCENE).get_node("HealthBar") as HealthBar
-	check_approx(fresh.front_progress_bar.value, 100.0, "a character at full health should start with a full bar")
+	check_approx(fresh.front_progress_bar.value, fresh.front_progress_bar.max_value, "a character at full health should start with a full bar")
 	# A bar attached to an owner that is already wounded.
 	var attributes: AttributeComponent = autofree(AttributeComponent.new()) as AttributeComponent
 	add_child(attributes)

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Automated verification suite for the Capture System."""
+"""Manual self-check for the capture system (capture.py).
+
+Needs a display and a GPU, so no automated run collects it. Run it from the
+project root after changing capture.py or tools/capture/:
+    python tools/capture/check_capture_system.py
+"""
 
 import os
 import subprocess

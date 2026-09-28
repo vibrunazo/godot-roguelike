@@ -18,8 +18,23 @@ const DEBUG_KILL_DAMAGE: float = 50.0
 signal pause_state_changed(is_paused: bool)
 
 
+## Pause menu scene override. When null, uses GlobalVars.pause_menu_scene.
+@export var pause_menu_scene: PackedScene = null
+## HUD scene override. When null, uses GlobalVars.hud_scene.
+@export var hud_scene: PackedScene = null
+## Level title overlay scene override. When null, uses GlobalVars.level_title_overlay_scene.
+@export var level_title_overlay_scene: PackedScene = null
+
 ## Whether UI overlays (e.g. level title banners, HUD overlays) are allowed to display.
 var overlays_enabled: bool = true
+var _current_level_overlay: LevelTitleOverlay = null
+var _current_pause_menu: PauseMenu = null
+var _current_hud: HUD = null
+## True while the game-over screen owns the pause state. The pause toggle is
+## disabled then: there is nothing to resume to, only restart or quit.
+var _is_game_over: bool = false
+## True while in the main menu, disabling the in-game pause toggle.
+var is_in_main_menu: bool = false
 
 
 func _ready() -> void:
@@ -69,23 +84,6 @@ func toggle_fullscreen() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	else:
 		go_fullscreen()
-
-
-var _current_level_overlay: LevelTitleOverlay = null
-var _current_pause_menu: PauseMenu = null
-var _current_hud: HUD = null
-## True while the game-over screen owns the pause state. The pause toggle is
-## disabled then: there is nothing to resume to, only restart or quit.
-var _is_game_over: bool = false
-## True while in the main menu, disabling the in-game pause toggle.
-var is_in_main_menu: bool = false
-
-## Pause menu scene override. When null, uses GlobalVars.pause_menu_scene.
-@export var pause_menu_scene: PackedScene = null
-## HUD scene override. When null, uses GlobalVars.hud_scene.
-@export var hud_scene: PackedScene = null
-## Level title overlay scene override. When null, uses GlobalVars.level_title_overlay_scene.
-@export var level_title_overlay_scene: PackedScene = null
 
 
 ## Globally enables or disables UI overlays. When set to false, existing overlays are freed immediately.

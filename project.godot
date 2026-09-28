@@ -36,7 +36,7 @@ window/stretch/aspect="expand"
 
 [editor]
 
-movie_writer/movie_file="D:/docs/godot/godot-roguelite-starting-project/movies/test1.avi"
+movie_writer/movie_file="movies/test1.avi"
 
 [file_customization]
 
