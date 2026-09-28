@@ -39,6 +39,7 @@ python run_tests.py --fps 20                      # emulate a slow device
 python tools/lint_project.py                      # the project lint alone (runs first in run_tests.py)
 python run_scratch.py .scratch/my_check.gd        # a throwaway -s script
 python capture.py map Levels/level_1.tscn         # screenshots and video into movies/
+python tools/check_runners.py                     # self-test the runners (after changing them)
 ```
 
 ## Documentation

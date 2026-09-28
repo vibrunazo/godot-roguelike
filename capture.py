@@ -36,11 +36,10 @@ import os
 import shutil
 import subprocess
 import sys
-import threading
 import time
-from typing import List, Optional
+from typing import Callable, List, Optional
 
-from godot_env import resolve_godot
+from godot_env import run_godot
 
 
 DEFAULT_TIMEOUT_SCREENSHOT = 25  # seconds
@@ -65,18 +64,12 @@ LIVE_TAGS = (
 )
 
 
-def _pipe_reader(pipe, sink: List[str], stream_all: bool, tags) -> None:
-    """Accumulates pipe lines and echoes them live: tagged lines, or all lines in verbose mode."""
-    try:
-        for line in iter(pipe.readline, ""):
-            sink.append(line)
-            if stream_all or any(tag in line for tag in tags):
-                print(f"  {line}", end="" if line.endswith("\n") else "\n", flush=True)
-    finally:
-        try:
-            pipe.close()
-        except Exception:
-            pass
+def _echo(tags: Optional[tuple]) -> Callable[[str], None]:
+    """Echoes a line live when it carries one of the tags (every line if tags is None)."""
+    def echo(line: str) -> None:
+        if tags is None or any(tag in line for tag in tags):
+            print("  " + line.rstrip("\n"), flush=True)
+    return echo
 
 
 def run_godot_command(
@@ -92,50 +85,29 @@ def run_godot_command(
     verbose=True) and is also accumulated so the CompletedProcess contract
     (returncode/stdout/stderr) is preserved for callers.
     """
-    # OS-agnostic godot resolution (works on Linux, WSL, macOS, and Windows)
-    godot_bin = resolve_godot()
-    cmd: List[str] = [godot_bin, "--path", "."]
-    cmd.extend(godot_flags)
-    cmd.append(scene_path)
+    engine_args: List[str] = ["--path", "."]
+    engine_args.extend(godot_flags)
+    engine_args.append(scene_path)
     if user_args:
-        cmd.append("--")
-        cmd.extend(user_args)
+        engine_args.append("--")
+        engine_args.extend(user_args)
 
-    print(f"[capture.py] Executing command: {' '.join(cmd)}")
-    t0 = time.time()
+    print(f"[capture.py] Executing: godot {' '.join(engine_args)}")
     try:
-        proc = subprocess.Popen(
-            cmd,
-            shell=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
+        result = run_godot(
+            engine_args,
+            timeout,
+            on_stdout=_echo(None if verbose else LIVE_TAGS),
+            on_stderr=_echo(None) if verbose else None,
         )
-    except Exception as e:
+    except OSError as e:
         print(f"[capture.py] ERROR: Failed to execute Godot: {e}")
         sys.exit(1)
-    stdout_lines: List[str] = []
-    stderr_lines: List[str] = []
-    readers = [
-        threading.Thread(target=_pipe_reader, args=(proc.stdout, stdout_lines, verbose, LIVE_TAGS)),
-        threading.Thread(target=_pipe_reader, args=(proc.stderr, stderr_lines, verbose, ())),
-    ]
-    for reader in readers:
-        reader.start()
-    try:
-        returncode = proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        elapsed = time.time() - t0
+    if result.timed_out:
         print(f"[capture.py] ERROR: Godot command timed out after {timeout} seconds and was terminated.")
-        proc.kill()
-        proc.wait()
-        for reader in readers:
-            reader.join(timeout=5)
         sys.exit(1)
-    for reader in readers:
-        reader.join(timeout=10)
-    elapsed = time.time() - t0
-    res = subprocess.CompletedProcess(cmd, returncode, "".join(stdout_lines), "".join(stderr_lines))
+    elapsed = result.elapsed
+    res = subprocess.CompletedProcess(result.cmd, result.returncode, result.stdout, result.stderr)
     if res.returncode != 0:
         print(f"[capture.py] Process exited with error code {res.returncode} ({elapsed:.2f}s):")
         if res.stdout:

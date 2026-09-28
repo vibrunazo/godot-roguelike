@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tools/runner_checks/hang_scene.gd" id="1_fixture"]
+
+[node name="Fixture" type="Node"]
+script = ExtResource("1_fixture")

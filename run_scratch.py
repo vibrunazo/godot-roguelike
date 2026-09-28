@@ -15,10 +15,9 @@ Usage:
 
 import argparse
 import os
-import subprocess
 import sys
 
-from godot_env import resolve_godot
+from godot_env import run_godot
 
 DEFAULT_TIMEOUT = 15  # seconds
 
@@ -57,36 +56,22 @@ def main() -> int:
             file=sys.stderr,
         )
 
-    # OS-agnostic binary resolution (works on Linux, WSL, macOS, and Windows)
-    godot_bin = resolve_godot()
-
-    cmd = [
-        godot_bin,
-        "--headless",
-        "--path", ".",
-        "--quit-after", "60",
-        "-s", script_path,
-    ]
+    engine_args = ["--headless", "--path", ".", "--quit-after", "60", "-s", script_path]
     if extra_args:
-        cmd.append("--")
-        cmd.extend(extra_args)
+        engine_args.append("--")
+        engine_args.extend(extra_args)
 
-    try:
-        res = subprocess.run(
-            cmd,
-            shell=False,
-            capture_output=True,
-            text=True,
-            timeout=args.timeout,
-        )
-        if res.stdout:
-            print(res.stdout, end="")
-        if res.stderr:
-            print(res.stderr, file=sys.stderr, end="")
-        return res.returncode
-    except subprocess.TimeoutExpired:
+    # Output streams live, so a hung script still shows how far it got.
+    res = run_godot(
+        engine_args,
+        args.timeout,
+        on_stdout=lambda line: print(line, end="", flush=True),
+        on_stderr=lambda line: print(line, end="", file=sys.stderr, flush=True),
+    )
+    if res.timed_out:
         print(f"ERROR: Godot process timed out after {args.timeout} seconds and was forcefully terminated.", file=sys.stderr)
         return 124
+    return res.returncode
 
 
 if __name__ == "__main__":

@@ -46,9 +46,12 @@ close it. The last marker is where the engine stopped.
 
 ## Leftover engine processes
 
-A timed-out run can leave a headless Godot running, which slows every later
-run. `run_tests.py` reaps them; after a manual run, check the process list
+The shared watchdog (`godot_env.run_watched()`) kills the whole process tree,
+and `run_tests.py` also reaps a timed-out suite's engine as a backstop, so a
+leftover headless Godot usually means a launcher that bypassed `godot_env.py`.
+Leftovers slow every later run. Check the process list
 (`tasklist | findstr -i godot` on Windows, `pgrep -a godot` elsewhere). Runners
 must launch the real engine binary (`godot_env.resolve_godot()`): killing a
 `.cmd` shim orphans the engine, which keeps the output pipes open and hangs
-the runner itself.
+the runner itself. If you suspect a runner, `python tools/check_runners.py`
+proves they still time out, clean up and catch script errors.

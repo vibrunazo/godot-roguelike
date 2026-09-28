@@ -30,10 +30,12 @@ prints the error and idles forever. `--quit-after` does not help.
     throwaway `-s` script (it must `extends SceneTree` and call `quit(code)`).
   - `python capture.py <map|anim|combat|test> ...` captures screenshots and
     video into `movies/`.
-- Custom Python launchers must resolve the engine with
-  `godot_env.resolve_godot()` (honors `GODOT_BIN`, unwraps Windows shims), use
-  `subprocess.run([...], shell=False, timeout=N)` and catch
-  `subprocess.TimeoutExpired`. A killed shim leaves the engine running.
+- Any new Python launcher must go through `godot_env.run_godot()` (or
+  `run_watched()` for other commands): it resolves the engine (`GODOT_BIN`,
+  Windows shims unwrapped), streams output, and kills the whole process tree
+  at the timeout. Never write another `subprocess` launch of Godot.
+- After changing `godot_env.py` or a runner, run `python tools/check_runners.py`
+  (it proves the runners still time out, clean up and catch script errors).
 - A suite that times out: use the `debug-test-hang` skill.
 
 ## 2. Code rules

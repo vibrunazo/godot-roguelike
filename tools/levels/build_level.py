@@ -9,24 +9,21 @@ The authored spec stays unchanged; spec.final.json records baked paths.
 from __future__ import annotations
 import argparse
 import json
-import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from godot_env import find_script_errors, resolve_godot, run_watched  # noqa: E402
 
 
 def run(args: list[str], log: Path, timeout: int = 30) -> None:
-    """Capture complete output and reject engine script failures even on exit0."""
-    try:
-        result = subprocess.run(args,cwd=ROOT,shell=False,capture_output=True,
-                                text=True,timeout=timeout)
-    except subprocess.TimeoutExpired as error:
-        log.write_text(str(error))
-        raise RuntimeError(f'Watchdog expired: {log}') from error
-    output = result.stdout + result.stderr
-    log.write_text(output,encoding='utf-8')
-    if result.returncode or 'SCRIPT ERROR:' in output or 'ERROR: cannot' in output:
+    """Capture complete output and reject engine script failures even on exit 0."""
+    result = run_watched(args, timeout, ROOT)
+    log.write_text(result.output, encoding='utf-8')
+    if result.timed_out:
+        raise RuntimeError(f'Watchdog expired after {timeout}s: {log}')
+    if result.returncode or find_script_errors(result.output) or 'ERROR: cannot' in result.output:
         raise RuntimeError(f'Build failed; inspect {log}')
     print(f'OK {log.name}',flush=True)
 
