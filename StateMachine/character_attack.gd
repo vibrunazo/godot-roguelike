@@ -88,11 +88,6 @@ func is_on_cooldown() -> bool:
 	return cooldown_timer > 0.0
 
 
-## Progresses cooldown decay by delta.
-func tick_cooldown(delta: float) -> void:
-	_update_tag_enablement()
-	if cooldown_timer > 0.0:
-		cooldown_timer = maxf(0.0, cooldown_timer - delta)
 
 
 ## Checks whether all required tags are present and no blocked tags are present.
@@ -127,10 +122,13 @@ func can_activate() -> bool:
 	return _check_tags()
 
 
+## The attack owns its cooldown and ticks it itself, every physics frame,
+## whoever controls the body: controllers only read it (is_on_cooldown(),
+## can_activate()), so nothing can tick it twice.
 func _physics_process(delta: float) -> void:
 	_update_tag_enablement()
-	if character == null or character.ai_state_machine == null:
-		tick_cooldown(delta)
+	if cooldown_timer > 0.0:
+		cooldown_timer = maxf(0.0, cooldown_timer - delta)
 
 
 func physics_update(delta: float) -> void:

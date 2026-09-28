@@ -186,12 +186,13 @@ python capture.py map Levels/level_5.tscn --preset all
    This bit twice; the failure mode is a parse error followed by a hang.
 8. **`quit()` does not stop the current frame.** After `quit(1)` on an error
    path, `return` immediately or the rest of `_init` still executes.
-9. **After moving/renaming `class_name` scripts, rescan.** A stale
-   `.godot/global_script_class_cache.cfg` produces `hides a global script
-   class` parse errors (then hangs). Regenerate headless with
-   `godot --headless --path . --editor --quit` — hand-editing the cache tends
-   to corrupt it, and `.gdignore`ing a folder that owns global classes hides
-   them from the scan. Headless *game* runs do not rebuild it.
+9. **After adding, moving or renaming `class_name` scripts, the class cache
+   is stale.** A stale `.godot/global_script_class_cache.cfg` produces
+   `hides a global script class` or `Could not find type` parse errors (then
+   hangs). The runners (`run_scratch.py`, `run_tests.py`, `capture.py`)
+   detect this and rebuild it with a headless editor import before launching;
+   never hand-edit the cache (it tends to corrupt it), and never `.gdignore`
+   a folder that owns global classes (it hides them from the scan).
 10. **Validate before you assemble, capture after.** `validate_layout.py`
     catches disconnected tiles, uncovered pits, and floating walls in
     milliseconds — including one real wart it found in Level 4 (two wall

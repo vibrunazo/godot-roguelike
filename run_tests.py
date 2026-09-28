@@ -38,7 +38,7 @@ import subprocess
 import sys
 import time
 
-from godot_env import find_script_errors, reap_stale_headless_godot, run_godot
+from godot_env import ensure_class_cache, find_script_errors, reap_stale_headless_godot, run_godot
 
 DEFAULT_TIMEOUT = 10  # seconds per suite (suites take ~1s under --fixed-fps)
 DEFAULT_FPS = 60
@@ -91,6 +91,8 @@ def main() -> int:
     args = parser.parse_args()
 
     lint_ok = True if args.no_lint else run_lint()
+    if not ensure_class_cache():
+        return 1
 
     tests = collect_tests(args.tests)
     if not tests:

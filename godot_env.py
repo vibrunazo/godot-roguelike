@@ -37,6 +37,11 @@ ROOT = Path(__file__).resolve().parent
 SCRIPT_ERROR_MARKERS = ("SCRIPT ERROR:", "Parse Error:", "Compile Error:")
 # How long to wait for output readers after the process ended (or was killed).
 _READER_GRACE = 5.0
+# Godot's registry of global classes (class_name). Only an editor import
+# rebuilds it; running scenes or -s scripts never does.
+CLASS_CACHE = ROOT / ".godot" / "global_script_class_cache.cfg"
+# Seconds allowed for the headless editor import that rebuilds it.
+CLASS_CACHE_REFRESH_TIMEOUT = 300.0
 
 
 def resolve_godot() -> str:
@@ -132,6 +137,76 @@ def run_godot(
 ) -> RunResult:
     """Runs the Godot engine with engine_args from the project root, watched."""
     return run_watched([resolve_godot(), *engine_args], timeout, ROOT, on_stdout, on_stderr)
+
+
+_CLASS_NAME = re.compile(r'^class_name\s+(\w+)', re.M)
+_EXTENDS = re.compile(r'^extends\s+(\w+)\s*$', re.M)
+_CACHE_ENTRY = re.compile(r'"base": &"(\w*)",\s*"class": &"(\w+)",.*?"path": "res://([^"]+)"', re.S)
+
+
+def _imported_scripts(root: Path) -> list[Path]:
+    """Every .gd file Godot imports: skips .godot, .worktrees and any directory
+    holding a .gdignore."""
+    found: list[Path] = []
+    for directory, subdirs, files in os.walk(root):
+        here = Path(directory)
+        if (here / ".gdignore").exists():
+            subdirs[:] = []
+            continue
+        subdirs[:] = [d for d in subdirs if d not in (".godot", ".worktrees", ".git")]
+        found.extend(here / f for f in files if f.endswith(".gd"))
+    return found
+
+
+def stale_class_cache(root: Path = ROOT) -> list[str]:
+    """Global classes where Godot's class cache disagrees with the scripts: a
+    class_name that is missing, moved, has another base, or no longer exists.
+
+    A stale cache makes every script using the class fail to parse ("Could not
+    find type ..."), and only an editor import rebuilds it (see
+    refresh_class_cache()).
+    """
+    cache = root / ".godot" / "global_script_class_cache.cfg"
+    text = cache.read_text(encoding="utf8") if cache.exists() else ""
+    cached = {cls: (path, base) for base, cls, path in _CACHE_ENTRY.findall(text)}
+    declared: dict[str, tuple[str, str]] = {}
+    for script in _imported_scripts(root):
+        source = script.read_text(encoding="utf8", errors="replace")
+        name = _CLASS_NAME.search(source)
+        if name is None:
+            continue
+        base = _EXTENDS.search(source)
+        declared[name.group(1)] = (script.relative_to(root).as_posix(), base.group(1) if base else "")
+    stale = [cls for cls in cached if cls not in declared]
+    for cls, (path, base) in declared.items():
+        if cls not in cached or cached[cls][0] != path or (base and cached[cls][1] != base):
+            stale.append(cls)
+    return sorted(stale)
+
+
+def refresh_class_cache(timeout: float = CLASS_CACHE_REFRESH_TIMEOUT) -> RunResult:
+    """Rebuilds Godot's class cache (and imports new assets) with a headless
+    editor import."""
+    return run_godot(["--headless", "--path", ".", "--editor", "--quit"], timeout)
+
+
+def ensure_class_cache() -> bool:
+    """Refreshes Godot's class cache when it is stale (e.g. after adding,
+    renaming or re-basing a class_name). Returns False, with the reason
+    printed, when the refresh fails or leaves it stale."""
+    stale = stale_class_cache()
+    if not stale:
+        return True
+    shown = ", ".join(stale[:8]) + (", ..." if len(stale) > 8 else "")
+    print(f"[class cache] out of date for {shown}: running a headless editor import ...", flush=True)
+    result = refresh_class_cache()
+    remaining = stale_class_cache()
+    if result.timed_out or remaining:
+        reason = "timed out" if result.timed_out else "still out of date for " + ", ".join(remaining)
+        print(f"[class cache] refresh failed ({reason}).", flush=True)
+        return False
+    print(f"[class cache] refreshed in {result.elapsed:.1f}s.", flush=True)
+    return True
 
 
 def find_script_errors(output: str) -> list[str]:

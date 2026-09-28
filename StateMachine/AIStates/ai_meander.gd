@@ -73,8 +73,8 @@ func _within(target: Character, reach: float) -> bool:
 func _attack_ready() -> bool:
 	if attack_state == null:
 		return false
-	if attack_state is AIAttack:
-		return not (attack_state as AIAttack).is_on_cooldown()
+	if attack_state is AIAttackBase:
+		return not (attack_state as AIAttackBase).is_on_cooldown()
 	return true
 
 

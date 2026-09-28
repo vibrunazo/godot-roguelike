@@ -5,7 +5,8 @@
 ## - The AI mind commands the body; a hit stuns the body, and the mind cannot
 ##   attack until the body recovers; defeated characters stop acting entirely;
 ##   a falling body takes no orders, and an order never restarts the attack
-##   the body is already running.
+##   the body is already running; an attack order the stunned body refuses
+##   costs no cooldown, so the enemy attacks once the stun ends.
 ## - alert() wakes an idle mind (waiting or meandering) into combat and leaves
 ##   an engaged mind alone.
 ## - Projectiles are parented to the world, so they outlive their shooter.
@@ -37,6 +38,9 @@ const WAVE_SAMPLES: int = 25
 const TITLE_LEVEL: int = 7
 ## Test-owned drop height that makes a spawned enemy fall.
 const DROP_HEIGHT: float = 8.0
+## Test-owned attack cooldown, far longer than DECISION_FRAMES covers, so an
+## attack that wrongly started its cooldown cannot fire within a decision.
+const LONG_COOLDOWN: float = 60.0
 
 var _arena: Node3D
 
@@ -111,6 +115,27 @@ func test_a_hit_stuns_the_body_and_the_mind_cannot_attack_until_it_recovers() ->
 	await wait_until(func() -> bool: return str(body.state.name) != stun_name, "the body should recover from the stun", DECISION_FRAMES)
 	check(enemy.ai_state_machine.order_attack(attack), "after recovering, the mind should be able to order an attack")
 	check_eq(body.state, attack, "the ordered attack should run on the body")
+
+
+func test_an_attack_refused_while_stunned_is_still_ready_after_the_stun() -> void:
+	var enemy: Character = await _grounded_enemy(RANGED_SCENE)
+	var mind: AIStateMachine = enemy.ai_state_machine
+	var ai_attack: AIAttack = mind.get_node("AIAttack") as AIAttack
+	var attack: CharacterAttack = ai_attack.body_state as CharacterAttack
+	var meander: AIMeander = mind.get_node("AIMeander") as AIMeander
+	# Test-owned: a long cooldown, and an aim gate that orders at once, so
+	# the order lands while the body is still stunned.
+	attack.cooldown = LONG_COOLDOWN
+	ai_attack.desired_angle = 360.0
+	var player: Character = _spawn_quiet_player(enemy.global_position + Vector3(meander.attack_range * 0.75, 0.0, 0.0))
+	await wait_until(func() -> bool: return player.is_on_floor(), "setup: the player should land")
+	if not check(enemy.hurtbox.receive_hit(1.0, Vector3.ZERO) and enemy.state_machine.state == enemy.stun_state, "setup: the hit should stun the enemy"):
+		return
+	mind.request_state(ai_attack.name)
+	if not await wait_until(func() -> bool: return mind.state != ai_attack, "the refused order should end the AI attack", DECISION_FRAMES):
+		return
+	check(not ai_attack.is_on_cooldown(), "an attack order the stunned body refused must not start the attack's cooldown")
+	await wait_until(func() -> bool: return enemy.state_machine.state == attack, "once the stun ends the enemy should attack", DECISION_FRAMES)
 
 
 func test_a_falling_body_takes_no_orders() -> void:
@@ -225,7 +250,7 @@ func test_ai_attack_holds_fire_while_it_cannot_face_the_target() -> void:
 	attack.desired_angle = 90.0
 	_freeze_rotation(enemy)
 	enemy.ai_state_machine.request_state("AIAttack")
-	await wait_physics_frames(_hold_frames(attack.cooldown_timer))
+	await wait_physics_frames(_hold_frames((attack.body_state as CharacterAttack).cooldown_timer))
 	check(enemy.state_machine.state.name != attack.body_state.name, "AIAttack must not fire while the target is outside its cone")
 	check(enemy.ai_state_machine.state == attack, "AIAttack should keep aiming instead of giving up")
 
@@ -247,7 +272,7 @@ func test_ai_attack_with_a_zero_cone_fires_only_on_exact_alignment() -> void:
 	attack.desired_angle = 0.0
 	var turn_speed: float = _freeze_rotation(enemy)
 	enemy.ai_state_machine.request_state("AIAttack")
-	await wait_physics_frames(_hold_frames(attack.cooldown_timer))
+	await wait_physics_frames(_hold_frames((attack.body_state as CharacterAttack).cooldown_timer))
 	check(enemy.state_machine.state.name != attack.body_state.name, "a zero cone must hold fire while misaligned")
 	enemy.attribute_component.set_base(AttributeComponent.STAT_ROTATION_SPEED, turn_speed)
 	if await _order_until_attacking(enemy, "AIAttack", attack.body_state.name, "a zero cone should fire once the AI has turned to face the target exactly"):

@@ -26,6 +26,18 @@ func accepts_orders() -> bool:
 	return true
 
 
+## Whether this state is on its cooldown. States with a cooldown (attacks,
+## abilities) override this; they own and tick their cooldown themselves.
+func is_on_cooldown() -> bool:
+	return false
+
+
+## Whether this state may be activated now (cooldown, tag requirements).
+## States with such limits override this.
+func can_activate() -> bool:
+	return true
+
+
 ## Consumes a pending dash intent and transitions to dash_state if available.
 ## Returns true when the intent was consumed and acted upon. Intents are consumed
 ## on read even when gated off, so a press never leaks into a later state.

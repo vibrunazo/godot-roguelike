@@ -17,7 +17,7 @@ import argparse
 import os
 import sys
 
-from godot_env import run_godot
+from godot_env import ensure_class_cache, run_godot
 
 DEFAULT_TIMEOUT = 15  # seconds
 
@@ -44,7 +44,7 @@ def main() -> int:
             f"ERROR: Godot engine invariant violation in '{script_path}':\n"
             f"Scripts executed via 'godot -s' MUST inherit 'SceneTree' (or 'MainLoop') and call 'quit(code)'.\n"
             f"If your script extends Node or Node3D, Godot will hang indefinitely without processing frames.\n"
-            f"Fix your script to start with 'extends SceneTree' and call 'quit(0)' in _init() or when done.",
+            f"Fix your script to start with 'extends SceneTree' and call 'quit(0)' when done (work in _initialize(), not _init()).",
             file=sys.stderr,
         )
         return 1
@@ -55,6 +55,9 @@ def main() -> int:
             f"It may run until the watchdog timeout of {args.timeout}s.\n",
             file=sys.stderr,
         )
+
+    if not ensure_class_cache():
+        return 1
 
     engine_args = ["--headless", "--path", ".", "--quit-after", "60", "-s", script_path]
     if extra_args:

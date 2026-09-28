@@ -64,15 +64,16 @@ func is_on_cooldown() -> bool:
 	return cooldown_timer > 0.0
 
 
-## Progresses cooldown decay by delta.
-func tick_cooldown(delta: float) -> void:
+## Ready when off cooldown.
+func can_activate() -> bool:
+	return not is_on_cooldown()
+
+
+## The ability owns its cooldown and ticks it itself, every physics frame:
+## controllers only read it.
+func _physics_process(delta: float) -> void:
 	if cooldown_timer > 0.0:
 		cooldown_timer = maxf(0.0, cooldown_timer - delta)
-
-
-func _physics_process(delta: float) -> void:
-	if character == null or character.ai_state_machine == null:
-		tick_cooldown(delta)
 
 
 func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:

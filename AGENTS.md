@@ -36,6 +36,9 @@ prints the error and idles forever. `--quit-after` does not help.
   `run_watched()` for other commands): it resolves the engine (`GODOT_BIN`,
   Windows shims unwrapped), streams output, and kills the whole process tree
   at the timeout. Never write another `subprocess` launch of Godot.
+- The runners rebuild Godot's class cache themselves when a `class_name` was
+  added, moved or re-based (headless editor import); never hand-edit
+  `.godot/global_script_class_cache.cfg`.
 - After changing `godot_env.py` or a runner, run `python tools/check_runners.py`
   (it proves the runners still time out, clean up and catch script errors).
 - A suite that times out: use the `debug-test-hang` skill.

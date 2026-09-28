@@ -18,13 +18,14 @@ same godot_env.run_godot() as the first check.
 from __future__ import annotations
 
 import subprocess
+import tempfile
 import sys
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from godot_env import count_headless_godot, reap_stale_headless_godot, run_godot  # noqa: E402
+from godot_env import count_headless_godot, reap_stale_headless_godot, run_godot, stale_class_cache  # noqa: E402
 
 FIXTURES = "tools/runner_checks"
 TIMEOUT = 3
@@ -61,9 +62,45 @@ def check_leftovers(checks: Checks, label: str) -> None:
         reap_stale_headless_godot("runner_checks")
 
 
+_CACHE_ENTRY = """{
+"base": &"%s",
+"class": &"%s",
+"icon": "",
+"is_abstract": false,
+"is_tool": false,
+"language": &"GDScript",
+"path": "res://%s"
+}"""
+
+
+def check_class_cache_detection(checks: Checks) -> None:
+    """stale_class_cache() on a throwaway project tree: it must flag a class
+    the cache lacks, a re-based class and a deleted one, and nothing else."""
+    print("godot_env.stale_class_cache() on a throwaway project", flush=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / ".godot").mkdir()
+        (root / "ignored").mkdir()
+        (root / "ignored" / ".gdignore").write_text("")
+        (root / "ignored" / "hidden.gd").write_text("class_name Hidden\nextends Node\n")
+        (root / "kept.gd").write_text("class_name Kept\nextends Node\n")
+        cache = root / ".godot" / "global_script_class_cache.cfg"
+
+        def write_cache(entries: list[tuple[str, str, str]]) -> None:
+            cache.write_text("list=[" + ", ".join(_CACHE_ENTRY % e for e in entries) + "]\n")
+
+        write_cache([("Node", "Kept", "kept.gd")])
+        checks.expect(stale_class_cache(root) == [], "a matching cache is not stale (ignored folders are skipped)")
+        (root / "added.gd").write_text("class_name Added\nextends Kept\n")
+        checks.expect(stale_class_cache(root) == ["Added"], "a class missing from the cache is stale")
+        write_cache([("Node", "Kept", "kept.gd"), ("Node", "Added", "added.gd"), ("Node", "Gone", "gone.gd")])
+        checks.expect(stale_class_cache(root) == ["Added", "Gone"], "a re-based class and a deleted class are stale")
+
+
 def main() -> int:
     checks = Checks()
     reap_stale_headless_godot("runner_checks")
+    check_class_cache_detection(checks)
 
     print("godot_env.run_godot() on a scene that never quits", flush=True)
     result = run_godot(["--headless", "--path", ".", f"{FIXTURES}/hang_scene.tscn"], TIMEOUT)

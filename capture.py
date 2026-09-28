@@ -39,7 +39,7 @@ import sys
 import time
 from typing import Callable, List, Optional
 
-from godot_env import run_godot
+from godot_env import ensure_class_cache, run_godot
 
 
 DEFAULT_TIMEOUT_SCREENSHOT = 25  # seconds
@@ -85,6 +85,8 @@ def run_godot_command(
     verbose=True) and is also accumulated so the CompletedProcess contract
     (returncode/stdout/stderr) is preserved for callers.
     """
+    if not ensure_class_cache():
+        return subprocess.CompletedProcess([], 1, "", "Godot's class cache could not be refreshed.")
     engine_args: List[str] = ["--path", "."]
     engine_args.extend(godot_flags)
     engine_args.append(scene_path)

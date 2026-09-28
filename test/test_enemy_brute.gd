@@ -8,7 +8,9 @@
 ##   slam has hyper-armor: hits hurt the brute but do not stun it,
 ## - the punch hurts only after its windup, and can be interrupted into a stun,
 ## - the slam AI breaks out of a stun into the slam and then waits out its
-##   cooldown; the pursue AI's cooldown runs down with time,
+##   cooldown; the pursue AI's cooldown runs down with time; the slam counts
+##   its own cooldown down exactly once per physics frame while its mind runs
+##   (no AI state ticks it too),
 ## - on defeat it enters the defeat state and its body and hurtbox switch off.
 ## Ranges, damage and timings are read from the brute; the slam's impact zone
 ## is measured from one slam before the targets are placed.
@@ -20,6 +22,8 @@ const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const TEST_HIT: float = 10.0
 const TEST_COOLDOWN: float = 2.0
 const TEST_TICK: float = 0.5
+## Physics frames the cooldown count-down test lets pass.
+const COUNT_FRAMES: int = 30
 ## Frame budget for one attack animation.
 const ATTACK_FRAMES: int = 600
 ## Minimum facing alignment (cosine) before the punch is thrown.
@@ -35,7 +39,7 @@ var _pursue: AIPursue
 func before_each() -> void:
 	_arena = load_arena()
 	_brute = await _spawn_brute(Vector3(0.0, 1.0, -8.0))
-	_slam = _brute.state_machine.get_node(NodePath(_mind_slam_state())) as CharacterAttack
+	_slam = _mind_slam.body_state as CharacterAttack
 
 
 func test_the_body_is_set_up_for_fair_hits_and_pathing() -> void:
@@ -129,12 +133,20 @@ func test_the_slam_ai_breaks_a_stun_then_waits_out_its_cooldown() -> void:
 	if not await wait_until(func() -> bool: return _brute.state_machine.state.name == "EnemyStun", "setup: a hit should stun the brute", 5):
 		return
 	# The mind orders the slam from its own tick: let it run.
-	_mind_slam.cooldown_timer = 0.0
+	_slam.cooldown_timer = 0.0
 	_brute.ai_state_machine.process_mode = Node.PROCESS_MODE_INHERIT
 	if not await wait_until(func() -> bool: return _brute.state_machine.state.name == _slam.name, "a ready slam AI with the player in range should break the stun into the slam", 10):
 		return
 	check(_mind_slam.is_on_cooldown(), "the slam should start its cooldown")
 	check(not _mind_slam.evaluate_trigger(TEST_TICK), "the slam must not trigger again on cooldown")
+
+
+func test_the_slam_counts_its_own_cooldown_down_once_per_frame() -> void:
+	_brute.ai_state_machine.process_mode = Node.PROCESS_MODE_INHERIT
+	_slam.cooldown_timer = TEST_COOLDOWN
+	await wait_physics_frames(COUNT_FRAMES)
+	var elapsed: float = COUNT_FRAMES / float(Engine.physics_ticks_per_second)
+	check_approx(_slam.cooldown_timer, TEST_COOLDOWN - elapsed, "the slam's cooldown should run down by exactly the elapsed time", 0.001)
 
 
 func test_the_pursue_cooldown_runs_down_with_time() -> void:
@@ -183,9 +195,6 @@ func _spawn_target(at: Vector3) -> Character:
 	await wait_until(func() -> bool: return target.is_on_floor(), "setup: the target should land")
 	return target
 
-
-func _mind_slam_state() -> String:
-	return _mind_slam.body_state.name
 
 
 func _expected_damage(attack: CharacterAttack, attacker: Character, victim: Character) -> float:

@@ -210,12 +210,10 @@ Certain character scenes (notably `Player/player.tscn`) carry their own `Camera3
 
 ### Moving / Renaming Capturer Files
 The capturer scripts own global classes (`MapCapturer`, `CombatScenarioTemplate`, …).
-After moving or renaming them, Godot's stale `.godot/global_script_class_cache.cfg`
-makes every capture fail with `hides a global script class` (then hang). Regenerate
-headless before capturing again:
-```bash
-godot --headless --path . --editor --quit
-```
-Headless *game* runs do not rebuild this cache. Never `.gdignore` a folder that
-owns global classes — the editor scan must see them.
+After adding, moving or renaming a `class_name`, Godot's class cache
+(`.godot/global_script_class_cache.cfg`) is stale until an editor import, and
+headless *game* runs never rebuild it. The runners (`capture.py`,
+`run_tests.py`, `run_scratch.py`) detect a stale cache and run the headless
+editor import themselves before launching. Never `.gdignore` a folder that owns
+global classes: the editor scan must see them.
 

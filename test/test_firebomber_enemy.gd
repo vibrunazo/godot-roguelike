@@ -4,7 +4,8 @@
 ## - A firebomb flies at its horizontal speed, faces along its velocity, and
 ##   lands on its target; on the ground it leaves a fire trap configured from
 ##   the bomb (size, duration, damage, no ground decal). Hitting the player in
-##   flight damages them and leaves no fire trap.
+##   flight damages them and leaves no fire trap. fall_gravity shapes the
+##   arc: a heavier bomb is thrown higher and still lands on its target.
 ## - A cast aims at the ground under the firebomber's current target.
 ## - AILeapingDodge keeps the values it is configured with, triggers only
 ##   within trigger_range and off cooldown, and never breaks a stun it is not
@@ -26,7 +27,7 @@ const FAR_TARGET_DISTANCE: float = 1000.0
 const WALL_DISTANCE: float = 2.0
 ## Frame budget for a whole bomb flight or leap.
 const FLIGHT_FRAMES: int = 600
-## Test-owned fall gravity multiplier for the Area3D gravity check.
+## Test-owned fall gravity multiplier (the heavy bomb uses twice as much).
 const TEST_FALL_GRAVITY: float = 0.8
 ## A trigger range the old AILeapingDodge._ready() used to overwrite.
 const TEST_TRIGGER_RANGE: float = 3.5
@@ -83,10 +84,21 @@ func test_ground_impact_leaves_a_fire_trap_configured_from_the_bomb() -> void:
 	check(not trap.show_ground_mesh and not trap.ground_mesh.visible, "firebomb fire should not show a ground decal")
 
 
-func test_fall_gravity_drives_the_area_gravity() -> void:
-	var bomb: FirebombProjectile = _spawn_bomb(Vector3(0.0, _floor_top + 5.0, 0.0))
-	bomb.fall_gravity = TEST_FALL_GRAVITY
-	check_approx(bomb.gravity, TEST_FALL_GRAVITY * FirebombProjectile.EARTH_GRAVITY, "the Area3D gravity should follow fall_gravity")
+func test_fall_gravity_shapes_the_arc_and_the_bomb_still_lands_on_target() -> void:
+	var launch: Vector3 = Vector3(0.0, _floor_top + 1.5, 0.0)
+	var target: Vector3 = Vector3(0.0, _floor_top, THROW_DISTANCE)
+	var light: FirebombProjectile = _spawn_bomb(launch)
+	light.fall_gravity = TEST_FALL_GRAVITY
+	light.initialize_trajectory(target)
+	var heavy: FirebombProjectile = _spawn_bomb(launch)
+	heavy.fall_gravity = TEST_FALL_GRAVITY * 2.0
+	heavy.initialize_trajectory(target)
+	check(heavy.velocity.y > light.velocity.y, "a heavier bomb must be thrown higher to reach the same target")
+	light.free()
+	var trap: FireTrap = await _wait_for_fire_trap()
+	if trap == null:
+		return
+	check(Vector2(trap.global_position.x - target.x, trap.global_position.z - target.z).length() < 0.1, "the heavier bomb should still land on its target (landed at %s)" % trap.global_position)
 
 
 func test_hitting_the_player_in_flight_damages_them_without_a_fire_trap() -> void:
@@ -126,9 +138,10 @@ func test_cast_aims_at_the_ground_under_the_target() -> void:
 func test_leap_trigger_respects_range_and_cooldown() -> void:
 	var bomber: Character = await _grounded_bomber()
 	var ai_leap: AILeapingDodge = bomber.ai_state_machine.get_node("AILeapingDodge") as AILeapingDodge
+	var leap: EnemyLeapingDodge = ai_leap.body_state as EnemyLeapingDodge
 	var player: Character = spawn(PLAYER_SCENE, _arena, bomber.global_position + Vector3(0.0, 0.0, ai_leap.trigger_range + 2.0)) as Character
 	await wait_until(func() -> bool: return player.is_on_floor(), "player should land")
-	ai_leap.cooldown_timer = 0.0
+	leap.cooldown_timer = 0.0
 	check(not ai_leap.evaluate_trigger(0.0), "the leap must not trigger with the player outside trigger_range")
 	player.global_position = bomber.global_position + Vector3(0.0, 0.0, ai_leap.trigger_range + 0.2)
 	check(not ai_leap.evaluate_trigger(0.0), "the leap must not trigger just outside trigger_range")
@@ -136,12 +149,12 @@ func test_leap_trigger_respects_range_and_cooldown() -> void:
 	if not check(ai_leap.evaluate_trigger(0.0), "the leap should trigger with the player inside trigger_range"):
 		return
 	check(bomber.ai_state_machine.state == ai_leap, "triggering should switch the mind to AILeapingDodge")
-	check_approx(ai_leap.cooldown_timer, ai_leap.cooldown, "triggering should start the cooldown", 0.1)
+	check_approx(leap.cooldown_timer, leap.cooldown, "the triggered leap should start its cooldown", 0.1)
 	check(not ai_leap.evaluate_trigger(0.0), "the leap must not trigger again while on cooldown")
-	var before: float = ai_leap.cooldown_timer
-	var step: float = before * 0.25
-	ai_leap.evaluate_trigger(step)
-	check_approx(ai_leap.cooldown_timer, before - step, "the cooldown should count down by the elapsed time")
+	var before: float = leap.cooldown_timer
+	var frames: int = 10
+	await wait_physics_frames(frames)
+	check_approx(leap.cooldown_timer, before - frames / float(Engine.physics_ticks_per_second), "the leap should count its cooldown down by the elapsed time", 0.001)
 
 
 func test_leap_ai_keeps_the_values_it_is_configured_with() -> void:

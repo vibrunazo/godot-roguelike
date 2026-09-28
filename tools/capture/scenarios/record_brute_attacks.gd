@@ -106,7 +106,7 @@ func _physics_process(_delta: float) -> void:
 
 	if frame_count == 95:
 		# AISlam stun break: while in EnemyStun, AISlam triggers and breaks free into EnemyAttack
-		ai_slam.cooldown_timer = 0.0
+		(ai_slam.body_state as CharacterAttack).cooldown_timer = 0.0
 		ai_slam.evaluate_trigger(0.016)
 
 	if frame_count == 115:

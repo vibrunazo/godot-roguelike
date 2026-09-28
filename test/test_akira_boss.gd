@@ -12,7 +12,8 @@
 ##   interruptable; stun cancels follow each mind state's can_break_stun.
 ## - The has_riders tag gates throwing riders versus summoning helpers;
 ##   throwing detaches the riders and spawns a minion per rider, summoning
-##   spawns ground minions and restores the riders.
+##   spawns ground minions and restores the riders; a thrown rider hurts a
+##   player where it lands.
 ## Tunable values (difficulties, sizes, resistances, cooldowns, damage) are
 ## never asserted, not even relative to other enemies: tests either read them
 ## from the live nodes or set their own. Art (meshes, colors, VFX assets,
@@ -319,6 +320,22 @@ func test_throwing_riders_detaches_them_and_spawns_a_minion_per_rider() -> void:
 	check(not boss.has_tag(RIDERS_TAG), "throwing should remove the riders tag")
 	check(not riders.left_rider_root.visible and not riders.right_rider_root.visible, "thrown riders should no longer show on the boss")
 	await wait_until(func() -> bool: return _minions(boss).size() >= RIDER_COUNT, "each thrown rider should land as a minion", LONG_FRAMES)
+
+
+func test_a_thrown_rider_hurts_the_player_where_it_lands() -> void:
+	var boss: Character = await _settled_boss()
+	var player: Character = await _grounded_player(boss.global_position + Vector3(0.0, 0.0, THROW_DISTANCE))
+	var throw: AkiraBossThrowRidersAttack = boss.state_machine.get_node("EnemyThrowRiders") as AkiraBossThrowRidersAttack
+	# One rider on its own, landing on the player with test-owned damage and
+	# no minion, so only the landing blast can hurt the player.
+	var rider: LobbedSpawnProjectile = spawn(throw.projectile_scene, _arena, boss.global_position + Vector3.UP * 2.0) as LobbedSpawnProjectile
+	rider.shooter = boss
+	rider.area_damage = TEST_DAMAGE
+	rider.spawn_enemy_on_land = false
+	rider.set_target_position(Vector3(player.global_position.x, _floor_top, player.global_position.z))
+	rider.initialize_trajectory()
+	var before: float = _health(player)
+	await wait_until(func() -> bool: return _health(player) < before, "the rider's landing should hurt the player it lands on", LONG_FRAMES)
 
 
 func test_summoning_helpers_spawns_minions_and_restores_the_riders() -> void:

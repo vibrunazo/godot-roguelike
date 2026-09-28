@@ -22,16 +22,6 @@ are in `CODE_REVIEW.md`; section numbers below point there.
    camera would not follow the player down to it. Recreating the player per
    level (item 11) fixes this for free; until then, re-base the floor when the
    level places the carried player (`level_template.gd`).
-6. **An enemy that tries to attack while stunned loses its attack and wanders
-   off.** `AIAttack.enter()` starts the attack cooldown when the mind decides
-   to attack, before the body accepts the order. A refused order (the body is
-   stunned or falling) still costs the whole cooldown, so the mind drops back
-   to `AIMeander`, which cannot attack either and walks away from a player
-   standing in range. Seen with the ranged enemy landing stunned from its
-   spawn; a player's hit landing as the enemy decides to attack does the same.
-   Start the cooldown only when the order is accepted; first add a failing
-   regression test (an attack attempted while stunned must still be available
-   once the stun ends).
 
 ## Decisions needed
 
@@ -85,6 +75,6 @@ Every suite now runs on the harness (Phase B step 4 is done).
     go away. `test_level_transition_reset` covers today's carry-over and would
     become the contract for the new one.
 15. The remaining review step, D11 (structural refactors), comes before new
-    features. Items 6 and 11 are scheduled inside it: 6 with the
-    `AIAttackBase`/body-owned cooldown refactor (§2.9; write its failing
-    test first), 11 with the `Character` split (§2.1). See §5.5.
+    features: the `Character`/`AttributeComponent` split (§2.1), which item
+    11 is scheduled inside.
+    See §5.5.

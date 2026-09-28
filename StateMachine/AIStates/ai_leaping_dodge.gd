@@ -9,7 +9,6 @@ extends AIConditionalAttack
 
 
 func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
-	cooldown_timer = cooldown
 	_attack_ordered = false
 	if ai_state_machine != null:
 		ai_state_machine.command_stop()
