@@ -13,25 +13,6 @@ extends CharacterState
 ## Optional audio stream player for jump sound effects.
 @export var jump_audio: AudioStreamPlayer3D
 
-## Convenience aliases matching attack states and potential naming variations.
-var movement_speed: float:
-	get:
-		return movement_speed_ratio
-	set(val):
-		movement_speed_ratio = val
-
-var movement_ratio: float:
-	get:
-		return movement_speed_ratio
-	set(val):
-		movement_speed_ratio = val
-
-var movement_speed_ration: float:
-	get:
-		return movement_speed_ratio
-	set(val):
-		movement_speed_ratio = val
-
 var _launch_velocity: Vector3 = Vector3.ZERO
 var _has_left_floor: bool = false
 ## Default movement_speed_ratio captured on enter and restored on exit, so a

@@ -136,7 +136,7 @@ Renaming a node in a `.tscn` silently disables behavior. Recommendations:
 
 ### 2.3 [MED] Layering violations
 
-- **The generic `StateMachine` knows about the player** (`state_machine.gd:49-60`). `_bridge_action_to_intent()` looks up `PlayerInputComponent` and reads the `"click"`/`"jump"` actions in the base class that `AIStateMachine` also inherits. Its docstring says it exists so *"existing `sm._unhandled_input(...)` drivers"* (tests) keep working. Move input handling into `PlayerInputComponent._unhandled_input`, and have tests drive `input_comp.order_attack()` or `Input.parse_input_event()`.
+- *(Fixed 2026-09-27: `PlayerInputComponent._unhandled_input` now routes `click`/`jump` to its orders; `StateMachine._unhandled_input` and the unused `State.handle_input` are gone; no test calls `_unhandled_input` any more.)* **The generic `StateMachine` knows about the player** (`state_machine.gd:49-60`). `_bridge_action_to_intent()` looks up `PlayerInputComponent` and reads the `"click"`/`"jump"` actions in the base class that `AIStateMachine` also inherits. Its docstring says it exists so *"existing `sm._unhandled_input(...)` drivers"* (tests) keep working. Move input handling into `PlayerInputComponent._unhandled_input`, and have tests drive `input_comp.order_attack()` or `Input.parse_input_event()`.
 - **`CharacterAttack` and `PlayerDash` branch on `get_node_or_null("PlayerInputComponent")`** (`character_attack.gd:192, 411`, `player_dash.gd:26`). A shared state should not care who controls it. Let the controller push aim into `character.aim_direction`, and let the state read only `Character`.
 - **`AttackComponent._ready()` knows about a subclass consumer**: `if parent is Area3D and not (parent is EnemyProjectile)` (`attack_component.gd:48`). Replace it with an explicit `@export var auto_bind_parent_area: bool = true` that projectiles set to false.
 - **Production API added for tests:** `PauseMenu.resume_button` is *"kept for test compatibility"* (`pause_menu.gd:40`), `Character.force_retarget()` is "used by tests", and the `StateMachine` input bridge above exists for the same reason. Tests call `_unhandled_input` 44 times and `_transition_to_next_state` 11 times (70 private calls in total). Tests should use public APIs; if one is missing, add it deliberately.
@@ -168,7 +168,7 @@ Renaming a node in a `.tscn` silently disables behavior. Recommendations:
 
 | Where | Alias | Action |
 |---|---|---|
-| `StateMachine/PlayerStates/player_jump.gd:16-34` | `movement_speed`, `movement_ratio`, **`movement_speed_ration` (typo)** → `movement_speed_ratio` | Delete all three. `test_jump_action.gd:633` asserts the typo alias works, so delete that check too. |
+| `StateMachine/PlayerStates/player_jump.gd:16-34` | `movement_speed`, `movement_ratio`, **`movement_speed_ration` (typo)** → `movement_speed_ratio` | *(Fixed 2026-09-27: deleted, with the test checks.)* Delete all three. `test_jump_action.gd:633` asserts the typo alias works, so delete that check too. |
 | `Player/weapon_slot.gd:29` | `shapecast` → `hitbox` | Delete. |
 | `Enemy/enemy_resource.gd:20` | `difficulty` → `difficulty_level` | Delete. |
 | `Levels/exit_point.gd:8` | `next_level_path` → `next_scene_path` | Delete. |
@@ -330,7 +330,7 @@ Replace with `InputMap.has_action("…")` and `not InputMap.action_get_events("�
 
    **Decision (owner):** an in-house base class, not GUT/gdUnit4. It fits the watchdog runners and gives agents one small API to learn. See §3.8 for the spec.
 3. [MED] **`test_enemy_base.gd` is one 3,064-line `_ready()` function.** Its parts are named after course lectures ("Lecture 81–86"), not features, parts 14–27 are missing, and Part 11 is deferred to the end because it changes the scene. Split it into feature suites (`test_exit_point`, `test_upgrade_shop`, `test_projectile`, `test_melee_team_filtering`, …), with one function per part as `test_character_and_ai.gd` already does.
-4. [MED] **Private API use.** 70 calls to `_underscore` methods (`_unhandled_input` ×44, `_transition_to_next_state` ×11, `_get_default_enemy_resources` ×5, …). These lock production internals in place and justified the input bridge in `StateMachine` (§2.3).
+4. [MED] *(Mostly fixed 2026-09-27: 6 calls left in 4 unmigrated suites; see `TODO.md` item 4.)* **Private API use.** 70 calls to `_underscore` methods (`_unhandled_input` ×44, `_transition_to_next_state` ×11, `_get_default_enemy_resources` ×5, …). These lock production internals in place and justified the input bridge in `StateMachine` (§2.3).
 5. [MED] **Fixed-duration waits.** 182 `for i in range(N): await physics_frame` loops and about 20 wall-clock `create_timer(x)` waits. Most loops `break` on a condition, which is fine, but N itself encodes animation lengths. A shared `await wait_until(func() -> bool: ..., max_frames)` helper that fails with a message on timeout would remove the silent fall-through risk and the boilerplate. Timed waits that mirror production timings (1.1 s for a 1.0 s spawn timer) should read the production timer.
 6. [MED] **Tests depend on shipped levels and on the template's live wave.** 21 suites load `level_template.tscn`, and several load `level_1/2/3/13`. The template's `WaveObjective` spawns *random* enemies on a timer, and tests have to fight that: `TestUtils.clear_lock_and_hold_facing()` exists because "level enemies wander into auto-aim range", and `TestUtils.find_dummy()` reaches into `WaveObjective.all_enemies` and force-spawns one. **A barebones arena fixture (`test/fixtures/arena.tscn`)** should have a static floor, a baked minimal navmesh, a player, no `WaveObjective`, no VoxelGI and no exit, and tests should spawn exactly the enemies they need. The payoff is **determinism and isolation, not speed**: measured load time is 61 ms for the template vs. 55 ms for a bare floor plus player, and 120 frames cost 42 ms vs. 33 ms under `--fixed-fps` (§3.6). Level-specific suites (rotation/nav, level 13 stairs, brute pit-corner nav) should keep loading real levels, because that is what they test.
 7. [LOW] **Non-tests in `test/`.** `capture_firebomber`, `record_brute_attacks`, `record_brute_slam` and `record_fire_traps` are recording scripts. `run_tests.py` globs `test/*.tscn`, so they run as "passing tests" (4 of the 49), and `record_fire_traps.gd:69` writes to `D:/docs/…/movies/`. Move them to `tools/capture/scenarios/`, or delete them since `capture.py` covers these cases.
@@ -714,6 +714,6 @@ The harness depends on the runner being trustworthy and fast, so the runner is f
 10. **Unify the level registry and the other duplicated owners** (§2.5).
 11. **Structural refactors:**
     - string state names → exports (§2.2)
-    - input bridge out of `StateMachine` (§2.3)
+    - *(done 2026-09-27)* input bridge out of `StateMachine` (§2.3)
     - `BallisticProjectile`, `AIAttackBase`, and body-owned cooldown ticking (§2.9)
     - split `Character`/`AttributeComponent` (§2.1)

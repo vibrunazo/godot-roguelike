@@ -801,7 +801,6 @@ func on_defeat() -> void:
 	if ai_state_machine != null:
 		ai_state_machine.command_stop()
 		ai_state_machine.set_physics_process(false)
-		ai_state_machine.set_process_unhandled_input(false)
 	var input_comp: PlayerInputComponent = get_node_or_null("PlayerInputComponent") as PlayerInputComponent
 	if input_comp != null:
 		input_comp.set_physics_process(false)

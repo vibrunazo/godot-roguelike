@@ -1,127 +1,80 @@
-extends Node
+## State signal lifecycle:
+## - State.connect_one_shot() ignores duplicate connects, fires once and then
+##   disconnects itself; State.disconnect_safe() removes a connection and is a
+##   no-op when there is none.
+## - An attack interrupted by a dash cancel removes its animation_finished
+##   wiring on exit, so the interrupted animation can never pull the machine
+##   out of a later state.
+extends "res://test/lib/test_suite.gd"
 
-const TestUtils = preload("res://test/test_utils.gd")
+const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+## Frame budget for one attack animation.
+const ATTACK_FRAMES: int = 600
 
-var failures: int = 0
-
-
-func check(condition: bool, message: String) -> void:
-	if condition:
-		print("  ok: ", message)
-	else:
-		failures += 1
-		printerr("TEST FAILED: ", message)
-
-
-func _ready() -> void:
-	print("--- RUNNING SIGNAL LIFECYCLE TEST ---")
-	_part1_helper_idempotence()
-	if failures > 0:
-		get_tree().quit(1)
-		return
-	await _part2_no_stale_attack_callback()
-	if failures > 0:
-		get_tree().quit(1)
-		return
-	print("\n====================================================================")
-	print("  ALL SIGNAL LIFECYCLE TESTS PASSED!                                ")
-	print("  1. connect_one_shot is idempotent, fires once, auto-disconnects  ")
-	print("  2. disconnect_safe is a no-op when nothing is connected          ")
-	print("  3. PlayerAttack exit removes animation_finished wiring           ")
-	print("  4. Dash-cancelled attack never triggers a stale transition       ")
-	print("====================================================================")
-	get_tree().quit(0)
+var _count: int = 0
 
 
-## Part 1: Unit checks for the State signal lifecycle helpers (TODO #6).
-func _part1_helper_idempotence() -> void:
-	print("\n>>> PART 1: State.connect_one_shot / disconnect_safe helpers")
-	var state: State = State.new()
+func _on_finished(_next_state_path: String, _data: Dictionary) -> void:
+	_count += 1
+
+
+func test_connect_one_shot_ignores_duplicates_fires_once_and_disconnects() -> void:
+	var state: State = autofree(State.new()) as State
 	add_child(state)
-	var count: Array[int] = [0]
-	var callback: Callable = func(_next_state_path: String, _data: Dictionary) -> void:
-		count[0] += 1
-
-	# Double connect must not duplicate the connection.
-	state.connect_one_shot(state.finished, callback)
-	state.connect_one_shot(state.finished, callback)
-	check(state.finished.get_connections().size() == 1, "connect_one_shot ignores duplicate connects")
-
-	# One-shot delivery: fires once, then auto-disconnects.
-	state.finished.emit(" somewhere", {})
-	check(count[0] == 1, "one-shot callback fired exactly once")
-	check(not state.finished.is_connected(callback), "one-shot callback auto-disconnected after firing")
-
-	# Safe disconnect on a non-connected callback must not error.
-	state.disconnect_safe(state.finished, callback)
-	check(not state.finished.is_connected(callback), "disconnect_safe is a no-op when not connected")
-
-	# Reconnect then safe disconnect removes the wiring.
-	state.connect_one_shot(state.finished, callback)
-	check(state.finished.is_connected(callback), "connect_one_shot wires the callback")
-	state.disconnect_safe(state.finished, callback)
-	check(not state.finished.is_connected(callback), "disconnect_safe removes the wiring")
-
-	state.queue_free()
+	_count = 0
+	state.connect_one_shot(state.finished, _on_finished)
+	state.connect_one_shot(state.finished, _on_finished)
+	check_eq(state.finished.get_connections().size(), 1, "a duplicate connect_one_shot should not add a second connection")
+	state.finished.emit("Anywhere", {})
+	check_eq(_count, 1, "the one-shot callback should fire exactly once")
+	check(not state.finished.is_connected(_on_finished), "the one-shot callback should disconnect itself after firing")
 
 
-## Part 2: Interrupting PlayerAttack (dash cancel) must leave no stale
-## animation_finished wiring, so the finished attack animation can never
-## yank the machine out of a later state.
-func _part2_no_stale_attack_callback() -> void:
-	print("\n>>> PART 2: Dash-cancelled PlayerAttack leaves no stale callback")
-	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
-	var level: Node3D = level_scene.instantiate() as Node3D
-	add_child(level)
-	var player: Character = level.get_node("Player") as Character
-	var input_comp: PlayerInputComponent = player.get_node("PlayerInputComponent") as PlayerInputComponent
-	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
-	var attack_state: CharacterAttack = sm.get_node("PlayerAttack") as CharacterAttack
-	var anim_tree: AnimationTree = player.animation_tree
+func test_disconnect_safe_removes_a_connection_and_is_a_no_op_without_one() -> void:
+	var state: State = autofree(State.new()) as State
+	add_child(state)
+	state.disconnect_safe(state.finished, _on_finished)
+	check(not state.finished.is_connected(_on_finished), "disconnect_safe() without a connection should do nothing")
+	state.connect_one_shot(state.finished, _on_finished)
+	state.disconnect_safe(state.finished, _on_finished)
+	check(not state.finished.is_connected(_on_finished), "disconnect_safe() should remove the connection")
 
-	# Settle: wait for spawn timer, then for the player to land in PlayerRun.
-	await get_tree().create_timer(1.1).timeout
-	for i: int in range(120):
+
+func test_a_dash_cancelled_attack_leaves_no_stale_transition() -> void:
+	var arena: Node3D = load_arena()
+	var player: Character = spawn(PLAYER_SCENE, arena, (arena.get_node("PlayerSpawn") as Node3D).global_position) as Character
+	(player.get_node("PlayerInputComponent") as PlayerInputComponent).set_physics_process(false)
+	var attack: CharacterAttack = player.state_machine.get_node("PlayerAttack") as CharacterAttack
+	if not await wait_until(func() -> bool: return player.is_on_floor() and _state(player) == "PlayerRun", "the player should settle"):
+		return
+	if not check(attack.dash_cancel, "setup: the first attack should allow dash cancelling"):
+		return
+	# Measure an uninterrupted attack, so the watch below outlasts its animation.
+	press_action(&"click")
+	await wait_until(func() -> bool: return _state(player) == attack.name, "the calibration attack should start", 10)
+	var attack_frames: Array[int] = [0]
+	await wait_until(func() -> bool:
+		attack_frames[0] += 1
+		return _state(player) == "PlayerRun", "the calibration attack should finish", ATTACK_FRAMES)
+
+	press_action(&"click")
+	if not await wait_until(func() -> bool: return _state(player) == attack.name, "the attack should start", 10):
+		return
+	check(player.animation_tree.animation_finished.is_connected(attack.finish_attack), "entering the attack should wire animation_finished")
+	# No auto-aim target in the arena, so the jump button commands a dash.
+	press_action(&"jump")
+	if not await wait_until(func() -> bool: return _state(player) == "PlayerDash", "the jump button should dash-cancel the attack", 10):
+		return
+	check(not player.animation_tree.animation_finished.is_connected(attack.finish_attack), "leaving the attack should remove its animation_finished wiring")
+	var unexpected: Array[String] = []
+	for frame: int in range(attack_frames[0] * 2):
 		await get_tree().physics_frame
-		if player.is_on_floor() and sm.state.name == "PlayerRun":
-			break
-	check(sm.state.name == "PlayerRun", "player settled in PlayerRun before attack")
+		var current: String = _state(player)
+		if current != "PlayerDash" and current != "PlayerRun" and not unexpected.has(current):
+			unexpected.append(current)
+	check(unexpected.is_empty(), "after a dash cancel only dash -> run may happen, never a stale transition (saw %s)" % [unexpected])
+	check_eq(_state(player), "PlayerRun", "the dash should end in PlayerRun")
 
-	# Enter PlayerAttack via click.
-	var click := InputEventAction.new()
-	click.action = "click"
-	click.pressed = true
-	sm._unhandled_input(click)
-	check(sm.state.name == "PlayerAttack", "click entered PlayerAttack")
-	check(anim_tree.animation_finished.is_connected(attack_state.finish_attack), "enter() wired animation_finished via one-shot")
 
-	# Dash-cancel out of the attack via the shared jump/dash button: clearing the
-	# auto-aim lock makes the button command a dash (out-of-combat rule).
-	Input.action_press("move_forward")
-	await get_tree().physics_frame
-	var dash_event := InputEventAction.new()
-	dash_event.action = "jump"
-	dash_event.pressed = true
-	TestUtils.clear_lock_and_hold_facing(player)
-	sm._unhandled_input(dash_event)
-	check(sm.state.name == "PlayerDash", "dash cancel interrupted into PlayerDash")
-	check(not anim_tree.animation_finished.is_connected(attack_state.finish_attack), "exit() removed animation_finished wiring")
-	Input.action_release("move_forward")
-
-	# Watch the machine well past the end of the interrupted attack animation:
-	# only dash completion into PlayerRun may occur, never a stale transition.
-	var reached_run := false
-	var unexpected_state := ""
-	for i: int in range(90):
-		await get_tree().physics_frame
-		var current: String = sm.state.name
-		if current == "PlayerRun":
-			reached_run = true
-		elif current != "PlayerDash" and unexpected_state.is_empty():
-			unexpected_state = current
-	check(unexpected_state.is_empty(), "no stale transition after dash cancel (saw: " + unexpected_state + ")")
-	check(reached_run, "dash completed normally into PlayerRun")
-
-	level.queue_free()
-	await get_tree().process_frame
-	await get_tree().process_frame
+func _state(character: Character) -> String:
+	return str(character.state_machine.state.name)

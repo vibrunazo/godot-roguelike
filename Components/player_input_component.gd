@@ -53,6 +53,20 @@ func _physics_process(_delta: float) -> void:
 	update_aim_intent()
 
 
+## Routes the attack button and the shared jump/dash button to their orders,
+## which drive the current body state's checks at once, so a press transitions
+## synchronously. States also consume intents in physics_update, which covers
+## AI-raised flags. order_jump() picks between jump and dash from the combat
+## lock-on and the held movement direction.
+func _unhandled_input(event: InputEvent) -> void:
+	if character == null or not character.is_alive():
+		return
+	if event.is_action_pressed("click"):
+		order_attack()
+	elif event.is_action_pressed("jump"):
+		order_jump()
+
+
 ## Computes camera-relative movement direction from input axes.
 func update_movement_intent() -> void:
 	var input_vector: Vector2 = Input.get_vector("move_left", "move_right", "move_forward", "move_back")

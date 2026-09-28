@@ -21,12 +21,6 @@ func _ready() -> void:
 		state.enter("")
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	_bridge_action_to_intent(event)
-	if state != null:
-		state.handle_input(event)
-
-
 ## Shared controller-facing transition API used by the PlayerController
 ## (PlayerInputComponent orders) and the AIController (AIStateMachine orders).
 ## Runs the same transition path as the finished signal; returns false (with a
@@ -38,25 +32,6 @@ func request_state(target_state_path: String, data: Dictionary = {}) -> bool:
 		return false
 	_transition_to_next_state(target_state_path, data)
 	return true
-
-
-## Test/live-input bridge: routes click/jump events through the PlayerController's
-## orders, so existing sm._unhandled_input(...) drivers (and live input) keep the
-## exact synchronous transition timing raw state input had. States additionally
-## consume intents in physics_update for AI-raised flags. Dash and jump share the
-## single "jump" button: PlayerInputComponent.order_jump() picks between them
-## based on combat lock-on and held movement direction.
-func _bridge_action_to_intent(event: InputEvent) -> void:
-	var body_state: CharacterState = state as CharacterState
-	if body_state == null or body_state.character == null:
-		return
-	var input_comp: PlayerInputComponent = body_state.character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
-	if input_comp == null:
-		return
-	if event.is_action_pressed("click"):
-		input_comp.order_attack()
-	elif event.is_action_pressed("jump"):
-		input_comp.order_jump()
 
 
 func _physics_process(delta: float) -> void:

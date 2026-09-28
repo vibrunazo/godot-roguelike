@@ -1,345 +1,191 @@
-extends Node
+## Player auto-aim targeting:
+## - acquires the nearest enemy within auto_aim_range; enemies do not auto-aim,
+## - a single player-only reticle follows the target and hides without one,
+## - the retarget cooldown holds the current target until it expires or
+##   force_retarget() is called,
+## - a target leaving the range clears at once, whatever the cooldown,
+## - with no target held, an enemy entering the range is acquired on the next
+##   tick, whatever the cooldown,
+## - an attack turns toward the target instead of the aim direction,
+## - the target is frozen during an attack; a target killed mid-attack clears
+##   at once and nothing replaces it until the attack ends,
+## - killing the target clears it synchronously and switches to the nearest
+##   living enemy without waiting out the cooldown; the corpse is never
+##   targeted again.
+## Distances are fractions of the player's own auto_aim_range.
+extends "res://test/lib/test_suite.gd"
 
-## Targeting system test: auto-aim acquisition, range gating, retarget
-## cooldown, attack target freeze, attack facing, player-only reticle,
-## and target clearing on death.
+const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+## Test-owned retarget cooldown, far longer than any watch window below, so a
+## switch inside a window can only come from something other than the cooldown.
+const LONG_COOLDOWN: float = 10.0
+## Test-owned watch window (seconds) for "must not change" checks.
+const HOLD_WINDOW: float = 0.5
+## Ticks auto-aim may take to react (the change lands on the next tick).
+const REACT_FRAMES: int = 3
+## Test-owned enemy health, so the player's attacks never kill by accident.
+const ENEMY_HEALTH: float = 100000.0
+## Frame budget for one attack animation.
+const ATTACK_FRAMES: int = 600
+## Minimum facing alignment (cosine) that counts as "turned toward".
+const TURNED: float = 0.85
+
+var _arena: Node3D
+var _player: Character
+var _home: Vector3
 
 
-func _ready() -> void:
-	print("--- RUNNING TARGETING TEST ---")
-	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
-	var level: Node3D = level_scene.instantiate() as Node3D
-	add_child(level)
-	# Remove the wave spawner so no randomly placed enemies disturb distances.
-	var wave: Node = level.get_node_or_null("WaveObjective")
-	if wave != null:
-		wave.queue_free()
+func before_each() -> void:
+	_arena = load_arena()
+	_home = (_arena.get_node("PlayerSpawn") as Node3D).global_position
+	_player = spawn(PLAYER_SCENE, _arena, _home) as Character
+	# Live mouse aim off: the test sets the aim direction itself.
+	(_player.get_node("PlayerInputComponent") as PlayerInputComponent).set_physics_process(false)
+	await wait_until(func() -> bool: return _player.is_on_floor() and _state() == "PlayerRun", "the player should settle")
+	check(_player.auto_aim_range > 0.0, "setup: the player should have auto-aim enabled")
 
-	var player: Character = level.get_node("Player") as Character
-	var sm: StateMachine = player.get_node("StateMachine") as StateMachine
-	var camera: Camera3D = player.get_viewport().get_camera_3d()
 
-	for i: int in range(120):
+func test_acquires_the_nearest_enemy_in_range_and_enemies_do_not_auto_aim() -> void:
+	var near: Character = await _spawn_enemy(_at(0.3, Vector3.RIGHT))
+	var far: Character = await _spawn_enemy(_at(0.5, Vector3.LEFT))
+	await wait_until(func() -> bool: return _player.current_target == near, "the player should target the nearest enemy")
+	check(far.current_target == null and near.current_target == null, "enemies should not auto-aim")
+
+
+func test_the_reticle_follows_the_target_and_hides_without_one() -> void:
+	var enemy: Character = await _spawn_enemy(_at(0.3, Vector3.RIGHT))
+	if not await wait_until(func() -> bool: return _player.current_target == enemy, "setup: the player should target the enemy"):
+		return
+	await wait_until(func() -> bool: return _reticle() != null and _reticle().target == enemy and _reticle().visible, "the reticle should show on the player's target")
+	check_eq(get_tree().root.find_children("*", "TargetReticle", true, false).size(), 1, "there should be exactly one (player-only) reticle")
+	enemy.global_position = _at(1.5, Vector3.RIGHT)
+	await wait_until(func() -> bool: return _reticle() != null and _reticle().target == null and not _reticle().visible, "the reticle should hide when the target is lost")
+
+
+func test_the_retarget_cooldown_holds_the_target_until_forced() -> void:
+	_player.target_retarget_cooldown = LONG_COOLDOWN
+	var first: Character = await _spawn_enemy(_at(0.4, Vector3.RIGHT))
+	var second: Character = await _spawn_enemy(_at(0.6, Vector3.LEFT))
+	if not await wait_until(func() -> bool: return _player.current_target == first, "setup: the player should target the nearer enemy"):
+		return
+	second.global_position = _at(0.2, Vector3.LEFT)
+	await _check_target_held(first, "the target should not switch while the retarget cooldown runs")
+	_player.force_retarget()
+	await wait_until(func() -> bool: return _player.current_target == second, "force_retarget() should switch to the nearer enemy", REACT_FRAMES)
+
+
+func test_a_target_leaving_the_range_clears_at_once() -> void:
+	_player.target_retarget_cooldown = LONG_COOLDOWN
+	var enemy: Character = await _spawn_enemy(_at(0.3, Vector3.RIGHT))
+	if not await wait_until(func() -> bool: return _player.current_target == enemy, "setup: the player should target the enemy"):
+		return
+	enemy.global_position = _at(1.5, Vector3.RIGHT)
+	await wait_until(func() -> bool: return _player.current_target == null, "an out-of-range target should clear without waiting out the cooldown", REACT_FRAMES)
+
+
+func test_with_no_target_held_an_enemy_entering_range_is_acquired_at_once() -> void:
+	_player.target_retarget_cooldown = LONG_COOLDOWN
+	var enemy: Character = await _spawn_enemy(_at(1.5, Vector3.RIGHT))
+	await _check_target_held(null, "nothing should be targeted while every enemy is out of range")
+	enemy.global_position = _at(0.3, Vector3.RIGHT)
+	await wait_until(func() -> bool: return _player.current_target == enemy, "an enemy entering range should be acquired on the next tick, whatever the cooldown", REACT_FRAMES)
+
+
+func test_an_attack_turns_toward_the_target_instead_of_the_aim() -> void:
+	var enemy: Character = await _spawn_enemy(_at(0.3, Vector3.RIGHT))
+	if not await wait_until(func() -> bool: return _player.current_target == enemy, "setup: the player should target the enemy"):
+		return
+	_player.aim_direction = Vector3.LEFT
+	press_action(&"click")
+	if not await wait_until(func() -> bool: return _player.is_attacking, "pressing attack should start an attack", 10):
+		return
+	var budget: int = ceili(180.0 / _player.get_rotation_speed() * Engine.physics_ticks_per_second) + 5
+	await wait_until(func() -> bool: return _facing().dot(_flat(enemy.global_position - _player.global_position)) >= TURNED, "the attack should turn toward the target, not the aim direction", budget)
+
+
+func test_the_target_is_frozen_during_an_attack_and_a_kill_is_not_replaced_until_it_ends() -> void:
+	var target: Character = await _spawn_enemy(_at(0.3, Vector3.RIGHT))
+	if not await wait_until(func() -> bool: return _player.current_target == target, "setup: the player should target the enemy"):
+		return
+	_player.aim_direction = Vector3.RIGHT
+	press_action(&"click")
+	if not await wait_until(func() -> bool: return _player.is_attacking, "pressing attack should start an attack", 10):
+		return
+	# A nearer living enemy appears and the target moves away (still in range).
+	var alternative: Character = await _spawn_enemy(_at(0.2, Vector3.BACK))
+	target.global_position = _at(0.6, Vector3.LEFT)
+	_player.force_retarget()
+	await wait_physics_frames(REACT_FRAMES)
+	if not check(_player.is_attacking, "setup: the attack should outlast the retarget reaction time"):
+		return
+	check(_player.current_target == target, "the target should not change during an attack")
+	target.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, target.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
+	check(_player.current_target == null, "a target killed mid-attack should clear at once")
+	var replaced: Array[bool] = [false]
+	await wait_until(func() -> bool:
+		replaced[0] = replaced[0] or (_player.is_attacking and _player.current_target != null)
+		return not _player.is_attacking, "the attack should end", ATTACK_FRAMES)
+	check(not replaced[0], "no new target should be acquired until the attack ends")
+	await wait_until(func() -> bool: return _player.current_target == alternative, "after the attack the living enemy should be targeted")
+
+
+func test_killing_the_target_switches_to_the_nearest_living_enemy_at_once() -> void:
+	_player.target_retarget_cooldown = LONG_COOLDOWN
+	var nearest: Character = await _spawn_enemy(_at(0.2, Vector3.RIGHT))
+	var next: Character = await _spawn_enemy(_at(0.4, Vector3.LEFT))
+	await _spawn_enemy(_at(0.6, Vector3.BACK))
+	if not await wait_until(func() -> bool: return _player.current_target == nearest, "setup: the player should target the nearest enemy"):
+		return
+	nearest.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, nearest.attribute_component.get_current(AttributeComponent.POOL_HEALTH))
+	check(_player.current_target == null, "a killed target should clear in the same frame")
+	if not await wait_until(func() -> bool: return _player.current_target == next, "the nearest living enemy should be targeted without waiting out the cooldown", REACT_FRAMES):
+		return
+	_player.force_retarget()
+	await _check_target_held(next, "the corpse must never be targeted again")
+
+
+## Fails if the player's target is ever anything but expected during
+## HOLD_WINDOW (checked every tick, not just at the end).
+func _check_target_held(expected: Character, message: String) -> void:
+	var changed: Array[bool] = [false]
+	var ticks: int = ceili(HOLD_WINDOW * Engine.physics_ticks_per_second)
+	for tick: int in range(ticks):
 		await get_tree().physics_frame
-		if player.is_on_floor() and sm.state.name == "PlayerRun":
-			break
-	if sm.state.name != "PlayerRun":
-		await _fail(level, "Player did not enter PlayerRun.")
-		return
-	if camera == null:
-		await _fail(level, "No active 3D camera found.")
-		return
-
-	var home: Vector3 = player.global_position
-	# Spawned sequentially (never two add+teleport pairs in the same frame):
-	# same-frame double spawns displace the second body in this project setup.
-	var enemy_a: Character = await _spawn_enemy(level, home + Vector3(3.0, 0.0, 0.0))
-	var enemy_b: Character = await _spawn_enemy(level, home + Vector3(-4.0, 0.0, 0.0))
-
-	# =====================================================================
-	# PART 1: Acquire nearest enemy in range + player-only reticle
-	# =====================================================================
-	print("\n>>> PART 1: Nearest acquisition and reticle")
-	player.target_retarget_cooldown = 10.0
-	await _wait_frames(40)
-	if player.current_target != enemy_a:
-		await _fail(level, "Player did not acquire nearest enemy A.")
-		return
-	if enemy_b.current_target != null:
-		await _fail(level, "Enemy B unexpectedly acquired an auto-aim target (auto-aim should be disabled by default on enemies).")
-		return
-	var reticle: TargetReticle = VfxManager.target_reticle
-	if reticle == null:
-		await _fail(level, "VfxManager spawned no target reticle.")
-		return
-	if reticle.target != enemy_a:
-		await _fail(level, "Reticle does not follow the player target.")
-		return
-	if not reticle.visible:
-		await _fail(level, "Reticle not visible while a target is acquired.")
-		return
-	var all_reticles: Array[Node] = get_tree().root.find_children("*", "TargetReticle", true, false)
-	if all_reticles.size() != 1:
-		await _fail(level, "Expected exactly 1 player-only reticle, found %d." % all_reticles.size())
-		return
-	print("Acquired nearest enemy; single player-only reticle follows it.")
-
-	# =====================================================================
-	# PART 2: Retarget cooldown blocks flicker, force re-evaluates
-	# =====================================================================
-	print("\n>>> PART 2: Retarget cooldown")
-	enemy_b.global_position = home + Vector3(2.0, 0.0, 0.0)
-	await _wait_frames(30)
-	if player.current_target != enemy_a:
-		await _fail(level, "Target switched before the retarget cooldown expired.")
-		return
-	player.force_retarget()
-	await _wait_frames(5)
-	if player.current_target != enemy_b:
-		await _fail(level, "Target did not switch to nearer enemy B after re-evaluation.")
-		return
-	player.target_retarget_cooldown = 0.3
-	print("Cooldown held the target; re-evaluation switched to nearer enemy.")
-
-	# =====================================================================
-	# PART 3: Out-of-range targets clear immediately (no cooldown)
-	# =====================================================================
-	print("\n>>> PART 3: Range gating")
-	var out_of_range_dist: float = maxf(player.auto_aim_range + 5.0, 10.0)
-	enemy_a.global_position = home + Vector3(out_of_range_dist, 0.0, 0.0)
-	enemy_b.global_position = home + Vector3(-out_of_range_dist, 0.0, 0.0)
-	await _wait_frames(5)
-	if player.current_target != null:
-		await _fail(level, "Out-of-range targets were not cleared.")
-		return
-	if reticle.target != null or reticle.visible:
-		await _fail(level, "Reticle did not hide after the target cleared.")
-		return
-	print("Out-of-range targets cleared and reticle hid.")
-
-	# =====================================================================
-	# PART 4: Attack rotates toward target instead of mouse aim
-	# =====================================================================
-	print("\n>>> PART 4: Attack aims at current_target")
-	enemy_a.global_position = home + Vector3(3.0, 0.0, 0.0)
-	player.force_retarget()
-	await _wait_frames(40)
-	if player.current_target != enemy_a:
-		await _fail(level, "Player did not re-acquire enemy A.")
-		return
-	# Face the player away (+Z) while the enemy sits at +X.
-	var away: Transform3D = player.mesh_mount.global_transform.looking_at(
-		player.mesh_mount.global_position + Vector3(0, 0, 1), Vector3.UP, true
-	)
-	player.mesh_mount.global_transform = away
-	# Point the mouse at the mirrored (wrong) side of the screen.
-	var enemy_screen: Vector2 = camera.unproject_position(enemy_a.global_position)
-	var player_screen: Vector2 = camera.unproject_position(player.global_position)
-	var wrong_mouse: Vector2 = player_screen + (player_screen - enemy_screen)
-	var mm := InputEventMouseMotion.new()
-	mm.position = wrong_mouse
-	mm.global_position = wrong_mouse
-	Input.parse_input_event(mm)
-	player.get_viewport().warp_mouse(wrong_mouse)
-	await get_tree().process_frame
-	var click := InputEventAction.new()
-	click.action = "click"
-	click.pressed = true
-	sm._unhandled_input(click)
-	if sm.state.name != "PlayerAttack":
-		await _fail(level, "Did not enter PlayerAttack. State: " + sm.state.name)
-		return
-	if not player.is_attacking:
-		await _fail(level, "is_attacking flag not set on attack enter.")
-		return
-	# Facing requests respect the rotation speed limit: poll until the attack
-	# aiming converges instead of expecting an instant snap. Recompute the
-	# target direction each frame in case the enemy drifts while turning.
-	var facing_dir: Vector3 = Vector3.ZERO
-	var dir_to_enemy: Vector3 = Vector3.ZERO
-	var alignment: float = -1.0
-	for i: int in range(30):
-		await _wait_frames(1)
-		facing_dir = player.mesh_mount.global_transform.basis.z.normalized()
-		dir_to_enemy = (enemy_a.global_position - player.global_position).normalized()
-		alignment = facing_dir.dot(dir_to_enemy)
-		if alignment >= 0.85:
-			break
-	print("Attack facing alignment with target: ", alignment)
-	if alignment < 0.85:
-		await _fail(level, "Attack did not rotate toward target. Alignment: %f." % alignment)
-		return
-	print("Attack rotated toward the target despite opposing mouse aim.")
-
-	# =====================================================================
-	# PART 5: Target frozen during the attack, cleared after recovery
-	# =====================================================================
-	print("\n>>> PART 5: Attack target freeze, death-clear, no-switch")
-	# Park a living alternative in range so "no mid-attack switch" is meaningful.
-	var enemy_b2: Character = await _spawn_enemy(level, home + Vector3(0.0, 0.0, 4.0))
-	# Exile A to measured safe floor 6 m out (x = -2 survives; x >= +10 is pit).
-	enemy_a.global_position = home + Vector3(-6.0, 0.0, 0.0)
-	if not enemy_a.is_alive():
-		await _fail(level, "Enemy A died before the freeze check.")
-		return
-	var held_frames: int = 0
-	var nulled_frames: int = 0
-	var killed_mid_attack: bool = false
-	for i: int in range(60):
-		await get_tree().physics_frame
-		if sm.state.name != "PlayerAttack":
-			break
-		if not killed_mid_attack and held_frames >= 3:
-			enemy_a.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 9999.0)
-			killed_mid_attack = true
-			if player.current_target != null:
-				await _fail(level, "Killed target lingered mid-attack.")
-				return
-		if not killed_mid_attack:
-			if player.current_target != enemy_a:
-				await _fail(level, "Target changed mid-attack.")
-				return
-			held_frames += 1
-		else:
-			if player.current_target != null:
-				await _fail(level, "New target acquired mid-attack.")
-				return
-			nulled_frames += 1
-	if not killed_mid_attack:
-		await _fail(level, "Attack ended before the mid-attack kill.")
-		return
-	if held_frames < 3 or nulled_frames < 3:
-		await _fail(level, "Attack ended too fast to verify freeze and no-switch.")
-		return
-	print("Held living target %d frames, corpse cleared at once, no switch for %d frames."
-		% [held_frames, nulled_frames])
-	for i: int in range(120):
-		await get_tree().physics_frame
-		if sm.state.name == "PlayerRun":
-			break
-	if sm.state.name != "PlayerRun":
-		await _fail(level, "Player did not recover to PlayerRun.")
-		return
-	await _wait_frames(40)
-	if player.current_target != enemy_b2:
-		await _fail(level, "Living enemy B2 not acquired after the attack.")
-		return
-	if player.is_attacking:
-		await _fail(level, "is_attacking flag stuck true after the attack.")
-		return
-	print("Living replacement acquired after attack recovery.")
-
-	# =====================================================================
-	# PART 6: Dead targets clear on both sides
-	# =====================================================================
-	print("\n>>> PART 6: Death clears targets")
-	# Fresh enemy: earlier exiles may have dropped A/B into pits by now.
-	var enemy_c: Character = await _spawn_enemy(level, home + Vector3(3.0, 0.0, 0.0))
-	player.force_retarget()
-	await _wait_frames(40)
-	if player.current_target != enemy_c:
-		await _fail(level, "Player did not acquire fresh enemy C before the death check.")
-		return
-	enemy_c.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 9999.0)
-	if player.current_target != null:
-		await _fail(level, "Killed target lingered instead of clearing on death.")
-		return
-	await _wait_frames(3)
-	if player.current_target != enemy_b2:
-		await _fail(level, "Did not switch to living enemy B2 right after the kill.")
-		return
-	if enemy_c.current_target != null:
-		await _fail(level, "Defeated enemy kept its own target.")
-		return
-	print("Death cleared targets on both sides and switched to B2.")
-
-	# =====================================================================
-	# PART 7: Killing the target switches immediately (no linger, no
-	# cooldown wait) and dead enemies are never targeted again.
-	# =====================================================================
-	print("\n>>> PART 7: Instant switch on target death")
-	var enemy_d: Character = await _spawn_enemy(level, home + Vector3(3.0, 0.0, 0.0))
-	# 3.5 m: strictly nearer than B2 at 4 m so the post-kill switch is deterministic.
-	var enemy_e: Character = await _spawn_enemy(level, home + Vector3(-3.5, 0.0, 0.0))
-	player.force_retarget()
-	await _wait_frames(40)
-	if player.current_target != enemy_d:
-		await _fail(level, "Player did not acquire nearest enemy D.")
-		return
-	enemy_d.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, 9999.0)
-	# Death must clear synchronously: no frame may observe the corpse targeted.
-	if player.current_target != null:
-		await _fail(level, "Killed target lingered instead of clearing on death.")
-		return
-	# Replacement must arrive far sooner than the 0.3 s retarget cooldown.
-	await _wait_frames(3)
-	if player.current_target != enemy_e:
-		await _fail(level, "Did not switch to living enemy E right after the kill.")
-		return
-	# The dead enemy stays a valid node in the level but must never be targeted.
-	await _wait_frames(40)
-	if player.current_target != enemy_e:
-		await _fail(level, "Dead enemy D was targeted again after death.")
-		return
-	print("Kill cleared instantly and switched to the living enemy.")
-
-	# =====================================================================
-	# PART 8: Acquisition on tick when no target is held (even with high cooldown)
-	# =====================================================================
-	print("\n>>> PART 8: Immediate on-tick acquisition when no target held")
-	enemy_b2.global_position = home + Vector3(0.0, 0.0, out_of_range_dist)
-	enemy_e.global_position = home + Vector3(out_of_range_dist, 0.0, 0.0)
-	await _wait_frames(5)
-	if player.current_target != null:
-		await _fail(level, "Target did not clear after moving all enemies out of range.")
-		return
-	player.target_retarget_cooldown = 10.0
-	await _wait_frames(10)
-	if player.current_target != null:
-		await _fail(level, "Player acquired target when none in range.")
-		return
-	enemy_e.global_position = home + Vector3(2.5, 0.0, 0.0)
-	await _wait_frames(3)
-	if player.current_target != enemy_e:
-		await _fail(level, "Player did not immediately acquire enemy on tick when no target was held.")
-		return
-	var enemy_f: Character = await _spawn_enemy(level, home + Vector3(1.5, 0.0, 0.0))
-	await _wait_frames(15)
-	if player.current_target != enemy_e:
-		await _fail(level, "Target switched despite active retarget cooldown.")
-		return
-	player.force_retarget()
-	await _wait_frames(3)
-	if player.current_target != enemy_f:
-		await _fail(level, "Target did not switch to closer enemy after force_retarget.")
-		return
-	player.target_retarget_cooldown = 0.3
-	print("Immediate on-tick acquisition without target and cooldown anti-flicker with target verified.")
-
-	print("\n====================================================================")
-	print("  TARGETING TEST PASSED!                                             ")
-	print("  1. Nearest-in-range acquisition (+enemy-side auto-aim)             ")
-	print("  2. Single player-only reticle follows/hides with the target       ")
-	print("  3. Retarget cooldown blocks flicker; re-evaluation switches       ")
-	print("  4. Out-of-range targets clear immediately                         ")
-	print("  5. Attacks rotate toward the target over mouse aim                ")
-	print("  6. Freeze holds living target; death clears; no mid-attack switch ")
-	print("  7. Kill clears at once and switches to living B2                 ")
-	print("  8. Kill switches instantly; dead enemies never targeted again     ")
-	print("  9. Immediate on-tick acquisition when no target held              ")
-	print("====================================================================")
-	level.queue_free()
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	get_tree().quit(0)
+		changed[0] = changed[0] or _player.current_target != expected
+	check(not changed[0], message)
 
 
-## Instantiates a melee enemy at the given position with its AI frozen, so it
-## holds still for deterministic distance checks while staying alive and
-## damageable.
-func _spawn_enemy(level: Node3D, pos: Vector3) -> Character:
-	var melee_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
-	var enemy: Character = melee_scene.instantiate() as Character
-	level.add_child(enemy)
-	enemy.global_position = pos
-	if enemy.ai_state_machine != null:
-		enemy.ai_state_machine.set_physics_process(false)
-		enemy.ai_state_machine.command_stop()
-	# Let the body simulate one frame before the next spawn so same-frame
-	# double add+teleport pairs never displace a fresh body (see above).
-	await get_tree().physics_frame
-	await get_tree().physics_frame
+## Spawns a still, hard-to-kill melee enemy and lets it tick once, so the next
+## spawn never shares its first physics frame (same-frame spawns displace the
+## second body).
+func _spawn_enemy(at: Vector3) -> Character:
+	var enemy: Character = spawn(MELEE_SCENE, _arena, at) as Character
+	disable_ai(enemy)
+	enemy.attribute_component.set_base(AttributeComponent.STAT_MAX_HEALTH, ENEMY_HEALTH)
+	if enemy.knockback_component != null:
+		enemy.knockback_component.max_knockback = 0.0
+	await wait_physics_frames(2)
 	return enemy
 
 
-func _wait_frames(count: int) -> void:
-	for i: int in range(count):
-		await get_tree().physics_frame
+## Point at the given fraction of the player's auto-aim range from the player
+## spawn, along a horizontal direction.
+func _at(range_fraction: float, direction: Vector3) -> Vector3:
+	return _home + direction * _player.auto_aim_range * range_fraction
 
 
-func _fail(level: Node3D, msg: String) -> void:
-	printerr("TEST FAILED: ", msg)
-	level.queue_free()
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	get_tree().quit(1)
+func _reticle() -> TargetReticle:
+	return VfxManager.target_reticle if is_instance_valid(VfxManager.target_reticle) else null
+
+
+func _facing() -> Vector3:
+	return _flat(_player.mesh_mount.global_basis.z)
+
+
+func _flat(vector: Vector3) -> Vector3:
+	return Vector3(vector.x, 0.0, vector.z).normalized()
+
+
+func _state() -> String:
+	return str(_player.state_machine.state.name)

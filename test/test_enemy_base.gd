@@ -1739,8 +1739,14 @@ func _ready() -> void:
 	var fs_action_event := InputEventAction.new()
 	fs_action_event.action = "ui_toggle_fullscreen"
 	fs_action_event.pressed = true
-	UI._unhandled_input(fs_action_event)
-	print("UI._unhandled_input with ui_toggle_fullscreen verified.")
+	# Through the input pipeline (press and release), like a real key press.
+	Input.parse_input_event(fs_action_event)
+	var fs_release_event := InputEventAction.new()
+	fs_release_event.action = "ui_toggle_fullscreen"
+	fs_release_event.pressed = false
+	Input.parse_input_event(fs_release_event)
+	await get_tree().process_frame
+	print("ui_toggle_fullscreen action through the input pipeline verified.")
 
 	var stretch_mode: Variant = ProjectSettings.get_setting("display/window/stretch/mode")
 	var stretch_aspect: Variant = ProjectSettings.get_setting("display/window/stretch/aspect")

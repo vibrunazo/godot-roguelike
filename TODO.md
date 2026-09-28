@@ -24,19 +24,17 @@ are in `CODE_REVIEW.md`; section numbers below point there.
    Until then, avoid deepening the per-level VoxelGI dependency. (§3.9)
 ## Test suite bugs (fix while migrating each suite to the harness, Phase B)
 
-4. **Migrate the remaining suites to the harness** (34 left). Migrated so far:
-    `test_character_rotation`, `test_ground_aoe_jump`, `test_debug_kill`,
-    `test_self_hitstop`, `test_health_bar`, `test_enemy_thunder_mage`,
-    `test_pause_menu`, `test_character_and_ai`, `test_damage_flash_and_shake`,
-    `test_firebomber_enemy`, `test_akira_boss`, plus the new
-    `test_frame_rate_invariance`, `test_attack_component`, `test_wave_objective`.
-    The whole suite now passes at `--fps 20`. While migrating, remove the
-    hardcoded balance, art and key assertions listed in §3.1 (balance), §3.2
-    (art/VFX/layout) and §3.3 (physical keys; now only `test_jump_action`), and
-    the private-method calls (still in 12 suites).
-    - `test_combo_and_dash_cancel` is flaky (about 1 run in 12 at `--fps 12`):
-      it still uses the level template's random wave enemy as its dummy, which
-      can kill the player mid-test. Moving it to the arena fixes this.
+4. **Migrate the remaining suites to the harness** (26 left; list them with
+    `grep -L "test/lib/test_suite.gd" test/test_*.gd`). The whole suite passes
+    at `--fps 20`. While migrating, remove the hardcoded balance and art
+    assertions listed in §3.1 (balance) and §3.2 (art/VFX/layout), and the
+    private-method calls still left in 4 suites: `_transition_to_next_state`
+    (`test_audio` ×2, `test_enemy_base`; use `StateMachine.request_state()`),
+    `_on_timer_timeout` (`test_enemy_base`), `_render_trail`
+    (`test_dungeon_progression_and_trail`) and `_get_damage_hitbox`
+    (`test_passive_abilities`). `test/test_utils.gd` goes away with its last
+    four users (`test_enemy_base`, `test_passive_abilities`,
+    `test_screenshake_controller_policy`, `test_spikes_hazard`).
 5. **`test_brute_level2_nav` saves screenshots during headless runs**
     (`_save_screenshot`, line 136), which logs engine errors because there is no
     renderer. Screenshots belong in `capture.py`/`tools/capture/scenarios/`.
