@@ -1,507 +1,243 @@
-extends Node
+## Regression suite: nothing the player was doing crosses into the next level.
+## Exercises the real carry-over path (SceneTransition.player_cache adopted by
+## a fresh level template, which calls Character.cancel_movement_and_abilities)
+## and the transition-start cancel (SceneTransition.load_scene_path cancels up
+## front):
+## - the transition-start cancel stops character SFX and clears the damage
+##   tint at once,
+## - a player carried mid-dash, or mid-attack with a queued combo, arrives in
+##   running with no motion, intents, knockback, live hitbox, SFX or tint, and
+##   nothing reignites over the following frames,
+## - the cancel works from inside a physics callback (exit portals run it from
+##   body_entered, where direct Area3D writes are locked) and leaves the
+##   hitbox fully off,
+## - burns (damage and visual), temporary modifiers, camera shake and damage
+##   numbers do not cross the transition.
+## (TODO.md item 11 plans to recreate the player per level instead; this
+## suite is the contract that replacement must keep.)
+extends "res://test/lib/test_suite.gd"
 
-## Regression test: dashing (or attacking) into an exit point must not carry
-## movement or ability state into the next level. Exercises the real restore
-## path (SceneTransition.player_cache adopted by a fresh level_template, which
-## calls Character.cancel_movement_and_abilities) for both a mid-dash and a
-## mid-attack player with pending intents, knockback momentum, a live weapon
-## hitbox, in-flight character SFX (dash, damage), and a mid-flash damage tint.
-## Also covers the transition-start path (SceneTransition.load_scene_path
-## cancels upfront): cancel_movement_and_abilities must stop SFX and clear the
-## tint synchronously, including when invoked from inside a physics callback
-## (exit portal body_entered runs during the physics flush, where direct
-## Area3D.monitorable writes are locked).
+const LEVEL_TEMPLATE_SCENE: PackedScene = preload("res://Levels/level_template.tscn")
+const BURN_EFFECT: GameplayEffect = preload("res://Components/effect_fire_burn.tres")
+## Test-owned transient state raised before the transition.
+const TEST_KNOCKBACK: Vector3 = Vector3(5.0, 0.0, 0.0)
+const TEST_SLOW: float = -0.5
+const TEST_SLOW_DURATION: float = 5.0
+const TEST_TRAUMA: float = 0.8
+const TEST_WOUND: float = 42.0
+## Horizontal speed above which the character is really moving (the
+## KnockbackComponent.is_active threshold), not settling on the floor.
+const MOVING_SPEED: float = 1.0
+## Physics ticks allowed for the carried player to land back in running.
+const LANDING_FRAMES: int = 120
 
-
-func _ready() -> void:
-	print("--- RUNNING LEVEL TRANSITION RESET TEST ---")
-	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
-	var level_a: Node3D = level_scene.instantiate() as Node3D
-	add_child(level_a)
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-
-	var player: Character = level_a.get_node("Player") as Character
-	var sm: StateMachine = player.state_machine
-	if sm.state == null or sm.state.name != "PlayerRun":
-		# Settle until the machine has entered its home state.
-		var settled: bool = false
-		for i: int in range(120):
-			await get_tree().physics_frame
-			if sm.state != null and sm.state.name == "PlayerRun":
-				settled = true
-				break
-		if not settled:
-			printerr("TEST FAILED: Player did not settle in PlayerRun.")
-			get_tree().quit(1)
-			return
-
-	# PART 0: transition-start cancel stops SFX and clears the tint synchronously
-	# (what SceneTransition.load_scene_path does before the fade begins).
-	if not _setup_noisy_dash(player, sm):
-		get_tree().quit(1)
-		return
-	print("Noisy mid-dash setup (dash SFX, damage SFX, red tint)...")
-	player.cancel_movement_and_abilities()
-	if not _assert_quiet(player, sm, "transition-start cancel"):
-		get_tree().quit(1)
-		return
-	print("Transition-start cancel verified: quiet, SFX stopped, tint cleared.")
-
-	# PART 1: mid-dash carried across a level restore.
-	if not _setup_noisy_dash(player, sm):
-		get_tree().quit(1)
-		return
-	print("Dashing into exit with pending intents, knockback, live hitbox, SFX, tint...")
-
-	SceneTransition.player_cache = player
-	var level_b: Node3D = level_scene.instantiate() as Node3D
-	add_child(level_b)
-
-	# NOTE: level_b.get_node("Player") would return the level's own fresh Player,
-	# which is only queued for deletion; the adopted cache is LevelTemplate.player.
-	var carried: Character = (level_b as LevelTemplate).player
-	if carried != player:
-		printerr("TEST FAILED: Restored player is not the cached player.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	if not _assert_quiet(carried, sm, "dash"):
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	if not await _assert_quiet_over_frames(carried, sm, "dash"):
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	print("Mid-dash restore cancelled: PlayerRun, zero velocity, no intents.")
-
-	# PART 2: mid-attack (queued combo + live hitbox) carried across a restore.
-	if not sm.request_state("PlayerAttack", {"direction": Vector3.ZERO}):
-		printerr("TEST FAILED: Could not enter PlayerAttack.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	(sm.get_node("PlayerAttack") as CharacterAttack).queued_attack = true
-	player.dash_requested = true
-	player.velocity = Vector3(3.0, 0.0, 3.0)
-	var attack_slots: Array[Node] = player.find_children("*", "WeaponSlot")
-	if attack_slots.is_empty():
-		printerr("TEST FAILED: No WeaponSlot found on player.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	(attack_slots[0] as WeaponSlot).enabled = true
-	# Simulate an in-flight slash SFX leaking across the transition.
-	var attack_audio: AudioStreamPlayer3D = player.get_node_or_null("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio") as AudioStreamPlayer3D
-	if attack_audio != null:
-		attack_audio.play()
-	if not player.is_attacking:
-		printerr("TEST FAILED: Player was not really attacking before restore.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-
-	SceneTransition.player_cache = player
-	var level_c: Node3D = level_scene.instantiate() as Node3D
-	add_child(level_c)
-
-	var carried_attack: Character = (level_c as LevelTemplate).player
-	if carried_attack != player:
-		printerr("TEST FAILED: Restored attacker is not the cached player.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	if (sm.get_node("PlayerAttack") as CharacterAttack).queued_attack:
-		printerr("TEST FAILED: Queued combo intent survived the transition.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	if not _assert_quiet(carried_attack, sm, "attack"):
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	if not await _assert_quiet_over_frames(carried_attack, sm, "attack"):
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	print("Mid-attack restore cancelled: PlayerRun, zero velocity, hitbox off.")
-
-	# PART 3: cancel from inside a physics callback. Exit portals invoke
-	# SceneTransition.load_scene_path from body_entered, i.e. while the physics
-	# server flushes queries, where direct Area3D.monitorable writes are locked
-	# and raise errors. The cancel path must survive that context and still
-	# leave the hitbox fully disabled (monitoring + monitorable).
-	if not _setup_noisy_dash(player, sm):
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	var probe: Area3D = Area3D.new()
-	probe.collision_mask = 17
-	var probe_shape: CollisionShape3D = CollisionShape3D.new()
-	var probe_sphere: SphereShape3D = SphereShape3D.new()
-	probe_sphere.radius = 3.0
-	probe_shape.shape = probe_sphere
-	probe.add_child(probe_shape)
-	_flush_cancel_done = false
-	_flush_write_split = false
-	probe.body_entered.connect(_on_probe_body_entered.bind(player))
-	level_c.add_child(probe)
-	probe.global_position = player.global_position
-	var flush_waited: int = 0
-	while not _flush_cancel_done and flush_waited < 60:
-		await get_tree().physics_frame
-		flush_waited += 1
-	if not _flush_cancel_done:
-		printerr("TEST FAILED: Physics callback never fired for flush-context cancel.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	if _flush_write_split:
-		printerr("TEST FAILED: Flush-context hitbox write left monitoring/monitorable split (locked write skipped).")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	for i: int in range(5):
-		await get_tree().physics_frame
-	if not _assert_quiet(player, sm, "physics-flush cancel"):
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	var flush_slots: Array[Node] = player.find_children("*", "WeaponSlot")
-	if flush_slots.is_empty():
-		printerr("TEST FAILED: No WeaponSlot found on player.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	var flush_hitbox: Area3D = (flush_slots[0] as WeaponSlot).hitbox
-	if flush_hitbox != null and (flush_hitbox.monitoring or flush_hitbox.monitorable):
-		printerr("TEST FAILED: Post-physics-flush hitbox still active: monitoring=", flush_hitbox.monitoring, " monitorable=", flush_hitbox.monitorable)
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-	print("Physics-flush cancel verified: quiet, hitbox fully disabled.")
-
-	# PART 4: Fire, DoT, status VFX, temporary modifiers, and camera shake
-	# cleaned up on level transition.
-	print("\n>>> PART 4: Fire & temporary effects cleanup on level transition")
-	var burn_effect: GameplayEffect = load("res://Components/effect_fire_burn.tres") as GameplayEffect
-	if burn_effect == null:
-		printerr("TEST FAILED: Could not load effect_fire_burn.tres")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-
-	# Apply fire burn to player
-	var burn_id: StringName = player.attribute_component.apply_effect(burn_effect)
-	if burn_id == &"":
-		printerr("TEST FAILED: Failed to apply fire burn effect to player.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-
-	# Apply temporary slow modifier to speed
-	var base_spd: float = player.attribute_component.get_base(AttributeComponent.STAT_SPEED)
-	player.attribute_component.apply_modifier(AttributeComponent.STAT_SPEED, &"test_enemy_slow", Attribute.Op.MULT_ADD, -0.5, 5.0)
-	var slowed_spd: float = player.attribute_component.get_current(AttributeComponent.STAT_SPEED)
-	if is_equal_approx(slowed_spd, base_spd):
-		printerr("TEST FAILED: Speed was not reduced by temporary slow modifier.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-
-	# Set camera trauma
-	var player_cam: ShakeCamera3D = player.get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
-	if player_cam != null:
-		player_cam.trauma = 0.8
-
-	# Spawn floating combat text in VfxManager
-	VfxManager.spawn_damage_number(player, 10.0)
-
-	await get_tree().process_frame
-	await get_tree().process_frame
-
-	# Verify burning VFX node attached
-	var burning_node: Node = player.find_child("StatusBurning", true, false)
-	if burning_node == null:
-		printerr("TEST FAILED: StatusBurning visual effect not found on player before transition.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-
-	# Transition: cache player and adopt into new level_d
-	SceneTransition.player_cache = player
-	if VfxManager != null and VfxManager.has_method("clear_temporary_effects"):
-		VfxManager.clear_temporary_effects()
-	var level_d: Node3D = level_scene.instantiate() as Node3D
-	add_child(level_d)
-	await get_tree().physics_frame
-	await get_tree().process_frame
-
-	var carried_fire: Character = (level_d as LevelTemplate).player
-	if carried_fire != player:
-		printerr("TEST FAILED: Restored player in level_d is not the cached player.")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-
-	# Assert that fire DoT is cleared
-	if not carried_fire.attribute_component._dots.is_empty():
-		printerr("TEST FAILED: Active DoT survived level transition!")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-
-	# Assert that StatusBurning visual node is completely freed/removed
-	var remaining_burning: Node = carried_fire.find_child("StatusBurning", true, false)
-	if remaining_burning != null and is_instance_valid(remaining_burning) and not remaining_burning.is_queued_for_deletion():
-		printerr("TEST FAILED: StatusBurning visual node survived level transition!")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
+var _player: Character
+var _input: PlayerInputComponent
 
 
-	# Assert that temporary speed slow modifier was removed and speed is restored
-	var restored_spd: float = carried_fire.attribute_component.get_current(AttributeComponent.STAT_SPEED)
-	if not is_equal_approx(restored_spd, base_spd):
-		printerr("TEST FAILED: Speed not restored to base value. Got: ", restored_spd, " expected: ", base_spd)
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-
-	# Assert camera shake trauma is reset
-	var carried_cam: ShakeCamera3D = carried_fire.get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
-	if carried_cam != null and carried_cam.trauma > 0.0:
-		printerr("TEST FAILED: Camera trauma survived level transition. Trauma: ", carried_cam.trauma)
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-
-	# Assert VfxManager damage numbers were cleaned up
-	for child: Node in VfxManager.get_children():
-		if child is DamageNumber and is_instance_valid(child) and not child.is_queued_for_deletion():
-			printerr("TEST FAILED: Floating damage number survived transition!")
-			SceneTransition.player_cache = null
-			get_tree().quit(1)
-			return
-
-	# Assert that over several frames, no fire ticks damage the player
-	var health_before: float = carried_fire.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-	for i: int in range(30):
-		await get_tree().physics_frame
-	var health_after: float = carried_fire.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
-	if not is_equal_approx(health_before, health_after):
-		printerr("TEST FAILED: Player continued taking fire damage after level transition!")
-		SceneTransition.player_cache = null
-		get_tree().quit(1)
-		return
-
-	print("Fire & temporary effects cleanup verified: DoT cleared, flames removed, speed restored, camera quiet, damage numbers gone, no passive damage.")
-
+func before_each() -> void:
 	SceneTransition.player_cache = null
-	level_a.queue_free()
-	level_b.queue_free()
-	level_c.queue_free()
-	level_d.queue_free()
-
-	print("\n====================================================")
-	print("  ALL LEVEL TRANSITION RESET TESTS PASSED!")
-	print("  1. Transition-start cancel stops SFX and tint synchronously")
-	print("  2. Mid-dash cancel across restore")
-	print("  3. Mid-attack combo intent & hitbox cancel across restore")
-	print("  4. Physics-flush cancel safety")
-	print("  5. Fire, DoTs, status visuals, modifiers & camera shake cleared")
-	print("====================================================")
-	get_tree().quit(0)
+	var level: Node3D = _spawn_level()
+	_player = (level as LevelTemplate).player
+	_input = _player.get_node("PlayerInputComponent") as PlayerInputComponent
+	await wait_until(func() -> bool: return _state() == "PlayerRun", "the player should settle in running")
 
 
-
-## Set by _on_probe_body_entered once the flush-context cancel has run.
-var _flush_cancel_done: bool = false
-## Set when a flush-context hitbox write leaves monitoring/monitorable split
-## (the locked write was skipped): the regression signature of this bug.
-var _flush_write_split: bool = false
+func after_each() -> void:
+	SceneTransition.player_cache = null
 
 
-## Physics-flush entry point for PART 3: runs cancel_movement_and_abilities
-## from inside an Area3D.body_entered callback, the same locked context the
-## exit portal's SceneTransition.load_scene_path call runs in.
-func _on_probe_body_entered(body: Node3D, target: Character) -> void:
-	if body == target and not _flush_cancel_done:
-		_flush_cancel_done = true
-		var slot: WeaponSlot = target.find_children("*", "WeaponSlot")[0] as WeaponSlot
-		# Deterministic flush-context write: re-enable first, because the
-		# setup's enable may already have been stomped back to false by the
-		# attack animation track's WeaponSlot:enabled key before this fires.
+func test_a_carried_player_keeps_its_health_and_lands_on_the_new_levels_spawn() -> void:
+	var health: float = _player.attribute_component.get_current(AttributeComponent.POOL_HEALTH) - TEST_WOUND
+	_player.attribute_component.set_pool_current(AttributeComponent.POOL_HEALTH, health)
+	_player.global_position += Vector3(3.0, 0.0, 3.0)
+	SceneTransition.player_cache = _player
+	# The next level's own spawn point: where its authored Player stands.
+	var authored: Node3D = LEVEL_TEMPLATE_SCENE.instantiate() as Node3D
+	var spawn_point: Vector3 = (authored.get_node("Player") as Node3D).position
+	authored.free()
+	var next: LevelTemplate = _spawn_level() as LevelTemplate
+	if not check(next.player == _player, "the next level should adopt the carried player"):
+		return
+	check_approx(_player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), health, "the carried player should keep its health")
+	check(_player.global_position.is_equal_approx(next.global_transform * spawn_point), "the carried player should stand on the new level's spawn point")
+	check_eq(_player.process_mode, Node.PROCESS_MODE_INHERIT, "the carried player should be running again")
+
+
+func test_the_transition_start_cancel_silences_sfx_and_the_tint_at_once() -> void:
+	if not _start_noisy_dash():
+		return
+	_player.cancel_movement_and_abilities()
+	_check_quiet("after the transition-start cancel")
+
+
+func test_a_player_carried_mid_dash_arrives_quiet() -> void:
+	if not _start_noisy_dash():
+		return
+	if not _carry_to_next_level():
+		return
+	_check_quiet("after arriving mid-dash")
+	await _check_quiet_until_landed("after arriving mid-dash")
+
+
+func test_a_player_carried_mid_attack_arrives_quiet() -> void:
+	var attack: CharacterAttack = _player.state_machine.get_node("PlayerRun").get("attack_state") as CharacterAttack
+	if not check(_player.state_machine.request_state(attack.name, {"direction": Vector3.ZERO}), "setup: the attack should start"):
+		return
+	attack.queued_attack = true
+	_player.dash_requested = true
+	_player.velocity = Vector3(3.0, 0.0, 3.0)
+	var slot: WeaponSlot = attack.get_weapon_slot()
+	slot.enabled = true
+	var swing: AudioStreamPlayer3D = _slash_audio(slot)
+	if swing != null:
+		swing.play()
+	if not check(_player.is_attacking, "setup: the player should be attacking"):
+		return
+	if not _carry_to_next_level():
+		return
+	check(not attack.queued_attack, "a queued combo must not cross the transition")
+	_check_quiet("after arriving mid-attack")
+	await _check_quiet_until_landed("after arriving mid-attack")
+
+
+func test_cancelling_inside_a_physics_callback_fully_disables_the_hitbox() -> void:
+	if not _start_noisy_dash():
+		return
+	var slot: WeaponSlot = _player.find_children("*", "WeaponSlot")[0] as WeaponSlot
+	var probe: Area3D = autofree(Area3D.new()) as Area3D
+	probe.collision_mask = _player.collision_layer
+	var shape: CollisionShape3D = CollisionShape3D.new()
+	var sphere: SphereShape3D = SphereShape3D.new()
+	sphere.radius = 3.0
+	shape.shape = sphere
+	probe.add_child(shape)
+	var ran: Array[bool] = [false]
+	var split: Array[bool] = [false]
+	probe.body_entered.connect(func(body: Node3D) -> void:
+		if body != _player or ran[0]:
+			return
+		ran[0] = true
+		# Re-enable inside the callback: the attack track may already have
+		# switched the slot off before this fires.
 		slot.enabled = true
-		if slot.hitbox != null and slot.hitbox.monitoring != slot.hitbox.monitorable:
-			_flush_write_split = true
-		target.cancel_movement_and_abilities()
+		split[0] = slot.hitbox != null and slot.hitbox.monitoring != slot.hitbox.monitorable
+		_player.cancel_movement_and_abilities())
+	_player.get_parent().add_child(probe)
+	probe.global_position = _player.global_position
+	if not await wait_until(func() -> bool: return ran[0], "the physics callback should fire"):
+		return
+	check(not split[0], "a hitbox write inside the callback must not leave monitoring and monitorable split")
+	await wait_physics_frames(5)
+	_check_quiet("after a cancel inside a physics callback")
+	check(not slot.hitbox.monitoring and not slot.hitbox.monitorable, "the hitbox should be fully off after the cancel")
 
 
-## Drives the player into a noisy mid-dash: real dash state (PlayerDash.enter
-## plays the dash SFX), pending intents, knockback momentum, a live weapon
-## hitbox, in-flight damage SFX, and a mid-flash damage tint. Returns false on
-## setup failure. Damage SFX/tint are started directly (rather than via
-## take_damage) so the setup never stuns the player out of the dash it must hold.
-func _setup_noisy_dash(player: Character, sm: StateMachine) -> bool:
-	player.move_direction = Vector3(0.0, 0.0, 1.0)
-	if not sm.request_state("PlayerDash", {"direction": Vector3(0.0, 0.0, 1.0)}):
-		printerr("TEST FAILED: Could not enter PlayerDash.")
-		return false
-	# Raise transient state AFTER entering dash (entry clears stale intents).
-	player.attack_requested = true
-	player.dash_requested = true
-	player.knockback_component.add_knockback(Vector3(5.0, 0.0, 0.0))
-	var slots: Array[Node] = player.find_children("*", "WeaponSlot")
-	if slots.is_empty():
-		printerr("TEST FAILED: No WeaponSlot found on player.")
-		return false
-	(slots[0] as WeaponSlot).enabled = true
-	var hit_audio: AudioStreamPlayer3D = player.get_node_or_null("DamageAudio") as AudioStreamPlayer3D
-	if hit_audio != null:
-		hit_audio.play()
-	var tint: ColorRect = player.get_node_or_null("DamageTint") as ColorRect
-	if tint != null:
-		tint.color = Color(Color.RED, 0.5)
-	if sm.state.name != "PlayerDash" or player.velocity.length() <= 1.0:
-		printerr("TEST FAILED: Player was not really dashing before transition.")
-		return false
-	if not player.knockback_component.is_active():
-		printerr("TEST FAILED: Knockback setup did not register as active.")
-		return false
-	var dash_audio: AudioStreamPlayer3D = player.get_node_or_null("DashAudio") as AudioStreamPlayer3D
-	if dash_audio == null or not dash_audio.playing:
-		printerr("TEST FAILED: Dash SFX is not playing mid-dash.")
-		return false
-	return true
+func test_burns_modifiers_shake_and_damage_numbers_do_not_cross_the_transition() -> void:
+	var attributes: AttributeComponent = _player.attribute_component
+	if not check(attributes.apply_effect(BURN_EFFECT) != &"", "setup: the burn should apply"):
+		return
+	var base_speed: float = attributes.get_current(AttributeComponent.STAT_SPEED)
+	attributes.apply_modifier(AttributeComponent.STAT_SPEED, &"test_slow", Attribute.Op.MULT_ADD, TEST_SLOW, TEST_SLOW_DURATION)
+	if not check(not is_equal_approx(attributes.get_current(AttributeComponent.STAT_SPEED), base_speed), "setup: the slow should apply"):
+		return
+	var camera: ShakeCamera3D = _player.get_node("CameraRoot/ShakeCamera3D") as ShakeCamera3D
+	camera.trauma = TEST_TRAUMA
+	VfxManager.spawn_damage_number(_player, 10.0)
+	await get_tree().process_frame
+	if not check(_player.find_children("*", "StatusBurning", true, false).size() > 0, "setup: the burn should show its visual"):
+		return
+	VfxManager.clear_temporary_effects()
+	if not _carry_to_next_level():
+		return
+	await get_tree().process_frame
+	for visual: Node in _player.find_children("*", "StatusBurning", true, false):
+		check(visual.is_queued_for_deletion(), "the burn visual must not cross the transition")
+	check_approx(attributes.get_current(AttributeComponent.STAT_SPEED), base_speed, "temporary modifiers must not cross the transition")
+	check(is_zero_approx(camera.trauma), "camera shake must not cross the transition")
+	for child: Node in VfxManager.get_children():
+		check(not (child is DamageNumber) or child.is_queued_for_deletion(), "damage numbers must not cross the transition")
+	var health: float = attributes.get_current(AttributeComponent.POOL_HEALTH)
+	await wait_physics_frames(ceili(BURN_EFFECT.duration * 0.5 * Engine.physics_ticks_per_second))
+	check_approx(attributes.get_current(AttributeComponent.POOL_HEALTH), health, "the burn must stop hurting after the transition")
 
 
-## Asserts no character SFX is still playing and the damage tint is fully
-## transparent: no dash/damage/attack sound or red flash may leak across the
-## transition (a tween frozen mid-flash would otherwise resume red later).
-func _assert_no_sfx_or_tint_leak(carried: Character, label: String) -> bool:
-	for audio_3d: Node in carried.find_children("*", "AudioStreamPlayer3D"):
-		if (audio_3d as AudioStreamPlayer3D).playing:
-			printerr("TEST FAILED: Post-", label, " character SFX still playing: ", audio_3d.name)
-			return false
-	for audio_2d: Node in carried.find_children("*", "AudioStreamPlayer"):
-		if (audio_2d as AudioStreamPlayer).playing:
-			printerr("TEST FAILED: Post-", label, " character SFX still playing: ", audio_2d.name)
-			return false
-	var tint: ColorRect = carried.get_node_or_null("DamageTint") as ColorRect
-	if tint != null and not is_zero_approx(tint.color.a):
-		printerr("TEST FAILED: Post-", label, " damage tint still visible, alpha: ", tint.color.a)
-		return false
-	return true
+## A level template with its wave stopped; it adopts SceneTransition's
+## carried player when one is set.
+func _spawn_level() -> Node3D:
+	var level: Node3D = spawn(LEVEL_TEMPLATE_SCENE) as Node3D
+	(level.get_node("WaveObjective") as WaveObjective).stop_spawning()
+	for enemy: Node in get_tree().get_nodes_in_group("enemy"):
+		disable_ai(enemy as Character)
+	return level
 
 
-## Freezes every enemy mind so the multi-frame observation below measures only
-## the restored player's own state (no outside knockback or damage).
-func _still_enemies() -> void:
-	for node: Node in get_tree().get_nodes_in_group("enemy"):
-		var enemy: Character = node as Character
-		if enemy == null or enemy.ai_state_machine == null:
-			continue
-		enemy.ai_state_machine.set_physics_process(false)
-		enemy.ai_state_machine.set_process_unhandled_input(false)
+## Carries the player into a fresh level the way SceneTransition does.
+func _carry_to_next_level() -> bool:
+	SceneTransition.player_cache = _player
+	var next: LevelTemplate = _spawn_level() as LevelTemplate
+	return check(next.player == _player, "the next level should adopt the carried player")
 
 
-## Observes the restored player across frames so stale timers (dash duration,
-## queued-combo windows, lunge timers) cannot reignite motion or abilities
-## after the restore. The adopted spawn may be marginally airborne, so the
-## normal spawn-fall (PlayerFall, like every fresh spawn) is allowed — but the
-## player must land back in PlayerRun with no dash/attack leak on any frame.
-## Returns false on the first frame that leaks state.
-func _assert_quiet_over_frames(carried: Character, sm: StateMachine, label: String) -> bool:
-	_still_enemies()
-	var landed: bool = false
-	for f: int in range(120):
-		await get_tree().physics_frame
-		if not _assert_no_leak_frame(carried, sm, label + " frame " + str(f)):
-			return false
-		if sm.state != null and sm.state.name == "PlayerRun" and carried.is_on_floor():
-			landed = true
-			break
-	if not landed:
-		printerr("TEST FAILED: Post-", label, " player never landed in PlayerRun.")
+## Puts the player mid-dash with every kind of transient state raised:
+## pending intents, knockback, a live hitbox, playing dash and hit SFX and a
+## mid-flash damage tint (set directly, so no stun ends the dash early).
+func _start_noisy_dash() -> bool:
+	_player.move_direction = Vector3.BACK
+	if not check(_player.state_machine.request_state("PlayerDash", {"direction": Vector3.BACK}), "setup: the dash should start"):
 		return false
-	_still_enemies()
-	return _assert_landed_quiet(carried, sm, label)
+	# Raised after entering the dash, because entering clears stale intents.
+	_player.attack_requested = true
+	_player.dash_requested = true
+	_player.knockback_component.add_knockback(TEST_KNOCKBACK)
+	(_player.find_children("*", "WeaponSlot")[0] as WeaponSlot).enabled = true
+	_player.hurtbox.hit_audio.play()
+	_input.damage_tint.color = Color(Color.RED, 0.5)
+	return check(_state() == "PlayerDash" and _input.dash_audio.playing and _player.knockback_component.is_active(), "setup: the player should be dashing noisily")
 
 
-## Per-frame leak check: never in a dash/attack state, no meaningful horizontal
-## motion (1.0 is the KnockbackComponent.is_active threshold: anything above
-## it is real momentum, not floor slide), no pending intents, no knockback,
-## not attacking, hitboxes disabled. Vertical fall speed is gravity, allowed.
-func _assert_no_leak_frame(carried: Character, sm: StateMachine, label: String) -> bool:
-	if sm.state == null or (sm.state.name != "PlayerRun" and sm.state.name != "PlayerFall"):
-		var got: String = str(sm.state.name) if sm.state != null else "<null>"
-		printerr("TEST FAILED: Post-", label, " state is ", got, ", expected PlayerRun/PlayerFall.")
-		return false
-	if Vector2(carried.velocity.x, carried.velocity.z).length() > 1.0:
-		printerr("TEST FAILED: Post-", label, " horizontal velocity leaked: ", carried.velocity)
-		return false
-	return _assert_no_ability_leak(carried, label)
+## Everything a transition must leave behind is gone right now.
+func _check_quiet(when: String) -> void:
+	check_eq(_state(), "PlayerRun", "the player should be running %s" % when)
+	check(_player.velocity.is_zero_approx() and _player.move_direction.is_zero_approx(), "no motion should remain %s" % when)
+	_check_no_residue(when)
 
 
-## Landed check: home state, quiet horizontal motion, no ability residue.
-func _assert_landed_quiet(carried: Character, sm: StateMachine, label: String) -> bool:
-	if sm.state == null or sm.state.name != "PlayerRun":
-		var got: String = str(sm.state.name) if sm.state != null else "<null>"
-		printerr("TEST FAILED: Post-", label, " landed state is ", got, ", expected PlayerRun.")
-		return false
-	if Vector2(carried.velocity.x, carried.velocity.z).length() > 1.0:
-		printerr("TEST FAILED: Post-", label, " landed horizontal velocity: ", carried.velocity)
-		return false
-	return _assert_no_ability_leak(carried, label)
+## Watches the player until it lands back in running: no dash or attack may
+## restart and no momentum may return on any frame (a spawn fall is allowed).
+func _check_quiet_until_landed(when: String) -> void:
+	var leak: Array[String] = []
+	var landed: bool = await wait_until(func() -> bool:
+		var state: String = _state()
+		if leak.is_empty() and state != "PlayerRun" and state != "PlayerFall":
+			leak.append("entered %s" % state)
+		if leak.is_empty() and Vector2(_player.velocity.x, _player.velocity.z).length() > MOVING_SPEED:
+			leak.append("moved at %s" % _player.velocity)
+		return state == "PlayerRun" and _player.is_on_floor(), "the player should land back in running %s" % when, LANDING_FRAMES)
+	check(leak.is_empty(), "nothing should reignite %s (%s)" % [when, leak])
+	if landed:
+		_check_no_residue("once landed " + when)
 
 
-## Ability residue shared by the frame and landed checks: no pending intents,
-## no knockback momentum, not attacking, weapon hitboxes disabled, no SFX
-## still playing, damage tint transparent.
-func _assert_no_ability_leak(carried: Character, label: String) -> bool:
-	if carried.attack_requested or carried.dash_requested:
-		printerr("TEST FAILED: Post-", label, " edge intent survived the transition.")
-		return false
-	if carried.knockback_component != null and carried.knockback_component.is_active():
-		printerr("TEST FAILED: Post-", label, " knockback momentum survived the transition.")
-		return false
-	if carried.is_attacking:
-		printerr("TEST FAILED: Post-", label, " is_attacking still set.")
-		return false
-	for slot: Node in carried.find_children("*", "WeaponSlot"):
-		if slot is WeaponSlot and (slot as WeaponSlot).enabled:
-			printerr("TEST FAILED: Post-", label, " weapon hitbox still enabled.")
-			return false
-	return _assert_no_sfx_or_tint_leak(carried, label)
+func _check_no_residue(when: String) -> void:
+	check(not _player.attack_requested and not _player.dash_requested, "no pending intents %s" % when)
+	check(not _player.knockback_component.is_active(), "no knockback %s" % when)
+	check(not _player.is_attacking, "not attacking %s" % when)
+	for slot: Node in _player.find_children("*", "WeaponSlot"):
+		check(not (slot as WeaponSlot).enabled, "no live hitbox %s (%s)" % [when, slot.name])
+	for audio: Node in _player.find_children("*", "AudioStreamPlayer3D"):
+		check(not (audio as AudioStreamPlayer3D).playing, "no character SFX %s (%s)" % [when, audio.name])
+	check(is_zero_approx(_input.damage_tint.color.a), "no damage tint %s" % when)
 
 
-## Shared behavioral assertions after a restore: home state, no motion, no
-## pending intents, no knockback, not attacking, hitboxes disabled, no SFX
-## still playing, damage tint transparent.
-func _assert_quiet(carried: Character, sm: StateMachine, label: String) -> bool:
-	if sm.state == null or sm.state.name != "PlayerRun":
-		var got: String = str(sm.state.name) if sm.state != null else "<null>"
-		printerr("TEST FAILED: Post-", label, " state is ", got, ", expected PlayerRun.")
-		return false
-	if not carried.velocity.is_zero_approx():
-		printerr("TEST FAILED: Post-", label, " velocity leaked: ", carried.velocity)
-		return false
-	if not carried.move_direction.is_zero_approx():
-		printerr("TEST FAILED: Post-", label, " move_direction leaked: ", carried.move_direction)
-		return false
-	if carried.attack_requested or carried.dash_requested:
-		printerr("TEST FAILED: Post-", label, " edge intent survived the transition.")
-		return false
-	if carried.knockback_component != null and carried.knockback_component.is_active():
-		printerr("TEST FAILED: Post-", label, " knockback momentum survived the transition.")
-		return false
-	if carried.is_attacking:
-		printerr("TEST FAILED: Post-", label, " is_attacking still set.")
-		return false
-	for slot: Node in carried.find_children("*", "WeaponSlot"):
-		if slot is WeaponSlot and (slot as WeaponSlot).enabled:
-			printerr("TEST FAILED: Post-", label, " weapon hitbox still enabled.")
-			return false
-	return _assert_no_sfx_or_tint_leak(carried, label)
+## The sound player wired to the weapon slot's slash signal, if any.
+func _slash_audio(slot: WeaponSlot) -> AudioStreamPlayer3D:
+	for connection: Dictionary in slot.slash.get_connections():
+		var audio: AudioStreamPlayer3D = (connection["callable"] as Callable).get_object() as AudioStreamPlayer3D
+		if audio != null:
+			return audio
+	return null
+
+
+func _state() -> String:
+	return str(_player.state_machine.state.name)

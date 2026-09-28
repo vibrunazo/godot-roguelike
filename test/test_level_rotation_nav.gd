@@ -13,45 +13,21 @@
 ## The navmesh must be a real bake (erosion detail), not the generator
 ## scaffold, with no walkable islands above the floor (wrong min-region-size
 ## symptom).
-extends Node3D
+extends "res://test/lib/test_suite.gd"
 
 
-func _ready() -> void:
-	print("====================================================")
-	print("  STARTING LEVEL ROTATION NAV TEST")
-	print("====================================================")
+func before_each() -> void:
+	SceneTransition.player_cache = null
 
-	var st_scene: PackedScene = load("res://Singletons/scene_transition.tscn") as PackedScene
-	if st_scene == null:
-		printerr("TEST FAILED: Could not load scene_transition.tscn")
-		get_tree().quit(1)
+
+func test_every_level_the_run_can_load_is_sound() -> void:
+	var level_paths: Array[String] = _collect_level_paths()
+	if not check(not level_paths.is_empty(), "the level rotation should not be empty"):
 		return
-	var st: Node = st_scene.instantiate()
-	add_child(st)
-	var level_paths: Array[String] = _collect_level_paths(st)
-	print("Levels under test: ", level_paths)
-	if level_paths.is_empty():
-		printerr("TEST FAILED: level rotation list is empty")
-		get_tree().quit(1)
-		return
-
-	var failed: bool = false
-	for path_variant: Variant in level_paths:
-		var level_path: String = str(path_variant)
-		if not await _verify_level(level_path):
-			failed = true
+	for level_path: String in level_paths:
+		await _verify_level(level_path)
 		# Settle so the freed region unregisters before the next level loads.
-		await get_tree().physics_frame
-		await get_tree().physics_frame
-		await get_tree().physics_frame
-
-	st.queue_free()
-	if failed:
-		printerr("LEVEL ROTATION NAV TEST FAILED")
-		get_tree().quit(1)
-	else:
-		print("LEVEL ROTATION NAV TEST PASSED")
-		get_tree().quit(0)
+		await wait_physics_frames(3)
 
 
 ## Every level scene the run can load, deduplicated: the SceneTransition
@@ -59,17 +35,17 @@ func _ready() -> void:
 ## (GlobalVars.dungeons) and the boss arenas (SceneTransition.boss_arenas).
 ## Until the registries are unified, a level registered in only one of them
 ## must still be verified.
-func _collect_level_paths(scene_transition: Node) -> Array[String]:
+func _collect_level_paths() -> Array[String]:
 	var paths: Array[String] = []
-	for path_variant: Variant in scene_transition.get("levels") as Array:
+	for path_variant: Variant in SceneTransition.levels:
 		_append_unique(paths, str(path_variant))
 	for dungeon: DungeonResource in GlobalVars.dungeons:
 		if dungeon == null or dungeon.scene == null:
-			printerr("TEST FAILED: GlobalVars.dungeons has an entry without a scene")
+			fail("GlobalVars.dungeons has an entry without a scene")
 			_append_unique(paths, "<dungeon without scene>")
 			continue
 		_append_unique(paths, dungeon.scene.resource_path)
-	for arena_variant: Variant in (scene_transition.get("boss_arenas") as Dictionary).values():
+	for arena_variant: Variant in SceneTransition.boss_arenas.values():
 		_append_unique(paths, str(arena_variant))
 	return paths
 
@@ -83,11 +59,11 @@ func _append_unique(paths: Array[String], path: String) -> void:
 func _verify_level(level_path: String) -> bool:
 	print("--- Verifying ", level_path, " ---")
 	if not ResourceLoader.exists(level_path):
-		printerr("TEST FAILED: missing level scene: ", level_path)
+		fail(str("missing level scene: ", level_path))
 		return false
 	var packed: PackedScene = load(level_path) as PackedScene
 	if packed == null:
-		printerr("TEST FAILED: could not load: ", level_path)
+		fail(str("could not load: ", level_path))
 		return false
 	var level: Node3D = packed.instantiate() as Node3D
 	add_child(level)
@@ -95,7 +71,7 @@ func _verify_level(level_path: String) -> bool:
 	# Silence the wave spawner so no enemies interfere with the check.
 	var wave_obj: Node = level.find_child("WaveObjective", true, false)
 	if wave_obj == null:
-		printerr("TEST FAILED: WaveObjective missing in ", level_path)
+		fail(str("WaveObjective missing in ", level_path))
 		level.queue_free()
 		return false
 	(wave_obj as WaveObjective).stop_spawning()
@@ -107,18 +83,18 @@ func _verify_level(level_path: String) -> bool:
 	var synced: bool = false
 	for i: int in range(120):
 		await get_tree().physics_frame
-		if NavigationServer3D.map_get_iteration_id(get_world_3d().get_navigation_map()) == 0:
+		if NavigationServer3D.map_get_iteration_id(get_viewport().find_world_3d().get_navigation_map()) == 0:
 			continue
 		var probe: Node3D = level.find_child("Player", true, false) as Node3D
 		if probe != null:
 			var snap: Vector3 = NavigationServer3D.map_get_closest_point(
-				get_world_3d().get_navigation_map(),
+				get_viewport().find_world_3d().get_navigation_map(),
 				probe.global_position)
 			if snap != Vector3.ZERO:
 				synced = true
 				break
 	if not synced:
-		printerr("TEST FAILED: navmesh never synced in ", level_path)
+		fail(str("navmesh never synced in ", level_path))
 		level.queue_free()
 		return false
 
@@ -126,18 +102,18 @@ func _verify_level(level_path: String) -> bool:
 	var player: Node3D = level.find_child("Player", true, false) as Node3D
 	var exit_point: Node3D = level.find_child("ExitPoint", true, false) as Node3D
 	if player == null:
-		printerr("TEST FAILED: Player missing in ", level_path)
+		fail(str("Player missing in ", level_path))
 		ok = false
 	if exit_point == null:
-		printerr("TEST FAILED: ExitPoint missing in ", level_path)
+		fail(str("ExitPoint missing in ", level_path))
 		ok = false
 
 	var gi: VoxelGI = level.find_child("VoxelGI", true, false) as VoxelGI
 	if gi == null:
-		printerr("TEST FAILED: VoxelGI missing in ", level_path)
+		fail(str("VoxelGI missing in ", level_path))
 		ok = false
 	elif gi.data == null:
-		printerr("TEST FAILED: VoxelGI data not baked in ", level_path)
+		fail(str("VoxelGI data not baked in ", level_path))
 		ok = false
 
 	if not _verify_gridmap_items_exist(level, level_path):
@@ -171,7 +147,7 @@ func _verify_level(level_path: String) -> bool:
 func _verify_navmesh_covers_level(level: Node3D, level_path: String) -> bool:
 	var region: NavigationRegion3D = level.find_child("NavigationRegion3D", true, false) as NavigationRegion3D
 	if region == null or region.navigation_mesh == null:
-		printerr("TEST FAILED: NavigationRegion3D/mesh missing in ", level_path)
+		fail(str("NavigationRegion3D/mesh missing in ", level_path))
 		return false
 	var nav_aabb: AABB = AABB()
 	var first_vert: bool = true
@@ -197,24 +173,24 @@ func _verify_navmesh_covers_level(level: Node3D, level_path: String) -> bool:
 			else:
 				floor_box = floor_box.merge(box)
 	if not has_floor:
-		printerr("TEST FAILED: Floormap has no cells in ", level_path)
+		fail(str("Floormap has no cells in ", level_path))
 		return false
 	# Navmesh is baked slightly above the floor; compare horizontal extents,
 	# allowing half a floor tile of wall-adjacent inset.
 	var margin: float = 2.0
 	if nav_aabb.position.x > floor_box.position.x + margin or nav_aabb.end.x < floor_box.end.x - margin:
-		printerr("TEST FAILED: navmesh X span ", nav_aabb, " misses floor ", floor_box, " in ", level_path)
+		fail(str("navmesh X span ", nav_aabb, " misses floor ", floor_box, " in ", level_path))
 		return false
 	if nav_aabb.position.z > floor_box.position.z + margin or nav_aabb.end.z < floor_box.end.z - margin:
-		printerr("TEST FAILED: navmesh Z span ", nav_aabb, " misses floor ", floor_box, " in ", level_path)
+		fail(str("navmesh Z span ", nav_aabb, " misses floor ", floor_box, " in ", level_path))
 		return false
 	var gi: VoxelGI = level.find_child("VoxelGI", true, false) as VoxelGI
 	var gi_box: AABB = AABB(gi.global_position - gi.size * 0.5, gi.size)
 	if gi_box.position.x > floor_box.position.x or gi_box.end.x < floor_box.end.x:
-		printerr("TEST FAILED: VoxelGI X span misses floor in ", level_path)
+		fail(str("VoxelGI X span misses floor in ", level_path))
 		return false
 	if gi_box.position.z > floor_box.position.z or gi_box.end.z < floor_box.end.z:
-		printerr("TEST FAILED: VoxelGI Z span misses floor in ", level_path)
+		fail(str("VoxelGI Z span misses floor in ", level_path))
 		return false
 	print("navmesh + VoxelGI cover floor footprint in ", level_path)
 	return true
@@ -227,13 +203,13 @@ func _verify_navmesh_covers_level(level: Node3D, level_path: String) -> bool:
 func _verify_navmesh_is_baked(level: Node3D, level_path: String) -> bool:
 	var region: NavigationRegion3D = level.find_child("NavigationRegion3D", true, false) as NavigationRegion3D
 	if region == null or region.navigation_mesh == null:
-		printerr("TEST FAILED: NavigationRegion3D/mesh missing in ", level_path)
+		fail(str("NavigationRegion3D/mesh missing in ", level_path))
 		return false
 	for v: Vector3 in region.navigation_mesh.get_vertices():
 		if absf(v.x - roundf(v.x)) > 0.0001 or absf(v.z - roundf(v.z)) > 0.0001:
 			print("navmesh shows bake erosion in ", level_path)
 			return true
-	printerr("TEST FAILED: navmesh is an unbaked integer lattice (scaffold, not a bake) in ", level_path)
+	fail(str("navmesh is an unbaked integer lattice (scaffold, not a bake) in ", level_path))
 	return false
 
 
@@ -271,7 +247,7 @@ func _verify_low_walls_ring_edges(level: Node3D, level_path: String) -> bool:
 			if not buried:
 				break
 		if buried:
-			printerr("TEST FAILED: buried y=-1 wall (fully floor-covered, rings no edge) at ", w, " in ", level_path)
+			fail(str("buried y=-1 wall (fully floor-covered, rings no edge) at ", w, " in ", level_path))
 			ok = false
 	if ok:
 		print("low-tier walls ring edges in ", level_path)
@@ -293,11 +269,11 @@ func _point_on_floor(sx: int, sz: int, floor: Dictionary) -> bool:
 func _verify_no_stray_islands(level: Node3D, level_path: String) -> bool:
 	var region: NavigationRegion3D = level.find_child("NavigationRegion3D", true, false) as NavigationRegion3D
 	if region == null or region.navigation_mesh == null:
-		printerr("TEST FAILED: NavigationRegion3D/mesh missing in ", level_path)
+		fail(str("NavigationRegion3D/mesh missing in ", level_path))
 		return false
 	var floor: GridMap = level.find_child("Floormap", true, false) as GridMap
 	if floor == null or floor.mesh_library == null:
-		printerr("TEST FAILED: floor geometry missing in ", level_path)
+		fail(str("floor geometry missing in ", level_path))
 		return false
 	var boxes: Array[AABB] = []
 	var stairs: Array[bool] = []
@@ -317,7 +293,7 @@ func _verify_no_stray_islands(level: Node3D, level_path: String) -> bool:
 			var top: float = box.end.y
 			if stairs[index]:
 				var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(Vector3(world_v.x, box.end.y + 0.1, world_v.z), Vector3(world_v.x, box.position.y - 0.1, world_v.z), floor.collision_layer)
-				var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
+				var hit: Dictionary = get_viewport().find_world_3d().direct_space_state.intersect_ray(query)
 				if hit.is_empty() or hit.get("collider") != floor:
 					continue
 				top = (hit["position"] as Vector3).y
@@ -325,7 +301,7 @@ func _verify_no_stray_islands(level: Node3D, level_path: String) -> bool:
 				supported = true
 				break
 		if not supported:
-			printerr("TEST FAILED: nav vertex unsupported/above local walkable height ", world_v, " (stray island?) in ", level_path)
+			fail(str("nav vertex unsupported/above local walkable height ", world_v, " (stray island?) in ", level_path))
 			return false
 	print("no stray nav islands in ", level_path)
 	return true
@@ -340,7 +316,7 @@ func _verify_gridmap_items_exist(level: Node3D, level_path: String) -> bool:
 	for gm_node: Node in level.find_children("*", "GridMap", true, false):
 		var gm: GridMap = gm_node as GridMap
 		if gm.mesh_library == null:
-			printerr("TEST FAILED: GridMap ", gm.name, " has no MeshLibrary in ", level_path)
+			fail(str("GridMap ", gm.name, " has no MeshLibrary in ", level_path))
 			ok = false
 			continue
 		var known: PackedInt32Array = gm.mesh_library.get_item_list()
@@ -353,10 +329,10 @@ func _verify_gridmap_items_exist(level: Node3D, level_path: String) -> bool:
 			elif gm.mesh_library.get_item_mesh(item) == null:
 				meshless[item] = meshless.get(item, 0) + 1
 		if not missing.is_empty():
-			printerr("TEST FAILED: GridMap ", gm.name, " in ", level_path, " uses items missing from its MeshLibrary (item: cell count): ", missing)
+			fail(str("GridMap ", gm.name, " in ", level_path, " uses items missing from its MeshLibrary (item: cell count): ", missing))
 			ok = false
 		if not meshless.is_empty():
-			printerr("TEST FAILED: GridMap ", gm.name, " in ", level_path, " uses MeshLibrary items with no mesh (item: cell count): ", meshless)
+			fail(str("GridMap ", gm.name, " in ", level_path, " uses MeshLibrary items with no mesh (item: cell count): ", meshless))
 			ok = false
 	return ok
 
@@ -384,7 +360,7 @@ func _verify_pit_lining(level: Node3D, level_path: String) -> bool:
 		elif gm.name == "Wallmap":
 			wall_gm = gm
 	if floor_gm == null or wall_gm == null:
-		printerr("TEST FAILED: Floormap/Wallmap missing in ", level_path)
+		fail(str("Floormap/Wallmap missing in ", level_path))
 		return false
 	# Flood-fill each flat floor elevation independently. Flattening upper
 	# terraces and stair bridges falsely closes the void beneath a bridge.
@@ -429,7 +405,7 @@ func _verify_pit_layer(floor: Dictionary, lined_below: Dictionary, level_path: S
 			checked_sides += 1
 			if not lined_below.has(side[1]) and not lined_below.has(side[2]):
 				bad_sides += 1
-				printerr("TEST FAILED: unlined pit side: hole tile ", h, " toward ", side[0], " in ", level_path)
+				fail(str("unlined pit side: hole tile ", h, " toward ", side[0], " in ", level_path))
 	if bad_sides > 0:
 		return false
 	print("pit lining OK (", checked_sides, " hole-tile sides) in ", level_path)
@@ -482,7 +458,7 @@ func _verify_cover_clearances(level: Node3D, level_path: String) -> bool:
 		elif gm.name == "Wallmap":
 			wall_gm = gm
 	if floor_gm == null or wall_gm == null:
-		printerr("TEST FAILED: Floormap/Wallmap missing in ", level_path)
+		fail(str("Floormap/Wallmap missing in ", level_path))
 		return false
 	for cell: Vector3i in wall_gm.get_used_cells():
 		if cell.y == 0:
@@ -526,7 +502,7 @@ func _verify_cover_clearances(level: Node3D, level_path: String) -> bool:
 			elif r[3] < hz0:
 				dz = hz0 - r[3]
 			if sqrt(dx * dx + dz * dz) < COVER_CLEARANCE:
-				printerr("TEST FAILED: freestanding cover at ", w, " pinches pit tile ", h, " in ", level_path)
+				fail(str("freestanding cover at ", w, " pinches pit tile ", h, " in ", level_path))
 				ok = false
 	if ok:
 		print("cover clearances OK (", lone.size(), " lone walls) in ", level_path)
@@ -546,14 +522,14 @@ func _bonded_find(roots: Dictionary, w: Vector2i) -> Vector2i:
 func _verify_abyss_plane(level: Node3D, level_path: String) -> bool:
 	var pit: MeshInstance3D = level.find_child("Pit", true, false) as MeshInstance3D
 	if pit == null:
-		printerr("TEST FAILED: abyss Pit quad missing in ", level_path)
+		fail(str("abyss Pit quad missing in ", level_path))
 		return false
 	if not pit.visible:
-		printerr("TEST FAILED: abyss Pit quad hidden in ", level_path)
+		fail(str("abyss Pit quad hidden in ", level_path))
 		return false
 	var mesh: PlaneMesh = pit.mesh as PlaneMesh
 	if mesh == null or minf(mesh.size.x, mesh.size.y) < 500.0:
-		printerr("TEST FAILED: abyss Pit quad too small in ", level_path)
+		fail(str("abyss Pit quad too small in ", level_path))
 		return false
 	print("abyss plane OK in ", level_path)
 	return true
@@ -610,22 +586,20 @@ func _endpoint_close(authored: Vector3, snapped: Vector3) -> bool:
 
 ## Checks a navigation path exists between two points on the level.
 func _verify_path(from_pos: Vector3, to_pos: Vector3, level_path: String) -> bool:
-	var nav_map: RID = get_world_3d().get_navigation_map()
+	var nav_map: RID = get_viewport().find_world_3d().get_navigation_map()
 	var from_point: Vector3 = NavigationServer3D.map_get_closest_point(nav_map, from_pos)
 	var to_point: Vector3 = NavigationServer3D.map_get_closest_point(nav_map, to_pos)
 	# A nonempty path may be partial, or snap to a different storey. Keep
 	# endpoints close in 3D, including Y (the old y=1 projection hid this).
 	if not _endpoint_close(from_pos, from_point) or not _endpoint_close(to_pos, to_point):
-		printerr("TEST FAILED: nav endpoints miss authored spawn/exit heights in ", level_path, ": ", from_pos, " -> ", from_point, "; ", to_pos, " -> ", to_point)
+		fail(str("nav endpoints miss authored spawn/exit heights in ", level_path, ": ", from_pos, " -> ", from_point, "; ", to_pos, " -> ", to_point))
 		return false
 	var path: PackedVector3Array = NavigationServer3D.map_get_path(nav_map, from_point, to_point, true, 1)
-	if level_path.ends_with("level_13.tscn"):
-		print("Level13 endpoint diagnostic: spawn_world=", from_pos, " target_world=", to_pos, " snapped_spawn=", from_point, " snapped_target=", to_point, " returned_path=", path)
 	if path.size() < 2:
-		printerr("TEST FAILED: no nav path from ", from_point, " to ", to_point, " in ", level_path)
+		fail(str("no nav path from ", from_point, " to ", to_point, " in ", level_path))
 		return false
 	if path[0].distance_to(from_point) > 0.1 or path[path.size() - 1].distance_to(to_point) > 0.1:
-		printerr("TEST FAILED: partial nav path does not reach spawn/exit in ", level_path)
+		fail(str("partial nav path does not reach spawn/exit in ", level_path))
 		return false
 	print("nav path OK (", path.size(), " points) in ", level_path)
 	return true

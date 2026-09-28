@@ -7,7 +7,11 @@
 ## - switching the card's resource, or editing it in place, refreshes the
 ##   card; a free item hides the footer,
 ## - items bought up to their stock limit are never dealt again,
-## - a card is narrow enough for a four-column layout across the screen.
+## - a card is narrow enough for a four-column layout across the screen,
+## - only a card's button takes the mouse; its labels never block it,
+## - taking a card charges it, applies the item once and disables every card
+##   on offer; taking again does nothing,
+## - buying a card exits the shop. That changes the scene, so it runs last.
 ## Every item here is test-owned.
 extends "res://test/lib/test_suite.gd"
 
@@ -16,6 +20,18 @@ const SHOP_SCENE: PackedScene = preload("res://UserInterface/upgrade_shop.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 ## Test-owned flavor that overflows any card.
 const EXTREME_FLAVOR_REPEATS: int = 60
+const TEST_GOLD: int = 100
+
+var _saved_gold: int = 0
+
+
+func before_each() -> void:
+	_saved_gold = ProgressionState.currency_gold
+
+
+func after_each() -> void:
+	ProgressionState.currency_gold = _saved_gold
+	ProgressionState.currency_gold_changed.emit(_saved_gold)
 
 
 func test_flavor_stats_and_cost_each_render_in_their_own_label() -> void:
@@ -82,6 +98,47 @@ func test_a_card_fits_a_four_column_layout() -> void:
 	await get_tree().process_frame
 	var column: float = float(ProjectSettings.get_setting("display/window/size/viewport_width")) / 4.0
 	check(card.get_combined_minimum_size().x <= column, "a card (%.0f px) should fit a quarter of the screen width (%.0f px)" % [card.get_combined_minimum_size().x, column])
+
+
+func test_only_the_cards_button_takes_the_mouse() -> void:
+	var card: UpgradeIcon = await _card_for(_gear(&"test_mouse", "Flavor.", 1))
+	for node: Node in card.find_children("*", "Control", true, false):
+		if node is BaseButton or node is ScrollBar:
+			continue
+		check_eq((node as Control).mouse_filter, Control.MOUSE_FILTER_IGNORE, "%s must not block the mouse" % node.name)
+	check_eq(card.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the card itself must not block the mouse")
+
+
+func test_taking_a_card_applies_it_once_and_disables_every_card() -> void:
+	var player: Character = spawn(PLAYER_SCENE) as Character
+	var item: GearItemResource = _gear(&"test_take", "Flavor.", 10)
+	var card: UpgradeIcon = await _card_for(item)
+	var other: UpgradeIcon = await _card_for(_gear(&"test_other", "Flavor.", 10))
+	ProgressionState.add_gold(TEST_GOLD)
+	var gold: int = ProgressionState.currency_gold
+	var attack: float = player.attribute_component.get_current(AttributeComponent.STAT_ATTACK)
+	var taken: Array[UpgradeIcon] = []
+	card.upgrade_taken.connect(func(which: UpgradeIcon) -> void: taken.append(which))
+	card.take_upgrade()
+	check(taken.size() == 1 and taken[0] == card, "taking a card should report that card")
+	check_eq(ProgressionState.currency_gold, gold - item.cost, "taking a card should charge its cost")
+	var boosted: float = player.attribute_component.get_current(AttributeComponent.STAT_ATTACK)
+	check(boosted != attack, "taking a card should apply its item")
+	check(card.texture_button.disabled and other.texture_button.disabled, "taking a card should disable every card on offer")
+	card.texture_button.pressed.emit()
+	card.take_upgrade()
+	check_approx(player.attribute_component.get_current(AttributeComponent.STAT_ATTACK), boosted, "taking the card again must not apply it twice")
+	check_eq(taken.size(), 1, "taking the card again must not report it again")
+
+
+## Changes the scene: keep it the last test.
+func test_buying_a_card_exits_the_shop() -> void:
+	var shop: Control = spawn(SHOP_SCENE) as Control
+	await get_tree().process_frame
+	var card: UpgradeIcon = (shop.get_node("%HBoxContainer") as HBoxContainer).get_child(0) as UpgradeIcon
+	check(shop.get("exiting_shop") == false, "setup: the shop should start open")
+	card.upgrade_taken.emit(card)
+	check(shop.get("exiting_shop") == true, "buying a card should exit the shop")
 
 
 func _card_for(item: ItemResource) -> UpgradeIcon:

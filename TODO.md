@@ -19,7 +19,8 @@ are in `CODE_REVIEW.md`; section numbers below point there.
    the lowest height it may follow down to once, in `_ready()`. A player carried
    into the next level is reparented and moved, not re-readied, so the floor
    stays at the first level's spawn height: on a level that spawns lower, the
-   camera would not follow the player down to it. Re-base the floor when the
+   camera would not follow the player down to it. Recreating the player per
+   level (item 11) fixes this for free; until then, re-base the floor when the
    level places the carried player (`level_template.gd`).
 
 ## Decisions needed
@@ -35,22 +36,15 @@ are in `CODE_REVIEW.md`; section numbers below point there.
    narrow the rule to "anything placed in the level when GI is baked", which is
    what `test_voxel_gi` checks.
 
-## Test suite bugs (fix while migrating each suite to the harness, Phase B)
+## Test suite bugs
 
-4. **Migrate the remaining suites to the harness** (5 left; list them with
-    `grep -L "test/lib/test_suite.gd" test/test_*.gd`). The whole suite passes
-    at `--fps 20`. While migrating, remove the hardcoded balance and art
-    assertions listed in §3.1 (balance) and §3.2 (art/VFX/layout). No test
-    calls a private method any more; two still read private fields:
-    `WaveObjective._enemy_difficulties` (`test_enemy_base`) and
-    `AttributeComponent._dots` (`test_level_transition_reset`).
+Every suite now runs on the harness (Phase B step 4 is done).
+
 10. **`test_brute_pit_corner_nav` no longer reproduces its bug.** Tall enemies
     used to cut pit corners and fall (fixed by the navigation agent tuning now
     in `Character`); on today's Level 2 the old tuning passes too. Build a
     fixture (e.g. an arena variant with an L-shaped pit) where the old tuning
     fails, and test it there.
-6. **`test_enemy_base.gd` is one 3,064-line `_ready()`.** Split it into feature
-    suites during its migration. (§3.4)
 
 ## Architecture backlog
 
@@ -66,6 +60,20 @@ are in `CODE_REVIEW.md`; section numbers below point there.
     references an attachment that is missing. Bind sockets from one component
     at setup, and keep gameplay logic off animation method tracks where
     possible.
-15. The remaining review phases: Phase B migrations, Phase C guardrails (docs,
-    skills, lint, shared launcher, CI), Phase D cleanup (aliases, fallbacks,
-    registries, refactors). See §5.5.
+11. **Recreate the player between levels instead of reparenting it.** Today
+    `SceneTransition.load_scene_path()` reparents the live player node into
+    the autoload (`player_cache`) and `LevelTemplate._ready()` swaps it in for
+    the level's own `Player`, then calls `cancel_movement_and_abilities()` to
+    scrub the leftovers. Every piece of per-level runtime state (timers,
+    tweens, `_ready()`-time snapshots like the camera floor in item 5, status
+    visuals, state-machine wiring) then has to be cleaned by hand, and each
+    one missed is a bug. Instead, keep the run state that should persist
+    (health, equipped gear and purchase counts, granted passives, anything
+    else the run owns) in a plain resource or `ProgressionState`, let each
+    level instantiate a fresh `Player`, and apply that state to it on spawn.
+    `cancel_movement_and_abilities()` and the `player_cache` reparenting then
+    go away. `test_level_transition_reset` covers today's carry-over and would
+    become the contract for the new one.
+15. The remaining review phases: Phase C guardrails (docs, skills, lint,
+    shared launcher, CI) and Phase D cleanup (aliases, fallbacks, registries,
+    refactors). See the status table in §5.5.

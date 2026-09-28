@@ -2,7 +2,7 @@
 ## GameplayEffect application, Hurtbox damage routing, and per-scene attribute
 ## parity. All expectations are relative (deltas, recompute rules,
 ## transitions), never hardcoded balance numbers.
-extends Node
+extends "res://test/lib/test_suite.gd"
 
 var _change_count: int = 0
 var _last_change_name: StringName = &""
@@ -21,58 +21,9 @@ const CHARACTER_SCENES: Array[String] = [
 ]
 
 
-func _ready() -> void:
-	print("--- RUNNING ATTRIBUTE COMPONENT TEST ---")
-	_run_all()
-
-
-func _run_all() -> void:
+func before_each() -> void:
 	_reset_counters()
-	if not await _part_stacking_math():
-		return
-	if not _part_pool_deltas_and_clamp():
-		return
-	if not await _part_max_buff_expiry_keeps_health():
-		return
-	await get_tree().process_frame
-	if not await _part_timed_expiry_and_processing():
-		return
-	if not _part_defeat_fires_once():
-		return
-	if not await _part_health_adapter():
-		return
-	if not await _part_gameplay_effect_roundtrip():
-		return
-	if not await _part_character_facades():
-		return
-	if not await _part_melee_slow_effect():
-		return
-	if not await _part_scene_parity():
-		return
-	if not await _part_damage_over_time():
-		return
-	if not await _part_dot_suppresses_reactions():
-		return
-	if not await _part_effect_vfx_lifecycle():
-		return
-	if not await _part_corpse_stays_grounded():
-		return
-	if not await _part_lethal_hit_reaches_defeat():
-		return
-	if not _part_max_raise_carries_pool():
-		return
-	if not await _part_effect_vfx_bone_attachment():
-		return
-	print("====================================================================")
-	print("  ALL ATTRIBUTE COMPONENT TESTS PASSED!                             ")
-	print("====================================================================")
-	get_tree().quit(0)
-
-
-func _fail(message: String) -> bool:
-	printerr("TEST FAILED: ", message)
-	get_tree().quit(1)
-	return false
+	_struck_reactions = 0
 
 
 func _reset_counters() -> void:
@@ -103,7 +54,7 @@ func _make_component() -> AttributeComponent:
 
 
 ## PART 1: additive-then-compounding stacking rule with refresh/remove.
-func _part_stacking_math() -> bool:
+func test_stacking_math() -> bool:
 	print("\n>>> PART 1: Modifier stacking math")
 	var comp: AttributeComponent = _make_component()
 	var base_val: float = 120.0
@@ -114,7 +65,7 @@ func _part_stacking_math() -> bool:
 	comp.set_base(AttributeComponent.STAT_ATTACK, base_val)
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), base_val):
 		comp.queue_free()
-		return _fail("Unmodified stat should equal its base.")
+		return fail("Unmodified stat should equal its base.")
 	comp.apply_modifier(AttributeComponent.STAT_ATTACK, &"test_add", Attribute.Op.ADD, add_val)
 	comp.apply_modifier(AttributeComponent.STAT_ATTACK, &"test_mult_a", Attribute.Op.MULT_ADD, mult_a)
 	comp.apply_modifier(AttributeComponent.STAT_ATTACK, &"test_mult_b", Attribute.Op.MULT_ADD, mult_b)
@@ -122,28 +73,28 @@ func _part_stacking_math() -> bool:
 	var expected: float = (base_val + add_val) * (1.0 + mult_a + mult_b) * (1.0 + comp_mult)
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), expected):
 		comp.queue_free()
-		return _fail("Stacked value mismatch. Expected %f, got %f." % [expected, comp.get_current(AttributeComponent.STAT_ATTACK)])
+		return fail("Stacked value mismatch. Expected %f, got %f." % [expected, comp.get_current(AttributeComponent.STAT_ATTACK)])
 	print("Additive stacking verified: ", comp.get_current(AttributeComponent.STAT_ATTACK))
 	# Re-applying the same id refreshes instead of double-stacking.
 	comp.apply_modifier(AttributeComponent.STAT_ATTACK, &"test_add", Attribute.Op.ADD, add_val)
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), expected):
 		comp.queue_free()
-		return _fail("Re-applying the same modifier id must refresh, not stack.")
+		return fail("Re-applying the same modifier id must refresh, not stack.")
 	# Removing one entry restores the recomputed remainder.
 	if not comp.remove_modifier(AttributeComponent.STAT_ATTACK, &"test_mult_b"):
 		comp.queue_free()
-		return _fail("remove_modifier should report an existing entry.")
+		return fail("remove_modifier should report an existing entry.")
 	var expected_after: float = (base_val + add_val) * (1.0 + mult_a) * (1.0 + comp_mult)
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), expected_after):
 		comp.queue_free()
-		return _fail("Value after removal mismatch. Expected %f, got %f." % [expected_after, comp.get_current(AttributeComponent.STAT_ATTACK)])
+		return fail("Value after removal mismatch. Expected %f, got %f." % [expected_after, comp.get_current(AttributeComponent.STAT_ATTACK)])
 	if comp.remove_modifier(AttributeComponent.STAT_ATTACK, &"missing_id"):
 		comp.queue_free()
-		return _fail("remove_modifier should report false for an unknown id.")
+		return fail("remove_modifier should report false for an unknown id.")
 	# Pools reject modifier stacks.
 	if comp.apply_modifier(AttributeComponent.POOL_HEALTH, &"bad", Attribute.Op.ADD, 10.0):
 		comp.queue_free()
-		return _fail("Pools must reject modifier entries.")
+		return fail("Pools must reject modifier entries.")
 	comp.queue_free()
 	await get_tree().process_frame
 	print("Refresh, removal, and pool rejection verified.")
@@ -151,7 +102,7 @@ func _part_stacking_math() -> bool:
 
 
 ## PART 2: pool deltas are relative and clamped to the max stat.
-func _part_pool_deltas_and_clamp() -> bool:
+func test_pool_deltas_and_clamp() -> bool:
 	print("\n>>> PART 2: Pool damage, heal, and clamping")
 	var comp: AttributeComponent = _make_component()
 	comp.attribute_changed.connect(_on_attr_changed)
@@ -163,21 +114,21 @@ func _part_pool_deltas_and_clamp() -> bool:
 	_reset_counters()
 	comp.damage_pool(AttributeComponent.POOL_HEALTH, damage)
 	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), full - damage):
-		return _fail("Pool should drop by exactly the dealt delta.")
+		return fail("Pool should drop by exactly the dealt delta.")
 	if _change_count < 1 or _last_change_name != AttributeComponent.POOL_HEALTH:
-		return _fail("Pool damage should emit attribute_changed for the pool.")
+		return fail("Pool damage should emit attribute_changed for the pool.")
 	var overheal: float = 1000.0
 	comp.restore_pool(AttributeComponent.POOL_HEALTH, overheal)
 	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), max_val):
-		return _fail("Overheal must clamp to the max stat.")
+		return fail("Overheal must clamp to the max stat.")
 	if _defeat_count != 0:
-		return _fail("Non-lethal pool changes must not emit defeat.")
+		return fail("Non-lethal pool changes must not emit defeat.")
 	print("Pool deltas and overheal clamp verified.")
 	return true
 
 
 ## PART 3: buffing max health then letting it expire never deletes earned HP.
-func _part_max_buff_expiry_keeps_health() -> bool:
+func test_max_buff_expiry_keeps_health() -> bool:
 	print("\n>>> PART 3: Max-HP buff expiry preserves current health")
 	var comp: AttributeComponent = _make_component()
 	var base_max: float = 200.0
@@ -187,46 +138,46 @@ func _part_max_buff_expiry_keeps_health() -> bool:
 	comp.apply_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_buff", Attribute.Op.MULT_ADD, buff, 0.25)
 	var buffed_max: float = comp.get_current(AttributeComponent.STAT_MAX_HEALTH)
 	if not is_equal_approx(buffed_max, base_max * (1.0 + buff)):
-		return _fail("Max buff should scale the max stat.")
+		return fail("Max buff should scale the max stat.")
 	comp.damage_pool(AttributeComponent.POOL_HEALTH, damage)
 	var wounded: float = comp.get_current(AttributeComponent.POOL_HEALTH)
 	await get_tree().create_timer(0.45).timeout
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_MAX_HEALTH), base_max):
-		return _fail("Max stat should return to base after buff expiry.")
+		return fail("Max stat should return to base after buff expiry.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), wounded):
-		return _fail("Buff expiry must not delete earned health (phantom loss).")
+		return fail("Buff expiry must not delete earned health (phantom loss).")
 	print("Expiry preserved health at ", wounded, " while max returned to ", base_max, ".")
 	return true
 
 
 ## PART 4: timed modifiers tick, restore, and gate processing.
-func _part_timed_expiry_and_processing() -> bool:
+func test_timed_expiry_and_processing() -> bool:
 	print("\n>>> PART 4: Timed expiry and zero-overhead processing")
 	var comp: AttributeComponent = _make_component()
 	var base_speed: float = 10.0
 	comp.set_base(AttributeComponent.STAT_SPEED, base_speed)
 	if comp.is_processing():
-		return _fail("Component must idle with processing disabled.")
+		return fail("Component must idle with processing disabled.")
 	comp.apply_modifier(AttributeComponent.STAT_SPEED, &"test_slow", Attribute.Op.MULT_ADD, -0.5, 0.25)
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_SPEED), base_speed * 0.5):
-		return _fail("Timed slow should halve the stat while active.")
+		return fail("Timed slow should halve the stat while active.")
 	if not comp.is_processing():
-		return _fail("Timed modifiers must enable processing.")
+		return fail("Timed modifiers must enable processing.")
 	await get_tree().create_timer(0.45).timeout
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_SPEED), base_speed):
-		return _fail("Stat should return to base after timed expiry.")
+		return fail("Stat should return to base after timed expiry.")
 	if comp.is_processing():
-		return _fail("Processing must disable itself once timed modifiers expire.")
+		return fail("Processing must disable itself once timed modifiers expire.")
 	print("Timed expiry and process gating verified.")
 	return true
 
 
 ## PART 5: defeat fires exactly once on the killing transition.
-func _part_defeat_fires_once() -> bool:
+func test_defeat_fires_once() -> bool:
 	print("\n>>> PART 5: Defeat fires once on the killing blow")
 	var comp: AttributeComponent = _make_component()
 	comp.defeat.connect(_on_attr_defeat)
@@ -235,18 +186,18 @@ func _part_defeat_fires_once() -> bool:
 	comp.set_base(AttributeComponent.STAT_MAX_HEALTH, max_val)
 	comp.damage_pool(AttributeComponent.POOL_HEALTH, max_val)
 	if _defeat_count != 1:
-		return _fail("Killing damage should emit defeat exactly once.")
+		return fail("Killing damage should emit defeat exactly once.")
 	if comp.is_alive():
-		return _fail("Component should report not alive at zero health.")
+		return fail("Component should report not alive at zero health.")
 	comp.damage_pool(AttributeComponent.POOL_HEALTH, 10.0)
 	if _defeat_count != 1:
-		return _fail("Overkill damage must not re-emit defeat.")
+		return fail("Overkill damage must not re-emit defeat.")
 	print("Single defeat emission verified.")
 	return true
 
 
 ## PART 6: Hurtbox routes damage into the attribute pool and rejects corpses.
-func _part_health_adapter() -> bool:
+func test_health_adapter() -> bool:
 	print("\n>>> PART 6: Hurtbox damage routing")
 	var holder: Node3D = Node3D.new()
 	add_child(holder)
@@ -261,7 +212,7 @@ func _part_health_adapter() -> bool:
 	await get_tree().process_frame
 	if hurtbox.attribute_component != comp:
 		holder.queue_free()
-		return _fail("Hurtbox should resolve its sibling AttributeComponent.")
+		return fail("Hurtbox should resolve its sibling AttributeComponent.")
 	_reset_counters()
 	comp.attribute_changed.connect(_on_attr_changed)
 	comp.defeat.connect(_on_attr_defeat)
@@ -269,25 +220,25 @@ func _part_health_adapter() -> bool:
 	var damage: float = 25.0
 	if not hurtbox.receive_hit(damage, Vector3.ZERO):
 		holder.queue_free()
-		return _fail("receive_hit should report damage on a live target.")
+		return fail("receive_hit should report damage on a live target.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), max_val - damage):
 		holder.queue_free()
-		return _fail("Hurtbox damage should reduce the attribute pool relatively.")
+		return fail("Hurtbox damage should reduce the attribute pool relatively.")
 	if _change_count < 1 or _last_change_name != AttributeComponent.POOL_HEALTH:
 		holder.queue_free()
-		return _fail("Pool damage should emit attribute_changed for the pool.")
+		return fail("Pool damage should emit attribute_changed for the pool.")
 	if not hurtbox.receive_hit(max_val, Vector3.ZERO):
 		holder.queue_free()
-		return _fail("Lethal receive_hit should still report damage.")
+		return fail("Lethal receive_hit should still report damage.")
 	if _defeat_count != 1:
 		holder.queue_free()
-		return _fail("Lethal Hurtbox damage should emit defeat exactly once.")
+		return fail("Lethal Hurtbox damage should emit defeat exactly once.")
 	if hurtbox.receive_hit(10.0, Vector3.ZERO):
 		holder.queue_free()
-		return _fail("Corpses must reject further hits.")
+		return fail("Corpses must reject further hits.")
 	if _defeat_count != 1:
 		holder.queue_free()
-		return _fail("Overkill hits must not re-emit defeat.")
+		return fail("Overkill hits must not re-emit defeat.")
 	holder.queue_free()
 	await get_tree().process_frame
 	print("Hurtbox routing, signals, and corpse rejection verified.")
@@ -295,7 +246,7 @@ func _part_health_adapter() -> bool:
 
 
 ## PART 7: GameplayEffect applies and removes through the component.
-func _part_gameplay_effect_roundtrip() -> bool:
+func test_gameplay_effect_roundtrip() -> bool:
 	print("\n>>> PART 7: GameplayEffect apply/remove roundtrip")
 	var comp: AttributeComponent = _make_component()
 	var base_attack: float = 100.0
@@ -308,26 +259,26 @@ func _part_gameplay_effect_roundtrip() -> bool:
 	effect.duration = 0.0
 	var instance_id: StringName = comp.apply_effect(effect)
 	if instance_id == &"":
-		return _fail("apply_effect should return a live instance id.")
+		return fail("apply_effect should return a live instance id.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), base_attack * 1.5):
-		return _fail("Effect should scale the stat while applied.")
+		return fail("Effect should scale the stat while applied.")
 	if not comp.remove_effect(instance_id):
-		return _fail("remove_effect should find the applied instance.")
+		return fail("remove_effect should find the applied instance.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), base_attack):
-		return _fail("Effect removal should restore the base-derived value.")
+		return fail("Effect removal should restore the base-derived value.")
 	if comp.remove_effect(instance_id):
-		return _fail("Removing the same instance twice should report false.")
+		return fail("Removing the same instance twice should report false.")
 	# REFRESH (default): re-applying restarts the single entry, never stacks.
 	var first_id: StringName = comp.apply_effect(effect)
 	var second_id: StringName = comp.apply_effect(effect)
 	if first_id != second_id:
-		return _fail("REFRESH re-application should return the same instance id.")
+		return fail("REFRESH re-application should return the same instance id.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), base_attack * 1.5):
 		comp.queue_free()
-		return _fail("REFRESH re-application must not double-stack the magnitude.")
+		return fail("REFRESH re-application must not double-stack the magnitude.")
 	if not comp.remove_effect(first_id):
 		comp.queue_free()
-		return _fail("REFRESH removal should clear the entry.")
+		return fail("REFRESH removal should clear the entry.")
 	# STACK: each application adds an independent entry with its own id.
 	var poison: GameplayEffect = GameplayEffect.new()
 	poison.effect_name = "test_poison"
@@ -340,22 +291,22 @@ func _part_gameplay_effect_roundtrip() -> bool:
 	var stack_b: StringName = comp.apply_effect(poison)
 	if stack_a == stack_b:
 		comp.queue_free()
-		return _fail("STACK applications should mint distinct instance ids.")
+		return fail("STACK applications should mint distinct instance ids.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), base_attack + 20.0):
 		comp.queue_free()
-		return _fail("Two STACK entries should both contribute.")
+		return fail("Two STACK entries should both contribute.")
 	if not comp.remove_effect(stack_a):
 		comp.queue_free()
-		return _fail("Removing one stack should succeed.")
+		return fail("Removing one stack should succeed.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), base_attack + 10.0):
 		comp.queue_free()
-		return _fail("One remaining stack should contribute once.")
+		return fail("One remaining stack should contribute once.")
 	if not comp.remove_effect(stack_b):
 		comp.queue_free()
-		return _fail("Removing the last stack should succeed.")
+		return fail("Removing the last stack should succeed.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_ATTACK), base_attack):
 		comp.queue_free()
-		return _fail("Removing all stacks should restore the base value.")
+		return fail("Removing all stacks should restore the base value.")
 	comp.queue_free()
 	await get_tree().process_frame
 	print("GameplayEffect roundtrip, REFRESH, and STACK verified.")
@@ -363,7 +314,7 @@ func _part_gameplay_effect_roundtrip() -> bool:
 
 
 ## PART 8: Character stats, damage modifier, and Hurtbox route through attributes.
-func _part_character_facades() -> bool:
+func test_character_facades() -> bool:
 	print("\n>>> PART 8: Character attribute integration")
 	var player_scene: PackedScene = load("res://Player/player.tscn") as PackedScene
 	var player: Character = player_scene.instantiate() as Character
@@ -372,32 +323,32 @@ func _part_character_facades() -> bool:
 	await get_tree().process_frame
 	if player.attribute_component == null:
 		player.queue_free()
-		return _fail("Player should wire an AttributeComponent.")
+		return fail("Player should wire an AttributeComponent.")
 	var attrs: AttributeComponent = player.attribute_component
 	var base_speed: float = attrs.get_base(AttributeComponent.STAT_SPEED)
 	if base_speed <= 0.0:
 		player.queue_free()
-		return _fail("Player speed base should be positive.")
+		return fail("Player speed base should be positive.")
 	var speed_bonus: float = 2.0
 	attrs.set_base(AttributeComponent.STAT_SPEED, base_speed + speed_bonus)
 	if not is_equal_approx(attrs.get_current(AttributeComponent.STAT_SPEED), base_speed + speed_bonus):
 		player.queue_free()
-		return _fail("Speed base writes should move the speed stat.")
+		return fail("Speed base writes should move the speed stat.")
 	var modifier_before: float = player.get_damage_modifier()
 	var buff: float = 0.5
 	attrs.apply_modifier(AttributeComponent.STAT_ATTACK, &"test_facade_buff", Attribute.Op.MULT_ADD, buff)
 	if not is_equal_approx(player.get_damage_modifier(), modifier_before * (1.0 + buff)):
 		player.queue_free()
-		return _fail("Attack buffs should scale get_damage_modifier relatively.")
+		return fail("Attack buffs should scale get_damage_modifier relatively.")
 	var full: float = attrs.get_current(AttributeComponent.POOL_HEALTH)
 	var damage: float = 7.0
 	var player_hurtbox: Hurtbox = player.get_node_or_null("Hurtbox") as Hurtbox
 	if player_hurtbox == null or not player_hurtbox.receive_hit(damage, Vector3.ZERO):
 		player.queue_free()
-		return _fail("Player Hurtbox should route hits into the attribute pool.")
+		return fail("Player Hurtbox should route hits into the attribute pool.")
 	if not is_equal_approx(attrs.get_current(AttributeComponent.POOL_HEALTH), full - damage):
 		player.queue_free()
-		return _fail("Player damage should flow into the attribute pool.")
+		return fail("Player damage should flow into the attribute pool.")
 	player.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -405,100 +356,64 @@ func _part_character_facades() -> bool:
 	return true
 
 
-## PART 9: melee hits apply the scene-configured slow once (refresh, no stack).
-func _part_melee_slow_effect() -> bool:
-	print("\n>>> PART 9: Melee slow effect end-to-end")
-	var melee_scene: PackedScene = load("res://Enemy/melee_enemy.tscn") as PackedScene
-	var player_scene: PackedScene = load("res://Player/player.tscn") as PackedScene
-	var attacker: Character = melee_scene.instantiate() as Character
-	var victim: Character = player_scene.instantiate() as Character
-	add_child(attacker)
-	add_child(victim)
+## PART 9: an attack's hit effects apply on the hit and refresh on a re-hit
+## instead of stacking a second copy (test-owned slow on the melee weapon).
+func test_hit_effects_refresh_instead_of_stacking() -> bool:
+	var attacker: Character = spawn(load("res://Enemy/melee_enemy.tscn") as PackedScene) as Character
+	var victim: Character = spawn(load("res://Player/player.tscn") as PackedScene) as Character
+	disable_ai(attacker)
 	await get_tree().physics_frame
-	await get_tree().process_frame
-	var enemy_attack: CharacterAttack = attacker.get_node_or_null("StateMachine/EnemyAttack") as CharacterAttack
-	if enemy_attack == null:
-		attacker.queue_free()
-		victim.queue_free()
-		return _fail("Melee enemy has no EnemyAttack state.")
-	if enemy_attack.effects_to_apply.is_empty():
-		attacker.queue_free()
-		victim.queue_free()
-		return _fail("Melee EnemyAttack configures no hit effects.")
-	var slow: GameplayEffect = enemy_attack.effects_to_apply[0]
-	if slow.target_attribute != AttributeComponent.STAT_SPEED or slow.magnitude >= 0.0 or slow.duration <= 0.0:
-		attacker.queue_free()
-		victim.queue_free()
-		return _fail("Melee slow should target speed with a negative timed magnitude.")
-	var attack_comp: AttackComponent = enemy_attack.attack_component
-	if attack_comp == null:
-		attacker.queue_free()
-		victim.queue_free()
-		return _fail("Melee EnemyAttack wires no AttackComponent.")
-	# Mirror enter(): the state owns the config, the component applies it. (The
-	# live enemy AI may already have entered and copied it during setup.)
-	attack_comp.effects_to_apply = enemy_attack.effects_to_apply
+	var attack_comp: AttackComponent = (attacker.state_machine.get_node("EnemyAttack") as CharacterAttack).get_attack_component()
+	var slow: GameplayEffect = GameplayEffect.new()
+	slow.effect_name = "test_slow"
+	slow.target_attribute = AttributeComponent.STAT_SPEED
+	slow.operation = Attribute.Op.MULT_ADD
+	slow.magnitude = -0.5
+	slow.duration = 5.0
+	var effects: Array[GameplayEffect] = [slow]
+	attack_comp.effects_to_apply = effects
 	attack_comp.reset_exceptions()
 	var victim_attrs: AttributeComponent = victim.attribute_component
 	var base_speed: float = victim_attrs.get_base(AttributeComponent.STAT_SPEED)
-	var victim_hurtbox: Hurtbox = victim.get_node_or_null("Hurtbox") as Hurtbox
-	if victim_hurtbox == null:
-		attacker.queue_free()
-		victim.queue_free()
-		return _fail("Player has no Hurtbox to strike.")
-	if not attack_comp.deal_damage_to(victim_hurtbox, 0.0, Vector3.ZERO):
-		attacker.queue_free()
-		victim.queue_free()
-		return _fail("Confirmed hits should report success.")
-	var slowed: float = victim_attrs.get_current(AttributeComponent.STAT_SPEED)
+	if not attack_comp.deal_damage_to(victim.hurtbox, 0.0, Vector3.ZERO):
+		return fail("Confirmed hits should report success.")
 	var expected_slowed: float = base_speed * (1.0 + slow.magnitude)
-	if not is_equal_approx(slowed, expected_slowed):
-		attacker.queue_free()
-		victim.queue_free()
-		return _fail("Slow should scale speed by its own magnitude.")
-	attack_comp.reset_exceptions()
-	if not attack_comp.deal_damage_to(victim_hurtbox, 0.0, Vector3.ZERO):
-		attacker.queue_free()
-		victim.queue_free()
-		return _fail("Second confirmed hit should report success.")
 	if not is_equal_approx(victim_attrs.get_current(AttributeComponent.STAT_SPEED), expected_slowed):
-		attacker.queue_free()
-		victim.queue_free()
-		return _fail("Re-hitting must refresh the slow, not stack a second copy.")
-	print("Melee slow applied and refreshed without stacking: ", base_speed, " -> ", slowed, ".")
-	attacker.queue_free()
-	victim.queue_free()
-	await get_tree().process_frame
-	await get_tree().process_frame
+		return fail("The hit effect should scale speed by its own magnitude.")
+	attack_comp.reset_exceptions()
+	if not attack_comp.deal_damage_to(victim.hurtbox, 0.0, Vector3.ZERO):
+		return fail("Second confirmed hit should report success.")
+	if not is_equal_approx(victim_attrs.get_current(AttributeComponent.STAT_SPEED), expected_slowed):
+		return fail("Re-hitting must refresh the effect, not stack a second copy.")
 	return true
 
 
 ## PART 10: every shipped character carries consistent attribute bases.
-func _part_scene_parity() -> bool:
+func test_scene_parity() -> bool:
 	print("\n>>> PART 10: Per-scene attribute parity")
 	for scene_path: String in CHARACTER_SCENES:
 		var packed: PackedScene = load(scene_path) as PackedScene
 		if packed == null:
-			return _fail("Could not load %s." % scene_path)
+			return fail("Could not load %s." % scene_path)
 		var character: Character = packed.instantiate() as Character
 		if character == null:
-			return _fail("Scene %s did not instantiate a Character." % scene_path)
+			return fail("Scene %s did not instantiate a Character." % scene_path)
 		add_child(character)
 		await get_tree().physics_frame
 		await get_tree().process_frame
 		if character.attribute_component == null:
 			character.queue_free()
-			return _fail("Scene %s wires no AttributeComponent." % scene_path)
+			return fail("Scene %s wires no AttributeComponent." % scene_path)
 		var attrs: AttributeComponent = character.attribute_component
 		if not is_equal_approx(attrs.get_base(AttributeComponent.STAT_MAX_HEALTH), attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)):
 			character.queue_free()
-			return _fail("Scene %s max_health base drifted from its current value." % scene_path)
+			return fail("Scene %s max_health base drifted from its current value." % scene_path)
 		if not is_equal_approx(attrs.get_current(AttributeComponent.POOL_HEALTH), attrs.get_current(AttributeComponent.STAT_MAX_HEALTH)):
 			character.queue_free()
-			return _fail("Scene %s health pool did not spawn full." % scene_path)
+			return fail("Scene %s health pool did not spawn full." % scene_path)
 		if attrs.get_current(AttributeComponent.STAT_SPEED) <= 0.0:
 			character.queue_free()
-			return _fail("Scene %s has a non-positive speed stat." % scene_path)
+			return fail("Scene %s has a non-positive speed stat." % scene_path)
 		print("Parity OK: ", scene_path)
 		character.queue_free()
 		await get_tree().process_frame
@@ -506,8 +421,9 @@ func _part_scene_parity() -> bool:
 	return true
 
 
-## PART 11: fireball burn data plus damage-over-time drain, refresh, and expiry.
-func _part_damage_over_time() -> bool:
+## PART 11: fire sources share one burn identity; damage-over-time drain,
+## refresh, and expiry.
+func test_damage_over_time() -> bool:
 	print("\n>>> PART 11: Damage over time")
 	var projectile_scene: PackedScene = load("res://Enemy/enemy_projectile.tscn") as PackedScene
 	var projectile: Area3D = projectile_scene.instantiate() as Area3D
@@ -516,17 +432,15 @@ func _part_damage_over_time() -> bool:
 	var proj_attack: AttackComponent = projectile.get_node_or_null("AttackComponent") as AttackComponent
 	if proj_attack == null or proj_attack.effects_to_apply.is_empty():
 		projectile.queue_free()
-		return _fail("Fireball AttackComponent should configure a hit effect.")
+		return fail("Fireball AttackComponent should configure a hit effect.")
 	var burn: GameplayEffect = proj_attack.effects_to_apply[0]
 	if burn.target_attribute != AttributeComponent.POOL_HEALTH or burn.total_damage <= 0.0 or burn.duration <= 0.0:
 		projectile.queue_free()
-		return _fail("Fireball burn should target the health pool with a positive timed total.")
+		return fail("Fireball burn should target the health pool with a positive timed total.")
 	if burn.vfx_scene == null:
 		projectile.queue_free()
-		return _fail("Fireball burn should link a status visual scene.")
+		return fail("Fireball burn should link a status visual scene.")
 	var burn_name: StringName = burn.effect_name
-	var burn_total: float = burn.total_damage
-	var burn_duration: float = burn.duration
 	projectile.queue_free()
 	await get_tree().process_frame
 	# Fire trap and firebomb direct hits share the one burn identity, so any
@@ -541,12 +455,12 @@ func _part_damage_over_time() -> bool:
 	if trap_attack == null or bomb_attack == null or trap_attack.effects_to_apply.is_empty() or bomb_attack.effects_to_apply.is_empty():
 		trap.queue_free()
 		firebomb.queue_free()
-		return _fail("Fire trap and firebomb should each configure a hit effect.")
+		return fail("Fire trap and firebomb should each configure a hit effect.")
 	for other: GameplayEffect in [trap_attack.effects_to_apply[0], bomb_attack.effects_to_apply[0]]:
-		if other.effect_name != burn_name or not is_equal_approx(other.total_damage, burn_total) or not is_equal_approx(other.duration, burn_duration):
+		if other.effect_name != burn_name:
 			trap.queue_free()
 			firebomb.queue_free()
-			return _fail("Fire sources should share one burn identity.")
+			return fail("Fire sources should share one burn identity, so any of them refreshes the same burn.")
 	trap.queue_free()
 	firebomb.queue_free()
 	await get_tree().process_frame
@@ -561,33 +475,33 @@ func _part_damage_over_time() -> bool:
 	dot.duration = 0.4
 	if comp.apply_effect(dot) == &"":
 		comp.queue_free()
-		return _fail("DoT application should return a live instance id.")
+		return fail("DoT application should return a live instance id.")
 	if not comp.is_processing():
 		comp.queue_free()
-		return _fail("Active DoT should enable processing.")
+		return fail("Active DoT should enable processing.")
 	await get_tree().create_timer(0.2).timeout
 	await get_tree().process_frame
 	var mid: float = comp.get_current(AttributeComponent.POOL_HEALTH)
 	if not (mid < max_val and mid > max_val - 20.0):
 		comp.queue_free()
-		return _fail("DoT should be partially drained mid-duration.")
+		return fail("DoT should be partially drained mid-duration.")
 	var refresh_id: StringName = comp.apply_effect(dot)
 	if refresh_id == &"":
 		comp.queue_free()
-		return _fail("DoT re-application should refresh.")
+		return fail("DoT re-application should refresh.")
 	await get_tree().create_timer(0.6).timeout
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var drained: float = max_val - comp.get_current(AttributeComponent.POOL_HEALTH)
 	if drained < 25.0 or drained > 35.0:
 		comp.queue_free()
-		return _fail("Refreshed DoT should drain its remainder plus one total, got %f." % drained)
+		return fail("Refreshed DoT should drain its remainder plus one total, got %f." % drained)
 	if comp.is_processing():
 		comp.queue_free()
-		return _fail("Processing must disable itself once the DoT expires.")
+		return fail("Processing must disable itself once the DoT expires.")
 	if comp.remove_effect(refresh_id):
 		comp.queue_free()
-		return _fail("Expired DoT entries should already be gone.")
+		return fail("Expired DoT entries should already be gone.")
 	# Instant pool effects apply their total immediately with no entry.
 	var instant: GameplayEffect = GameplayEffect.new()
 	instant.effect_name = "test_potion"
@@ -597,7 +511,7 @@ func _part_damage_over_time() -> bool:
 	comp.apply_effect(instant)
 	if comp.is_processing():
 		comp.queue_free()
-		return _fail("Instant effects must never enable processing.")
+		return fail("Instant effects must never enable processing.")
 	comp.queue_free()
 	await get_tree().process_frame
 	print("DoT drain, refresh, expiry, and instant pools verified.")
@@ -606,7 +520,7 @@ func _part_damage_over_time() -> bool:
 
 ## PART 12: struck reactions (health_changed, hence stun, damage flash, and
 ## hurt shake) fire once per landed hit; DoT ticks drain the pool silently.
-func _part_dot_suppresses_reactions() -> bool:
+func test_dot_suppresses_reactions() -> bool:
 	print("\n>>> PART 12: DoT reaction suppression")
 	var player_scene: PackedScene = load("res://Player/player.tscn") as PackedScene
 	var player: Character = player_scene.instantiate() as Character
@@ -614,25 +528,25 @@ func _part_dot_suppresses_reactions() -> bool:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if player == null:
-		return _fail("Player scene should instantiate a Character.")
+		return fail("Player scene should instantiate a Character.")
 	var player_hurtbox: Hurtbox = player.get_node_or_null("Hurtbox") as Hurtbox
 	var comp: AttributeComponent = player.get_node_or_null("AttributeComponent") as AttributeComponent
 	if player_hurtbox == null or comp == null:
 		player.queue_free()
-		return _fail("Player should wire a Hurtbox and an AttributeComponent.")
+		return fail("Player should wire a Hurtbox and an AttributeComponent.")
 	_struck_reactions = 0
 	player.health_changed.connect(_on_test_health_changed)
 	if not player_hurtbox.receive_hit(5.0, Vector3.ZERO):
 		player.queue_free()
-		return _fail("Direct hit should land.")
+		return fail("Direct hit should land.")
 	if _struck_reactions != 1:
 		player.queue_free()
-		return _fail("Direct hit should emit exactly one struck reaction.")
+		return fail("Direct hit should emit exactly one struck reaction.")
 	var before: float = comp.get_current(AttributeComponent.POOL_HEALTH)
 	var burn_vfx: PackedScene = load("res://Singletons/VFX/status_burning.tscn") as PackedScene
 	if burn_vfx == null:
 		player.queue_free()
-		return _fail("Status burning VFX scene should load.")
+		return fail("Status burning VFX scene should load.")
 	var burn: GameplayEffect = GameplayEffect.new()
 	burn.effect_name = "test_burn_reaction"
 	burn.target_attribute = AttributeComponent.POOL_HEALTH
@@ -643,26 +557,26 @@ func _part_dot_suppresses_reactions() -> bool:
 	player.global_position = Vector3(5.0, 0.0, 7.0)
 	if comp.apply_effect(burn) == &"":
 		player.queue_free()
-		return _fail("Burn application should return a live instance id.")
+		return fail("Burn application should return a live instance id.")
 	await get_tree().process_frame
 	var burn_fx: Node3D = player.get_node_or_null("StatusBurning") as Node3D
 	if burn_fx == null:
 		player.queue_free()
-		return _fail("Burn visual should attach to the victim's body.")
+		return fail("Burn visual should attach to the victim's body.")
 	var ride_offset: Vector3 = burn_fx.global_position - player.global_position
 	if absf(ride_offset.x) > 0.05 or absf(ride_offset.z) > 0.05 or absf(ride_offset.y - 0.6) > 0.05:
 		player.queue_free()
-		return _fail("Burn visual should ride the victim at its offset, got %s." % ride_offset)
+		return fail("Burn visual should ride the victim at its offset, got %s." % ride_offset)
 	await get_tree().create_timer(0.6).timeout
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var drained: float = before - comp.get_current(AttributeComponent.POOL_HEALTH)
 	if drained < 8.0 or drained > 12.0:
 		player.queue_free()
-		return _fail("Burn should drain its total over time, got %f." % drained)
+		return fail("Burn should drain its total over time, got %f." % drained)
 	if _struck_reactions != 1:
 		player.queue_free()
-		return _fail("Burn ticks must not re-emit struck reactions, got %d." % _struck_reactions)
+		return fail("Burn ticks must not re-emit struck reactions, got %d." % _struck_reactions)
 	player.queue_free()
 	await get_tree().process_frame
 	print("Struck-gated reactions and silent DoT drain verified.")
@@ -672,11 +586,11 @@ func _part_dot_suppresses_reactions() -> bool:
 ## PART 13: effect status visuals spawn once per timed instance at the
 ## configured offset, survive refresh, and free on expiry or removal. Instant
 ## effects and null scenes spawn nothing.
-func _part_effect_vfx_lifecycle() -> bool:
+func test_effect_vfx_lifecycle() -> bool:
 	print("\n>>> PART 13: Effect status visuals")
 	var burn_vfx: PackedScene = load("res://Singletons/VFX/status_burning.tscn") as PackedScene
 	if burn_vfx == null:
-		return _fail("Status burning VFX scene should load.")
+		return fail("Status burning VFX scene should load.")
 	var comp: AttributeComponent = _make_component()
 	comp.set_base(AttributeComponent.STAT_MAX_HEALTH, 200.0)
 	comp.restore_pool(AttributeComponent.POOL_HEALTH, 200.0)
@@ -690,24 +604,24 @@ func _part_effect_vfx_lifecycle() -> bool:
 	var burn_id: StringName = comp.apply_effect(burn)
 	if burn_id == &"":
 		comp.queue_free()
-		return _fail("Burn application should return a live instance id.")
+		return fail("Burn application should return a live instance id.")
 	if comp.get_child_count() != 1:
 		comp.queue_free()
-		return _fail("Timed effect with a scene should spawn exactly one visual.")
+		return fail("Timed effect with a scene should spawn exactly one visual.")
 	var fx: Node = comp.get_child(0)
 	if not (fx is Node3D) or not is_equal_approx((fx as Node3D).position.y, 0.6):
 		comp.queue_free()
-		return _fail("Effect visual should sit at the configured offset.")
+		return fail("Effect visual should sit at the configured offset.")
 	var refresh_id: StringName = comp.apply_effect(burn)
 	if refresh_id != burn_id or comp.get_child_count() != 1 or comp.get_child(0) != fx:
 		comp.queue_free()
-		return _fail("Refresh should reuse the live visual, not spawn a second.")
+		return fail("Refresh should reuse the live visual, not spawn a second.")
 	await get_tree().create_timer(0.5).timeout
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if is_instance_valid(fx) or comp.get_child_count() != 0:
 		comp.queue_free()
-		return _fail("Expired effect should free its visual.")
+		return fail("Expired effect should free its visual.")
 	# Instant pool effects never show a visual, even with a scene linked.
 	var instant: GameplayEffect = GameplayEffect.new()
 	instant.effect_name = "test_instant_vfx"
@@ -718,7 +632,7 @@ func _part_effect_vfx_lifecycle() -> bool:
 	comp.apply_effect(instant)
 	if comp.get_child_count() != 0:
 		comp.queue_free()
-		return _fail("Instant effects must never spawn a visual.")
+		return fail("Instant effects must never spawn a visual.")
 	# Timed stat effects show one too, freed on manual removal.
 	var chill: GameplayEffect = GameplayEffect.new()
 	chill.effect_name = "test_chill_vfx"
@@ -730,16 +644,16 @@ func _part_effect_vfx_lifecycle() -> bool:
 	var chill_id: StringName = comp.apply_effect(chill)
 	if chill_id == &"" or comp.get_child_count() != 1:
 		comp.queue_free()
-		return _fail("Timed stat effect should spawn its visual.")
+		return fail("Timed stat effect should spawn its visual.")
 	var chill_fx: Node = comp.get_child(0)
 	if not comp.remove_effect(chill_id):
 		comp.queue_free()
-		return _fail("Stat effect removal should succeed.")
+		return fail("Stat effect removal should succeed.")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if is_instance_valid(chill_fx) or comp.get_child_count() != 0:
 		comp.queue_free()
-		return _fail("Removed effect should free its visual.")
+		return fail("Removed effect should free its visual.")
 	# Effects without a scene stay invisible.
 	var plain: GameplayEffect = GameplayEffect.new()
 	plain.effect_name = "test_plain_dot"
@@ -748,10 +662,10 @@ func _part_effect_vfx_lifecycle() -> bool:
 	plain.duration = 0.3
 	if comp.apply_effect(plain) == &"":
 		comp.queue_free()
-		return _fail("Sceneless DoT should still apply.")
+		return fail("Sceneless DoT should still apply.")
 	if comp.get_child_count() != 0:
 		comp.queue_free()
-		return _fail("Effects without a scene must spawn nothing.")
+		return fail("Effects without a scene must spawn nothing.")
 	comp.queue_free()
 	await get_tree().process_frame
 	print("Effect visual spawn, refresh reuse, expiry, and removal verified.")
@@ -761,7 +675,7 @@ func _part_effect_vfx_lifecycle() -> bool:
 ## PART 14: defeated enemies rest where they fell without blocking movement:
 ## the body shape is shut off (walk-through corpses) while the defeat state
 ## pins velocity to zero, so the corpse never drifts or falls through.
-func _part_corpse_stays_grounded() -> bool:
+func test_corpse_stays_grounded() -> bool:
 	print("\n>>> PART 14: Corpse grounding")
 	var floor_body: StaticBody3D = StaticBody3D.new()
 	var floor_col: CollisionShape3D = CollisionShape3D.new()
@@ -784,16 +698,16 @@ func _part_corpse_stays_grounded() -> bool:
 	if enemy.collision_shape_3d == null or not enemy.collision_shape_3d.disabled:
 		enemy.queue_free()
 		floor_body.queue_free()
-		return _fail("Defeat must shut off the body shape so corpses never block.")
+		return fail("Defeat must shut off the body shape so corpses never block.")
 	var enemy_hurtbox: Hurtbox = enemy.get_node_or_null("Hurtbox") as Hurtbox
 	if enemy_hurtbox == null or enemy_hurtbox.monitoring or enemy_hurtbox.monitorable:
 		enemy.queue_free()
 		floor_body.queue_free()
-		return _fail("Defeat must shut off the hurtbox so corpses are never re-hit.")
+		return fail("Defeat must shut off the hurtbox so corpses are never re-hit.")
 	if enemy.global_position.y < rest_y - 0.5:
 		enemy.queue_free()
 		floor_body.queue_free()
-		return _fail("Corpse fell through the floor, y %f -> %f." % [rest_y, enemy.global_position.y])
+		return fail("Corpse fell through the floor, y %f -> %f." % [rest_y, enemy.global_position.y])
 	enemy.queue_free()
 	floor_body.queue_free()
 	await get_tree().process_frame
@@ -805,7 +719,7 @@ func _part_corpse_stays_grounded() -> bool:
 ## state. Defeat is reported during damage_pool, before struck reactions fire,
 ## so the dead must ignore stun or it would override defeat and leave the
 ## corpse stuck standing.
-func _part_lethal_hit_reaches_defeat() -> bool:
+func test_lethal_hit_reaches_defeat() -> bool:
 	print("\n>>> PART 15: Lethal hit reaches defeat")
 	var floor_body: StaticBody3D = StaticBody3D.new()
 	var floor_col: CollisionShape3D = CollisionShape3D.new()
@@ -824,18 +738,18 @@ func _part_lethal_hit_reaches_defeat() -> bool:
 	if enemy_hurtbox == null:
 		enemy.queue_free()
 		floor_body.queue_free()
-		return _fail("Melee enemy should wire a Hurtbox.")
+		return fail("Melee enemy should wire a Hurtbox.")
 	if not enemy_hurtbox.receive_hit(99999.0, Vector3.ZERO):
 		enemy.queue_free()
 		floor_body.queue_free()
-		return _fail("Lethal hit should land.")
+		return fail("Lethal hit should land.")
 	for i: int in range(30):
 		await get_tree().physics_frame
 	var body_sm: StateMachine = enemy.state_machine
 	if body_sm == null or body_sm.state == null or body_sm.state.name != "EnemyDefeat":
 		enemy.queue_free()
 		floor_body.queue_free()
-		return _fail("Lethal hit should settle in EnemyDefeat.")
+		return fail("Lethal hit should settle in EnemyDefeat.")
 	enemy.queue_free()
 	floor_body.queue_free()
 	await get_tree().process_frame
@@ -846,7 +760,7 @@ func _part_lethal_hit_reaches_defeat() -> bool:
 ## PART 16: permanent max-HP gains raise current HP by the same amount (shop
 ## sigil case); timed gains grant capacity only so expiry deletes nothing;
 ## removing a gain re-clamps an over-full pool but preserves wounds.
-func _part_max_raise_carries_pool() -> bool:
+func test_max_raise_carries_pool() -> bool:
 	print("\n>>> PART 16: Permanent max-HP gains raise current HP")
 	var comp: AttributeComponent = _make_component()
 	var base_max: float = 200.0
@@ -855,32 +769,32 @@ func _part_max_raise_carries_pool() -> bool:
 	comp.set_pool_current(AttributeComponent.POOL_HEALTH, base_max)
 	comp.apply_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_gain", Attribute.Op.ADD, gain)
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_MAX_HEALTH), base_max + gain):
-		return _fail("Permanent max buff should raise the max stat.")
+		return fail("Permanent max buff should raise the max stat.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), base_max + gain):
-		return _fail("Permanent max-HP gain must raise current HP by the same amount.")
+		return fail("Permanent max-HP gain must raise current HP by the same amount.")
 	var timed_gain: float = 30.0
 	comp.apply_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_timed", Attribute.Op.ADD, timed_gain, 5.0)
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_MAX_HEALTH), base_max + gain + timed_gain):
-		return _fail("Timed max buff should raise the max stat.")
+		return fail("Timed max buff should raise the max stat.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), base_max + gain):
-		return _fail("Timed max buff must not raise current HP.")
+		return fail("Timed max buff must not raise current HP.")
 	if not comp.remove_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_timed"):
-		return _fail("Timed max buff should be removable.")
+		return fail("Timed max buff should be removable.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), base_max + gain):
-		return _fail("Removing a timed max buff must not delete health.")
+		return fail("Removing a timed max buff must not delete health.")
 	if not comp.remove_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_gain"):
-		return _fail("Permanent max buff should be removable.")
+		return fail("Permanent max buff should be removable.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.STAT_MAX_HEALTH), base_max):
-		return _fail("Max stat should return to base after removal.")
+		return fail("Max stat should return to base after removal.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), base_max):
-		return _fail("Removing a max gain must re-clamp an over-full pool to max.")
+		return fail("Removing a max gain must re-clamp an over-full pool to max.")
 	comp.apply_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_gain", Attribute.Op.ADD, gain)
 	comp.damage_pool(AttributeComponent.POOL_HEALTH, gain + 10.0)
 	var wounded: float = comp.get_current(AttributeComponent.POOL_HEALTH)
 	if not comp.remove_modifier(AttributeComponent.STAT_MAX_HEALTH, &"test_max_gain"):
-		return _fail("Permanent max buff should be removable when wounded.")
+		return fail("Permanent max buff should be removable when wounded.")
 	if not is_equal_approx(comp.get_current(AttributeComponent.POOL_HEALTH), wounded):
-		return _fail("Removing a max gain must preserve wounds below the new max.")
+		return fail("Removing a max gain must preserve wounds below the new max.")
 	print("Permanent max gains carry current HP; timed gains and removals behave.")
 	return true
 
@@ -888,7 +802,7 @@ func _part_max_raise_carries_pool() -> bool:
 ## PART 17: effects with vfx_bone attach to a BoneAttachment3D under the
 ## character's Skeleton3D so the visual follows the bone through animations
 ## and collapses to the floor with the corpse upon defeat.
-func _part_effect_vfx_bone_attachment() -> bool:
+func test_effect_vfx_bone_attachment() -> bool:
 	print("\n>>> PART 17: Bone-attached status visuals follow corpse on defeat")
 	var floor_body: StaticBody3D = StaticBody3D.new()
 	var col: CollisionShape3D = CollisionShape3D.new()
@@ -910,19 +824,19 @@ func _part_effect_vfx_bone_attachment() -> bool:
 	if comp == null:
 		floor_body.queue_free()
 		enemy.queue_free()
-		return _fail("Melee enemy must have an AttributeComponent.")
+		return fail("Melee enemy must have an AttributeComponent.")
 
 	var burn: GameplayEffect = load("res://Components/effect_fire_burn.tres") as GameplayEffect
 	if burn == null or burn.vfx_scene == null or burn.vfx_bone != &"spine":
 		floor_body.queue_free()
 		enemy.queue_free()
-		return _fail("effect_fire_burn.tres should configure vfx_scene and vfx_bone = &\"spine\".")
+		return fail("effect_fire_burn.tres should configure vfx_scene and vfx_bone = &\"spine\".")
 
 	var instance_id: StringName = comp.apply_effect(burn)
 	if instance_id == &"":
 		floor_body.queue_free()
 		enemy.queue_free()
-		return _fail("Burn application should return a valid instance id.")
+		return fail("Burn application should return a valid instance id.")
 
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -931,7 +845,7 @@ func _part_effect_vfx_bone_attachment() -> bool:
 	if skel == null:
 		floor_body.queue_free()
 		enemy.queue_free()
-		return _fail("Enemy must have a Skeleton3D.")
+		return fail("Enemy must have a Skeleton3D.")
 
 	var spine_slot: BoneAttachment3D = null
 	for child: Node in skel.get_children():
@@ -942,19 +856,19 @@ func _part_effect_vfx_bone_attachment() -> bool:
 	if spine_slot == null:
 		floor_body.queue_free()
 		enemy.queue_free()
-		return _fail("Status visual should create or find a BoneAttachment3D for spine.")
+		return fail("Status visual should create or find a BoneAttachment3D for spine.")
 
 	var burn_fx: Node3D = spine_slot.get_node_or_null("StatusBurning") as Node3D
 	if burn_fx == null:
 		floor_body.queue_free()
 		enemy.queue_free()
-		return _fail("Status burning visual should be parented under SpineSlot.")
+		return fail("Status burning visual should be parented under SpineSlot.")
 
 	var initial_fx_y: float = burn_fx.global_position.y
 	if initial_fx_y < 0.4:
 		floor_body.queue_free()
 		enemy.queue_free()
-		return _fail("Initial spine visual should be around torso height (>= 0.4), got %f." % initial_fx_y)
+		return fail("Initial spine visual should be around torso height (>= 0.4), got %f." % initial_fx_y)
 
 	# Trigger defeat and wait for the defeat animation to collapse the skeleton to the floor
 	enemy.on_defeat()
@@ -965,14 +879,14 @@ func _part_effect_vfx_bone_attachment() -> bool:
 	if defeated_fx_y >= initial_fx_y - 0.25:
 		floor_body.queue_free()
 		enemy.queue_free()
-		return _fail("Status visual should fall with the spine bone on defeat; initial=%f, defeated=%f." % [initial_fx_y, defeated_fx_y])
+		return fail("Status visual should fall with the spine bone on defeat; initial=%f, defeated=%f." % [initial_fx_y, defeated_fx_y])
 
 	comp.clear_temporary_effects()
 	await get_tree().physics_frame
 	if is_instance_valid(burn_fx):
 		floor_body.queue_free()
 		enemy.queue_free()
-		return _fail("Visual should be freed when effect is cleared.")
+		return fail("Visual should be freed when effect is cleared.")
 
 	floor_body.queue_free()
 	enemy.queue_free()
