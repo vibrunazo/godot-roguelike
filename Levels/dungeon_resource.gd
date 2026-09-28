@@ -20,6 +20,17 @@ extends Resource
 ## Maximum enemy count allowed for this dungeon to be selected. 0 = unlimited.
 @export var max_enemies: int = 0
 
+## Dungeon level at which the run detours to this dungeon as a boss arena
+## instead of picking a regular dungeon. 0 = a regular dungeon. A boss arena
+## is never picked by difficulty: its scene carries its bosses on its
+## WaveObjective.boss_resources, and the eligibility limits above are ignored.
+@export var boss_at_level: int = 0
+
+
+## True for a boss arena (see boss_at_level).
+func is_boss_arena() -> bool:
+	return boss_at_level > 0
+
 
 ## Returns true if this dungeon is eligible for the given difficulty rating and planned enemy count.
 func matches(difficulty: int, enemy_count: int) -> bool:

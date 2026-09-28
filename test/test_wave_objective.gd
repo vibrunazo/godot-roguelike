@@ -3,7 +3,9 @@
 ##   and nothing spawns afterwards,
 ## - enemies already in the level still complete the wave when defeated,
 ## - stopping never completes the wave by itself,
-## - deleting the wave mid-way frees its unspawned enemies (no leak).
+## - deleting the wave mid-way frees its unspawned enemies (no leak),
+## - a wave enemy carries the EnemyResource it was planned from, so its defeat
+##   awards that resource's gold.
 ##
 ## Waves are built from a test-owned EnemyResource list (boss_resources, which
 ## spawns exactly the listed enemies) with test-owned spawn delays, so the
@@ -17,12 +19,18 @@ const FIRST_SPAWN_DELAY: float = 0.1
 const SPAWN_INTERVAL: float = 0.2
 ## Lethal test damage for defeating spawned enemies.
 const LETHAL_DAMAGE: float = 100000.0
+## Makes the test archetype's gold differ from the registered one's.
+const TEST_GOLD_OFFSET: int = 7
 
 var _arena: Node3D
 
 
 func before_each() -> void:
 	_arena = load_arena()
+
+
+func after_each() -> void:
+	ProgressionState.reset_run()
 
 
 func test_stop_spawning_frees_unspawned_enemies_and_spawns_no_more() -> void:
@@ -74,10 +82,27 @@ func test_deleting_the_wave_mid_way_frees_unspawned_enemies() -> void:
 		check(ref.get_ref() == null, "an enemy that never spawned should be freed with its wave")
 
 
-## A wave of WAVE_SIZE melee enemies with test-owned pacing, in the arena.
-func _spawn_wave() -> WaveObjective:
+func test_a_wave_enemy_awards_its_own_resource_gold() -> void:
+	# A test-owned archetype for a registered scene, with gold unlike the
+	# registered archetype's, so the award shows which resource was used.
+	var registered: EnemyResource = GlobalVars.get_enemy_resource(MELEE_SCENE)
 	var resource: EnemyResource = EnemyResource.new()
 	resource.scene = MELEE_SCENE
+	resource.gold_drop = (registered.gold_drop if registered != null else 0) + TEST_GOLD_OFFSET
+	var wave: WaveObjective = _spawn_wave(resource)
+	if not await wait_until(func() -> bool: return _spawned(wave).size() == 1, "the first enemy should spawn", _frames_for(FIRST_SPAWN_DELAY + SPAWN_INTERVAL)):
+		return
+	var gold_before: int = ProgressionState.currency_gold
+	_spawned(wave)[0].hurtbox.receive_hit(LETHAL_DAMAGE, Vector3.ZERO)
+	check_eq(ProgressionState.currency_gold, gold_before + resource.gold_drop, "a wave enemy's defeat should award its own resource's gold")
+
+
+## A wave of WAVE_SIZE enemies of resource (a plain melee archetype when null)
+## with test-owned pacing, in the arena.
+func _spawn_wave(resource: EnemyResource = null) -> WaveObjective:
+	if resource == null:
+		resource = EnemyResource.new()
+		resource.scene = MELEE_SCENE
 	var wave: WaveObjective = WaveObjective.new()
 	for i: int in range(WAVE_SIZE):
 		wave.boss_resources.append(resource)

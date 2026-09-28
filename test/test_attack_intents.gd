@@ -2,7 +2,8 @@
 ## - command_attack()/command_dash() raise an edge intent on the character
 ##   that consume_*_request() returns exactly once, from either controller,
 ## - Character.can_dash() follows the dash cooldown; a character without a
-##   cooldown timer (enemies) can always dash,
+##   cooldown timer (enemies) can always dash; dashing starts the cooldown, so
+##   a second dash right after is refused,
 ## - StateMachine.request_state() rejects missing states and transitions to
 ##   existing ones; AIStateMachine.order_attack() validates the same way,
 ## - PlayerInputComponent orders drive transitions: attack from running, dash
@@ -58,6 +59,14 @@ func test_can_dash_follows_the_cooldown_and_enemies_can_always_dash() -> void:
 	_player.dash_cooldown.stop()
 	check(_player.can_dash(), "once the cooldown stops the player can dash again")
 	check(_enemy.can_dash(), "a character without a cooldown timer can always dash")
+
+
+func test_a_dash_starts_the_cooldown() -> void:
+	if not check(_input.order_dash() and _state(_player) == "PlayerDash", "setup: the player should dash"):
+		return
+	check(not _player.can_dash(), "a dash should start the dash cooldown")
+	_player.state_machine.request_state("PlayerRun")
+	check(not _input.order_dash(), "a second dash right after the first should be refused")
 
 
 func test_request_state_and_order_attack_validate_the_target() -> void:

@@ -69,11 +69,10 @@ func test_boss_is_registered_and_gated_by_its_minimum_spawn_difficulty() -> void
 	var gated: EnemyResource = registered.duplicate() as EnemyResource
 	gated.minimum_spawn_difficulty = gated.difficulty_level + TEST_GATE_OFFSET
 	var resources: Array[EnemyResource] = [gated]
-	var wave: WaveObjective = autofree(WaveObjective.new()) as WaveObjective
 	var tier: int = gated.difficulty_level
-	check((wave.build_difficulty_pool(resources).get(tier, []) as Array).has(gated), "ungated, the pool should offer the boss at its difficulty")
-	check(not (wave.build_difficulty_pool(resources, gated.minimum_spawn_difficulty - 1).get(tier, []) as Array).has(gated), "below its minimum difficulty the boss must not appear in regular waves")
-	check((wave.build_difficulty_pool(resources, gated.minimum_spawn_difficulty).get(tier, []) as Array).has(gated), "at its minimum difficulty the boss should join regular waves")
+	check((ProgressionState.build_difficulty_pool(resources).get(tier, []) as Array).has(gated), "ungated, the pool should offer the boss at its difficulty")
+	check(not (ProgressionState.build_difficulty_pool(resources, gated.minimum_spawn_difficulty - 1).get(tier, []) as Array).has(gated), "below its minimum difficulty the boss must not appear in regular waves")
+	check((ProgressionState.build_difficulty_pool(resources, gated.minimum_spawn_difficulty).get(tier, []) as Array).has(gated), "at its minimum difficulty the boss should join regular waves")
 
 
 func test_boss_rests_on_the_floor() -> void:

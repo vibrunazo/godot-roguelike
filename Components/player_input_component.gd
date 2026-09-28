@@ -4,14 +4,8 @@ extends Node
 
 ## The Character controlled by this input component.
 @export var character: Character
-## Cooldown timer preventing dash spamming.
-@export var dash_cooldown: Timer
-## Sound effect player for dashing.
-@export var dash_audio: AudioStreamPlayer3D
 ## Fullscreen damage vignette/tint ColorRect.
 @export var damage_tint: ColorRect
-## Range in meters for auto-aim target acquisition (<= 0.0 disables auto-aim).
-@export var auto_aim_range: float = 5.0
 ## Minimum dot product between the held movement direction and the direction
 ## towards the locked auto-aim target for a jump order to stay a jump. Lower
 ## alignment (sideways or backwards movement) turns the order into a dash.
@@ -42,7 +36,6 @@ func _ready() -> void:
 	if character == null:
 		character = get_parent() as Character
 	if character != null:
-		character.auto_aim_range = auto_aim_range
 		character.health_changed.connect(_on_character_health_changed)
 
 

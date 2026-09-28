@@ -42,9 +42,12 @@ refuses to ship on engine errors.
   (scene, difficulty and enemy-count bounds) and add it to
   `GlobalVars.dungeons` in `Singletons/global_vars.tscn`. The run picks the
   dungeon that fits each encounter.
-- Boss arenas: map the dungeon level to the scene in
-  `SceneTransition.boss_arenas`. Arenas never go in the regular rotation.
-- `SceneTransition.levels` is only the fallback rotation.
+- Boss arenas: also a `DungeonResource` in `GlobalVars.dungeons`, with
+  `boss_at_level` set to the dungeon level that detours to it. Regular
+  selection never picks an arena. The arena's `WaveObjective.boss_resources`
+  names its bosses.
+- `GlobalVars.dungeons` is the only level registry; nothing else lists
+  levels.
 
 ## Verify
 

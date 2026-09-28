@@ -1,5 +1,5 @@
-## Rotation integrity test: every level the run can load (SceneTransition.levels,
-## GlobalVars.dungeons and SceneTransition.boss_arenas) must load,
+## Rotation integrity test: every level the run can load (GlobalVars.dungeons,
+## boss arenas included) must load,
 ## expose its core nodes (Player, ExitPoint, WaveObjective, VoxelGI with baked
 ## data), and provide a valid navigation path from player spawn to the exit
 ## with a VoxelGI volume that covers the floor footprint. Every interior floor
@@ -41,23 +41,15 @@ func test_every_level_the_run_can_load_is_sound() -> void:
 		await wait_physics_frames(3)
 
 
-## Every level scene the run can load, deduplicated: the SceneTransition
-## rotation fallback (levels), the dungeon pool the run actually picks from
-## (GlobalVars.dungeons) and the boss arenas (SceneTransition.boss_arenas).
-## Until the registries are unified, a level registered in only one of them
-## must still be verified.
+## Every level scene the run can load: the GlobalVars.dungeons registry,
+## boss arenas included, deduplicated.
 func _collect_level_paths() -> Array[String]:
 	var paths: Array[String] = []
-	for path_variant: Variant in SceneTransition.levels:
-		_append_unique(paths, str(path_variant))
 	for dungeon: DungeonResource in GlobalVars.dungeons:
 		if dungeon == null or dungeon.scene == null:
 			fail("GlobalVars.dungeons has an entry without a scene")
-			_append_unique(paths, "<dungeon without scene>")
 			continue
 		_append_unique(paths, dungeon.scene.resource_path)
-	for arena_variant: Variant in SceneTransition.boss_arenas.values():
-		_append_unique(paths, str(arena_variant))
 	return paths
 
 

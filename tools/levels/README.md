@@ -47,9 +47,8 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 | `examples/level13_design.py` | Worked example: the Level 13 design ("Twin Terrace", two combat floors at 0 m/2 m joined by two stair flights, per-layer wall GridMaps). The reference for any future multi-floor level. |
 
 The gate for every level is the committed test `test/test_level_rotation_nav.tscn`:
-it loads every level the run can load (the `SceneTransition.levels` fallback
-rotation, every `GlobalVars.dungeons` scene and every
-`SceneTransition.boss_arenas` scene) and checks core nodes, baked
+it loads every level the run can load (every `GlobalVars.dungeons` scene,
+boss arenas included) and checks core nodes, baked
 VoxelGI data, navmesh/GI footprint coverage, a spawn→exit nav path, pit
 shaft-wall lining, abyss-plane presence (the template `Pit` must be visible
 and giant — per-level pit quads are obsolete), and navmesh bake authenticity
@@ -96,8 +95,8 @@ subprocess.run(cmd, shell=False, timeout=280)
 "
 
 # 7. Reference the baked .res from the level (assembler does this when
-#    "gi_data" is set in the spec), register the level in
-#    SceneTransition.levels, then verify:
+#    "gi_data" is set in the spec), register the level (a DungeonResource
+#    in GlobalVars.dungeons), then verify:
 python run_tests.py test/test_level_rotation_nav.tscn
 python capture.py map Levels/level_5.tscn --preset all
 ```
@@ -138,8 +137,8 @@ python capture.py map Levels/level_5.tscn --preset all
 - `boss_resources` (boss arenas only) lists EnemyResource `.tres` paths to
   pin on `WaveObjective.boss_resources`, so the arena spawns its boss(es)
   instead of a budgeted wave. Omit it for normal levels. Boss arenas are
-  routed via `SceneTransition.boss_arenas` (dungeon level -> arena scene),
-  never via the `levels` rotation.
+  registered like any dungeon, with `DungeonResource.boss_at_level` set to
+  the dungeon level that detours to them; regular selection never picks one.
 - `uid: null` generates a fresh scene uid; pin one to reproduce a file exactly.
 - `player: null` keeps the template spawn; otherwise `[x, y, z]`.
 - `gi_data: null` assembles the pre-bake state (no data reference — required,

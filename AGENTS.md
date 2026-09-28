@@ -113,13 +113,14 @@ prints the error and idles forever. `--quit-after` does not help.
   `AttackComponent.rehit_interval <= 0` hits a target once per attack;
   `> 0` lets it hit again after that interval.
 - **Registries:** `GlobalVars` (items, enemies, dungeons, shared scenes),
-  `ProgressionState` (run state: difficulty, dungeon level, gold, planned
-  encounter), `SceneTransition` (level loading, boss arenas, the carried
-  player), `UI` (HUD, pause and game-over menus, fullscreen), `VfxManager`
+  `ProgressionState` (run state: difficulty, dungeon level, gold, the
+  planned encounter and its wave plan), `SceneTransition` (fades, level
+  loading, the carried player), `UI` (HUD, pause and game-over menus, fullscreen), `VfxManager`
   (world VFX, damage numbers, the target reticle). All five are autoloads.
 - **Levels** inherit `Levels/level_template.tscn` (lighting, wave objective,
-  kill plane, exit). The run picks levels from `GlobalVars.dungeons`
-  (`DungeonResource`s); `SceneTransition.boss_arenas` routes boss levels.
+  kill plane, exit). `GlobalVars.dungeons` (`DungeonResource`s) is the only
+  level registry: `ProgressionState` picks a regular dungeon per encounter,
+  or the boss arena whose `boss_at_level` matches the dungeon level.
 
 ## 6. Skills
 

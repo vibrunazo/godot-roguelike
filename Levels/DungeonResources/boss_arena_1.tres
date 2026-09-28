@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="DungeonResource" format=3]
+
+[ext_resource type="Script" path="res://Levels/dungeon_resource.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://Levels/boss_arena_1.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_script")
+name = "Boss Arena 1"
+scene = ExtResource("2_scene")
+boss_at_level = 10

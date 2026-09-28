@@ -28,8 +28,6 @@ const DEFAULT_ROTATION_SPEED: float = 360.0
 const TAG_AIRBORNE: StringName = &"movement.airborne"
 ## Extra tag on an airborne episode's ENDED event: the character just landed.
 const TAG_LANDED: StringName = &"movement.landed"
-## Gold awarded for an enemy with no EnemyResource of its own or registered.
-const DEFAULT_GOLD_DROP: int = 5
 ## Seconds between player defeat and the game-over screen, letting the death
 ## animation and corpse read before the menu takes over.
 const DEFEAT_MENU_DELAY: float = 2.0
@@ -72,13 +70,16 @@ const DEFEAT_MENU_DELAY: float = 2.0
 ## broadcast_ability_event; resolved from a "PassiveAbilityComponent" child
 ## when unset (same convention as equipment_component).
 @export var passive_ability_component: PassiveAbilityComponent
-## Optional EnemyResource defining enemy archetype properties (such as gold drop).
+## The EnemyResource this enemy was spawned from (gold drop, archetype data).
+## Waves set it; an enemy spawned any other way is looked up in
+## GlobalVars.enemies by its scene.
 @export var enemy_resource: EnemyResource
 ## Optional cooldown timer preventing dash spamming. Wired on the player;
 ## characters without one (enemies) are always ready and rely on AI gating.
 @export var dash_cooldown: Timer
 ## Maximum distance in meters at which auto-aim acquires opposing characters.
-## Values <= 0.0 disable auto-aim acquisition entirely (0.0 by default for AI enemies; enabled by PlayerInputComponent).
+## Values <= 0.0 disable auto-aim acquisition entirely (the default: enemies
+## never auto-aim; the player scene sets its range).
 @export var auto_aim_range: float = 0.0
 ## Minimum interval in seconds between auto-aim target re-evaluations, so the
 ## target does not flicker every tick when candidates sit at similar distances.
@@ -165,8 +166,6 @@ func _resolve_body_nodes() -> void:
 		collision_shape_3d = get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if hurtbox == null:
 		hurtbox = get_node_or_null("Hurtbox") as Hurtbox
-	if dash_cooldown == null:
-		dash_cooldown = get_node_or_null("DashCooldown") as Timer
 	if mesh_mount == null:
 		mesh_mount = get_node_or_null("AnimationAnchor") as Node3D
 		if mesh_mount == null:
@@ -833,16 +832,12 @@ func on_defeat() -> void:
 	_switch_corpse_off()
 
 
-## Gold this enemy awards on defeat: its own resource's, else its registered
-## archetype's, else the default.
+## Gold this enemy awards on defeat: its EnemyResource's gold_drop (see
+## enemy_resource). An enemy with no registered archetype awards none.
 func _gold_drop() -> int:
-	if enemy_resource != null:
-		return enemy_resource.gold_drop
-	if not scene_file_path.is_empty():
-		for resource: EnemyResource in GlobalVars.enemies:
-			if resource != null and resource.scene != null and resource.scene.resource_path == scene_file_path:
-				return resource.gold_drop
-	return DEFAULT_GOLD_DROP
+	if enemy_resource == null:
+		enemy_resource = GlobalVars.get_enemy_resource_for_path(scene_file_path)
+	return enemy_resource.gold_drop if enemy_resource != null else 0
 
 
 ## Shuts off the body shape and the hurtbox, so the corpse never blocks

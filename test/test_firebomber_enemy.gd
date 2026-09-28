@@ -46,8 +46,7 @@ func test_firebomber_is_registered_as_a_spawnable_enemy() -> void:
 	var resource: EnemyResource = GlobalVars.get_enemy_resource(FIREBOMBER_SCENE)
 	if not check(resource != null, "GlobalVars.enemies should register the firebomber"):
 		return
-	var wave: WaveObjective = autofree(WaveObjective.new()) as WaveObjective
-	var tier: Array = wave.build_difficulty_pool(GlobalVars.enemies).get(resource.difficulty_level, [])
+	var tier: Array = ProgressionState.build_difficulty_pool(GlobalVars.enemies).get(resource.difficulty_level, [])
 	check(tier.has(resource), "the wave's difficulty pool should offer the firebomber at its own difficulty level")
 	var instance: Character = autofree(resource.scene.instantiate()) as Character
 	check(instance != null and instance.is_in_group("enemy"), "the registered scene should instantiate an enemy Character")

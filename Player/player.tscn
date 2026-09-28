@@ -409,10 +409,12 @@ _data = {
 &"dash": SubResource("Animation_7emwf")
 }
 
-[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "color_component", "defeat_state") groups=["player"]]
+[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "color_component", "defeat_state", "dash_cooldown") groups=["player"]]
 collision_layer = 17
 script = ExtResource("1_l8h54")
 mesh_mount = NodePath("GamedevTV_Mannequin_Medium")
+dash_cooldown = NodePath("DashCooldown")
+auto_aim_range = 10.0
 attribute_component = NodePath("AttributeComponent")
 knockback_component = NodePath("KnockbackComponent")
 animation_tree = NodePath("GamedevTV_Mannequin_Medium/MannequinAnimationTree")
@@ -425,13 +427,10 @@ defeat_state = NodePath("StateMachine/PlayerDefeat")
 script = ExtResource("24_color")
 palette_mode = 1
 
-[node name="PlayerInputComponent" type="Node" parent="." unique_id=1849201948 node_paths=PackedStringArray("character", "dash_cooldown", "dash_audio", "damage_tint")]
+[node name="PlayerInputComponent" type="Node" parent="." unique_id=1849201948 node_paths=PackedStringArray("character", "damage_tint")]
 script = ExtResource("2_input")
 character = NodePath("..")
-dash_cooldown = NodePath("../DashCooldown")
-dash_audio = NodePath("../DashAudio")
 damage_tint = NodePath("../DamageTint")
-auto_aim_range = 10.0
 
 [node name="ScreenShakeComponent" type="Node" parent="." unique_id=1982736411 node_paths=PackedStringArray("character")]
 script = ExtResource("25_shake")
@@ -640,11 +639,12 @@ character = NodePath("../..")
 attack_state = NodePath("../PlayerJumpKick")
 metadata/_custom_type_script = "uid://c2fahn2m2se57"
 
-[node name="PlayerDash" type="Node" parent="StateMachine" unique_id=1966261831 node_paths=PackedStringArray("running_state", "character")]
+[node name="PlayerDash" type="Node" parent="StateMachine" unique_id=1966261831 node_paths=PackedStringArray("running_state", "character", "dash_audio")]
 script = ExtResource("5_a28ek")
 ability_tags = Array[StringName]([&"ability.dash", &"ability.movement"])
 running_state = NodePath("../PlayerRun")
 character = NodePath("../..")
+dash_audio = NodePath("../../DashAudio")
 metadata/_custom_type_script = "uid://21pflv2d1drw"
 
 [node name="DashDuration" type="Timer" parent="StateMachine/PlayerDash" unique_id=793371820]

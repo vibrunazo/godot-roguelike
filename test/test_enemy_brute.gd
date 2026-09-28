@@ -51,8 +51,7 @@ func test_the_wave_pool_offers_it_at_its_difficulty() -> void:
 	var resource: EnemyResource = GlobalVars.get_enemy_resource(BRUTE_SCENE)
 	if not check(resource != null, "the brute should be registered"):
 		return
-	var wave: WaveObjective = autofree(WaveObjective.new()) as WaveObjective
-	var pool: Dictionary = wave.build_difficulty_pool([resource])
+	var pool: Dictionary = ProgressionState.build_difficulty_pool([resource])
 	check(pool.has(resource.difficulty_level) and (pool[resource.difficulty_level] as Array).has(resource), "the pool should offer the brute at its difficulty")
 
 

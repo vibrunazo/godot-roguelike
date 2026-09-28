@@ -18,13 +18,6 @@ const DEBUG_KILL_DAMAGE: float = 50.0
 signal pause_state_changed(is_paused: bool)
 
 
-## Pause menu scene override. When null, uses GlobalVars.pause_menu_scene.
-@export var pause_menu_scene: PackedScene = null
-## HUD scene override. When null, uses GlobalVars.hud_scene.
-@export var hud_scene: PackedScene = null
-## Level title overlay scene override. When null, uses GlobalVars.level_title_overlay_scene.
-@export var level_title_overlay_scene: PackedScene = null
-
 ## Whether UI overlays (e.g. level title banners, HUD overlays) are allowed to display.
 var overlays_enabled: bool = true
 var _current_level_overlay: LevelTitleOverlay = null
@@ -108,10 +101,9 @@ func show_hud() -> HUD:
 		return null
 	if _current_hud != null and is_instance_valid(_current_hud):
 		return _current_hud
-	var scene: PackedScene = hud_scene
-	if scene == null and GlobalVars != null:
-		scene = GlobalVars.hud_scene
+	var scene: PackedScene = GlobalVars.hud_scene
 	if scene == null:
+		push_error("UI: GlobalVars.hud_scene is not set.")
 		return null
 	var hud: HUD = scene.instantiate() as HUD
 	add_child(hud)
@@ -139,10 +131,9 @@ func show_level_title(level_number: int, duration: float = 2.0) -> LevelTitleOve
 		_current_level_overlay.queue_free()
 		_current_level_overlay = null
 
-	var scene: PackedScene = level_title_overlay_scene
-	if scene == null and GlobalVars != null:
-		scene = GlobalVars.level_title_overlay_scene
+	var scene: PackedScene = GlobalVars.level_title_overlay_scene
 	if scene == null:
+		push_error("UI: GlobalVars.level_title_overlay_scene is not set.")
 		return null
 	var overlay: LevelTitleOverlay = scene.instantiate() as LevelTitleOverlay
 	add_child(overlay)
@@ -176,10 +167,9 @@ func pause_game() -> void:
 ## Resolves the configured pause menu scene and instantiates it. Callers set
 ## per-use-case exports before adding it to the tree (its _ready applies them).
 func _spawn_menu() -> PauseMenu:
-	var scene: PackedScene = pause_menu_scene
-	if scene == null and GlobalVars != null:
-		scene = GlobalVars.pause_menu_scene
+	var scene: PackedScene = GlobalVars.pause_menu_scene
 	if scene == null:
+		push_error("UI: GlobalVars.pause_menu_scene is not set.")
 		return null
 	return scene.instantiate() as PauseMenu
 

@@ -3,8 +3,9 @@
 ##   a difficulty where the regular pool would never offer them,
 ## - Boss Arena 1 pins exactly one boss on its wave, has baked GI, and a
 ##   navigation path from the player spawn to the exit,
-## - SceneTransition routes some dungeon level to the arena, every boss route
-##   points at an existing scene, and arenas never enter the regular rotation.
+## - the arena is registered in GlobalVars.dungeons as a boss arena: reaching
+##   its dungeon level routes the run there with no planned enemies, and
+##   regular dungeon selection never picks it.
 ## Difficulties are test-owned; the arena's layout is the designers' choice.
 extends "res://test/lib/test_suite.gd"
 
@@ -13,13 +14,17 @@ const ARENA_SCENE: PackedScene = preload("res://Levels/boss_arena_1.tscn")
 const BOSS_SCENE: PackedScene = preload("res://Enemy/akira_boss.tscn")
 
 
+func after_each() -> void:
+	ProgressionState.reset_run()
+
+
 func test_a_boss_wave_spawns_its_boss_even_where_the_regular_pool_would_not() -> void:
 	var boss: EnemyResource = GlobalVars.get_enemy_resource(BOSS_SCENE)
 	if not check(boss != null and boss.minimum_spawn_difficulty > 0, "setup: the boss should be registered and gated from low-difficulty pools"):
 		return
 	var wave: WaveObjective = autofree(WaveObjective.new()) as WaveObjective
 	var low: int = boss.minimum_spawn_difficulty - 1
-	var pool: Dictionary = wave.build_difficulty_pool(GlobalVars.enemies, low)
+	var pool: Dictionary = ProgressionState.build_difficulty_pool(GlobalVars.enemies, low)
 	for tier: Variant in pool.values():
 		check(not (tier as Array).has(boss), "setup: the regular pool at difficulty %d should not offer the boss" % low)
 	var bosses: Array[EnemyResource] = [boss]
@@ -49,8 +54,25 @@ func test_the_arena_pins_one_boss_and_is_completable() -> void:
 
 
 func test_the_arena_is_routed_to_and_kept_out_of_the_rotation() -> void:
-	check(SceneTransition.boss_arenas.values().has(ARENA_PATH), "some dungeon level should route to Boss Arena 1")
-	for level: Variant in SceneTransition.boss_arenas:
-		var path: String = str(SceneTransition.boss_arenas[level])
-		check(ResourceLoader.exists(path), "the boss route for dungeon level %s should point at an existing scene (%s)" % [level, path])
-		check(not SceneTransition.levels.has(path), "boss arena %s must not be in the regular rotation" % path)
+	var arena: DungeonResource = null
+	var regular: DungeonResource = null
+	for dungeon: DungeonResource in GlobalVars.dungeons:
+		if dungeon.scene != null and dungeon.scene.resource_path == ARENA_PATH:
+			arena = dungeon
+		elif regular == null and not dungeon.is_boss_arena():
+			regular = dungeon
+	if not check(arena != null and arena.is_boss_arena(), "Boss Arena 1 should be registered in GlobalVars.dungeons as a boss arena"):
+		return
+	if not check(regular != null, "setup: a regular dungeon should be registered"):
+		return
+	# A plan left over from an earlier encounter must not leak into the arena.
+	ProgressionState.current_planned_enemies = ProgressionState.generate_wave_plan()
+	ProgressionState.dungeon_level = arena.boss_at_level
+	check(ProgressionState.prepare_next_encounter() == arena, "reaching the arena's dungeon level should route the run to it")
+	check(ProgressionState.current_planned_enemies.is_empty(), "the arena brings its own bosses, so no enemies should be planned")
+	# Selection prefers dungeons not visited recently; marking the regular one
+	# recent makes a selection that forgot to exclude arenas pick the arena
+	# every time instead of by chance.
+	ProgressionState.recently_visited_dungeons.append(regular)
+	var offered: Array[DungeonResource] = [arena, regular]
+	check(ProgressionState.select_dungeon_for_encounter(0, offered) == regular, "regular dungeon selection must never pick a boss arena")

@@ -114,12 +114,12 @@ func build_difficulty_pool(resources: Array[EnemyResource], current_difficulty: 
 	return pool
 
 
-## Generates the list of enemy archetype resources for a wave matching the difficulty budget.
-## Always picks 2 level-1 enemies first, then fills the remaining budget randomly with available tiers.
+## Generates the list of enemy archetype resources for a wave matching the
+## difficulty budget (difficulty_level), from enemy_resources (GlobalVars.enemies
+## when empty). Always picks 2 level-1 enemies first (fewer when the budget is
+## smaller), then fills the remaining budget randomly with the tiers that fit.
 func generate_wave_plan(enemy_resources: Array[EnemyResource] = []) -> Array[EnemyResource]:
-	var available_resources: Array[EnemyResource] = enemy_resources
-	if available_resources.is_empty() and GlobalVars != null:
-		available_resources = GlobalVars.enemies
+	var available_resources: Array[EnemyResource] = enemy_resources if not enemy_resources.is_empty() else GlobalVars.enemies
 	var planned: Array[EnemyResource] = []
 	var target_budget: int = difficulty_level
 	var pool: Dictionary = build_difficulty_pool(available_resources, target_budget)
@@ -154,17 +154,19 @@ func generate_wave_plan(enemy_resources: Array[EnemyResource] = []) -> Array[Ene
 
 ## Selects an eligible DungeonResource based on difficulty rating and enemy count.
 ## Avoids recently visited dungeons where possible and provides graceful fallback.
+## Boss arenas are never selected here (see boss_arena_for()).
 func select_dungeon_for_encounter(enemy_count: int, available_dungeons: Array[DungeonResource] = []) -> DungeonResource:
-	var dungeons_pool: Array[DungeonResource] = available_dungeons
-	if dungeons_pool.is_empty() and GlobalVars != null:
-		dungeons_pool = GlobalVars.dungeons
+	var dungeons_pool: Array[DungeonResource] = []
+	for dungeon: DungeonResource in (available_dungeons if not available_dungeons.is_empty() else GlobalVars.dungeons):
+		if dungeon != null and not dungeon.is_boss_arena():
+			dungeons_pool.append(dungeon)
 	if dungeons_pool.is_empty():
-		push_warning("ProgressionState: No dungeons available in GlobalVars!")
+		push_error("ProgressionState: no regular dungeons are registered in GlobalVars.dungeons.")
 		return null
 
 	var matching_dungeons: Array[DungeonResource] = []
 	for dungeon: DungeonResource in dungeons_pool:
-		if dungeon != null and dungeon.matches(difficulty_level, enemy_count):
+		if dungeon.matches(difficulty_level, enemy_count):
 			matching_dungeons.append(dungeon)
 
 	# If strict matching finds no dungeon, relax criteria to all dungeons as fallback
@@ -190,8 +192,25 @@ func select_dungeon_for_encounter(enemy_count: int, available_dungeons: Array[Du
 	return chosen
 
 
-## Prepares the next encounter: plans enemies based on difficulty, then selects matching dungeon.
+## The boss arena registered for target_dungeon_level (its boss_at_level),
+## or null when that level is a regular one.
+func boss_arena_for(target_dungeon_level: int) -> DungeonResource:
+	for dungeon: DungeonResource in GlobalVars.dungeons:
+		if dungeon != null and dungeon.boss_at_level == target_dungeon_level:
+			return dungeon
+	return null
+
+
+## Prepares the next encounter for the current dungeon level: its boss arena
+## when one is registered (the arena brings its own bosses, so no enemies are
+## planned), otherwise planned enemies from the difficulty budget and a
+## matching regular dungeon.
 func prepare_next_encounter() -> DungeonResource:
+	var boss_arena: DungeonResource = boss_arena_for(dungeon_level)
+	if boss_arena != null:
+		current_planned_enemies.clear()
+		current_dungeon = boss_arena
+		return current_dungeon
 	current_planned_enemies = generate_wave_plan()
 	current_dungeon = select_dungeon_for_encounter(current_planned_enemies.size())
 	return current_dungeon

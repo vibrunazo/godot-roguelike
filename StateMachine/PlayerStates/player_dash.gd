@@ -6,6 +6,8 @@ extends CharacterState
 @export var running_state: PlayerRun
 ## Speed during dash in meters per second.
 @export var dash_speed: float = 50.0
+## Sound effect played when the dash starts.
+@export var dash_audio: AudioStreamPlayer3D
 
 @onready var dash_duration: Timer = $DashDuration
 
@@ -15,18 +17,12 @@ var direction: Vector3
 var _dash_completed: bool = false
 var dash_root: Node3D
 var dash_animation_player: AnimationPlayer
-var dash_cooldown: Timer
-var dash_audio: AudioStreamPlayer3D
 
 
 func enter(_previous_state_path: String, _data := {}) -> void:
 	if character == null:
 		return
 	_dash_completed = false
-	var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
-	if input_comp != null:
-		dash_cooldown = input_comp.dash_cooldown
-		dash_audio = input_comp.dash_audio
 	if dash_audio != null:
 		dash_audio.play()
 
@@ -37,8 +33,9 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 		direction = Vector3.FORWARD
 
 	character.velocity = direction * dash_speed
-	if dash_cooldown != null:
-		dash_cooldown.start()
+	# The body owns the cooldown: can_dash() reads the same timer.
+	if character.dash_cooldown != null:
+		character.dash_cooldown.start()
 	dash_duration.start()
 
 	if character.animation_tree != null:

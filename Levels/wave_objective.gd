@@ -1,7 +1,8 @@
 class_name WaveObjective
 extends Node3D
 
-## Enemy resources available to spawn. Leave empty to use GlobalVars.enemies.
+## Enemy resources available to spawn when ProgressionState planned no
+## encounter. Leave empty to use GlobalVars.enemies.
 @export var enemy_resources: Array[EnemyResource] = []
 
 ## Boss resources for a boss arena. When non-empty, the wave is exactly these
@@ -64,34 +65,10 @@ func _free_unspawned_enemies() -> void:
 	all_enemies = spawned
 
 
-## Returns the default list of enemy resources from GlobalVars.
-func _get_default_enemy_resources() -> Array[EnemyResource]:
-	if GlobalVars != null and not GlobalVars.enemies.is_empty():
-		return GlobalVars.enemies
-	return []
-
-
-## Groups available enemy resources into tiers by difficulty level.
-## Resources gated by minimum_spawn_difficulty above current_difficulty are
-## excluded. Pass -1 (default) to skip gating, e.g. for inspection.
-func build_difficulty_pool(resources: Array[EnemyResource], current_difficulty: int = -1) -> Dictionary:
-	var pool: Dictionary = {}
-	for res: EnemyResource in resources:
-		if res == null or res.scene == null:
-			continue
-		if current_difficulty >= 0 and res.minimum_spawn_difficulty > current_difficulty:
-			continue
-		var diff: int = res.difficulty_level
-		if not pool.has(diff):
-			var arr: Array[EnemyResource] = []
-			pool[diff] = arr
-		(pool[diff] as Array[EnemyResource]).append(res)
-	return pool
-
-
-## Generates the list of enemies for the current wave matching the progression difficulty budget.
-## Always picks 2 level-1 enemies first, then fills the remaining budget randomly with available tiers.
-## When boss_resources is set (boss arena), the wave is exactly those bosses and the budget fill is skipped.
+## Instances the enemies for this wave: the bosses when boss_resources is set
+## (boss arena), else the encounter ProgressionState planned, else a fresh
+## plan for the current difficulty budget (ProgressionState.generate_wave_plan)
+## from enemy_resources.
 func generate_wave_enemies() -> Array[Character]:
 	_enemy_difficulties.clear()
 	if not boss_resources.is_empty():
@@ -99,9 +76,7 @@ func generate_wave_enemies() -> Array[Character]:
 	# If ProgressionState pre-planned enemies for this encounter, consume them
 	if not ProgressionState.current_planned_enemies.is_empty():
 		return _instantiate_all(ProgressionState.current_planned_enemies)
-	if enemy_resources.is_empty():
-		enemy_resources = _get_default_enemy_resources()
-	return _fill_difficulty_budget(ProgressionState.difficulty_level)
+	return _instantiate_all(ProgressionState.generate_wave_plan(enemy_resources))
 
 
 ## One enemy per usable resource, in order.
@@ -113,36 +88,14 @@ func _instantiate_all(resources: Array[EnemyResource]) -> Array[Character]:
 	return enemies
 
 
-## Instances the resource's enemy and records its difficulty for the wave.
+## Instances the resource's enemy, hands it its resource (gold, archetype
+## data) and records its difficulty for the wave.
 func _instantiate_enemy(resource: EnemyResource) -> Character:
 	var enemy: Character = resource.scene.instantiate() as Character
+	enemy.enemy_resource = resource
 	_enemy_difficulties[enemy] = resource.difficulty_level
 	return enemy
 
-
-## Random enemies worth budget difficulty in total: 2 level-1 enemies first
-## (fewer when the budget is smaller), then random tiers that still fit.
-func _fill_difficulty_budget(budget: int) -> Array[Character]:
-	var enemies: Array[Character] = []
-	var pool: Dictionary = build_difficulty_pool(enemy_resources, budget)
-	var remaining_budget: int = maxi(0, budget)
-	if pool.has(1) and not (pool[1] as Array[EnemyResource]).is_empty():
-		var tier_1: Array[EnemyResource] = pool[1] as Array[EnemyResource]
-		for _i: int in mini(2, remaining_budget):
-			enemies.append(_instantiate_enemy(tier_1.pick_random()))
-			remaining_budget -= 1
-	while remaining_budget > 0:
-		var fitting: Array[int] = []
-		for tier: int in pool.keys():
-			if tier <= remaining_budget and not (pool[tier] as Array[EnemyResource]).is_empty():
-				fitting.append(tier)
-		if fitting.is_empty():
-			push_warning("WaveObjective: Cannot fulfill remaining difficulty budget %d with available enemy resources." % remaining_budget)
-			break
-		var chosen_tier: int = fitting.pick_random()
-		enemies.append(_instantiate_enemy((pool[chosen_tier] as Array[EnemyResource]).pick_random()))
-		remaining_budget -= chosen_tier
-	return enemies
 
 func _ready() -> void:
 	all_enemies = generate_wave_enemies()

@@ -11,7 +11,7 @@ enemies — enforced by check_cover_clearances.
 Pipeline (mirrors the README):
     python tools/levels/examples/crucible.py --out-dir tools/levels/out/l10proof
     pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI
-    -> register in SceneTransition.levels -> run_tests.py -> capture.py
+    -> register a DungeonResource -> run_tests.py -> capture.py
 """
 from __future__ import annotations
 

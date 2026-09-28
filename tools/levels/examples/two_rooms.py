@@ -11,7 +11,7 @@ pattern is reusable: future levels compose the same parts differently.
 Pipeline (mirrors the README):
     python tools/levels/examples/two_rooms.py --out-dir tools/levels/out/l6proof
     pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI
-    -> register in SceneTransition.levels -> run_tests.py -> capture.py
+    -> register a DungeonResource -> run_tests.py -> capture.py
 """
 from __future__ import annotations
 

@@ -152,18 +152,18 @@ Renaming a node in a `.tscn` silently disables behavior. Recommendations:
 - `Character._ready()` wires the weapon hitbox's `AttackComponent` twice: once through `weapon_hitbox` (`:186-191`) and again in the `find_children("*", "AttackComponent")` loop (`:192-195`), which already includes it. The `is_connected` guard checks an *unbound* callable while the code connects a *bound* one, so the guard doesn't express its intent. No duplicate-connect error appeared in the test log, but the first block is redundant. Delete it.
 - `add_exception(self)` on every `AttackComponent` (`:189, 193`) adds the `CharacterBody3D`. Hitboxes only detect `Hurtbox` areas, and the wielder's hurtbox is already excluded via `wielder` (`attack_component.gd:75`), so this is dead code.
 
-### 2.5 [HIGH] Duplicated sources of truth
+### 2.5 [HIGH] Duplicated sources of truth *(fixed 2026-09-28, D10: every row now has one owner; see the notes in each row)*
 
 | Data | Owners | Risk |
 |---|---|---|
-| Level list | `SceneTransition.levels` (script-default `Array[String]`) **and** `GlobalVars.dungeons` (`DungeonResource` `.tres`) | A new level must be added in two places. `test_level_rotation_nav` validates only `SceneTransition.levels`, so a dungeon registered only in `GlobalVars.dungeons` is never validated. |
-| Boss arenas | `SceneTransition.boss_arenas` (`{10: "res://…"}` hardcoded in script) | This should be a `DungeonResource` field (for example `boss_at_level`) or its own resource. |
-| Difficulty pool | `ProgressionState.build_difficulty_pool()` **and** `WaveObjective.build_difficulty_pool()` (identical bodies) | Balance fixes land in one copy only. |
-| Dash cooldown timer | `Character.dash_cooldown`, `PlayerInputComponent.dash_cooldown`, `PlayerDash.dash_cooldown` (overwritten from the input component on every enter) | Three owners for one timer. |
-| Auto-aim range | `PlayerInputComponent.auto_aim_range` copied into `Character.auto_aim_range` on `_ready` | Changes to one at runtime are invisible to the other. |
-| UI scene refs | `UI.pause_menu_scene/hud_scene/level_title_overlay_scene` **and** `GlobalVars.*_scene` | `UI` is a script autoload (`project.godot`), so its `@export` overrides can never be set. They are dead code. |
+| Level list | `SceneTransition.levels` (script-default `Array[String]`) **and** `GlobalVars.dungeons` (`DungeonResource` `.tres`) | A new level must be added in two places. `test_level_rotation_nav` validates only `SceneTransition.levels`, so a dungeon registered only in `GlobalVars.dungeons` is never validated. *(Fixed: `SceneTransition.levels` and its rotation fallback are gone; `GlobalVars.dungeons` is the only registry, and the rotation test reads it.)* |
+| Boss arenas | `SceneTransition.boss_arenas` (`{10: "res://…"}` hardcoded in script) | This should be a `DungeonResource` field (for example `boss_at_level`) or its own resource. *(Fixed: `DungeonResource.boss_at_level`; the arena is registered in `GlobalVars.dungeons`, `ProgressionState.prepare_next_encounter()` routes to it with no planned enemies, and regular selection never picks it. `test_boss_arena_1`.)* |
+| Difficulty pool | `ProgressionState.build_difficulty_pool()` **and** `WaveObjective.build_difficulty_pool()` (identical bodies) | Balance fixes land in one copy only. *(Fixed: `WaveObjective` has no pool or budget logic of its own; it instances `ProgressionState.generate_wave_plan()`, and tests read `ProgressionState.build_difficulty_pool()`.)* |
+| Dash cooldown timer | `Character.dash_cooldown`, `PlayerInputComponent.dash_cooldown`, `PlayerDash.dash_cooldown` (overwritten from the input component on every enter) | Three owners for one timer. *(Fixed: the body owns it (`Character.dash_cooldown`, wired in `player.tscn`); `PlayerDash` starts that timer and exports its own `dash_audio`. The input component holds neither. New test: a dash starts the cooldown.)* |
+| Auto-aim range | `PlayerInputComponent.auto_aim_range` copied into `Character.auto_aim_range` on `_ready` | Changes to one at runtime are invisible to the other. *(Fixed: only `Character.auto_aim_range`, set on the player scene.)* |
+| UI scene refs | `UI.pause_menu_scene/hud_scene/level_title_overlay_scene` **and** `GlobalVars.*_scene` | `UI` is a script autoload (`project.godot`), so its `@export` overrides can never be set. They are dead code. *(Fixed: removed; `UI` reads `GlobalVars` and reports a missing scene with `push_error`.)* |
 | Difficulty scaling | `GlobalVars.difficulty_curve` ("Legacy") **and** `ProgressionState.base_difficulty`/`difficulty_increase_per_level` | Nothing reads the curve. *(2026-09-28: no test requires it any more, so it can be deleted.)* |
-| Default gold drop | `EnemyResource.gold_drop = 5` **and** `Character.on_defeat` literal `5` | These will drift. |
+| Default gold drop | `EnemyResource.gold_drop = 5` **and** `Character.on_defeat` literal `5` | These will drift. *(Fixed: gold comes only from the enemy's `EnemyResource`: waves hand each enemy its resource, other spawns are looked up in `GlobalVars.enemies`, and an unregistered enemy awards none. New test: a wave enemy awards its own resource's gold.)* |
 | heal-percent unit *(fixed 2026-09-27: always percent, one helper, inspector range; `test_item_healing`)* | `item_resource.gd:62` and `:99` both guess the unit with `heal_percent > 1.0` | `heal_percent = 1.0` means 100%, while `1.5` means 1.5%. Pick one unit (0–1 fraction) and document it. |
 
 ### 2.6 [MED] Backward-compat aliases (banned by AGENTS.md §1) *(fixed 2026-09-28: every alias, forwarder and the legacy `attack_component` path removed; attacks resolve their hitbox only through `weapon_slot`)*
@@ -677,7 +677,7 @@ Caveats:
 | C7 `tools/lint_project.py` | Done 2026-09-28, and green the same day (all 27 long functions split). A pre-commit hook and the headless UID step for binary resources are still open |
 | C8 Shared launcher, `GODOT_BIN`, CI | Done 2026-09-28 for the local parts; CI skipped (owner decision: single developer, local lint and tests are the gate) |
 | D9 Aliases, fallbacks, sentinel | Done 2026-09-28 |
-| D10 Level registry and duplicated owners | Not started |
+| D10 Level registry and duplicated owners | Done 2026-09-28 |
 | D11 Structural refactors | Partly done (input bridge) |
 
 **The key point:** "fix the bad tests" and "move to the new harness" are **one step** (step 4), not two. Rewriting a suite onto the harness means rewriting each of its checks anyway, and that's when its hardcoded values get removed. Revision 1 had these as separate steps (first and last), which would have touched every assertion twice.
@@ -730,7 +730,7 @@ The harness depends on the runner being trustworthy and fast, so the runner is f
 **Phase D: production cleanup (now protected by trustworthy tests)**
 
 9. *(Done 2026-09-28: every §2.6 alias and §2.7 fallback is gone (the lint's `compat-wording` and `hardcoded-load` rules now report zero), and the `AILeapingDodge` sentinel (§2.8) was fixed earlier.)* **Remove the aliases and legacy paths** (§2.6) and the hardcoded fallbacks (§2.7). Fix the `AILeapingDodge` sentinel (§2.8). The migrated tests no longer depend on the aliases, so this is safe.
-10. *(Not started. The heal-percent unit in §2.5 is fixed.)* **Unify the level registry and the other duplicated owners** (§2.5).
+10. *(Done 2026-09-28: every §2.5 row has a single owner.)* **Unify the level registry and the other duplicated owners** (§2.5).
 11. *(Partly done: the input bridge.)* **Structural refactors:**
     - string state names → exports (§2.2)
     - *(done 2026-09-27)* input bridge out of `StateMachine` (§2.3)

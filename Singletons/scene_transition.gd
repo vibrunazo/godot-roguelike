@@ -4,44 +4,19 @@
 ##
 ## Unique responsibilities:
 ## - Fade in/out transitions between scenes (`fade_in`, `fade_out`).
-## - Level rotation (`levels`, `load_next_level`) and direct scene loading
+## - Loading the next encounter's dungeon (`load_next_level`; the dungeon,
+##   boss arenas included, is chosen by `ProgressionState` from the
+##   `GlobalVars.dungeons` registry) and direct scene loading
 ##   (`load_scene_path`), preserving the player across scene changes
 ##   (`player_cache`).
-## - Boss fight routing (`boss_arenas`): dungeon levels listed there detour
-##   to their boss arena instead of rotating.
 extends CanvasLayer
 
 @onready var color_rect: ColorRect = $ColorRect
 
 var player_cache: Character
-## Level scenes rotated by load_next_level. Editable in scene_transition.tscn.
-@export var levels: Array[String] = [
-	"res://Levels/level_1.tscn",
-	"res://Levels/level_2.tscn",
-	"res://Levels/level_3.tscn",
-	"res://Levels/level_4.tscn",
-	"res://Levels/level_5.tscn",
-	"res://Levels/level_6.tscn",
-	"res://Levels/level_7.tscn",
-	"res://Levels/level_8.tscn",
-	"res://Levels/level_9.tscn",
-	"res://Levels/level_10.tscn",
-	"res://Levels/level_11.tscn",
-	"res://Levels/level_12.tscn",
-	"res://Levels/level_13.tscn"
-]
-
-## Boss fights keyed by dungeon level: when the run reaches one of these
-## levels, load_next_level goes to that boss arena instead of rotating.
-## The arena scene carries its boss on its WaveObjective.boss_resources.
-## Reusable: later bosses only need a new entry here plus their arena scene.
-@export var boss_arenas: Dictionary = {
-	10: "res://Levels/boss_arena_1.tscn",
-}
 
 
 func _ready() -> void:
-	levels.shuffle()
 	fade_out(create_tween())
 
 
@@ -62,8 +37,7 @@ func load_scene_path(path_in: String, args: Dictionary = {}) -> void:
 		# re-applies the same cancel on restore as a safety net.
 		player.cancel_movement_and_abilities()
 		player.process_mode = Node.PROCESS_MODE_DISABLED
-	if VfxManager != null and VfxManager.has_method("clear_temporary_effects"):
-		VfxManager.clear_temporary_effects()
+	VfxManager.clear_temporary_effects()
 	var tween: Tween = create_tween()
 	fade_in(tween)
 	tween.tween_callback(
@@ -77,14 +51,12 @@ func load_scene_path(path_in: String, args: Dictionary = {}) -> void:
 	fade_out(tween)
 
 
+## Loads the dungeon ProgressionState prepares for the current dungeon level:
+## its boss arena when one is registered, otherwise a regular dungeon matching
+## the planned encounter.
 func load_next_level(args: Dictionary = {}) -> void:
-	var dungeon_level: int = ProgressionState.dungeon_level if ProgressionState != null else 0
-	if boss_arenas.has(dungeon_level):
-		load_scene_path(str(boss_arenas[dungeon_level]), args)
+	var dungeon: DungeonResource = ProgressionState.prepare_next_encounter()
+	if dungeon == null or dungeon.scene == null:
+		push_error("SceneTransition: no dungeon to load for dungeon level %d." % ProgressionState.dungeon_level)
 		return
-	var dungeon: DungeonResource = ProgressionState.prepare_next_encounter() if ProgressionState != null else null
-	if dungeon != null and dungeon.scene != null:
-		load_scene_path(dungeon.scene.resource_path, args)
-	elif not levels.is_empty():
-		levels.push_back(levels.pop_front())
-		load_scene_path(levels.front(), args)
+	load_scene_path(dungeon.scene.resource_path, args)

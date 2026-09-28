@@ -193,7 +193,7 @@ func _start_noisy_dash() -> bool:
 	(_player.find_children("*", "WeaponSlot")[0] as WeaponSlot).enabled = true
 	_player.hurtbox.hit_audio.play()
 	_input.damage_tint.color = Color(Color.RED, 0.5)
-	return check(_state() == "PlayerDash" and _input.dash_audio.playing and _player.knockback_component.is_active(), "setup: the player should be dashing noisily")
+	return check(_state() == "PlayerDash" and (_player.state_machine.get_node("PlayerDash") as PlayerDash).dash_audio.playing and _player.knockback_component.is_active(), "setup: the player should be dashing noisily")
 
 
 ## Everything a transition must leave behind is gone right now.

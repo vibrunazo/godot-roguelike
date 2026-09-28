@@ -30,8 +30,7 @@ func test_mage_is_registered_as_a_spawnable_enemy() -> void:
 	var resource: EnemyResource = GlobalVars.get_enemy_resource(MAGE_SCENE)
 	if not check(resource != null, "GlobalVars.enemies should register the thunder mage"):
 		return
-	var wave: WaveObjective = autofree(WaveObjective.new()) as WaveObjective
-	var pool: Dictionary = wave.build_difficulty_pool(GlobalVars.enemies)
+	var pool: Dictionary = ProgressionState.build_difficulty_pool(GlobalVars.enemies)
 	var tier: Array = pool.get(resource.difficulty_level, [])
 	check(tier.has(resource), "the wave's difficulty pool should offer the mage at its own difficulty level")
 	var instance: Character = autofree(resource.scene.instantiate()) as Character

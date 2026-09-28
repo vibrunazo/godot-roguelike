@@ -48,3 +48,13 @@ func get_enemy_resource(scene: PackedScene) -> EnemyResource:
 		if res != null and res.scene == scene:
 			return res
 	return null
+
+
+## The registered EnemyResource whose scene lives at scene_path, or null.
+func get_enemy_resource_for_path(scene_path: String) -> EnemyResource:
+	if scene_path.is_empty():
+		return null
+	for res: EnemyResource in enemies:
+		if res != null and res.scene != null and res.scene.resource_path == scene_path:
+			return res
+	return null

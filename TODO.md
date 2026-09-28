@@ -84,5 +84,7 @@ Every suite now runs on the harness (Phase B step 4 is done).
     `cancel_movement_and_abilities()` and the `player_cache` reparenting then
     go away. `test_level_transition_reset` covers today's carry-over and would
     become the contract for the new one.
-15. The remaining review steps: D10 (one level registry, duplicated owners)
-    and D11 (structural refactors). See the status table in §5.5.
+15. The remaining review step, D11 (structural refactors), comes before new
+    features. Items 6 and 11 are scheduled inside it: 6 with the
+    `AIAttackBase`/body-owned cooldown refactor (§2.9; write its failing
+    test first), 11 with the `Character` split (§2.1). See §5.5.

@@ -41,7 +41,7 @@ func test_a_hit_plays_the_hit_sound() -> void:
 
 
 func test_a_dash_plays_the_dash_sound() -> void:
-	var audio: AudioStreamPlayer3D = (_player.get_node("PlayerInputComponent") as PlayerInputComponent).dash_audio
+	var audio: AudioStreamPlayer3D = (_player.state_machine.get_node("PlayerDash") as PlayerDash).dash_audio
 	if not check(audio != null, "setup: the player should have a dash sound"):
 		return
 	# No target in the empty arena, so the jump button dashes.
