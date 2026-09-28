@@ -1,190 +1,79 @@
-extends Node
+## The player's shake camera and camera rig:
+## - with no trauma the camera has no offset and does no per-frame work,
+## - setting trauma above zero turns the work on; back to zero turns it off
+##   and resets the offset,
+## - quick_shake() offsets the camera and decays back to rest within
+##   shake_duration,
+## - the rig follows the player horizontally and upward, but never drops
+##   below the height it started at.
+## Magnitudes and durations are read from the live camera.
+extends "res://test/lib/test_suite.gd"
 
-func _ready() -> void:
-	print("--- RUNNING SHAKE CAMERA TEST ---")
-	var player_scene: PackedScene = load("res://Player/player.tscn")
-	var player: Character = player_scene.instantiate() as Character
-	player.position = Vector3(0.0, 3.0, 0.0)
-	add_child(player)
-	await get_tree().physics_frame
-	await get_tree().process_frame
-	
-	# 1. Verify ShakeCamera3D node exists
-	var camera: ShakeCamera3D = player.get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
-	if camera == null:
-		printerr("TEST FAILED: ShakeCamera3D not found under CameraRoot in player.tscn")
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("ShakeCamera3D found with offset_scale: ", camera.offset_scale)
-	
-	# 2. Verify exported variables
-	if camera.noise == null:
-		printerr("TEST FAILED: ShakeCamera3D noise resource is null.")
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("Noise resource verified: ", camera.noise.get_class(), " (type: ", camera.noise.noise_type, ")")
-	
-	if camera.offset_scale <= 0.0:
-		printerr("TEST FAILED: Expected positive offset_scale, got: ", camera.offset_scale)
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("Offset scale verified: ", camera.offset_scale)
-	if not await _verify_camera_follow(player):
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	
-	# 3. Verify zero trauma gives zero offsets
-	camera.trauma = 0.0
-	await get_tree().physics_frame
-	if camera.h_offset != 0.0 or camera.v_offset != 0.0:
-		printerr("TEST FAILED: Expected 0 offsets when trauma is 0. Got h: ", camera.h_offset, " v: ", camera.v_offset)
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("Zero trauma test passed: h_offset = 0.0, v_offset = 0.0")
+const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
+## Test-owned trauma for the direct-assignment check.
+const TEST_TRAUMA: float = 0.5
 
-	# 3b. Verify physics processing is disabled while idle (TODO #3 optimization)
-	if camera.is_physics_processing():
-		printerr("TEST FAILED: Expected physics processing disabled at zero trauma.")
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("Idle optimization verified: physics processing disabled at zero trauma.")
-
-	# 3c. Verify direct trauma assignment gates physics processing via setter
-	camera.trauma = 0.5
-	if not camera.is_physics_processing():
-		printerr("TEST FAILED: Setting trauma > 0 did not enable physics processing.")
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	camera.trauma = 0.0
-	await get_tree().physics_frame
-	if camera.is_physics_processing():
-		printerr("TEST FAILED: Setting trauma to 0 did not disable physics processing.")
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	if camera.h_offset != 0.0 or camera.v_offset != 0.0:
-		printerr("TEST FAILED: Setting trauma to 0 did not reset offsets.")
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("Trauma setter gating verified: enabled above 0, disabled with offsets reset at 0.")
-	
-	# 4. Verify quick_shake sets trauma and applies offsets
-	camera.quick_shake(1.0)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	print("After quick_shake(1.0), trauma: ", camera.trauma)
-	if camera.trauma <= 0.0:
-		printerr("TEST FAILED: quick_shake(1.0) did not increase trauma.")
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	if not camera.is_physics_processing():
-		printerr("TEST FAILED: quick_shake(1.0) did not enable physics processing.")
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("quick_shake enabled physics processing for shake duration.")
-
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	print("Offsets during shake: h_offset = ", camera.h_offset, ", v_offset = ", camera.v_offset)
-	if camera.h_offset == 0.0 and camera.v_offset == 0.0:
-		printerr("TEST FAILED: Offsets remained 0 during shake with active trauma.")
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("Shake offsets active and fluctuating correctly!")
-	
-	# 5. Wait for tween to decay trauma back to 0.0 (0.3s duration)
-	await get_tree().create_timer(0.35).timeout
-	await get_tree().physics_frame
-	print("Trauma after decay duration: ", camera.trauma)
-	if camera.trauma != 0.0:
-		printerr("TEST FAILED: Trauma did not decay back to 0.0. Current: ", camera.trauma)
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("Trauma successfully decayed to 0.0!")
-	if camera.is_physics_processing():
-		printerr("TEST FAILED: Physics processing still enabled after trauma decayed to 0.0.")
-		player.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("Physics processing disabled again after shake completed!")
-	
-	print("\n====================================================================")
-	print("  ALL SHAKE CAMERA TESTS PASSED!                                    ")
-	print("  1. ShakeCamera3D configured with FastNoiseLite and offset_scale   ")
-	print("  2. Zero trauma results in zero camera offsets                     ")
-	print("  3. quick_shake produces dynamic h_offset & v_offset via noise      ")
-	print("  4. Trauma smoothly decays back to 0 via Tween                     ")
-	print("  5. Physics processing disabled at idle, gated by trauma setter   ")
-	print("  6. Camera follows upward but never below its initial Y          ")
-	print("====================================================================")
-	
-	player.queue_free()
-	await get_tree().physics_frame
-	get_tree().quit(0)
+var _player: Character
+var _camera: ShakeCamera3D
 
 
-func _verify_camera_follow(player: Character) -> bool:
-	var camera_rig: Node3D = player.get_node("CameraRoot")
-	var original_position: Vector3 = player.global_position
-	var initial_camera_y: float = camera_rig.global_position.y
-	player.process_mode = Node.PROCESS_MODE_DISABLED
-	camera_rig.process_mode = Node.PROCESS_MODE_ALWAYS
+func before_each() -> void:
+	var arena: Node3D = load_arena()
+	# Placed before entering the tree, as levels place their player: the
+	# camera rig takes its height floor from where it enters the tree.
+	_player = autofree(PLAYER_SCENE.instantiate()) as Character
+	_player.position = (arena.get_node("PlayerSpawn") as Node3D).global_position
+	arena.add_child(_player)
+	(_player.get_node("PlayerInputComponent") as PlayerInputComponent).set_physics_process(false)
+	_camera = _player.get_node("CameraRoot/ShakeCamera3D") as ShakeCamera3D
+	_camera.make_current()
+	await wait_until(func() -> bool: return _player.is_on_floor(), "the player should land")
 
-	var lower_position: Vector3 = Vector3(original_position.x + 3.0, initial_camera_y - 4.0, original_position.z - 2.0)
-	player.global_position = lower_position
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if not camera_rig.global_position.is_equal_approx(Vector3(lower_position.x, initial_camera_y, lower_position.z)):
-		printerr("TEST FAILED: Camera left its initial Y floor or stopped following horizontally: ", camera_rig.global_position)
-		player.process_mode = Node.PROCESS_MODE_INHERIT
-		return false
 
-	var upper_position: Vector3 = Vector3(original_position.x - 2.0, initial_camera_y + 4.0, original_position.z + 1.0)
-	player.global_position = upper_position
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if not camera_rig.global_position.is_equal_approx(upper_position):
-		printerr("TEST FAILED: Camera did not freely follow above its initial Y: ", camera_rig.global_position)
-		player.process_mode = Node.PROCESS_MODE_INHERIT
-		return false
+func test_no_trauma_means_no_offset_and_no_work() -> void:
+	_camera.trauma = 0.0
+	await wait_physics_frames(1)
+	check(is_zero_approx(_camera.h_offset) and is_zero_approx(_camera.v_offset), "no trauma should mean no offset")
+	check(not _camera.is_physics_processing(), "an idle camera should not process every frame")
 
-	var second_lower_position: Vector3 = Vector3(original_position.x, initial_camera_y - 6.0, original_position.z)
-	player.global_position = second_lower_position
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if not is_equal_approx(camera_rig.global_position.y, initial_camera_y):
-		printerr("TEST FAILED: Camera retained an upper high-water mark instead of using its initial Y floor: ", camera_rig.global_position.y)
-		player.process_mode = Node.PROCESS_MODE_INHERIT
-		return false
 
-	player.global_position = original_position
-	player.process_mode = Node.PROCESS_MODE_INHERIT
+func test_setting_trauma_switches_the_work_on_and_off() -> void:
+	_camera.trauma = TEST_TRAUMA
+	check(_camera.is_physics_processing(), "trauma above zero should switch processing on")
+	await wait_physics_frames(1)
+	_camera.trauma = 0.0
+	check(not _camera.is_physics_processing(), "zero trauma should switch processing off")
+	check(is_zero_approx(_camera.h_offset) and is_zero_approx(_camera.v_offset), "zero trauma should reset the offset")
+
+
+func test_quick_shake_offsets_the_camera_then_settles_within_shake_duration() -> void:
+	_camera.quick_shake(1.0)
+	await wait_until(func() -> bool: return not is_zero_approx(_camera.h_offset) or not is_zero_approx(_camera.v_offset), "a shake should offset the camera", 10)
+	var frames: int = ceili(_camera.shake_duration * Engine.physics_ticks_per_second) + 5
+	await wait_until(func() -> bool: return is_zero_approx(_camera.trauma) and not _camera.is_physics_processing(), "the shake should settle within shake_duration", frames)
+	check(is_zero_approx(_camera.h_offset) and is_zero_approx(_camera.v_offset), "a settled camera should have no offset")
+
+
+func test_the_rig_follows_up_freely_but_never_below_its_starting_height() -> void:
+	var rig: Node3D = _player.get_node("CameraRoot") as Node3D
+	var start_y: float = rig.global_position.y
+	# Freeze the body so the test alone moves it; the rig keeps following.
+	_player.process_mode = Node.PROCESS_MODE_DISABLED
+	rig.process_mode = Node.PROCESS_MODE_ALWAYS
+	var home: Vector3 = _player.global_position
+	var below: Vector3 = home + Vector3(3.0, -4.0 - (home.y - start_y), -2.0)
+	await _move_player(below)
+	check(rig.global_position.is_equal_approx(Vector3(below.x, start_y, below.z)), "below its start the rig should follow horizontally but hold its starting height (at %s)" % rig.global_position)
+	var above: Vector3 = Vector3(home.x - 2.0, start_y + 4.0, home.z + 1.0)
+	await _move_player(above)
+	check(rig.global_position.is_equal_approx(above), "above its start the rig should follow freely (at %s)" % rig.global_position)
+	await _move_player(Vector3(home.x, start_y - 6.0, home.z))
+	check_approx(rig.global_position.y, start_y, "coming back down, the rig should stop at its starting height, not at the highest point it reached")
+	_player.process_mode = Node.PROCESS_MODE_INHERIT
+
+
+## Teleports the player and lets the rig (render clock) catch up.
+func _move_player(to: Vector3) -> void:
+	_player.global_position = to
 	await get_tree().process_frame
-	print("Camera vertical follow verified: upward freely, downward clamped to initial Y.")
-	return true
+	await get_tree().process_frame

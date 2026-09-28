@@ -5,7 +5,9 @@
 
 **Test run during review:** `python run_tests.py` reported **ALL 49 TESTS PASSED (162.8 s)**. But 4 of the 49 are not tests (§3.4.7), and one passing suite logged 24 `SCRIPT ERROR`s that the runner did not catch (§3.4.1). Adding `--fixed-fps 60` to each invocation ran the same 45 real suites to the same result in **34.6 s** (§3.6).
 
-**Phase A done (2026-09-24):** runner hardened, recording scenes moved, Level 10 walls fixed, `WaveObjective` leak fixed, UIDs canonicalized, harness, arena and template added, `test_character_rotation` migrated. §4.4 corrected. Remaining exit leaks come from 7 suites that strip `WaveObjective`'s script (`set_script(null)`); fix them during their Phase B migration.
+**Progress:** see the status table at the top of §5.5.
+
+**Phase A done (2026-09-24):** runner hardened, recording scenes moved, Level 10 walls fixed, `WaveObjective` leak fixed, UIDs canonicalized, harness, arena and template added, `test_character_rotation` migrated. §4.4 corrected. Remaining exit leaks came from 7 suites that strip `WaveObjective`'s script (`set_script(null)`); none does any more (2026-09-28).
 
 **Revision 4 (2026-09-24):** §5.5 restructured into phases A–D so the order and the prerequisites are unambiguous.
 
@@ -661,6 +663,22 @@ Caveats:
 
 ### 5.5 Suggested order of work
 
+**Status (2026-09-28):**
+
+| Step | Status |
+|---|---|
+| A1 Harden the runner | Done 2026-09-24 |
+| A2 Fix the leak and UID bugs | Done 2026-09-24 |
+| A3 Harness, arena, template, reference suite | Done 2026-09-24 |
+| B4 Migrate the suites | In progress: 32 of 46 suites migrated, 14 left (`TODO.md` item 4) |
+| B5 Frame-rate workstream | Done 2026-09-26, apart from the mobile renderer/GI decision |
+| C6 AGENTS.md, skills, TODO, README | Partly done |
+| C7 `tools/lint_project.py` | Not started |
+| C8 Shared launcher, `GODOT_BIN`, CI | Partly done |
+| D9 Aliases, fallbacks, sentinel | Partly done |
+| D10 Level registry and duplicated owners | Not started |
+| D11 Structural refactors | Partly done (input bridge) |
+
 **The key point:** "fix the bad tests" and "move to the new harness" are **one step** (step 4), not two. Rewriting a suite onto the harness means rewriting each of its checks anyway, and that's when its hardcoded values get removed. Revision 1 had these as separate steps (first and last), which would have touched every assertion twice.
 
 Steps 1–3 are **prerequisites** for that merged step, not alternatives to it. Two terms that are easy to mix up:
@@ -671,19 +689,19 @@ The harness depends on the runner being trustworthy and fast, so the runner is f
 
 **Phase A: foundation (prerequisites, in this order)**
 
-1. **Harden the runner.** In `run_tests.py`:
+1. *(Done 2026-09-24.)* **Harden the runner.** In `run_tests.py`:
    - add `--fixed-fps 60` (§3.6)
    - fail on `SCRIPT ERROR` / `Parse Error`
    - add `flush=True`
    - only collect `test_*.tscn`
 
    Also move the 4 recording scenes out of `test/` and fix the `level_rotation_nav` item-21 error. *Why first:* until the runner fails on script errors, a "pass" doesn't prove much, and the 4.7× speedup makes every later step cheaper.
-2. **Fix the two production bugs the harness will expose:** the `WaveObjective` orphan leak (§2.12) and the 3 stale `hurtbox.gd` UIDs (§4.4). *Why before the harness:* the harness's leak check would otherwise fail every suite that loads a level.
-3. **Build the harness and the arena fixture** (§3.8, §3.4.6), plus a `test/test_template.gd` example. Prove it by converting **one** small suite (for example `test_character_rotation`) as the reference migration.
+2. *(Done 2026-09-24.)* **Fix the two production bugs the harness will expose:** the `WaveObjective` orphan leak (§2.12) and the 3 stale `hurtbox.gd` UIDs (§4.4). *Why before the harness:* the harness's leak check would otherwise fail every suite that loads a level.
+3. *(Done 2026-09-24. The template is `test/lib/suite_template.gd`.)* **Build the harness and the arena fixture** (§3.8, §3.4.6), plus a `test/test_template.gd` example. Prove it by converting **one** small suite (for example `test_character_rotation`) as the reference migration.
 
 **Phase B: the merged step, plus a parallel track**
 
-4. **Migrate the suites to the harness, one suite per commit. This is where the bad tests get fixed.** Each migration:
+4. *(In progress. 32 of 46 suites are migrated, 14 are left (`TODO.md` item 4); the count shrank because some suites were merged or deleted, e.g. `test_brute_level2_nav`, a one-off visual check that no longer tested its corridor claim. Done across the whole suite already: no physical-key checks, no private method calls (two private field reads remain), no suite strips `WaveObjective`'s script, and `TestUtils` is gone. `test_enemy_base.gd` has not been split yet (`TODO.md` item 6). In practice several suites went into one commit; each migration was still checked with negative controls.)* **Migrate the suites to the harness, one suite per commit. This is where the bad tests get fixed.** Each migration:
    - switches to the harness API
    - removes that suite's literal, key and art assertions (§3.1–3.3)
    - replaces private calls with public APIs (§3.4.4)
@@ -704,15 +722,15 @@ The harness depends on the runner being trustworthy and fast, so the runner is f
 
 **Phase C: guardrails (after step 4, so they describe what actually exists)**
 
-6. **Rewrite AGENTS.md and create the skills** (§1, §5.1), including the scratch-vs-suite rule and the role table (§5.4). Trim TODO.md and fix README.
-7. **`tools/lint_project.py`**, including the UID checks (§5.2, §4.4). Adopt it with a baseline, fail on *new* violations, and burn the backlog down.
-8. **Shared Godot launcher module, `GODOT_BIN`, and CI** (§4.2–4.3), including the frame-rate matrix job (§3.9) and the `test/` change check (§5.4).
+6. *(Partly done. AGENTS.md gained the physics-clock rule, the harness section, `fps_matrix`, the tuned-value-relations rule, `check_no_engine_errors()` and `resolve_godot()`, and TODO.md was trimmed. Not done: the full AGENTS.md restructure, the skills, the scratch-vs-suite rule and role table, and the README fix.)* **Rewrite AGENTS.md and create the skills** (§1, §5.1), including the scratch-vs-suite rule and the role table (§5.4). Trim TODO.md and fix README.
+7. *(Not started.)* **`tools/lint_project.py`**, including the UID checks (§5.2, §4.4). Adopt it with a baseline, fail on *new* violations, and burn the backlog down.
+8. *(Partly done. `godot_env.resolve_godot()` is shared by `run_tests.py`, `run_scratch.py`, `capture.py` and `tools/levels/build_level.py`, honors `GODOT_BIN` and unwraps `.cmd` shims; the runner has per-suite `fps_matrix`. Not done: one shared launch-and-watchdog module, CI with the frame-rate matrix job, runner self-tests, and the `test/` change check.)* **Shared Godot launcher module, `GODOT_BIN`, and CI** (§4.2–4.3), including the frame-rate matrix job (§3.9) and the `test/` change check (§5.4).
 
 **Phase D: production cleanup (now protected by trustworthy tests)**
 
-9. **Remove the aliases and legacy paths** (§2.6) and the hardcoded fallbacks (§2.7). Fix the `AILeapingDodge` sentinel (§2.8). The migrated tests no longer depend on the aliases, so this is safe.
-10. **Unify the level registry and the other duplicated owners** (§2.5).
-11. **Structural refactors:**
+9. *(Partly done. Removed: the `PlayerJump` aliases. Fixed: the `AILeapingDodge` sentinel (§2.8). Still open: the other §2.6 aliases and all §2.7 fallbacks.)* **Remove the aliases and legacy paths** (§2.6) and the hardcoded fallbacks (§2.7). Fix the `AILeapingDodge` sentinel (§2.8). The migrated tests no longer depend on the aliases, so this is safe.
+10. *(Not started. The heal-percent unit in §2.5 is fixed.)* **Unify the level registry and the other duplicated owners** (§2.5).
+11. *(Partly done: the input bridge.)* **Structural refactors:**
     - string state names → exports (§2.2)
     - *(done 2026-09-27)* input bridge out of `StateMachine` (§2.3)
     - `BallisticProjectile`, `AIAttackBase`, and body-owned cooldown ticking (§2.9)

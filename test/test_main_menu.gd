@@ -1,182 +1,75 @@
-extends Node
+## The main menu and its 3D diorama level:
+## - the Start button has focus on open (keyboard and gamepad can start at
+##   once), and no label calls the screen "main menu",
+## - the fullscreen button toggles fullscreen and its text follows the mode,
+## - while the menu level is up the UI is in menu mode: pausing is ignored,
+##   there is no HUD, and the menu camera is current; leaving it ends menu
+##   mode,
+## - the menu hero idles and stays out of the "player" group (so it is never
+##   cached and carried into a run),
+## - pressing Start leaves menu mode, clears the carried player and starts
+##   loading the first level. That changes the scene, so it runs last.
+extends "res://test/lib/test_suite.gd"
 
-const MainMenuScript = preload("res://UserInterface/main_menu.gd")
-const MenuLevelScript = preload("res://Levels/menu_level.gd")
+const MENU_LEVEL_SCENE: PackedScene = preload("res://Levels/menu_level.tscn")
 
-func _ready() -> void:
-	print("--- RUNNING MAIN MENU & MENU LEVEL TEST ---")
-
-	# ---------------------------------------------------------
-	# PART 1: MainMenu Scene & Node Hierarchy Verification
-	# ---------------------------------------------------------
-	print("\n>>> PART 1: MainMenu Scene Verification")
-	var menu_scene: PackedScene = load("res://UserInterface/main_menu.tscn") as PackedScene
-	if menu_scene == null:
-		printerr("TEST FAILED: Could not load res://UserInterface/main_menu.tscn")
-		get_tree().quit(1)
-		return
-	print("Loaded res://UserInterface/main_menu.tscn successfully.")
-
-	var menu: CanvasLayer = menu_scene.instantiate() as CanvasLayer
-	add_child(menu)
-
-	var title_lbl: RichTextLabel = menu.get_node_or_null("%Title") as RichTextLabel
-	if title_lbl == null:
-		printerr("TEST FAILED: %Title node missing in MainMenu.")
-		get_tree().quit(1)
-		return
-	if not title_lbl.text.contains("Tutorial Hell"):
-		printerr("TEST FAILED: Title text does not contain 'Tutorial Hell'. Found: ", title_lbl.text)
-		get_tree().quit(1)
-		return
-	if not title_lbl.text.contains("[wave"):
-		printerr("TEST FAILED: Title text is missing [wave] BBCode styling.")
-		get_tree().quit(1)
-		return
-	print("Title verified: 'Tutorial Hell' with wave BBCode.")
-
-	var start_btn: Button = menu.get_node_or_null("%StartButton") as Button
-	var fullscreen_btn: Button = menu.get_node_or_null("%FullscreenButton") as Button
-	var quit_btn: Button = menu.get_node_or_null("%QuitButton") as Button
-
-	if start_btn == null or fullscreen_btn == null or quit_btn == null:
-		printerr("TEST FAILED: One or more menu buttons missing.")
-		get_tree().quit(1)
-		return
-	print("Verified presence of StartButton, FullscreenButton, and QuitButton.")
-
-	if not start_btn.has_focus():
-		printerr("TEST FAILED: StartButton does not have initial focus.")
-		get_tree().quit(1)
-		return
-	print("Verified initial focus on StartButton.")
-
-	# Verify that no label or UI node displays "main menu"
-	for child in menu.find_children("*", "Label", true, false):
-		var lbl: Label = child as Label
-		if lbl != null and lbl.text.to_lower().contains("main menu"):
-			printerr("TEST FAILED: Found prohibited 'main menu' text in Label: ", lbl.name)
-			get_tree().quit(1)
-			return
-	print("Verified that 'main menu' text does not appear anywhere in menu labels.")
+var _level: MenuLevel
+var _menu: CanvasLayer
 
 
-	# ---------------------------------------------------------
-	# PART 2: Fullscreen Button Toggle Logic
-	# ---------------------------------------------------------
-	print("\n>>> PART 2: Fullscreen Toggle Logic")
-	var initial_text: String = fullscreen_btn.text
-	menu.toggle_fullscreen()
-	var toggled_text: String = fullscreen_btn.text
-	# Toggle back to restore initial state
-	menu.toggle_fullscreen()
-	print("Fullscreen toggle verified: ", initial_text, " -> ", toggled_text)
+func before_each() -> void:
+	_level = spawn(MENU_LEVEL_SCENE) as MenuLevel
+	_menu = _level.main_menu
+	await wait_physics_frames(1)
 
-	# ---------------------------------------------------------
-	# PART 3: Start Game Action & Signal
-	# ---------------------------------------------------------
-	print("\n>>> PART 3: Start Game Action")
-	var start_signal_received: Array[bool] = [false]
-	menu.start_requested.connect(func() -> void: start_signal_received[0] = true)
-	menu.start_game()
-	if not start_signal_received[0]:
-		printerr("TEST FAILED: start_requested signal not emitted.")
-		get_tree().quit(1)
-		return
-	print("Verified start_requested signal emitted and progression reset triggered.")
 
-	menu.queue_free()
+func after_each() -> void:
+	UI.resume_game()
 
-	# ---------------------------------------------------------
-	# PART 4: MenuLevel 3D Environment Verification
-	# ---------------------------------------------------------
-	print("\n>>> PART 4: MenuLevel 3D Environment Verification")
-	var level_scene: PackedScene = load("res://Levels/menu_level.tscn") as PackedScene
-	if level_scene == null:
-		printerr("TEST FAILED: Could not load res://Levels/menu_level.tscn")
-		get_tree().quit(1)
-		return
-	print("Loaded res://Levels/menu_level.tscn successfully.")
 
-	var menu_level: Node3D = level_scene.instantiate() as Node3D
-	add_child(menu_level)
+func test_start_has_focus_and_nothing_says_main_menu() -> void:
+	check((_menu.get_node("%StartButton") as Button).has_focus(), "the Start button should have focus when the menu opens")
+	for node: Node in _menu.find_children("*", "Label", true, false):
+		check(not (node as Label).text.to_lower().contains("main menu"), "no label should say \"main menu\" (%s)" % node.name)
 
-	# Verify UI.is_in_main_menu flag
-	if UI != null and not UI.is_in_main_menu:
-		printerr("TEST FAILED: UI.is_in_main_menu should be true when MenuLevel is active.")
-		get_tree().quit(1)
-		return
-	print("Verified UI.is_in_main_menu is true.")
 
-	# Verify pause is prevented while on main menu
-	if UI != null:
-		var was_paused: bool = UI.is_paused()
-		UI.toggle_pause()
-		if UI.is_paused() != was_paused:
-			printerr("TEST FAILED: toggle_pause should not toggle pause state while in main menu.")
-			get_tree().quit(1)
-			return
-		print("Verified UI.toggle_pause() is ignored while in main menu.")
+func test_the_fullscreen_button_toggles_and_its_text_follows_the_mode() -> void:
+	var button: Button = _menu.get_node("%FullscreenButton") as Button
+	var was_fullscreen: bool = UI.is_fullscreen()
+	var text_before: String = button.text
+	button.pressed.emit()
+	# A headless display may refuse the switch; the text must track the mode
+	# either way.
+	var mode_changed: bool = UI.is_fullscreen() != was_fullscreen
+	check_eq(button.text != text_before, mode_changed, "the button text should change exactly when the window mode changes")
+	button.pressed.emit()
+	check_eq(UI.is_fullscreen(), was_fullscreen, "pressing twice should restore the window mode")
+	check_eq(button.text, text_before, "pressing twice should restore the text")
 
-	# Verify MenuCamera
-	var camera: Camera3D = menu_level.get_node_or_null("MenuCamera") as Camera3D
-	if camera == null or not camera.current:
-		printerr("TEST FAILED: MenuCamera missing or not current.")
-		get_tree().quit(1)
-		return
-	print("Verified MenuCamera is present and active (current = true).")
 
-	# Verify Floormap and Wallmap
-	var floormap: GridMap = menu_level.get_node_or_null("Floormap") as GridMap
-	var wallmap: GridMap = menu_level.get_node_or_null("Wallmap") as GridMap
-	if floormap == null or floormap.get_used_cells().size() == 0:
-		printerr("TEST FAILED: Floormap missing or empty in MenuLevel.")
-		get_tree().quit(1)
-		return
-	if wallmap == null or wallmap.get_used_cells().size() == 0:
-		printerr("TEST FAILED: Wallmap missing or empty in MenuLevel.")
-		get_tree().quit(1)
-		return
-	print("Verified Floormap (", floormap.get_used_cells().size(), " cells) and Wallmap (", wallmap.get_used_cells().size(), " cells).")
+func test_the_menu_level_is_menu_mode_without_pause_or_hud() -> void:
+	check(UI.is_in_main_menu, "the menu level should put the UI in menu mode")
+	var was_paused: bool = UI.is_paused()
+	UI.toggle_pause()
+	check_eq(UI.is_paused(), was_paused, "pausing should be ignored in the menu")
+	check(get_tree().get_nodes_in_group("hud").is_empty(), "the menu should show no HUD")
+	check(_level.menu_camera.current, "the menu camera should be current")
+	_level.queue_free()
+	await wait_physics_frames(1)
+	check(not UI.is_in_main_menu, "leaving the menu level should end menu mode")
 
-	# Verify MenuPlayer (Hero)
-	var hero: Node3D = menu_level.get_node_or_null("MenuPlayer") as Node3D
-	if hero == null:
-		printerr("TEST FAILED: MenuPlayer missing from MenuLevel.")
-		get_tree().quit(1)
-		return
-	if hero.is_in_group("player"):
-		printerr("TEST FAILED: MenuPlayer should NOT be in 'player' group to avoid cache leakage.")
-		get_tree().quit(1)
-		return
-	var hero_ap: AnimationPlayer = hero.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	if hero_ap == null:
-		printerr("TEST FAILED: AnimationPlayer missing on MenuPlayer.")
-		get_tree().quit(1)
-		return
-	if not hero_ap.has_animation("PlayerAnimations/Idle_A"):
-		printerr("TEST FAILED: PlayerAnimations/Idle_A missing on MenuPlayer.")
-		get_tree().quit(1)
-		return
-	print("Verified MenuPlayer: isolated from 'player' group, has Idle_A animation.")
 
-	# Verify HUD is NOT present in MainMenu / MenuLevel
-	var huds: Array[Node] = get_tree().get_nodes_in_group("hud")
-	if not huds.is_empty():
-		printerr("TEST FAILED: HUD overlay should NOT be present in main menu or menu level!")
-		get_tree().quit(1)
-		return
-	print("Verified HUD is absent in main menu.")
+func test_the_menu_hero_idles_outside_the_player_group() -> void:
+	check(not _level.hero.is_in_group("player"), "the menu hero must not be in the player group (it would be carried into a run)")
+	var animation_player: AnimationPlayer = _level.hero.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	check(animation_player != null and animation_player.is_playing(), "the menu hero should play its idle animation")
 
-	menu_level.queue_free()
 
-	print("\n====================================================")
-	print("  ALL MAIN MENU & MENU LEVEL TESTS PASSED!")
-	print("  1. MainMenu UI hierarchy & BBCode wave title")
-	print("  2. Start, Fullscreen, and Quit button wiring")
-	print("  3. MenuLevel 3D floor and wall showcase")
-	print("  4. MenuCamera active and current")
-	print("  5. Hero in idle animation, isolated from player group")
-	print("  6. UI pause suppression in main menu")
-	print("====================================================")
-	get_tree().quit(0)
+## Changes the scene: keep it the last test.
+func test_pressing_start_leaves_menu_mode_and_starts_a_fresh_run() -> void:
+	var started: Array[bool] = [false]
+	_menu.connect(&"start_requested", func() -> void: started[0] = true)
+	(_menu.get_node("%StartButton") as Button).pressed.emit()
+	check(started[0], "pressing Start should request a start")
+	check(not UI.is_in_main_menu, "starting should leave menu mode")
+	check(SceneTransition.player_cache == null, "starting should clear any carried player")

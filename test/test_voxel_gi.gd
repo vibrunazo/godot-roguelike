@@ -1,116 +1,38 @@
-extends Node
+## The level template's global illumination:
+## - its VoxelGI has baked data, and its volume encloses the player spawn and
+##   the exit,
+## - characters placed in the level when GI is baked (the player) never bake
+##   into it: none of their meshes is included in GI baking, or a moving body
+##   would leave a permanent shadow where it stood during the bake.
+## (Every level in the rotation is checked for baked GI and floor coverage by
+## test_level_rotation_nav.)
+extends "res://test/lib/test_suite.gd"
 
-func _ready() -> void:
-	print("--- RUNNING VOXEL GI TEST ---")
-	var level_scene: PackedScene = load("res://Levels/level_template.tscn")
-	var level: Node3D = level_scene.instantiate() as Node3D
-	add_child(level)
-	
-	# 1. Verify VoxelGI node exists in LevelTemplate
-	var voxel_gi: VoxelGI = level.get_node_or_null("VoxelGI") as VoxelGI
-	if voxel_gi == null:
-		printerr("TEST FAILED: VoxelGI node not found in level_template.tscn")
-		level.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
+const LEVEL_TEMPLATE_SCENE: PackedScene = preload("res://Levels/level_template.tscn")
+
+var _level: Node3D
+
+
+func before_each() -> void:
+	_level = spawn(LEVEL_TEMPLATE_SCENE) as Node3D
+	(_level.get_node("WaveObjective") as WaveObjective).stop_spawning()
+	await wait_physics_frames(1)
+
+
+func test_the_template_gi_is_baked_and_encloses_the_spawn_and_the_exit() -> void:
+	var gi: VoxelGI = _level.get_node("VoxelGI") as VoxelGI
+	if not check(gi.data != null and gi.data.get_bounds().size != Vector3.ZERO, "the template VoxelGI should have baked data"):
 		return
-	print("VoxelGI node found at position: ", voxel_gi.position, " with size: ", voxel_gi.size)
-	
-	# 2. Verify VoxelGIData resource is assigned and contains baked bounds
-	if voxel_gi.data == null:
-		printerr("TEST FAILED: VoxelGI has no VoxelGIData assigned.")
-		level.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
+	var volume: AABB = gi.global_transform * AABB(-gi.size * 0.5, gi.size)
+	for node_name: String in ["Player", "ExitPoint"]:
+		var point: Vector3 = (_level.get_node(node_name) as Node3D).global_position
+		check(volume.has_point(point), "the GI volume should enclose the %s (at %s)" % [node_name, point])
+
+
+func test_characters_present_at_bake_time_never_bake_into_gi() -> void:
+	var characters: Array[Node] = _level.find_children("*", "Character", true, false)
+	if not check(not characters.is_empty(), "setup: the template should place a character (the player)"):
 		return
-		
-	var baked_bounds: AABB = voxel_gi.data.get_bounds()
-	if baked_bounds.size == Vector3.ZERO:
-		printerr("TEST FAILED: VoxelGIData has zero bounds (not baked).")
-		level.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("VoxelGIData verified with baked bounds: ", baked_bounds)
-	
-	# Check baked file size on disk
-	var file_path := "res://Levels/GlobalIlluminationData/level_template_voxel_gi_data.tres"
-	var file := FileAccess.open(file_path, FileAccess.READ)
-	if file == null:
-		printerr("TEST FAILED: Cannot open baked VoxelGIData file at: ", file_path)
-		level.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	var file_length: int = file.get_length()
-	file.close()
-	if file_length < 50000:
-		printerr("TEST FAILED: Baked file is unexpectedly small: ", file_length, " bytes")
-		level.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("Baked VoxelGIData file size verified on disk: ", file_length, " bytes")
-	
-	# 3. Verify VoxelGI bounds enclose the extended level template
-	var vgi_box := AABB(voxel_gi.position - voxel_gi.size * 0.5, voxel_gi.size)
-	print("VoxelGI bounding volume: ", vgi_box)
-	var spawn_point := Vector3(0, 1, 0)
-	var pit_point := Vector3(0, -2, -16)
-	var far_point := Vector3(0, 0, -40)
-	var dummy_point := Vector3(0, 1.7, 4.0)
-	for pt: Vector3 in [spawn_point, pit_point, far_point, dummy_point]:
-		if not vgi_box.has_point(pt):
-			printerr("TEST FAILED: VoxelGI volume does not enclose level point: ", pt)
-			level.queue_free()
-			await get_tree().physics_frame
-			get_tree().quit(1)
-			return
-	print("VoxelGI volume successfully encloses spawn, pit, dummy, and far level bounds!")
-	
-	# 4. Verify dynamic mesh nodes have GI mode disabled (gi_mode == 0)
-	if level.has_node("StaticBody3D/MeshInstance3D"):
-		var dummy_mesh: MeshInstance3D = level.get_node("StaticBody3D/MeshInstance3D") as MeshInstance3D
-		if dummy_mesh.gi_mode != GeometryInstance3D.GI_MODE_DISABLED:
-			printerr("TEST FAILED: Dummy enemy MeshInstance3D gi_mode is not disabled.")
-			level.queue_free()
-			await get_tree().physics_frame
-			get_tree().quit(1)
-			return
-		print("Dummy enemy MeshInstance3D gi_mode correctly disabled (gi_mode = 0).")
-	
-	var player: Character = level.get_node("Player") as Character
-	var sword_mesh: MeshInstance3D = player.get_node("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/LazerSword") as MeshInstance3D
-	var handle_mesh: MeshInstance3D = player.get_node("GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Handle") as MeshInstance3D
-	if sword_mesh.gi_mode != GeometryInstance3D.GI_MODE_DISABLED or handle_mesh.gi_mode != GeometryInstance3D.GI_MODE_DISABLED:
-		printerr("TEST FAILED: Player weapon mesh gi_mode is not disabled.")
-		level.queue_free()
-		await get_tree().physics_frame
-		get_tree().quit(1)
-		return
-	print("Player weapon meshes gi_mode correctly disabled (gi_mode = 0).")
-	
-	# 5. Verify import settings for mannequin have light_baking disabled
-	var import_file := FileAccess.open("res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Character/GamedevTV_Mannequin_Medium.glb.import", FileAccess.READ)
-	if import_file != null:
-		var content: String = import_file.get_as_text()
-		import_file.close()
-		if "meshes/light_baking=0" not in content:
-			printerr("TEST FAILED: Mannequin import file does not have meshes/light_baking=0.")
-			level.queue_free()
-			await get_tree().physics_frame
-			get_tree().quit(1)
-			return
-		print("Mannequin import config confirmed (meshes/light_baking=0).")
-	
-	print("\n====================================================================")
-	print("  ALL VOXEL GI TESTS PASSED!                                        ")
-	print("  1. VoxelGI node added with appropriate dimensions                 ")
-	print("  2. Baked VoxelGIData present and valid on disk                    ")
-	print("  3. Bounds enclose spawn, pit, dummy, and extended level geometry   ")
-	print("  4. Dynamic meshes (weapons, dummy, mannequin) excluded from GI    ")
-	print("====================================================================")
-	
-	level.queue_free()
-	await get_tree().physics_frame
-	get_tree().quit(0)
+	for character: Node in characters:
+		for mesh: Node in character.find_children("*", "MeshInstance3D", true, false):
+			check_eq((mesh as MeshInstance3D).gi_mode, GeometryInstance3D.GI_MODE_DISABLED, "%s must not bake into GI" % character.get_path_to(mesh))

@@ -1,34 +1,31 @@
-## Verifies all Level 13 table decorators physically block the real player
-## capsule. Uses a swept body motion, not a visual-only overlap assertion.
-extends Node3D
+## Level 13: every table decoration physically blocks the real player
+## capsule from both sides (a swept body motion, not a visual overlap check).
+extends "res://test/lib/test_suite.gd"
 
-func _ready() -> void:
-	var level: Node3D = (load("res://Levels/level_13.tscn") as PackedScene).instantiate() as Node3D
-	add_child(level)
-	# No enemies: stop the wave before its first spawn step.
+const LEVEL_SCENE: PackedScene = preload("res://Levels/level_13.tscn")
+const TABLES: Array[String] = ["LowerWorkTable", "LowerBanquetTable", "UpperFeastTable", "UpperLongTable"]
+## How far to the side of a table the sweep starts, and how far it moves.
+const SWEEP_START: float = 3.0
+const SWEEP_LENGTH: float = 6.0
+## Capsule bottom height above the table origin: clear of the floor, so only
+## furniture can stop the sweep.
+const SWEEP_HEIGHT: float = 1.05
+
+
+func test_every_table_blocks_the_player_from_both_sides() -> void:
+	var level: Node3D = spawn(LEVEL_SCENE) as Node3D
 	(level.get_node("WaveObjective") as WaveObjective).stop_spawning()
 	var player: Character = level.get_node("Player") as Character
-	# Isolate body collision from AI, camera input and automatic state motion.
+	# Only the test moves the body: no states, AI or input.
 	player.disable_mode = CollisionObject3D.DISABLE_MODE_KEEP_ACTIVE
 	player.process_mode = Node.PROCESS_MODE_DISABLED
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	var names: Array[String] = ["LowerWorkTable", "LowerBanquetTable", "UpperFeastTable", "UpperLongTable"]
-	var failed: bool = false
-	for table_name: String in names:
+	await wait_physics_frames(2)
+	for table_name: String in TABLES:
 		var table: StaticBody3D = level.get_node("NavigationRegion3D/Litter/" + table_name) as StaticBody3D
-		for direction: float in [-1.0, 1.0]:
-			# Each authored table is yawed 90 degrees, so this crosses its
-			# short axis. Keep capsule bottom above the floor to isolate furniture.
-			player.global_position = table.global_position + Vector3(direction * 3.0, 1.05, 0.0)
-			await get_tree().physics_frame
-			var collision: KinematicCollision3D = player.move_and_collide(Vector3(-direction * 6.0, 0.0, 0.0))
-			if collision == null or collision.get_collider() != table or (player.global_position.x - table.global_position.x) * direction <= 0.0:
-				printerr("TEST FAILED: table did not block player: ", table_name, " direction=", direction, " player=", player.global_position)
-				failed = true
-			else:
-				print("PASS: ", table_name, " blocks player from side ", direction, " at ", player.global_position)
-	level.queue_free()
-	await get_tree().physics_frame
-	print("LEVEL 13 TABLE COLLISION TEST ", "FAILED" if failed else "PASSED")
-	get_tree().quit(1 if failed else 0)
+		for side: float in [-1.0, 1.0]:
+			# Each table is yawed 90 degrees, so X crosses its short axis.
+			player.global_position = table.global_position + Vector3(side * SWEEP_START, SWEEP_HEIGHT, 0.0)
+			await wait_physics_frames(1)
+			var collision: KinematicCollision3D = player.move_and_collide(Vector3(-side * SWEEP_LENGTH, 0.0, 0.0))
+			var stopped_on_its_side: bool = (player.global_position.x - table.global_position.x) * side > 0.0
+			check(collision != null and collision.get_collider() == table and stopped_on_its_side, "%s should block the player coming from side %d (stopped at %s)" % [table_name, side, player.global_position])
