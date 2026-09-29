@@ -51,4 +51,4 @@ python tools/check_runners.py                     # self-test the runners (after
 | `CAPTURE.md` | The capture tool in detail |
 | `tools/levels/README.md` | The level-building pipeline |
 | `TODO.md` | Open work |
-| `CODE_REVIEW.md` | The code review behind the current cleanup work, and its progress |
+| `docs/reviews/` | Past code reviews (closed), kept as the record of past design decisions |

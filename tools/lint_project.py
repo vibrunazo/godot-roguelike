@@ -52,8 +52,9 @@ def function_line_limit(path: str) -> int:
         if path.startswith(prefix):
             return limit
     return PRODUCTION_FUNCTION_LINES
-# Historical documents may name files that no longer exist, and quote paths.
-HISTORICAL_DOCS = ("CODE_REVIEW.md",)
+# Historical documents (closed reviews) may name files that no longer exist,
+# and quote paths.
+HISTORICAL_DOCS = ("docs/reviews/",)
 
 RULES: dict[str, str] = {
     "uid-duplicate": "two files own the same UID; one of them was copied or hand-written",
@@ -236,7 +237,7 @@ def check_absolute_paths(files: list[str], report: Report) -> None:
     for path in files:
         if not path.endswith((".gd", ".tscn", ".tres", ".godot", ".py", ".md", ".cfg", ".json")):
             continue
-        if path.endswith(HISTORICAL_DOCS):
+        if path.startswith(HISTORICAL_DOCS):
             continue
         for number, line in enumerate(read(path).splitlines(), 1):
             if _ABSOLUTE.search(line):
@@ -290,7 +291,7 @@ _DOC_REFERENCE = re.compile(r'`((?:res://)?[\w./-]+\.(?:gd|tscn|tres|res|py|md|g
 def check_doc_references(files: list[str], report: Report) -> None:
     existing = set(files)
     for path in files:
-        if not path.endswith(".md") or path.endswith(HISTORICAL_DOCS):
+        if not path.endswith(".md") or path.startswith(HISTORICAL_DOCS):
             continue
         base = Path(path).parent
         for number, line in enumerate(read(path).splitlines(), 1):

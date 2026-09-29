@@ -1,8 +1,8 @@
 # TODO
 
 Open work only. Completed items are removed (git history keeps their write-ups).
-The full review, the reasoning behind each item, and the phased plan (Phases A–D)
-are in `CODE_REVIEW.md`; section numbers below point there.
+Section numbers (§) point into the closed 2026-09-23 code review,
+`docs/reviews/2026-09-23-code-review.md`, which explains each item.
 
 ---
 
@@ -61,7 +61,7 @@ Every suite now runs on the harness (Phase B step 4 is done).
 
 ## Architecture backlog
 
-Items 19 to 23 are what the closed code review (`CODE_REVIEW.md`) left for
+Items 19 to 23 are what the closed code review (`docs/reviews/2026-09-23-code-review.md`) left for
 later: none is a defect.
 
 19. **Mobile performance workstream** (with decision 3). A physics tick-rate

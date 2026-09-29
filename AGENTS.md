@@ -151,5 +151,5 @@ automatically; other agents follow these paths):
 | Writing, migrating or fixing a test suite (`test/`, harness, arena) | `.claude/skills/write-test/SKILL.md` |
 | A suite timed out or a Godot run hung | `.claude/skills/debug-test-hang/SKILL.md` |
 
-Open work is in `TODO.md`; the review behind it and the work plan are in
-`CODE_REVIEW.md`.
+Open work is in `TODO.md`. Past code reviews, closed and kept as the record of
+why the code looks the way it does, are in `docs/reviews/`.
