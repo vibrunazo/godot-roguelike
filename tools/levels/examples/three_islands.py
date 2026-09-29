@@ -9,7 +9,7 @@ dodge line down one side. Enemies path the full length; players kite around
 the lake and rails.
 
 Pipeline (mirrors the README):
-    python tools/levels/examples/three_islands.py --out-dir tools/levels/out/l8proof
+    python tools/levels/examples/three_islands.py --out-dir .scratch/levels/l8proof
     pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI
     -> register a DungeonResource -> run_tests.py -> capture.py
 """

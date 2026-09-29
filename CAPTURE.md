@@ -140,7 +140,7 @@ You can create a scenario script by extending `CombatScenarioTemplate`.
 
 **Designated Scratch Path:** If you need temporary staging scripts, inspection scripts, or other throwaway scripts, it is recommended to use the gitignored `.scratch/` folder. Scripts kept there are a good fit when the work is exploratory and unlikely to be reused.
 
-When a scenario proves reusable (a standard encounter worth re-running), consider promoting it to `tools/capture/`. `tools/levels/out/` is intended for level-pipeline extraction scripts.
+When a scenario proves reusable (a standard encounter worth re-running), consider promoting it to `tools/capture/`.
 
 ```gdscript
 # res://.scratch/my_test_scenario.gd

@@ -9,7 +9,7 @@
 ##
 ## Usage:
 ##   godot --headless --path . tools/levels/bake_navmesh_scene.tscn --
-##       --level=Levels/boss_arena_1.tscn --out=tools/levels/out/boss1proof/navmesh_baked.txt
+##       --level=Levels/boss_arena_1.tscn --out=.scratch/levels/boss1proof/navmesh_baked.txt
 extends Node
 
 

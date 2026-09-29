@@ -15,7 +15,8 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 > Godot-side file arguments must be `res://` (or project-relative) paths.
 > Absolute OS paths (`/tmp/...`) do **not** work with `FileAccess` — the tools
 > reject them loudly. Pure-Python steps accept any OS path. Generated
-> intermediates go to `tools/levels/out/` (git-ignored and `.gdignore`d).
+> intermediates go to `.scratch/levels/` (git-ignored and `.gdignore`d, like
+> all scratch work).
 
 ## Tool inventory
 
@@ -59,24 +60,24 @@ an all-integer x/z lattice is treated as an unbaked scaffold and fails).
 
 ```bash
 # 1. Dump the level you are riffing on
-python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn --out=tools/levels/out/l2.txt
+python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn --out=.scratch/levels/l2.txt
 
 # 2. Design: write your own step-2 script (see examples/double_level.py),
 #    producing floor.txt / wall.txt cell files
-python tools/levels/examples/double_level.py --cells tools/levels/out/l2.txt --out-dir tools/levels/out/l4proof
+python tools/levels/examples/double_level.py --cells .scratch/levels/l2.txt --out-dir .scratch/levels/l4proof
 
 # 3. Validate the layout BEFORE touching the engine (fast iteration here)
-python tools/levels/validate_layout.py --floor tools/levels/out/l4proof/floor.txt \
-    --wall tools/levels/out/l4proof/wall.txt --start 0,0 --goal -3,-17
+python tools/levels/validate_layout.py --floor .scratch/levels/l4proof/floor.txt \
+    --wall .scratch/levels/l4proof/wall.txt --start 0,0 --goal -3,-17
 
 # 4. Pack cells through the engine, then assemble the scene from your spec JSON
-python run_scratch.py tools/levels/pack_cells.gd -- --floor=tools/levels/out/l4proof/floor.txt \
-    --wall=tools/levels/out/l4proof/wall.txt --out=tools/levels/out/l4proof/packed_cells.tscn
-python tools/levels/assemble_level.py --spec tools/levels/out/l4proof/spec.json --out Levels/level_5.tscn
+python run_scratch.py tools/levels/pack_cells.gd -- --floor=.scratch/levels/l4proof/floor.txt \
+    --wall=.scratch/levels/l4proof/wall.txt --out=.scratch/levels/l4proof/packed_cells.tscn
+python tools/levels/assemble_level.py --spec .scratch/levels/l4proof/spec.json --out Levels/level_5.tscn
 
 # 5. Bake the navmesh headlessly, splice it into the level (tip 1)
 python run_scratch.py tools/levels/bake_navmesh.gd -- --level=Levels/level_5.tscn \
-    --out=tools/levels/out/l5proof/navmesh_baked.txt
+    --out=.scratch/levels/l5proof/navmesh_baked.txt
 # then replace the scaffold NavigationMesh block in Levels/level_5.tscn with the
 # baked snippet (Level 5's proof run did this with a small splice script).
 # Caution: re-running the design script (step 2) rewrites spec.json with the
@@ -108,8 +109,8 @@ python capture.py map Levels/level_5.tscn --preset all
   "template": "Levels/level_2.tscn",
   "root_name": "Level5",
   "uid": null,
-  "packed_cells": "tools/levels/out/l5/packed_cells.tscn",
-  "navmesh_snippet": "tools/levels/out/l5/navmesh.txt",
+  "packed_cells": ".scratch/levels/l5/packed_cells.tscn",
+  "navmesh_snippet": ".scratch/levels/l5/navmesh.txt",
   "navmesh_id": "NavigationMesh_level5",
   "strip_pits": true,
   "exit": [-12, 0, -68],

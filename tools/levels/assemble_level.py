@@ -14,7 +14,7 @@ GridMap `data` arrays are NEVER hand-written: pack_cells.gd produces them and
 this tool splices the engine-serialized arrays verbatim.
 
 Usage:
-    python tools/levels/assemble_level.py --spec tools/levels/out/l4proof/spec.json
+    python tools/levels/assemble_level.py --spec .scratch/levels/l4proof/spec.json
     python tools/levels/assemble_level.py --spec path/to/spec.json --out Levels/level_5.tscn
 """
 from __future__ import annotations

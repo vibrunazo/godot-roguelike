@@ -7,7 +7,7 @@ pillar colonnades, partial cross-walls, and explicitly dressed hazards/props.
 At ~150 floor tiles it is substantially bigger than Level 4 (92).
 
 Pipeline (mirrors the README):
-    python tools/levels/examples/grand_hall.py --out-dir tools/levels/out/l5proof
+    python tools/levels/examples/grand_hall.py --out-dir .scratch/levels/l5proof
     python tools/levels/validate_layout.py --floor ... --wall ... --dressing ...
     pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI -> register
 

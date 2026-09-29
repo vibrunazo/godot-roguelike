@@ -299,7 +299,7 @@ def check_doc_references(files: list[str], report: Report) -> None:
                 ref = match.group(1).replace("res://", "")
                 if "/" not in ref or "..." in ref:
                     continue  # a bare file name, or an abbreviated path: skip
-                if ref.startswith((".scratch/", "movies/", "tools/levels/out/")):
+                if ref.startswith((".scratch/", "movies/")):
                     continue  # examples of throwaway or generated paths
                 candidates = {ref, (base / ref).as_posix()}
                 if not any(c in existing or (ROOT / c).exists() for c in candidates):

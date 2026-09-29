@@ -19,7 +19,7 @@ from validate_layout import check_no_wall_overlap, check_walls_touch_floor
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--out-dir', default='tools/levels/out/l13')
+    ap.add_argument('--out-dir', default='.scratch/levels/l13')
     out = Path(ap.parse_args().out_dir)
     out.mkdir(parents=True, exist_ok=True)
     # Widen both outer edges by one tile for furniture alcoves while

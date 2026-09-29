@@ -25,7 +25,7 @@ func _initialize() -> void:
 		quit(1)
 		return
 	if out_path.is_empty():
-		out_path = "res://tools/levels/out/%s_cells.txt" % level_path.get_file().get_basename()
+		out_path = "res://.scratch/levels/%s_cells.txt" % level_path.get_file().get_basename()
 	out_path = _resolve(out_path)
 	if out_path.is_empty() or not _ensure_dir(out_path.get_base_dir()):
 		quit(1)

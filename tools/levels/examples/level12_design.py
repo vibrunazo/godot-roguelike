@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Level 12: The Broken Procession — six rooms along five winding bridges.
 
-Run with --out-dir tools/levels/out/l12, then pack and assemble spec.json.
+Run with --out-dir .scratch/levels/l12, then pack and assemble spec.json.
 Bake navigation and GI before final assembly. Use --finish after assembly
  to add the existing room encounter areas.
 """
@@ -92,7 +92,7 @@ def finish(scene_path: Path) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--out-dir", default="tools/levels/out/l12")
+    ap.add_argument("--out-dir", default=".scratch/levels/l12")
     ap.add_argument("--finish", type=Path)
     args = ap.parse_args()
     if args.finish:

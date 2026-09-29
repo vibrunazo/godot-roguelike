@@ -81,10 +81,11 @@ prints the error and idles forever. `--quit-after` does not help.
   skill.** It says when a permanent test is worth adding and how to write one.
 - To check your own change, a throwaway script in `.scratch/` (run with
   `run_scratch.py`) is often enough; verify visual changes with `capture.py`.
-- Where files go: throwaway work in `.scratch/` (git-ignored), reusable
-  capture scenarios in `tools/capture/`, level-pipeline intermediates in
-  `tools/levels/out/`, and only suites, `test/lib/` and `test/fixtures/` in
-  `test/`.
+- Where files go: everything not meant to be committed goes in `.scratch/`
+  (git-ignored): throwaway scripts and probes, and the level pipeline's
+  intermediates in `.scratch/levels/`. Delete your own scratch files when the
+  task is done. Reusable capture scenarios go in `tools/capture/`, and only
+  suites, `test/lib/` and `test/fixtures/` in `test/`.
 
 ## 4. Git and workspace
 

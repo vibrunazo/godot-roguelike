@@ -11,7 +11,7 @@ carry walls (derivation defaults: tall on west/south, low rims east/north).
 All directions below use the Godot axis convention (north = -Z).
 
 Pipeline (mirrors the README):
-    python tools/levels/examples/four_rooms.py --out-dir tools/levels/out/l7proof
+    python tools/levels/examples/four_rooms.py --out-dir .scratch/levels/l7proof
     pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI
     -> register a DungeonResource -> run_tests.py -> capture.py
 """

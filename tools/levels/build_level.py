@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Pack, assemble, bake navigation and GI, then finalize a level JSON spec.
 
-Usage: python tools/levels/build_level.py --spec tools/levels/out/l13/spec.json
+Usage: python tools/levels/build_level.py --spec .scratch/levels/l13/spec.json
 Runs from the repository root; every engine call has an OS watchdog. Logs
 are kept beside the spec. A failed bake stops the pipeline before finalizing.
 The authored spec stays unchanged; spec.final.json records baked paths.

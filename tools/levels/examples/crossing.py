@@ -7,7 +7,7 @@ knock-offs work from both deck edges. A fire trap sits mid-deck; the exit
 room ends in an open east cliff. First shipped use of an open bridge.
 
 Pipeline (mirrors the README):
-    python tools/levels/examples/crossing.py --out-dir tools/levels/out/l9proof
+    python tools/levels/examples/crossing.py --out-dir .scratch/levels/l9proof
     pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI
     -> register a DungeonResource -> run_tests.py -> capture.py
 """

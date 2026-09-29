@@ -9,7 +9,7 @@ spikes). Spawn west, exit east. The cover is one lone center pillar with
 enemies — enforced by check_cover_clearances.
 
 Pipeline (mirrors the README):
-    python tools/levels/examples/crucible.py --out-dir tools/levels/out/l10proof
+    python tools/levels/examples/crucible.py --out-dir .scratch/levels/l10proof
     pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI
     -> register a DungeonResource -> run_tests.py -> capture.py
 """

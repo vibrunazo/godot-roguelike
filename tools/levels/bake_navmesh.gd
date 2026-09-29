@@ -10,13 +10,13 @@
 ## a loud failure instead of a scaffold passed off as baked.
 ##
 ## Usage:
-##   python run_scratch.py tools/levels/bake_navmesh.gd -- --level=Levels/level_5.tscn --out=tools/levels/out/l5/navmesh_baked.txt
+##   python run_scratch.py tools/levels/bake_navmesh.gd -- --level=Levels/level_5.tscn --out=.scratch/levels/l5/navmesh_baked.txt
 extends SceneTree
 
 
 func _initialize() -> void:
 	var level_path: String = "res://Levels/level_5.tscn"
-	var out_path: String = "res://tools/levels/out/navmesh_baked.txt"
+	var out_path: String = "res://.scratch/levels/navmesh_baked.txt"
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--level="):
 			level_path = arg.trim_prefix("--level=").strip_edges()

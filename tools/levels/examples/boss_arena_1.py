@@ -10,7 +10,7 @@ so the wave is exactly the boss. Reusable: later boss arenas copy this
 recipe with their own boss resources.
 
 Pipeline (mirrors the README):
-    python tools/levels/examples/boss_arena_1.py --out-dir tools/levels/out/boss1proof
+    python tools/levels/examples/boss_arena_1.py --out-dir .scratch/levels/boss1proof
     pack -> assemble (spec.json, incl. boss_resources) -> bake navmesh
     -> splice -> bake GI -> register a DungeonResource with boss_at_level
     (NOT in the levels rotation) -> run_tests.py -> capture.py
