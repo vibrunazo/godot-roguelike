@@ -16,7 +16,7 @@
 [ext_resource type="AudioStream" uid="uid://cw7xybxcl0jds" path="res://Assets/Audio/footstep-04.ogg" id="6_p5o4e"]
 [ext_resource type="Texture2D" uid="uid://dhidi6ygdbiys" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Character/GamedevTV_Mannequin_Medium_character_texture.png" id="7_755ss"]
 [ext_resource type="Script" uid="uid://s7bhjeu20n3b" path="res://Player/shake_camera_3d.gd" id="9_dkpta"]
-[ext_resource type="Script" path="res://Player/camera_rig_3d.gd" id="9_rig"]
+[ext_resource type="Script" uid="uid://ga202458aes4" path="res://Player/camera_rig_3d.gd" id="9_rig"]
 [ext_resource type="Script" uid="uid://cmqolk21i2p4i" path="res://StateMachine/character_attack.gd" id="13_gu6f8"]
 [ext_resource type="PackedScene" uid="uid://bwo2c4dl16ces" path="res://Components/health_bar.tscn" id="14_healthbar"]
 [ext_resource type="AudioStream" uid="uid://cx123snak3vdw" path="res://Assets/Audio/fire-slash.ogg" id="15_fireslash"]
@@ -34,74 +34,74 @@
 [ext_resource type="Script" uid="uid://ds6n4b4jgo5jk" path="res://StateMachine/PlayerStates/player_jump_kick.gd" id="30_kick"]
 [ext_resource type="Script" uid="uid://btugq3clpmbs4" path="res://Player/weapon_slot.gd" id="31_feet"]
 [ext_resource type="AudioStream" uid="uid://berff6qe7j1yi" path="res://Assets/Audio/boing/540790__magnuswaker__boing-2.ogg" id="32_i4o1l"]
-[ext_resource type="Script" path="res://Components/equipment_component.gd" id="33_equip"]
-[ext_resource type="Script" path="res://Components/passive_ability_component.gd" id="34_passive"]
-[ext_resource type="Script" path="res://Components/targeting_component.gd" id="d11_TargetingComponent"]
-[ext_resource type="Script" path="res://Components/player_defeat_handler.gd" id="d11_PlayerDefeatHandler"]
-[ext_resource type="Script" path="res://Components/airborne_tracker.gd" id="d11_AirborneTracker"]
-[ext_resource type="Script" path="res://Components/status_visuals_component.gd" id="d11_StatusVisualsComponent"]
+[ext_resource type="Script" uid="uid://bjiia4x3o43sd" path="res://Components/equipment_component.gd" id="33_equip"]
+[ext_resource type="Script" uid="uid://by5fnbuwcy326" path="res://Components/passive_ability_component.gd" id="34_passive"]
+[ext_resource type="Script" uid="uid://bunhwtdql7otx" path="res://Components/airborne_tracker.gd" id="d11_AirborneTracker"]
+[ext_resource type="Script" uid="uid://bs2v0oq0t5smm" path="res://Components/player_defeat_handler.gd" id="d11_PlayerDefeatHandler"]
+[ext_resource type="Script" uid="uid://cnyfw4fdv86as" path="res://Components/status_visuals_component.gd" id="d11_StatusVisualsComponent"]
+[ext_resource type="Script" uid="uid://25654di2fqje" path="res://Components/targeting_component.gd" id="d11_TargetingComponent"]
 
-[sub_resource type="Gradient" id="Gradient_i4o1l"]
+[sub_resource type="Gradient" id="Gradient_8ynux"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_j2n6q"]
-gradient = SubResource("Gradient_i4o1l")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_d30e8"]
+gradient = SubResource("Gradient_8ynux")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_c6x0f"]
+[sub_resource type="Gradient" id="Gradient_6pogt"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_jp1hh"]
-gradient = SubResource("Gradient_c6x0f")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ie76m"]
+gradient = SubResource("Gradient_6pogt")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_qs4pp"]
+[sub_resource type="Gradient" id="Gradient_dy65m"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_iyprq"]
-gradient = SubResource("Gradient_qs4pp")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_maysp"]
+gradient = SubResource("Gradient_dy65m")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_f4lon"]
+[sub_resource type="Gradient" id="Gradient_1l10g"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_8ynux"]
-gradient = SubResource("Gradient_f4lon")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_6rl0i"]
+gradient = SubResource("Gradient_1l10g")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_d30e8"]
+[sub_resource type="Gradient" id="Gradient_7x5p2"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_6pogt"]
-gradient = SubResource("Gradient_d30e8")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_6eb1q"]
+gradient = SubResource("Gradient_7x5p2")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_ie76m"]
+[sub_resource type="Gradient" id="Gradient_wvbyc"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_dy65m"]
-gradient = SubResource("Gradient_ie76m")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_gvnt1"]
+gradient = SubResource("Gradient_wvbyc")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_maysp"]
+[sub_resource type="Gradient" id="Gradient_1kmt7"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_1l10g"]
-gradient = SubResource("Gradient_maysp")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_c4i3b"]
+gradient = SubResource("Gradient_1kmt7")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_6rl0i"]
+[sub_resource type="Gradient" id="Gradient_uvbbp"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_7x5p2"]
-gradient = SubResource("Gradient_6rl0i")
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_7v2uk"]
+gradient = SubResource("Gradient_uvbbp")
 width = 64
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_6eb1q"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_m6nl3"]
 render_priority = 0
 shader = ExtResource("6_efx54")
 shader_parameter/albedo_texture = ExtResource("7_755ss")
-shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_j2n6q"), SubResource("GradientTexture1D_jp1hh"), SubResource("GradientTexture1D_iyprq"), SubResource("GradientTexture1D_8ynux"), SubResource("GradientTexture1D_6pogt"), SubResource("GradientTexture1D_dy65m"), SubResource("GradientTexture1D_1l10g"), SubResource("GradientTexture1D_7x5p2")])
+shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_d30e8"), SubResource("GradientTexture1D_ie76m"), SubResource("GradientTexture1D_maysp"), SubResource("GradientTexture1D_6rl0i"), SubResource("GradientTexture1D_6eb1q"), SubResource("GradientTexture1D_gvnt1"), SubResource("GradientTexture1D_c4i3b"), SubResource("GradientTexture1D_7v2uk")])
 shader_parameter/palette_mode = 1
 shader_parameter/enable_palette = true
 shader_parameter/gradient_mask = 0
@@ -349,11 +349,11 @@ graph_offset = Vector2(41, -108)
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_l8h54"]
 radius = 0.375
 
-[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player_hurtbox"]
-
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_dkpta"]
 noise_type = 2
 fractal_type = 0
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player_hurtbox"]
 
 [sub_resource type="Gradient" id="Gradient_7emwf"]
 offsets = PackedFloat32Array(0, 0.5)
@@ -417,7 +417,6 @@ _data = {
 collision_layer = 17
 script = ExtResource("1_l8h54")
 mesh_mount = NodePath("GamedevTV_Mannequin_Medium")
-dash_cooldown = NodePath("DashCooldown")
 attribute_component = NodePath("AttributeComponent")
 knockback_component = NodePath("KnockbackComponent")
 animation_tree = NodePath("GamedevTV_Mannequin_Medium/MannequinAnimationTree")
@@ -425,6 +424,7 @@ state_machine = NodePath("StateMachine")
 collision_shape_3d = NodePath("CollisionShape3D")
 color_component = NodePath("CharacterColorComponent")
 defeat_state = NodePath("StateMachine/PlayerDefeat")
+dash_cooldown = NodePath("DashCooldown")
 
 [node name="CharacterColorComponent" type="Node" parent="." unique_id=1982736410]
 script = ExtResource("24_color")
@@ -448,75 +448,75 @@ one_shot = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
 
 [node name="Skeleton3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium" parent_id_path=PackedInt32Array(1008985588, 340093026) index="0" unique_id=1147856583]
-bones/1/position = Vector3(2.397914e-19, 0.41035736, 5.717072e-26)
-bones/1/rotation = Quaternion(0.052614663, 0.021558493, -0.0010461783, 0.9983817)
-bones/2/rotation = Quaternion(0.019791467, -0.04660996, -0.011580768, 0.99864995)
-bones/3/rotation = Quaternion(-0.000926951, -1.184922e-09, -8.023778e-05, 0.99999964)
+bones/1/position = Vector3(0, 0.3418693, 0)
+bones/1/rotation = Quaternion(0.0501935, 0.021563442, -0.00093935546, 0.99850625)
+bones/2/rotation = Quaternion(0.03145358, -0.017932983, 0.02538678, 0.9990218)
+bones/3/rotation = Quaternion(0.035946313, -9.531952e-06, -0.00024563237, 0.99935377)
 bones/3/scale = Vector3(1, 0.9999999, 1)
-bones/4/position = Vector3(0.21200737, 0.13731739, 0.016386293)
-bones/4/rotation = Quaternion(-0.6626963, -0.102855936, -0.65143144, 0.3548118)
+bones/4/position = Vector3(0.2120074, 0.13587147, 0.008947622)
+bones/4/rotation = Quaternion(-0.66446614, -0.07401551, -0.6311939, 0.393193)
 bones/4/scale = Vector3(0.9999993, 0.99999917, 0.99999976)
-bones/5/rotation = Quaternion(-7.382781e-09, -4.5694456e-08, -0.53596324, 0.84424144)
+bones/5/rotation = Quaternion(2.8929001e-08, -6.71186e-08, -0.5569684, 0.8305337)
 bones/5/scale = Vector3(1.0000002, 0.9999999, 1)
 bones/6/rotation = Quaternion(7.598428e-09, -3.8330903e-09, 0.0266581, 0.99964464)
 bones/6/scale = Vector3(1, 1, 1)
-bones/7/rotation = Quaternion(-0.12815876, -0.3289435, 0.020330014, 0.9353921)
+bones/7/rotation = Quaternion(-0.17950265, -0.36680466, -0.0040704967, 0.91280705)
 bones/7/scale = Vector3(0.9999999, 1, 1.0000001)
 bones/8/position = Vector3(5.138707e-10, 0.096125096, -0.057500064)
-bones/8/rotation = Quaternion(-0.024809966, 0.016963301, -0.6506071, 0.7588196)
+bones/8/rotation = Quaternion(-0.022542961, 0.007032037, -0.67295295, 0.73930824)
 bones/8/scale = Vector3(1, 1, 1)
-bones/9/position = Vector3(-0.2120074, 0.13094719, -0.01638609)
-bones/9/rotation = Quaternion(-0.60969293, 0.012473192, 0.6890166, 0.3916315)
+bones/9/position = Vector3(-0.21200737, 0.13239309, -0.0089474935)
+bones/9/rotation = Quaternion(-0.6152576, -0.07676629, 0.596565, 0.50958353)
 bones/9/scale = Vector3(0.9999993, 0.99999905, 0.99999976)
-bones/10/rotation = Quaternion(-5.917678e-09, 5.5719955e-08, 0.30777445, 0.95145935)
+bones/10/rotation = Quaternion(-3.167581e-08, 3.999764e-08, 0.58015513, 0.814506)
 bones/10/scale = Vector3(1.0000002, 0.9999998, 1)
 bones/11/rotation = Quaternion(1.3807978e-10, 3.5662107e-09, -0.026658095, 0.99964464)
 bones/11/scale = Vector3(0.99999994, 0.99999994, 1)
-bones/12/rotation = Quaternion(-0.20629944, 0.23194288, 0.12445606, 0.9424191)
+bones/12/rotation = Quaternion(-0.19324903, 0.27402157, 0.05934705, 0.9402367)
 bones/12/scale = Vector3(0.99999976, 0.99999994, 1.0000002)
 bones/13/position = Vector3(-7.964459e-09, 0.096125126, -0.057500064)
-bones/13/rotation = Quaternion(-0.009479585, 0.019078067, 0.6396004, 0.7684124)
+bones/13/rotation = Quaternion(0.0044306302, 0.02839662, 0.57754165, 0.81585515)
 bones/13/scale = Vector3(1, 1, 1)
-bones/14/rotation = Quaternion(-0.04801275, 0.028692327, -0.004204917, 0.9984257)
-bones/15/position = Vector3(0.17094508, 0.10824817, -0.047477007)
-bones/15/rotation = Quaternion(0.9980706, 0.032409064, 0.032477476, -0.04183305)
+bones/14/rotation = Quaternion(-0.09525882, 0.017572885, -0.0034225946, 0.99529153)
+bones/15/position = Vector3(0.17094508, 0.113587245, -0.012201847)
+bones/15/rotation = Quaternion(0.9980832, 0.029735751, 0.035078105, 0.04141617)
 bones/15/scale = Vector3(0.99999994, 0.99999976, 1.000001)
-bones/16/rotation = Quaternion(0.27366123, 6.6284265e-08, -1.8990771e-07, 0.9618262)
+bones/16/rotation = Quaternion(0.72771126, 4.6037474e-08, -5.0413587e-07, 0.68588364)
 bones/16/scale = Vector3(1.0000002, 1.0000002, 1.0000001)
-bones/17/rotation = Quaternion(-0.42246035, -0.054284073, 0.028340124, 0.90431046)
+bones/17/rotation = Quaternion(-0.7009544, -0.060466226, 0.0104550375, 0.7105615)
 bones/17/scale = Vector3(1.0000002, 1.0000007, 0.99999905)
-bones/18/rotation = Quaternion(-4.844501e-07, 0.9202011, -0.39144614, 1.6806585e-07)
+bones/18/rotation = Quaternion(-4.829582e-07, 0.9201588, -0.3915454, 1.7255023e-07)
 bones/18/scale = Vector3(1, 0.999997, 1.0000032)
-bones/19/position = Vector3(-0.1709451, 0.113587275, 0.04790447)
-bones/19/rotation = Quaternion(0.9265356, -0.019559566, 0.009671639, 0.37557384)
+bones/19/position = Vector3(-0.17094508, 0.113920674, 0.012190289)
+bones/19/rotation = Quaternion(0.9625247, -0.018605517, 0.011717869, 0.27030137)
 bones/19/scale = Vector3(0.99999994, 0.99999976, 1.000001)
-bones/20/rotation = Quaternion(0.50120085, -5.7868284e-08, 3.4754797e-07, 0.865331)
+bones/20/rotation = Quaternion(0.5358434, -5.6775935e-08, 3.719472e-07, 0.8443175)
 bones/20/scale = Vector3(1, 1.0000001, 1)
-bones/21/rotation = Quaternion(-0.6186916, 0.057683963, 0.00064549135, 0.78351325)
+bones/21/rotation = Quaternion(-0.6907784, 0.05756086, 0.004451942, 0.72075814)
 bones/21/scale = Vector3(0.9999999, 1.0000007, 0.999999)
-bones/22/rotation = Quaternion(-4.4676686e-05, 0.92022866, -0.3913813, 1.01913965e-05)
+bones/22/rotation = Quaternion(-4.467158e-05, 0.92031324, -0.3911822, 1.0178286e-05)
 bones/22/scale = Vector3(1.0000001, 0.99999726, 1.0000031)
 
 [node name="GamedevTV_Mannequin_Medium_ArmLeft" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="0" unique_id=1118958067]
-material_override = SubResource("ShaderMaterial_6eb1q")
+material_override = SubResource("ShaderMaterial_m6nl3")
 
 [node name="GamedevTV_Mannequin_Medium_ArmRight" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="1" unique_id=1235885993]
-material_override = SubResource("ShaderMaterial_6eb1q")
+material_override = SubResource("ShaderMaterial_m6nl3")
 
 [node name="GamedevTV_Mannequin_Medium_Body" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="2" unique_id=586743127]
-material_override = SubResource("ShaderMaterial_6eb1q")
+material_override = SubResource("ShaderMaterial_m6nl3")
 
 [node name="GamedevTV_Mannequin_Medium_Head" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="3" unique_id=1682732076]
-material_override = SubResource("ShaderMaterial_6eb1q")
+material_override = SubResource("ShaderMaterial_m6nl3")
 
 [node name="GamedevTV_Mannequin_Medium_LegLeft" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="4" unique_id=483588245]
-material_override = SubResource("ShaderMaterial_6eb1q")
+material_override = SubResource("ShaderMaterial_m6nl3")
 
 [node name="GamedevTV_Mannequin_Medium_LegRight" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="5" unique_id=1476702254]
-material_override = SubResource("ShaderMaterial_6eb1q")
+material_override = SubResource("ShaderMaterial_m6nl3")
 
 [node name="WeaponSlot" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="6" node_paths=PackedStringArray("hitbox")]
-transform = Transform3D(0.15401828, -0.11736947, -0.9810719, -0.17302543, -0.9807799, 0.09017223, -0.9727995, 0.15586245, -0.17136589, -0.49977958, 0.6792746, -0.08471213)
+transform = Transform3D(0.13020462, -0.018629521, -0.9913118, -0.2093055, -0.97780675, -0.0091151, -0.9691421, 0.20867388, -0.13121408, -0.4861392, 0.6468459, -0.034737952)
 hitbox = NodePath("HitboxArea")
 
 [node name="LazerSword" type="MeshInstance3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0" unique_id=514338177]
@@ -562,7 +562,7 @@ max_db = 5.0
 bus = &"SFX"
 
 [node name="RightFootBone" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="7"]
-transform = Transform3D(0.9952604, -0.07981791, 0.055546906, -0.00085738674, -0.5783947, -0.8157563, 0.0972401, 0.8118433, -0.5757222, -0.17724594, 0.2012555, 0.1511594)
+transform = Transform3D(0.9943096, -0.09719369, 0.043606516, -0.031693388, -0.6607102, -0.74997157, 0.101703905, 0.74432313, -0.6600311, -0.18010724, 0.13352673, 0.034961082)
 
 [node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone" index="0" unique_id=888538347]
 stream = SubResource("AudioStreamRandomizer_gu6f8")
@@ -571,7 +571,7 @@ max_db = -3.0
 bus = &"SFX"
 
 [node name="LeftFootBone" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="8"]
-transform = Transform3D(0.9953911, 0.044908438, -0.08473937, 0.033329677, -0.9905001, -0.13341734, -0.0899261, 0.12997878, -0.9874307, 0.19184934, 0.19078325, -0.18705511)
+transform = Transform3D(0.9889637, 0.12772708, -0.075082704, 0.1338104, -0.98756725, 0.08250387, -0.06361142, -0.09164031, -0.99375856, 0.18732908, 0.24120577, -0.16110575)
 
 [node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/LeftFootBone" index="0" unique_id=208332668]
 stream = SubResource("AudioStreamRandomizer_gu6f8")
@@ -580,7 +580,7 @@ max_db = -3.0
 bus = &"SFX"
 
 [node name="FeetSlot" type="BoneAttachment3D" parent="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D" index="9" unique_id=1596840720 node_paths=PackedStringArray("hitbox")]
-transform = Transform3D(0.9952604, -0.07981791, 0.055546906, -0.00085738674, -0.5783947, -0.8157563, 0.0972401, 0.8118433, -0.5757222, -0.17724594, 0.2012555, 0.1511594)
+transform = Transform3D(0.9943096, -0.09719369, 0.043606516, -0.031693388, -0.6607102, -0.74997157, 0.101703905, 0.74432313, -0.6600311, -0.18010724, 0.13352673, 0.034961082)
 bone_name = "foot.r"
 bone_idx = 21
 script = ExtResource("31_feet")
@@ -642,12 +642,12 @@ character = NodePath("../..")
 attack_state = NodePath("../PlayerJumpKick")
 metadata/_custom_type_script = "uid://c2fahn2m2se57"
 
-[node name="PlayerDash" type="Node" parent="StateMachine" unique_id=1966261831 node_paths=PackedStringArray("running_state", "character", "dash_audio")]
+[node name="PlayerDash" type="Node" parent="StateMachine" unique_id=1966261831 node_paths=PackedStringArray("running_state", "dash_audio", "character")]
 script = ExtResource("5_a28ek")
-ability_tags = Array[StringName]([&"ability.dash", &"ability.movement"])
 running_state = NodePath("../PlayerRun")
-character = NodePath("../..")
 dash_audio = NodePath("../../DashAudio")
+character = NodePath("../..")
+ability_tags = Array[StringName]([&"ability.dash", &"ability.movement"])
 metadata/_custom_type_script = "uid://21pflv2d1drw"
 
 [node name="DashDuration" type="Timer" parent="StateMachine/PlayerDash" unique_id=793371820]
@@ -657,7 +657,6 @@ one_shot = true
 
 [node name="PlayerJump" type="Node" parent="StateMachine" unique_id=1966261832 node_paths=PackedStringArray("running_state", "jump_audio", "character", "attack_state")]
 script = ExtResource("28_jump")
-ability_tags = Array[StringName]([&"ability.jump"])
 jump_height = 1.6
 control_ratio = 0.2
 movement_speed_ratio = 0.7
@@ -665,6 +664,7 @@ running_state = NodePath("../PlayerRun")
 jump_audio = NodePath("../../JumpAudio")
 character = NodePath("../..")
 attack_state = NodePath("../PlayerJumpKick")
+ability_tags = Array[StringName]([&"ability.jump"])
 
 [node name="PlayerDefeat" type="Node" parent="StateMachine" unique_id=1340022835 node_paths=PackedStringArray("character")]
 script = ExtResource("27_defeat")
@@ -675,19 +675,18 @@ script = ExtResource("13_gu6f8")
 movement_speed = 1.0
 dash_cancel = true
 damage = 8.0
-ability_tags = Array[StringName]([&"ability.attack"])
 next_states = [NodePath("../PlayerRun")]
 combo_next = NodePath("../PlayerAttack2")
 weapon_slot = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
 character = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
+ability_tags = Array[StringName]([&"ability.attack"])
 jump_state = NodePath("../PlayerJump")
 
 [node name="PlayerAttack2" type="Node" parent="StateMachine" unique_id=210489082 node_paths=PackedStringArray("next_states", "combo_next", "weapon_slot", "character", "dash_state", "jump_state")]
 script = ExtResource("13_gu6f8")
 dash_cancel = true
 damage = 14.0
-ability_tags = Array[StringName]([&"ability.attack"])
 next_states = [NodePath("../PlayerRun")]
 combo_next = NodePath("../PlayerAttack3")
 attack_animation_name = "StabAttack"
@@ -697,13 +696,13 @@ dash_duration = 0.12
 self_hitstop_duration = 0.15
 character = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
+ability_tags = Array[StringName]([&"ability.attack"])
 jump_state = NodePath("../PlayerJump")
 
 [node name="PlayerAttack3" type="Node" parent="StateMachine" unique_id=484078479 node_paths=PackedStringArray("next_states", "weapon_slot", "character", "dash_state", "jump_state")]
 script = ExtResource("13_gu6f8")
 movement_speed = 4.0
 knockback = 7.5
-ability_tags = Array[StringName]([&"ability.attack"])
 next_states = [NodePath("../PlayerRun")]
 attack_animation_name = "SpinAttack"
 weapon_slot = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
@@ -711,6 +710,7 @@ rehit_interval = 0.32
 self_hitstop_duration = 0.17
 character = NodePath("../..")
 dash_state = NodePath("../PlayerDash")
+ability_tags = Array[StringName]([&"ability.attack"])
 jump_state = NodePath("../PlayerJump")
 
 [node name="PlayerJumpKick" type="Node" parent="StateMachine" unique_id=210489083 node_paths=PackedStringArray("running_state", "next_states", "weapon_slot", "character", "fall_state", "dash_state", "attack_state", "jump_state")]
@@ -718,7 +718,6 @@ script = ExtResource("30_kick")
 running_state = NodePath("../PlayerRun")
 dash_cancel = true
 damage = 15.0
-ability_tags = Array[StringName]([&"ability.attack"])
 knockback = 20.0
 next_states = [NodePath("../PlayerRun")]
 attack_animation_name = "JumpKick"
@@ -730,6 +729,7 @@ character = NodePath("../..")
 fall_state = NodePath("../PlayerFall")
 dash_state = NodePath("../PlayerDash")
 attack_state = NodePath("../PlayerAttack")
+ability_tags = Array[StringName]([&"ability.attack"])
 jump_state = NodePath("../PlayerJump")
 
 [node name="KnockbackComponent" type="Node" parent="." unique_id=531001606]
@@ -799,23 +799,22 @@ base_rotation_speed = 720.0
 [node name="EquipmentComponent" type="Node" parent="." unique_id=284918274]
 script = ExtResource("33_equip")
 
-[node name="PassiveAbilityComponent" type="Node" parent="."]
+[node name="PassiveAbilityComponent" type="Node" parent="." unique_id=1754586876]
 script = ExtResource("34_passive")
 
-[node name="TargetingComponent" type="Node" parent="." node_paths=PackedStringArray("character")]
+[node name="TargetingComponent" type="Node" parent="." unique_id=1350709638 node_paths=PackedStringArray("character")]
 script = ExtResource("d11_TargetingComponent")
 character = NodePath("..")
-auto_aim_range = 10.0
 
-[node name="PlayerDefeatHandler" type="Node" parent="." node_paths=PackedStringArray("character")]
+[node name="PlayerDefeatHandler" type="Node" parent="." unique_id=1472005724 node_paths=PackedStringArray("character")]
 script = ExtResource("d11_PlayerDefeatHandler")
 character = NodePath("..")
 
-[node name="AirborneTracker" type="Node" parent="." node_paths=PackedStringArray("character")]
+[node name="AirborneTracker" type="Node" parent="." unique_id=653995883 node_paths=PackedStringArray("character")]
 script = ExtResource("d11_AirborneTracker")
 character = NodePath("..")
 
-[node name="StatusVisualsComponent" type="Node" parent="." node_paths=PackedStringArray("attribute_component", "visual_parent")]
+[node name="StatusVisualsComponent" type="Node" parent="." unique_id=1546053170 node_paths=PackedStringArray("attribute_component", "visual_parent")]
 script = ExtResource("d11_StatusVisualsComponent")
 attribute_component = NodePath("../AttributeComponent")
 visual_parent = NodePath("..")
