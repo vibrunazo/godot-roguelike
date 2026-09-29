@@ -493,25 +493,7 @@ func _disable_all_ui() -> void:
 func _save_screenshot(file_path: String) -> void:
 	if not file_path.to_lower().ends_with(".png"):
 		file_path += ".png"
-	var viewport: Viewport = get_viewport()
-	if viewport == null:
-		return
-	var tex: ViewportTexture = viewport.get_texture()
-	if tex == null:
-		return
-	var img: Image = tex.get_image()
-	if img == null:
-		return
-
-	var base_dir: String = file_path.get_base_dir()
-	if not base_dir.is_empty():
-		DirAccess.make_dir_recursive_absolute(base_dir)
-
-	var err: Error = img.save_png(file_path)
-	if err == OK:
-		print("[CombatScenario] Screenshot saved successfully: ", file_path, " (", img.get_width(), "x", img.get_height(), ")")
-	else:
-		printerr("[CombatScenario] Failed to save screenshot: ", file_path, " error: ", err)
+	CaptureImage.save(CaptureImage.grab(get_viewport()), file_path, "CombatScenario")
 
 
 ## Recursively suppresses any active Camera3D nodes inside spawned actors to avoid viewport conflicts.

@@ -137,15 +137,4 @@ func _physics_process(_delta: float) -> void:
 func _save_screenshot(file_path: String) -> void:
 	if DisplayServer.get_name() == "headless":
 		return
-	var viewport: Viewport = get_viewport()
-	if viewport == null:
-		return
-	var tex: ViewportTexture = viewport.get_texture()
-	if tex == null:
-		return
-	var img: Image = tex.get_image()
-	if img != null:
-		var dir_err: Error = DirAccess.make_dir_recursive_absolute("movies")
-		if dir_err == OK or dir_err == ERR_ALREADY_EXISTS:
-			img.save_png(file_path)
-			print("Saved debug screenshot: ", file_path, " (", img.get_width(), "x", img.get_height(), ")")
+	CaptureImage.save(CaptureImage.grab(get_viewport()), file_path, "RecordBruteAttacks")

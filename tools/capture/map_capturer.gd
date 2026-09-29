@@ -326,25 +326,4 @@ func _freeze_level_actors(node: Node) -> void:
 
 
 func _save_screenshot(file_path: String) -> void:
-	var viewport: Viewport = get_viewport()
-	if viewport == null:
-		printerr("[MapCapturer] Viewport is null, cannot take screenshot.")
-		return
-	var tex: ViewportTexture = viewport.get_texture()
-	if tex == null:
-		printerr("[MapCapturer] ViewportTexture is null.")
-		return
-	var img: Image = tex.get_image()
-	if img == null:
-		printerr("[MapCapturer] Texture image is null.")
-		return
-
-	var base_dir: String = file_path.get_base_dir()
-	if not base_dir.is_empty():
-		DirAccess.make_dir_recursive_absolute(base_dir)
-
-	var err: Error = img.save_png(file_path)
-	if err == OK:
-		print("[MapCapturer] Screenshot saved successfully: ", file_path, " (", img.get_width(), "x", img.get_height(), ")")
-	else:
-		printerr("[MapCapturer] Failed to save screenshot: ", file_path, " error: ", err)
+	CaptureImage.save(CaptureImage.grab(get_viewport()), file_path, "MapCapturer")

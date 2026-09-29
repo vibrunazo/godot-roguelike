@@ -50,15 +50,4 @@ func _process(_delta: float) -> void:
 
 
 func _save_screenshot(file_path: String) -> void:
-	var viewport: Viewport = get_viewport()
-	if viewport == null:
-		return
-	var tex: ViewportTexture = viewport.get_texture()
-	if tex == null:
-		return
-	var img: Image = tex.get_image()
-	if img != null:
-		var dir_path: String = file_path.get_base_dir()
-		DirAccess.make_dir_recursive_absolute(dir_path)
-		var err: Error = img.save_png(file_path)
-		print("Saved screenshot to: ", file_path, " err: ", err)
+	CaptureImage.save(CaptureImage.grab(get_viewport()), file_path, "CaptureFirebomber")

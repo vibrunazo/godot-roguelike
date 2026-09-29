@@ -29,6 +29,16 @@ python capture.py test test/test_combo_and_dash_cancel.tscn
 
 ---
 
+### Resolution and token cost
+
+Screenshots and contact sheets are saved **768 px wide by default**, to save
+tokens when an agent looks at them (a full 1152x648 frame costs over twice as
+much). The frame is always rendered at the game's full resolution and only
+downscaled when saved (`tools/capture/capture_image.gd`), so framing and UI
+layout never change. Pass **`--full-res`** (on `map`, `anim` and `combat`) to
+keep every pixel when small details matter: thin VFX, particles, small UI
+text, one-pixel artifacts. Videos are unaffected.
+
 ## 2. Command Reference
 
 ### A. Map / Level Capture (`python capture.py map`)
@@ -86,6 +96,8 @@ python capture.py anim <target_path> [options]
 | `--debug-collisions`| Shows cyan/magenta collision shapes, weapon hitboxes, and hurtboxes | `--debug-collisions` |
 | `--speed <scale>` | Adjusts playback speed (e.g. `0.5` for slow-motion hitbox inspection) | `--speed 0.5` |
 | `--time <sec>` | Exact timestamp at which to snap the screenshot (defaults to strike apex) | `--time 0.35` |
+| `--sheet <N>` | Contact sheet: N frames spread over the animation (or `--duration`), tiled 3 per row into one image (saved as `*_sheet.png`). Cheaper than N screenshots and shows the whole motion | `--sheet 6` |
+| `--full-res` | Save at full resolution instead of 768 px wide | `--full-res` |
 | `--cam-angle <angle>`| Studio camera angle: `three_quarters` (default), `front`, `side`, `top_down` | `--cam-angle front` |
 | `--cam-dist <float>` | Distance multiplier relative to default studio camera distance (e.g. `2.5` for wide leaps/dashes) | `--cam-dist 2.5` |
 | `--cam-height <float>`| Additional elevation offset added to studio camera | `--cam-height 2.0` |

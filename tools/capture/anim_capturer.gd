@@ -5,7 +5,9 @@
 ## 2. Standalone animation resource files (.res) mounted onto base rigs.
 ## 3. Source animation GLB archives (e.g. Rig_Medium_CombatMelee.glb).
 ## Supports target dummy placement, collision shape visualization, slow-motion,
-## and exact timestamp screenshot or video recording into the movies/ folder.
+## and exact timestamp screenshot, contact sheet (--sheet=N: N frames spread
+## over the animation, tiled into one image) or video recording into the
+## movies/ folder.
 class_name AnimCapturer
 extends Node3D
 
@@ -34,6 +36,13 @@ var dummy_instance: Node3D
 var camera: Camera3D
 var total_anim_length: float = 1.0
 var target_screenshot_frame: int = 20
+## Frames on a contact sheet (--sheet=N); 0 takes a single screenshot.
+var sheet_count: int = 0
+## Contact sheet frames per row.
+const SHEET_COLUMNS: int = 3
+## Physics frames the sheet grabs its frames on, and the frames grabbed so far.
+var _sheet_frames: Array[int] = []
+var _sheet_images: Array[Image] = []
 
 
 func _ready() -> void:
@@ -45,6 +54,8 @@ func _ready() -> void:
 	if has_dummy:
 		_spawn_dummy()
 	_start_playback()
+	if sheet_count > 1:
+		_plan_sheet()
 
 
 func _physics_process(_delta: float) -> void:
@@ -62,6 +73,10 @@ func _physics_process(_delta: float) -> void:
 		if frame_count >= target_frames:
 			print("[AnimCapturer] Finished video recording (frames: %d)" % frame_count)
 			get_tree().quit(0)
+		return
+
+	if sheet_count > 1:
+		_update_sheet()
 		return
 
 	# Screenshot mode
@@ -103,6 +118,8 @@ func _parse_arguments() -> void:
 			screenshot_time = arg.trim_prefix("--time=").to_float()
 		elif arg.begins_with("--duration="):
 			duration_sec = arg.trim_prefix("--duration=").to_float()
+		elif arg.begins_with("--sheet="):
+			sheet_count = arg.trim_prefix("--sheet=").to_int()
 		elif arg == "--video":
 			is_video = true
 		elif arg == "--dummy":
@@ -432,26 +449,33 @@ func _disable_all_ui() -> void:
 			cr.visible = false
 
 
+## Spreads the sheet's frames evenly from the start to the end of the
+## animation (or of --duration when given).
+func _plan_sheet() -> void:
+	var span: float = duration_sec if duration_sec > 0.0 else total_anim_length
+	# Like the automatic screenshot, never before frame 15: the studio's
+	# first frames are not rendered yet (they come out black).
+	var first: int = 15
+	var last: int = maxi(first + sheet_count, int(span * 60.0))
+	for i: int in range(sheet_count):
+		_sheet_frames.append(first + roundi(float(last - first) * i / (sheet_count - 1)))
+	print("[AnimCapturer] Contact sheet of %d frames over %.2fs" % [sheet_count, span])
+
+
+## Grabs the planned sheet frames; once all are in, saves the sheet and quits.
+func _update_sheet() -> void:
+	if _sheet_frames.has(frame_count):
+		_sheet_images.append(CaptureImage.grab(get_viewport()))
+	if _sheet_images.size() < sheet_count:
+		return
+	var file_to_save: String = output_path if not output_path.is_empty() else _generate_default_screenshot_path()
+	# The sheet is already sized to one screenshot's width.
+	CaptureImage.save(CaptureImage.contact_sheet(_sheet_images, SHEET_COLUMNS), file_to_save, "AnimCapturer", true)
+	get_tree().quit(0)
+
+
 func _save_screenshot(file_path: String) -> void:
-	var viewport: Viewport = get_viewport()
-	if viewport == null:
-		return
-	var tex: ViewportTexture = viewport.get_texture()
-	if tex == null:
-		return
-	var img: Image = tex.get_image()
-	if img == null:
-		return
-
-	var base_dir: String = file_path.get_base_dir()
-	if not base_dir.is_empty():
-		DirAccess.make_dir_recursive_absolute(base_dir)
-
-	var err: Error = img.save_png(file_path)
-	if err == OK:
-		print("[AnimCapturer] Screenshot saved successfully: ", file_path, " (", img.get_width(), "x", img.get_height(), ")")
-	else:
-		printerr("[AnimCapturer] Failed to save screenshot: ", file_path, " error: ", err)
+	CaptureImage.save(CaptureImage.grab(get_viewport()), file_path, "AnimCapturer")
 
 
 ## Recursively suppresses any active Camera3D nodes inside spawned targets/dummies to avoid viewport conflicts.

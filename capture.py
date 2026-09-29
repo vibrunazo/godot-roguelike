@@ -45,6 +45,9 @@ from godot_env import ensure_class_cache, run_godot
 DEFAULT_TIMEOUT_SCREENSHOT = 25  # seconds
 DEFAULT_TIMEOUT_VIDEO = 90       # seconds
 OUTPUT_DIR = "movies"
+# Screenshots are saved downscaled (tools/capture/capture_image.gd) unless
+# --full-res sets this.
+FULL_RES = False
 
 
 def ensure_output_dir(path: str = OUTPUT_DIR) -> None:
@@ -87,6 +90,8 @@ def run_godot_command(
     """
     if not ensure_class_cache():
         return subprocess.CompletedProcess([], 1, "", "Godot's class cache could not be refreshed.")
+    if FULL_RES:
+        user_args = [*user_args, "--shot-width=0"]
     engine_args: List[str] = ["--path", "."]
     engine_args.extend(godot_flags)
     engine_args.append(scene_path)
@@ -283,6 +288,8 @@ def handle_anim(args: argparse.Namespace) -> int:
         user_args.append(f"--speed={args.speed}")
     if args.time is not None:
         user_args.append(f"--time={args.time}")
+    if args.sheet:
+        user_args.append(f"--sheet={args.sheet}")
     if args.dummy:
         user_args.append("--dummy")
     if args.debug_collisions:
@@ -320,7 +327,8 @@ def handle_anim(args: argparse.Namespace) -> int:
         if out_png:
             user_args.append(f"--output={out_png}")
         else:
-            out_png = os.path.join(OUTPUT_DIR, f"{base_name}_{tag}_{args.cam_angle or 'three_quarters'}.png")
+            suffix = "sheet" if args.sheet else (args.cam_angle or "three_quarters")
+            out_png = os.path.join(OUTPUT_DIR, f"{base_name}_{tag}_{suffix}.png")
             user_args.append(f"--output={out_png}")
 
         res = run_godot_command(godot_flags, user_args, "tools/capture/anim_capturer.tscn", timeout=DEFAULT_TIMEOUT_SCREENSHOT, verbose=getattr(args, "verbose", False))
@@ -503,6 +511,7 @@ def main() -> int:
     p_map.add_argument("--keep-avi", action="store_true", help="Do not delete intermediate AVI file")
     p_map.add_argument("--gif", action="store_true", help="Also generate an animated GIF")
     p_map.add_argument("--verbose", action="store_true", help="Stream full engine output live instead of highlight lines")
+    p_map.add_argument("--full-res", action="store_true", help="Save screenshots at full resolution (default: downscaled to save tokens; use this when small details are hard to see)")
 
     # --- ANIM SUBCOMMAND ---
     p_anim = subparsers.add_parser("anim", help="Capture or record character animations or raw assets")
@@ -517,6 +526,7 @@ def main() -> int:
     p_anim.add_argument("--dummy", action="store_true", help="Spawn target dummy in attack strike zone")
     p_anim.add_argument("--speed", type=float, default=1.0, help="Playback speed scale (e.g. 0.5 for slow-mo)")
     p_anim.add_argument("--time", type=float, help="Screenshot timestamp in seconds")
+    p_anim.add_argument("--sheet", type=int, help="Save a contact sheet of N frames spread over the animation (or --duration), tiled in one image, instead of one screenshot")
     p_anim.add_argument("--debug-collisions", action="store_true", help="Render collision shapes and hitboxes")
     p_anim.add_argument("--show-ui", action="store_true", help="Keep UI overlays and banners visible (suppressed by default)")
     p_anim.add_argument("--video", action="store_true", help="Record video instead of screenshot")
@@ -525,6 +535,7 @@ def main() -> int:
     p_anim.add_argument("--keep-avi", action="store_true", help="Do not delete intermediate AVI file")
     p_anim.add_argument("--gif", action="store_true", help="Also generate an animated GIF")
     p_anim.add_argument("--verbose", action="store_true", help="Stream full engine output live instead of highlight lines")
+    p_anim.add_argument("--full-res", action="store_true", help="Save screenshots at full resolution (default: downscaled to save tokens; use this when small details are hard to see)")
 
     # --- COMBAT SUBCOMMAND ---
     p_combat = subparsers.add_parser("combat", help="Stage and record custom combat scenarios")
@@ -549,6 +560,7 @@ def main() -> int:
     p_combat.add_argument("--keep-avi", action="store_true", help="Do not delete intermediate AVI file")
     p_combat.add_argument("--gif", action="store_true", help="Also generate an animated GIF")
     p_combat.add_argument("--verbose", action="store_true", help="Stream full engine output live instead of highlight lines")
+    p_combat.add_argument("--full-res", action="store_true", help="Save screenshots at full resolution (default: downscaled to save tokens; use this when small details are hard to see)")
 
     # --- TEST SUBCOMMAND ---
     p_test = subparsers.add_parser("test", help="Visually record a test suite execution")
@@ -563,6 +575,10 @@ def main() -> int:
     p_test.add_argument("--verbose", action="store_true", help="Stream full engine output live instead of highlight lines")
 
     args = parser.parse_args()
+    # Screenshots are downscaled by default (CaptureImage); --full-res keeps
+    # every pixel for every Godot run of this command.
+    global FULL_RES
+    FULL_RES = getattr(args, "full_res", False)
 
     if args.subcommand == "map":
         return handle_map(args)
