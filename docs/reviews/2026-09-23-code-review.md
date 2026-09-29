@@ -6,7 +6,7 @@
 **Test run during review:** `python run_tests.py` reported **ALL 49 TESTS PASSED (162.8 s)**. But 4 of the 49 are not tests (§3.4.7), and one passing suite logged 24 `SCRIPT ERROR`s that the runner did not catch (§3.4.1). Adding `--fixed-fps 60` to each invocation ran the same 45 real suites to the same result in **34.6 s** (§3.6).
 
 **Status: closed (2026-09-29).** Every finding below is fixed, was declined
-by the owner, or moved to `TODO.md`'s backlog (items 19 to 23); each section
+by the owner, or moved to `TODO.md`'s backlog (items 11 to 15); each section
 says which. The document stays as the record of why the code looks the way it
 does. Progress by phase: the status table at the top of §5.5.
 
@@ -33,7 +33,7 @@ Severity labels are words, not colors: **HIGH** = correctness risk or blocks sca
 ## 0. Executive summary: top 12 actions
 
 *(All resolved: see the status note on each referenced section. Row 17, the
-renderer for the phone target, is the open decision in `TODO.md` item 3.)*
+renderer for the phone target, is the open decision in `TODO.md` item 5.)*
 
 | # | Sev | Finding | Section |
 |---|-----|---------|---------|
@@ -445,7 +445,7 @@ Notes:
 - `test/` is `.gdignore`d, so `class_name` doesn't register there (§3.4.8). Suites should `extends "res://test/lib/test_suite.gd"`. Alternatively, move the harness to a non-ignored `res://testlib/` so `class_name TestSuite` works and agents get autocompletion. Either way, pick one and write it in AGENTS.md.
 - Keep it under about 200 lines. The value for agents is that the whole API fits in one screen, and a template suite (`test/test_template.gd`) shows the idioms.
 
-### 3.9 [HIGH] Frame-rate independence and mobile performance (added in revision 3) *(fixed 2026-09-26 (see the fix below); recommendations 1 and 3 done, 2 done as `## fps_matrix` and `--fps` (no CI, owner decision); recommendation 4 and the performance items are `TODO.md` item 19, and the renderer is the open decision in item 3)*
+### 3.9 [HIGH] Frame-rate independence and mobile performance (added in revision 3) *(fixed 2026-09-26 (see the fix below); recommendations 1 and 3 done, 2 done as `## fps_matrix` and `--fps` (no CI, owner decision); recommendation 4 and the performance items are `TODO.md` item 11, and the renderer is the open decision in item 5)*
 
 **Does `--fixed-fps 60` hide frame-rate bugs?** Yes, if it's the only rate ever tested. It pins the *render* frame to 1/60 s, so the suite always sees exactly one physics tick per render frame. Physics code itself is not the main risk: Godot runs `_physics_process` at a fixed tick rate (60 Hz, the default) whatever the render rate, and on a slow device it runs several ticks per render frame to catch up. It starts to slow down game time only past `max_physics_steps_per_frame` (8). The risk is **gameplay timing driven from render frames**:
 
@@ -542,7 +542,7 @@ A cheap CI lint can enforce most of this: flag `is_equal_approx(<expr>, <literal
 - `run_godot(args, timeout, fail_on_script_error=True)`: `Popen` with process-group kill (`start_new_session=True` on POSIX, `CREATE_NEW_PROCESS_GROUP` plus `taskkill /T` on Windows) so kills reach the engine without the PowerShell reaper.
 - Shared error-line detection.
 
-### 4.3 [LOW] Other tooling notes *(fixed 2026-09-29: `run_scratch.py` no longer passes `--quit-after` and checks the real `extends` line; CAPTURE.md already describes the display server correctly. Parallel suites are `TODO.md` item 20; CI was declined)*
+### 4.3 [LOW] Other tooling notes *(fixed 2026-09-29: `run_scratch.py` no longer passes `--quit-after` and checks the real `extends` line; CAPTURE.md already describes the display server correctly. Parallel suites are `TODO.md` item 12; CI was declined)*
 
 - `run_scratch.py` always passes `--quit-after 60`. That counts main-loop iterations, so a scratch script that `await`s a few frames of physics can be cut short silently. Make it a flag with a generous default, or drop it and rely on the watchdog.
 - `run_scratch.py` checks `"extends SceneTree" in content`, which also matches a comment. Check the first non-comment `extends` line instead.
@@ -552,7 +552,7 @@ A cheap CI lint can enforce most of this: flag `is_equal_approx(<expr>, <literal
 - CAPTURE.md's "D3D12" wording: `project.godot` sets `rendering_device/driver.windows="d3d12"` only for Windows, which is fine, but docs should say "a GPU display server (D3D12 on Windows, Vulkan elsewhere)".
 - *(Fixed 2026-09-28: automatic instead of a subcommand. `godot_env.ensure_class_cache()` compares every imported script's `class_name`, path and base with the cache and runs the headless editor import when they differ; `run_tests.py`, `run_scratch.py` and `capture.py` call it before launching.)* A headless editor import (`godot --headless --editor --quit`) is needed after adding a `class_name` (TODO #12, CAPTURE.md). Make it a runner subcommand (`python run_tests.py --reimport`) instead of tribal knowledge.
 
-### 4.4 [MED] UID integrity (added in revision 2) *(fixed: the lint checks duplicate, mismatched and non-canonical UIDs, and AGENTS.md forbids hand-written ones. Resolving UIDs inside binary `.res` files is `TODO.md` item 20)*
+### 4.4 [MED] UID integrity (added in revision 2) *(fixed: the lint checks duplicate, mismatched and non-canonical UIDs, and AGENTS.md forbids hand-written ones. Resolving UIDs inside binary `.res` files is `TODO.md` item 12)*
 
 Godot 4 references resources as `[ext_resource … uid="uid://…" path="res://…"]`. The UID wins when it resolves; when it doesn't, the engine falls back to `path` **without printing anything in headless runs**. That's why none of the following showed up in the test log. Audit of all tracked `.tscn`, `.tres`, `.uid` and `.import` files:
 
@@ -602,7 +602,7 @@ Caveats:
 - Human-facing docs stay as docs: README.md (setup, commands), TODO.md (open items only), and optionally `docs/ARCHITECTURE.md` if the AGENTS.md map outgrows a paragraph.
 - Add a `CLAUDE.md` / `GEMINI.md` that only imports or points to AGENTS.md, so every agent reads the same rules.
 
-### 5.2 Add automated guardrails (cheap, high value) *(done: items 1 to 3 and the runner regression tests; CI declined; the pre-commit hook and the agent-side hang prevention are `TODO.md` items 20 and 21)*
+### 5.2 Add automated guardrails (cheap, high value) *(done: items 1 to 3 and the runner regression tests; CI declined; the pre-commit hook and the agent-side hang prevention are `TODO.md` items 12 and 13)*
 
 1. **Decision (owner): no third-party linters.** The in-house lint below replaces `gdtoolkit`. It can include a few structural checks gdlint would have covered: max function length (for example 150 lines, which catches a 3,064-line `_ready()`), `const` and `@export` declared after the first `func`, and missing `##` docstrings on exports.
 2. **`tools/lint_project.py`** (a small Python script plus one headless GDScript step for UID resolution) run by `run_tests.py` before the suites. It fails on:
@@ -622,7 +622,7 @@ Caveats:
    - **Engine-side self-kill for headless runs (to prototype).** A tiny autoload that, only when running headless outside the editor, starts a thread that kills the process after a hard limit. That would make even a bare `godot --headless scene.tscn` return eventually. It can't cover failures before autoloads load (a `-s` script that doesn't extend `SceneTree`, a broken project file), so it complements the runners rather than replacing them. Verify it on `-s` runs before relying on it.
    - **Regression-test the runners themselves.** A fixture scene that never quits must make `run_tests.py`, `run_scratch.py` and `capture.py` return within their timeout and leave no engine process behind. Phase A shipped a runner that hung on exactly this case (fixed via `godot_env.py`), so it needs a test, run in CI.
 
-### 5.3 Architectural conventions to write down (and follow) *(done: in AGENTS.md §2 and §5. The `CharacterController` base is `TODO.md` item 22)*
+### 5.3 Architectural conventions to write down (and follow) *(done: in AGENTS.md §2 and §5. The `CharacterController` base is `TODO.md` item 14)*
 
 - **Reference nodes by typed exports, never by name strings.** States reference other states through `@export var x: CharacterState`.
 - **Required exports are validated in `_ready()`** with `push_error`. There's no silent `get_node_or_null` fallback and no hardcoded `load()` fallback.
@@ -633,7 +633,7 @@ Caveats:
 - **Autoloads are assumed present.** Don't null-check them.
 - **No production API for tests.** If tests need a hook, make it a documented public method.
 
-### 5.4 Scratch verification vs. the permanent suite, and agent roles (added in revision 3) *(done: the rule and admission check are in the `write-test` skill and the lint enforces the structure; hard roles and path permissions were declined by the owner; the scratch harness is `TODO.md` item 23)*
+### 5.4 Scratch verification vs. the permanent suite, and agent roles (added in revision 3) *(done: the rule and admission check are in the `write-test` skill and the lint enforces the structure; hard roles and path permissions were declined by the owner; the scratch harness is `TODO.md` item 15)*
 
 **How the bad tests got in.** Nothing in the repo defines what a permanent test is for. AGENTS.md talks about tests at length, so an agent asked to "make the enemy orange" reasonably concludes that verifying work means adding a test, and `test/` is the only obvious place to put one. The recording scenes (`record_*`, `capture_firebomber`) landed in `test/` the same way. Fixing this needs a rule that makes the distinction explicit, a scratch path that is easier than the suite, and enforcement that doesn't depend on the agent remembering the rule.
 
@@ -680,7 +680,7 @@ Caveats:
 | B4 Migrate the suites | Done 2026-09-28: all 49 suites run on the harness |
 | B5 Frame-rate workstream | Done 2026-09-26, apart from the mobile renderer/GI decision |
 | C6 AGENTS.md, skills, TODO, README | Done 2026-09-28, apart from the add-enemy/item/passive checklist skills (they wait for the registry unification, §2.5) |
-| C7 `tools/lint_project.py` | Done 2026-09-28, and green the same day (all 27 long functions split). The pre-commit hook and the headless UID step for binary resources are `TODO.md` item 20 |
+| C7 `tools/lint_project.py` | Done 2026-09-28, and green the same day (all 27 long functions split). The pre-commit hook and the headless UID step for binary resources are `TODO.md` item 12 |
 | C8 Shared launcher, `GODOT_BIN`, CI | Done 2026-09-28 for the local parts; CI skipped (owner decision: single developer, local lint and tests are the gate) |
 | D9 Aliases, fallbacks, sentinel | Done 2026-09-28 |
 | D10 Level registry and duplicated owners | Done 2026-09-28 |
