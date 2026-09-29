@@ -154,9 +154,9 @@ func _update_collision_mask() -> void:
 			mask |= 128
 		if friendly_fire:
 			if wielder != null:
-				if wielder.is_in_group("enemy") or (wielder.has_method("is_enemy") and wielder.is_enemy()):
+				if wielder.is_enemy():
 					mask |= 128
-				elif wielder.is_in_group("player") or (wielder.has_method("is_player") and wielder.is_player()):
+				elif wielder.is_player():
 					mask |= 64
 				else:
 					mask |= 64 | 128

@@ -81,7 +81,7 @@ func exit_to_main_menu() -> void:
 	exit_to_menu_requested.emit()
 	UI.resume_game()
 	ProgressionState.reset_run()
-	SceneTransition.load_scene_path("res://Levels/menu_level.tscn")
+	SceneTransition.load_scene_path(GlobalVars.menu_scene.resource_path)
 
 
 ## Quits the application cleanly.

@@ -26,7 +26,7 @@ func fade_in(tween: Tween) -> void:
 	tween.tween_property(color_rect, "color:a", 1.0, 1.0)
 
 
-func load_scene_path(path_in: String, args: Dictionary = {}) -> void:
+func load_scene_path(path_in: String) -> void:
 	var player: Character = get_tree().get_first_node_in_group("player") as Character
 	if player:
 		# Silence the outgoing player at once: movement, abilities, SFX,
@@ -45,9 +45,9 @@ func load_scene_path(path_in: String, args: Dictionary = {}) -> void:
 ## Loads the dungeon ProgressionState prepares for the current dungeon level:
 ## its boss arena when one is registered, otherwise a regular dungeon matching
 ## the planned encounter.
-func load_next_level(args: Dictionary = {}) -> void:
+func load_next_level() -> void:
 	var dungeon: DungeonResource = ProgressionState.prepare_next_encounter()
 	if dungeon == null or dungeon.scene == null:
 		push_error("SceneTransition: no dungeon to load for dungeon level %d." % ProgressionState.dungeon_level)
 		return
-	load_scene_path(dungeon.scene.resource_path, args)
+	load_scene_path(dungeon.scene.resource_path)

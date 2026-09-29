@@ -5,7 +5,10 @@
 
 **Test run during review:** `python run_tests.py` reported **ALL 49 TESTS PASSED (162.8 s)**. But 4 of the 49 are not tests (§3.4.7), and one passing suite logged 24 `SCRIPT ERROR`s that the runner did not catch (§3.4.1). Adding `--fixed-fps 60` to each invocation ran the same 45 real suites to the same result in **34.6 s** (§3.6).
 
-**Progress:** see the status table at the top of §5.5.
+**Status: closed (2026-09-29).** Every finding below is fixed, was declined
+by the owner, or moved to `TODO.md`'s backlog (items 19 to 23); each section
+says which. The document stays as the record of why the code looks the way it
+does. Progress by phase: the status table at the top of §5.5.
 
 **Phase A done (2026-09-24):** runner hardened, recording scenes moved, Level 10 walls fixed, `WaveObjective` leak fixed, UIDs canonicalized, harness, arena and template added, `test_character_rotation` migrated. §4.4 corrected. Remaining exit leaks came from 7 suites that strip `WaveObjective`'s script (`set_script(null)`); none does any more (2026-09-28).
 
@@ -21,13 +24,16 @@
 - Added skills to the docs plan (§5.1).
 - Merged "fix tests" and "adopt harness" into one step (§5.5, step 4).
 - `:=` and typed dictionaries are allowed (§1.2).
-- Stale worktrees and branches have been removed by the owner. A leftover `.worktrees/boss-arena-1/` directory (75 MB) is still on disk.
+- Stale worktrees and branches have been removed by the owner. *(The leftover `.worktrees/boss-arena-1/` directory noted here is gone as well, checked 2026-09-29.)*
 
 Severity labels are words, not colors: **HIGH** = correctness risk or blocks scaling; **MED** = tech debt that will get worse; **LOW** = cleanup / hygiene. Every finding carries one of these words in its heading or table row.
 
 ---
 
 ## 0. Executive summary: top 12 actions
+
+*(All resolved: see the status note on each referenced section. Row 17, the
+renderer for the phone target, is the open decision in `TODO.md` item 3.)*
 
 | # | Sev | Finding | Section |
 |---|-----|---------|---------|
@@ -52,7 +58,7 @@ Severity labels are words, not colors: **HIGH** = correctness risk or blocks sca
 
 ---
 
-## 1. AGENTS.md consistency
+## 1. AGENTS.md consistency *(fixed: see 1.1 to 1.3)*
 
 ### 1.1 [HIGH] AGENTS.md vs. the code (factually stale) *(fixed 2026-09-28 by the AGENTS.md rewrite; the alias, preload and worktree rows are tracked in §2.6, §2.7 and §4.1)*
 
@@ -136,14 +142,14 @@ Renaming a node in a `.tscn` silently disables behavior. Recommendations:
 2. Make "can this body be ordered?" a single method: `Character.can_accept_order(target_state, can_break_stun) -> bool`, or `State` flags (`@export var blocks_ai_orders: bool`, `@export var is_stun: bool`). Then `AIStateMachine`, `AIConditionalAttack` and `AILeapingDodge` call one function.
 3. Replace the `"AIMeander"`/`"AIWait"` check in `alert()` with an `@export var alert_state: AIState` plus an `is_idle` flag on `AIState`.
 
-### 2.3 [MED] Layering violations
+### 2.3 [MED] Layering violations *(fixed 2026-09-29: `CharacterAttack` reads only `character.aim_direction`, which the player's controller keeps current (every tick and on each order), and clears only the aim it wrote itself; `AttackComponent` binds its parent area unless its new `bind_parent_area` export is off, which the five projectile scenes set; `force_retarget()` lives on `TargetingComponent` as a documented public method, which is how §5.3 says test hooks should look)*
 
 - *(Fixed 2026-09-27: `PlayerInputComponent._unhandled_input` now routes `click`/`jump` to its orders; `StateMachine._unhandled_input` and the unused `State.handle_input` are gone; no test calls `_unhandled_input` any more.)* **The generic `StateMachine` knows about the player** (`state_machine.gd:49-60`). `_bridge_action_to_intent()` looks up `PlayerInputComponent` and reads the `"click"`/`"jump"` actions in the base class that `AIStateMachine` also inherits. Its docstring says it exists so *"existing `sm._unhandled_input(...)` drivers"* (tests) keep working. Move input handling into `PlayerInputComponent._unhandled_input`, and have tests drive `input_comp.order_attack()` or `Input.parse_input_event()`.
 - **`CharacterAttack` and `PlayerDash` branch on `get_node_or_null("PlayerInputComponent")`** (`character_attack.gd:192, 411`, `player_dash.gd:26`). A shared state should not care who controls it. Let the controller push aim into `character.aim_direction`, and let the state read only `Character`.
 - **`AttackComponent._ready()` knows about a subclass consumer**: `if parent is Area3D and not (parent is EnemyProjectile)` (`attack_component.gd:48`). Replace it with an explicit `@export var auto_bind_parent_area: bool = true` that projectiles set to false.
 - **Production API added for tests:** `PauseMenu.resume_button` is *"kept for test compatibility"* (`pause_menu.gd:40`), `Character.force_retarget()` is "used by tests", and the `StateMachine` input bridge above exists for the same reason. Tests call `_unhandled_input` 44 times and `_transition_to_next_state` 11 times (70 private calls in total). Tests should use public APIs; if one is missing, add it deliberately.
 
-### 2.4 [LOW] Component discovery boilerplate
+### 2.4 [LOW] Component discovery boilerplate *(fixed 2026-09-29: one policy, explicit exports. The only fallbacks still in use (the player's and enemy base's `hurtbox`, the player's equipment and passive components) are wired in the scenes; `Character` and `Hurtbox` lost their name lookups, and `Character._check_wiring()` reports every missing required export with `push_error`. The weapon's attack component is connected once, and the dead `add_exception(self)` calls are gone)*
 
 `Character._ready()` (`:124-175`) repeats `if x == null: x = get_node_or_null("X")` and then `for child in get_children(): if child is X` for 10+ components. `Hurtbox._resolve_attributes()` does the same thing again. This mixes two policies: explicit `@export` wiring and name-based fallback.
 
@@ -206,7 +212,7 @@ can_break_stun = false
 
 A designer who sets `trigger_range = 3.5` in the inspector gets 5.0. `can_break_stun` is shown as an editable export but is always forced to false. Fix: declare the subclass's own defaults by overriding in the scene, or restructure so the parent's defaults aren't exports the child must fight. Docstrings in this file also embed tuning values ("player distance < 5m", "15.0m default"), which go stale on the first tune.
 
-### 2.9 [MED] Copy-paste families (behavior-checked)
+### 2.9 [MED] Copy-paste families (behavior-checked) *(fixed 2026-09-28: see each row and the cooldown note)*
 
 Revision 1 used `difflib` shared-line counts, which include boilerplate and don't prove duplicated *behavior*. In revision 2, each pair was diffed function by function and the differences were read, to separate "same algorithm copied" from "similar shape, different purpose".
 
@@ -234,7 +240,7 @@ What is duplicated is only a 3-line decrement, which doesn't justify a shared cl
 - No enemy today has two AI states targeting the same body attack (checked across all `Enemy/*.tscn`), so nothing double-ticks. But nothing prevents it either: wiring a second AI state to `EnemyAttack` would halve that cooldown silently.
 - **Recommendation:** let `CharacterAttack` always tick its own cooldown in `_physics_process`, and make AI states read-only (`is_on_cooldown()` / `can_activate()`). Drop the proxy properties.
 
-### 2.10 [LOW] Hidden tuning values and magic numbers in logic
+### 2.10 [LOW] Hidden tuning values and magic numbers in logic *(fixed 2026-09-29: navigation auto-config and head-slide values are named constants in `Character`; the input component's fallback speed and gravity are gone (no attribute component is an error, zero gravity means no jump sizing); the damage tint already had exports; `ExitPoint` has a `trail_color` export and the shader parameter is spelled `Cutoff` (its value lives in the scene's RESET animation); the debug kill is only bound in debug builds)*
 
 Designers can't see or change these in the inspector:
 
@@ -246,7 +252,7 @@ Designers can't see or change these in the inspector:
 - `ui.gd:15`: `DEBUG_KILL_DAMAGE = 50.0` as a `const` in the UI singleton. Debug cheats belong in a debug-only autoload or `OS.is_debug_build()`-gated node.
 - *(Fixed 2026-09-27: braking is now `speed / Character.stop_time` per second; the default keeps the old 60 Hz feel; covered in `test_frame_rate_invariance`.)* `core_movement()` (`character_state.gd`): `move_toward(velocity.x, 0.0, speed)` decelerates by `speed` per *frame*, not per second. This depends on frame rate and is effectively an instant stop, so it's likely unintended.
 
-### 2.11 [LOW] Smaller smells
+### 2.11 [LOW] Smaller smells *(fixed 2026-09-29: no autoload null checks outside editor-only paths; duck typing replaced by typed casts or declared virtuals (`CharacterState.is_uninterruptable()`, `MannequinAnimationTree`, `BallisticProjectile`, `RoomSpawnArea`); constants before functions (lint rule); `FireTrap` and `ExitPoint` keep one copy of their timer and material wiring; `Hurtbox` alone switches itself off on defeat; `StateMachine` checks a target once and survives a missing owner; `load_scene_path()` lost its unused `args`; the wave log is `print_verbose` and the editor-embed notices are warnings; `deal_damage_to()` takes explicit damage and knockback; `AttackComponent` processes only when it is a multi-hit attack)*
 
 - **32 null checks on autoloads** (`if ProgressionState != null`, `VfxManager.has_method("clear_temporary_effects")`). Autoloads always exist in game runs. The checks make it look like a missing singleton is supported, and they hide real errors.
 - **26 `get("prop")` / `has_method()` duck-typing sites**. Examples: `jump_state.get("jump_height")` in `player_input_component.gd:214`, `state.get("uninterruptable")` in `character.gd:682`. Prefer typed casts (`as PlayerJump`) or a declared base-class property.
@@ -259,7 +265,7 @@ Designers can't see or change these in the inspector:
 - `AttackComponent.deal_damage_to` uses `kb != Vector3.ZERO` and `dmg >= 0` as "not provided" sentinels, so a caller can't request zero knockback explicitly.
 - Every `AttackComponent` runs `_physics_process` every frame even when idle (`current_time += delta`). Use `Time.get_ticks_msec()`, or enable processing only while the hitbox is monitoring.
 
-### 2.12 [MED] `WaveObjective` leaks unspawned enemies (production bug)
+### 2.12 [MED] `WaveObjective` leaks unspawned enemies (production bug) *(fixed in Phase A: unspawned enemies are freed on `stop_spawning()` and when the wave is deleted; `test_wave_objective` covers it)*
 
 `WaveObjective._ready()` (`Levels/wave_objective.gd:108-117`) calls `generate_wave_enemies()`, which **instantiates every enemy of the wave immediately**. A tween then adds them to the tree one at a time (2.5 s, then 1 s per enemy). An instantiated node that is never added to the tree is an *orphan*: nothing frees it when the level unloads. So any level left before the wave finishes spawning (player death and restart, pause menu to main menu, and every test that loads a level) leaks those enemies and all their RIDs: Jolt bodies and shapes, `NavAgent3D`, materials, viewports.
 
@@ -283,7 +289,7 @@ Fix options (either works):
 
 **Totals:** 45 real suites plus 4 non-test scenes, about 16k lines. Runtime is 163 s serially, and `test_jump_action` takes 18.3 s against the 20 s budget.
 
-### 3.1 [HIGH] Assertions on balance / tuning values (designer changes break tests)
+### 3.1 [HIGH] Assertions on balance / tuning values (designer changes break tests) *(fixed 2026-09-28 by the harness migration; the lint's `test-float-literal` rule keeps it fixed)*
 
 These fail when a designer tunes a value, which AGENTS.md §3 explicitly forbids:
 
@@ -299,7 +305,7 @@ These fail when a designer tunes a value, which AGENTS.md §3 explicitly forbids
 | `test_enemy_base.gd:562` | exit trigger `SphereShape3D.radius == 2.0` | Assert that the shape exists and `radius > 0`. |
 | `test_attack_cycle.gd:20`, `test_attack_intents.gd:25`, `test_combo_and_dash_cancel.gd:34` | `create_timer(1.1)`, "spawn repositioning timer (1.0s)" | Wait on the actual condition or signal, or read the production timer's `wait_time`. |
 
-### 3.2 [HIGH] Assertions on art / VFX / layout configuration (scene snapshot tests)
+### 3.2 [HIGH] Assertions on art / VFX / layout configuration (scene snapshot tests) *(fixed 2026-09-28 by the harness migration: suites assert wiring and relations, and visuals are checked with `capture.py`)*
 
 These pin how things look rather than what they do. Artists will break them:
 
@@ -313,7 +319,7 @@ These pin how things look rather than what they do. Artists will break them:
 
 **Guideline:** a test may assert that a node exists, what type it is, how it's wired, and *relations* between values ("rider sword matches the melee sword": compare the two resources, not literals; "hit particles are one-shot"). It should not assert magnitudes. Where "looks the same as the player" is the real requirement, compare against the player's live value.
 
-### 3.3 [HIGH] Physical key assertions (forbidden by AGENTS.md §3)
+### 3.3 [HIGH] Physical key assertions (forbidden by AGENTS.md §3) *(fixed 2026-09-28; the lint's `test-key-constant` rule keeps it fixed)*
 
 - `test_debug_kill.gd:28, 110`: `KEY_K`
 - `test_pause_menu.gd:22-35, 262`: `KEY_P`, `KEY_ESCAPE` (plus a message quoting scancodes `80`/`4194305`)
@@ -321,7 +327,7 @@ These pin how things look rather than what they do. Artists will break them:
 
 Replace with `InputMap.has_action("…")` and `not InputMap.action_get_events("…").is_empty()`, and drive input with an `InputEventAction` rather than a synthesized key event.
 
-### 3.4 Structural problems
+### 3.4 Structural problems *(fixed: 1 in Phase A (the runner fails on script errors), 2 to 4 and 8 as marked, 5 by `wait_until()` (the last fixed-frame waits in `test_attributes` became condition waits on 2026-09-29), 6 by the arena fixture, 7 by the lint's `test-stray-file` rule, 9 by the migration (suites report through `check()`, not literal pass messages))*
 
 1. [HIGH] **Runner ignores engine errors.** `run_tests.py` checks only the exit code. In this review's run, `test_level_rotation_nav.tscn` logged **24 `SCRIPT ERROR: Cannot call method 'get_aabb' on a null value`** from `_floor_cell_box` (`test_level_rotation_nav.gd:311`) and **48 `Requested for nonexistent MeshLibrary item '21'`** errors while verifying pit lining (they appear during the `level_10` checks). It still printed `[OK]`. GDScript aborts the failing call and continues, so the pit-lining check silently doesn't run for those cells. Two fixes are needed:
    - `run_tests.py` should capture output and fail on `SCRIPT ERROR` / `Parse Error` / `ERROR:` lines. `tools/levels/build_level.py:39` already does this.
@@ -349,7 +355,7 @@ Replace with `InputMap.has_action("…")` and `not InputMap.action_get_events("�
 - `test_self_hitstop.gd:65-73`: writes a sentinel value, checks for isolation, restores.
 - `test_character_and_ai.gd`: one function per part and a readable `_ready()` orchestrator.
 
-### 3.6 [HIGH] Why the suite is slow (measured)
+### 3.6 [HIGH] Why the suite is slow (measured) *(fixed in Phases A and B: `--fixed-fps 60` in the runners, a 10 s budget per suite, AGENTS.md rewritten, wall-clock behavior noted in the `write-test` skill)*
 
 A probe scene (`.scratch/timing/timing.gd`) measured load time plus 120 `physics_frame` awaits plus 120 `process_frame` awaits, headless, on this machine:
 
@@ -381,7 +387,7 @@ Consequences:
 - AGENTS.md's frame-budget paragraph is **inverted** on this machine: it claims idle/process frames are "far slower than physics frames", but here 120 process frames took 0.86 s and 120 physics frames took 1.94 s. With `--fixed-fps` the distinction disappears, so replace the paragraph with "the runner uses `--fixed-fps`; wait on conditions, never wall-clock time".
 - Code that deliberately uses wall-clock time (`Time.get_ticks_msec()`, timers with `ignore_time_scale`, such as the "real time" self-hitstop) no longer lines up with game time under the flag. All suites passed anyway, but tests of wall-clock behavior should say so explicitly and live in small dedicated suites.
 
-### 3.7 [MED] Leaks at exit: what teardown can and can't fix (measured)
+### 3.7 [MED] Leaks at exit: what teardown can and can't fix (measured) *(fixed: the harness frees what a test creates, flushes frames and fails a test that leaks orphan nodes)*
 
 The hypothesis to test was that "dynamic scenes freed right before `quit()` don't get frames to finish, so the harness should flush frames before quitting." The experiment in §2.12 **disproves it as the main cause**. Flushing 3 frames after `queue_free()` didn't reduce the leaks (338 → 359 objects, 80 → 90 RIDs). Nodes that are *in the tree* at `quit()` are freed by `SceneTree` finalization anyway, and a `NavigationRegion3D`'s server RIDs are released when the node is freed. What leaks is **orphans**: nodes created but never added to the tree, or removed without being freed. Nothing ever frees those. Freeing the orphans took the probe to 0/0.
 
@@ -395,7 +401,7 @@ So the harness teardown should do three things. Only the first two are "cleanup"
 2. **Flush frames** (`await process_frame` twice) so `queue_free` and `call_deferred` work settles before `quit()`. This is cheap and correct, just not the leak fix.
 3. **Detect leaks instead of hiding them.** Record `Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)` in setup and compare after teardown. If it grew, call `Node.print_orphan_nodes()` and fail with "N orphan nodes leaked". That check would have caught §2.12 on day one. Start it as a warning while the existing leaks are fixed, then make it a failure.
 
-### 3.8 In-house test harness (spec)
+### 3.8 In-house test harness (spec) *(done: `test/lib/test_suite.gd`)*
 
 `test/lib/test_suite.gd`, one base class that every suite extends. Every suite is a `.tscn` whose root script extends it:
 
@@ -439,7 +445,7 @@ Notes:
 - `test/` is `.gdignore`d, so `class_name` doesn't register there (§3.4.8). Suites should `extends "res://test/lib/test_suite.gd"`. Alternatively, move the harness to a non-ignored `res://testlib/` so `class_name TestSuite` works and agents get autocompletion. Either way, pick one and write it in AGENTS.md.
 - Keep it under about 200 lines. The value for agents is that the whole API fits in one screen, and a template suite (`test/test_template.gd`) shows the idioms.
 
-### 3.9 [HIGH] Frame-rate independence and mobile performance (added in revision 3)
+### 3.9 [HIGH] Frame-rate independence and mobile performance (added in revision 3) *(fixed 2026-09-26 (see the fix below); recommendations 1 and 3 done, 2 done as `## fps_matrix` and `--fps` (no CI, owner decision); recommendation 4 and the performance items are `TODO.md` item 19, and the renderer is the open decision in item 3)*
 
 **Does `--fixed-fps 60` hide frame-rate bugs?** Yes, if it's the only rate ever tested. It pins the *render* frame to 1/60 s, so the suite always sees exactly one physics tick per render frame. Physics code itself is not the main risk: Godot runs `_physics_process` at a fixed tick rate (60 Hz, the default) whatever the render rate, and on a slow device it runs several ticks per render frame to catch up. It starts to slow down game time only past `max_physics_steps_per_frame` (8). The risk is **gameplay timing driven from render frames**:
 
@@ -514,7 +520,7 @@ A cheap CI lint can enforce most of this: flag `is_equal_approx(<expr>, <literal
 
 ## 4. Tooling and OS agnosticism
 
-### 4.1 [HIGH] Machine-specific state committed to the repo
+### 4.1 [HIGH] Machine-specific state committed to the repo *(fixed in Phase A; the lint's `absolute-path` rule keeps it fixed. The leftover `.worktrees/boss-arena-1/` directory is gone too (checked 2026-09-29: `.worktrees/` is empty and `git worktree list` shows only the main checkout))*
 
 - `project.godot:39` sets `movie_writer/movie_file="D:/docs/godot/godot-roguelite-starting-project/movies/test1.avi"`. The editor writes this setting; clear it, or set it to `res://movies/…` (the folder is git-ignored).
 - `test/capture_firebomber.gd:4` has `dest_path = "C:/Users/vibru/.gemini/antigravity/brain/<uuid>/orange_firebomber.png"`. This is another agent's private scratch path, committed.
@@ -536,7 +542,7 @@ A cheap CI lint can enforce most of this: flag `is_equal_approx(<expr>, <literal
 - `run_godot(args, timeout, fail_on_script_error=True)`: `Popen` with process-group kill (`start_new_session=True` on POSIX, `CREATE_NEW_PROCESS_GROUP` plus `taskkill /T` on Windows) so kills reach the engine without the PowerShell reaper.
 - Shared error-line detection.
 
-### 4.3 [LOW] Other tooling notes
+### 4.3 [LOW] Other tooling notes *(fixed 2026-09-29: `run_scratch.py` no longer passes `--quit-after` and checks the real `extends` line; CAPTURE.md already describes the display server correctly. Parallel suites are `TODO.md` item 20; CI was declined)*
 
 - `run_scratch.py` always passes `--quit-after 60`. That counts main-loop iterations, so a scratch script that `await`s a few frames of physics can be cut short silently. Make it a flag with a generous default, or drop it and rely on the watchdog.
 - `run_scratch.py` checks `"extends SceneTree" in content`, which also matches a comment. Check the first non-comment `extends` line instead.
@@ -546,7 +552,7 @@ A cheap CI lint can enforce most of this: flag `is_equal_approx(<expr>, <literal
 - CAPTURE.md's "D3D12" wording: `project.godot` sets `rendering_device/driver.windows="d3d12"` only for Windows, which is fine, but docs should say "a GPU display server (D3D12 on Windows, Vulkan elsewhere)".
 - *(Fixed 2026-09-28: automatic instead of a subcommand. `godot_env.ensure_class_cache()` compares every imported script's `class_name`, path and base with the cache and runs the headless editor import when they differ; `run_tests.py`, `run_scratch.py` and `capture.py` call it before launching.)* A headless editor import (`godot --headless --editor --quit`) is needed after adding a `class_name` (TODO #12, CAPTURE.md). Make it a runner subcommand (`python run_tests.py --reimport`) instead of tribal knowledge.
 
-### 4.4 [MED] UID integrity (added in revision 2)
+### 4.4 [MED] UID integrity (added in revision 2) *(fixed: the lint checks duplicate, mismatched and non-canonical UIDs, and AGENTS.md forbids hand-written ones. Resolving UIDs inside binary `.res` files is `TODO.md` item 20)*
 
 Godot 4 references resources as `[ext_resource … uid="uid://…" path="res://…"]`. The UID wins when it resolves; when it doesn't, the engine falls back to `path` **without printing anything in headless runs**. That's why none of the following showed up in the test log. Audit of all tracked `.tscn`, `.tres`, `.uid` and `.import` files:
 
@@ -570,7 +576,7 @@ AGENTS.md should also state the rule these checks enforce: **never hand-write or
 
 The main risk is not any single bug. Agents with different styles each add a locally reasonable pattern (aliases "to be safe", fallbacks "just in case", tests that snapshot what they just built), and nothing pushes back. The fix is to turn conventions into **checks** and keep **one short canonical rulebook**.
 
-### 5.1 Restructure the docs: always-loaded rules vs. on-demand skills
+### 5.1 Restructure the docs: always-loaded rules vs. on-demand skills *(done in C6; the add-enemy/item/passive checklist skills were not written: nothing needs them yet)*
 
 **Should docs become skills? Mostly yes, for procedures. Not for rules.**
 
@@ -596,7 +602,7 @@ Caveats:
 - Human-facing docs stay as docs: README.md (setup, commands), TODO.md (open items only), and optionally `docs/ARCHITECTURE.md` if the AGENTS.md map outgrows a paragraph.
 - Add a `CLAUDE.md` / `GEMINI.md` that only imports or points to AGENTS.md, so every agent reads the same rules.
 
-### 5.2 Add automated guardrails (cheap, high value)
+### 5.2 Add automated guardrails (cheap, high value) *(done: items 1 to 3 and the runner regression tests; CI declined; the pre-commit hook and the agent-side hang prevention are `TODO.md` items 20 and 21)*
 
 1. **Decision (owner): no third-party linters.** The in-house lint below replaces `gdtoolkit`. It can include a few structural checks gdlint would have covered: max function length (for example 150 lines, which catches a 3,064-line `_ready()`), `const` and `@export` declared after the first `func`, and missing `##` docstrings on exports.
 2. **`tools/lint_project.py`** (a small Python script plus one headless GDScript step for UID resolution) run by `run_tests.py` before the suites. It fails on:
@@ -616,7 +622,7 @@ Caveats:
    - **Engine-side self-kill for headless runs (to prototype).** A tiny autoload that, only when running headless outside the editor, starts a thread that kills the process after a hard limit. That would make even a bare `godot --headless scene.tscn` return eventually. It can't cover failures before autoloads load (a `-s` script that doesn't extend `SceneTree`, a broken project file), so it complements the runners rather than replacing them. Verify it on `-s` runs before relying on it.
    - **Regression-test the runners themselves.** A fixture scene that never quits must make `run_tests.py`, `run_scratch.py` and `capture.py` return within their timeout and leave no engine process behind. Phase A shipped a runner that hung on exactly this case (fixed via `godot_env.py`), so it needs a test, run in CI.
 
-### 5.3 Architectural conventions to write down (and follow)
+### 5.3 Architectural conventions to write down (and follow) *(done: in AGENTS.md §2 and §5. The `CharacterController` base is `TODO.md` item 22)*
 
 - **Reference nodes by typed exports, never by name strings.** States reference other states through `@export var x: CharacterState`.
 - **Required exports are validated in `_ready()`** with `push_error`. There's no silent `get_node_or_null` fallback and no hardcoded `load()` fallback.
@@ -627,7 +633,7 @@ Caveats:
 - **Autoloads are assumed present.** Don't null-check them.
 - **No production API for tests.** If tests need a hook, make it a documented public method.
 
-### 5.4 Scratch verification vs. the permanent suite, and agent roles (added in revision 3)
+### 5.4 Scratch verification vs. the permanent suite, and agent roles (added in revision 3) *(done: the rule and admission check are in the `write-test` skill and the lint enforces the structure; hard roles and path permissions were declined by the owner; the scratch harness is `TODO.md` item 23)*
 
 **How the bad tests got in.** Nothing in the repo defines what a permanent test is for. AGENTS.md talks about tests at length, so an agent asked to "make the enemy orange" reasonably concludes that verifying work means adding a test, and `test/` is the only obvious place to put one. The recording scenes (`record_*`, `capture_firebomber`) landed in `test/` the same way. Fixing this needs a rule that makes the distinction explicit, a scratch path that is easier than the suite, and enforcement that doesn't depend on the agent remembering the rule.
 
@@ -674,11 +680,12 @@ Caveats:
 | B4 Migrate the suites | Done 2026-09-28: all 49 suites run on the harness |
 | B5 Frame-rate workstream | Done 2026-09-26, apart from the mobile renderer/GI decision |
 | C6 AGENTS.md, skills, TODO, README | Done 2026-09-28, apart from the add-enemy/item/passive checklist skills (they wait for the registry unification, §2.5) |
-| C7 `tools/lint_project.py` | Done 2026-09-28, and green the same day (all 27 long functions split). A pre-commit hook and the headless UID step for binary resources are still open |
+| C7 `tools/lint_project.py` | Done 2026-09-28, and green the same day (all 27 long functions split). The pre-commit hook and the headless UID step for binary resources are `TODO.md` item 20 |
 | C8 Shared launcher, `GODOT_BIN`, CI | Done 2026-09-28 for the local parts; CI skipped (owner decision: single developer, local lint and tests are the gate) |
 | D9 Aliases, fallbacks, sentinel | Done 2026-09-28 |
 | D10 Level registry and duplicated owners | Done 2026-09-28 |
 | D11 Structural refactors | Done 2026-09-28 |
+| Final cleanup of the unphased findings (§2.3, §2.4, §2.10, §2.11, §4.3) | Done 2026-09-29; the review is closed |
 
 **The key point:** "fix the bad tests" and "move to the new harness" are **one step** (step 4), not two. Rewriting a suite onto the harness means rewriting each of its checks anyway, and that's when its hardcoded values get removed. Revision 1 had these as separate steps (first and last), which would have touched every assertion twice.
 

@@ -1,3 +1,6 @@
+## AnimationTree of the KayKit mannequin rigs (player, enemies, the Akira
+## riders): drives the walk/run blend and switches states immediately.
+class_name MannequinAnimationTree
 extends AnimationTree
 
 ## How fast the walk/run blend follows the character's movement (blend units per second).

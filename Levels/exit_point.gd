@@ -5,6 +5,8 @@ extends Node3D
 @export_file("*.tscn") var next_scene_path: String = ""
 ## Shop scene opened when next_scene_path is empty. Leave unset to use the GlobalVars registry.
 @export var shop_fallback_scene: PackedScene
+## Color of the objective trail guiding the player here once unlocked.
+@export var trail_color: Color = Color(0.3, 0.85, 1.0, 0.85)
 
 var locked: bool = true
 
@@ -14,8 +16,8 @@ var locked: bool = true
 
 func _ready() -> void:
 	visible = false
-	if wisp_mesh != null and wisp_mesh.material_override != null:
-		wisp_mesh.material_override = wisp_mesh.material_override.duplicate()
+	# The wisp material is local to each scene instance (see the scene), so
+	# animating it never touches another exit.
 	_reset_visuals()
 
 
@@ -28,15 +30,14 @@ func unlock() -> void:
 		trail = ObjectiveTrail3D.new()
 		var root: Node = get_parent() if get_parent() != null else self
 		root.add_child(trail)
-	trail.set_target(self, Color(0.3, 0.85, 1.0, 0.85))
+	trail.set_target(self, trail_color)
 
 
+## Puts the wisp back to its RESET pose (the RESET animation owns every
+## animated value).
 func _reset_visuals() -> void:
-	if animation_player != null and animation_player.has_animation(&"RESET"):
-		animation_player.play(&"RESET")
-		animation_player.advance(0.0)
-	elif wisp_mesh != null and wisp_mesh.material_override is ShaderMaterial:
-		(wisp_mesh.material_override as ShaderMaterial).set_shader_parameter("Cuttoff", 0.41)
+	animation_player.play(&"RESET")
+	animation_player.advance(0.0)
 
 
 func _on_area_3d_body_entered(body: Node3D) -> void:

@@ -64,6 +64,10 @@ func is_on_cooldown() -> bool:
 	return cooldown_timer > 0.0
 
 
+func is_uninterruptable() -> bool:
+	return uninterruptable
+
+
 ## Ready when off cooldown.
 func can_activate() -> bool:
 	return not is_on_cooldown()

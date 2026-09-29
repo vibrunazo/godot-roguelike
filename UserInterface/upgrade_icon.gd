@@ -60,7 +60,7 @@ func _exit_tree() -> void:
 	_disconnect_resource_signal()
 	if Engine.is_editor_hint():
 		return
-	if ProgressionState != null and ProgressionState.currency_gold_changed.is_connected(_on_currency_gold_changed):
+	if ProgressionState.currency_gold_changed.is_connected(_on_currency_gold_changed):
 		ProgressionState.currency_gold_changed.disconnect(_on_currency_gold_changed)
 
 

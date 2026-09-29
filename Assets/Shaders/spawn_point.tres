@@ -16,7 +16,7 @@ source = 5
 [sub_resource type="VisualShaderNodeStep" id="VisualShaderNodeStep_e5niy"]
 
 [sub_resource type="VisualShaderNodeFloatParameter" id="VisualShaderNodeFloatParameter_mtmqa"]
-parameter_name = "Cuttoff"
+parameter_name = "Cutoff"
 
 [sub_resource type="VisualShaderNodeUVFunc" id="VisualShaderNodeUVFunc_3asb4"]
 default_input_values = [1, Vector2(0.5, 0.5), 2, Vector2(0, 0)]

@@ -30,16 +30,15 @@ var _gold_resting_y: float = -1.0
 
 func _ready() -> void:
 	add_to_group("hud")
-	if UI != null and not UI.overlays_enabled:
+	if not UI.overlays_enabled:
 		visible = false
-	if ProgressionState != null:
-		if not ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
-			ProgressionState.currency_gold_changed.connect(_on_gold_changed)
-		_update_gold_display(ProgressionState.currency_gold)
+	if not ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
+		ProgressionState.currency_gold_changed.connect(_on_gold_changed)
+	_update_gold_display(ProgressionState.currency_gold)
 
 
 func _exit_tree() -> void:
-	if ProgressionState != null and ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
+	if ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
 		ProgressionState.currency_gold_changed.disconnect(_on_gold_changed)
 
 

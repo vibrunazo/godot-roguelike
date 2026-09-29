@@ -119,17 +119,18 @@ func _get_enemy_display_name(enemy: Character) -> String:
 	return raw_name.replace("_", " ")
 
 
-## Debug prints the level, difficulty budget, and picked enemies with their difficulty ratings at wave start.
+## Logs (verbose runs only) the level, difficulty budget, and picked enemies with their difficulty ratings at wave start.
 func _print_wave_debug_info() -> void:
-	var current_dungeon_level: int = ProgressionState.dungeon_level if ProgressionState != null else 1
-	var current_difficulty: int = ProgressionState.difficulty_level if ProgressionState != null else 3
+	var current_dungeon_level: int = ProgressionState.dungeon_level
+	var current_difficulty: int = ProgressionState.difficulty_level
 	var enemy_parts: Array[String] = []
 	for enemy: Character in all_enemies:
 		var enemy_label: String = _get_enemy_display_name(enemy)
 		var diff: int = _enemy_difficulties.get(enemy, 1)
 		enemy_parts.append("%s %d" % [enemy_label, diff])
 	var enemies_str: String = " + ".join(enemy_parts) if not enemy_parts.is_empty() else "none"
-	print("Level %d, difficulty %d, %s" % [current_dungeon_level, current_difficulty, enemies_str])
+	# Only with --verbose: a debug log, not player-facing output.
+	print_verbose("Level %d, difficulty %d, %s" % [current_dungeon_level, current_difficulty, enemies_str])
 
 
 ## Finds all RoomSpawnArea nodes in the current level.

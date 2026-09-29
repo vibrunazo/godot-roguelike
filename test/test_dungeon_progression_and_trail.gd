@@ -128,4 +128,4 @@ func _dungeon(min_difficulty: int, max_difficulty: int, min_enemies: int, max_en
 
 
 func _wisp_cutoff(exit_point: ExitPoint) -> float:
-	return float((exit_point.wisp_mesh.material_override as ShaderMaterial).get_shader_parameter("Cuttoff"))
+	return float((exit_point.wisp_mesh.material_override as ShaderMaterial).get_shader_parameter("Cutoff"))

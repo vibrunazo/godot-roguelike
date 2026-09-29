@@ -20,25 +20,6 @@ signal quit_requested
 @onready var fullscreen_button: Button = %FullscreenButton
 @onready var quit_button: Button = %QuitButton
 
-var _ui: Node:
-	get:
-		if is_inside_tree() and get_tree() != null and get_tree().root != null:
-			return get_tree().root.get_node_or_null("UI")
-		return null
-
-var _progression: Node:
-	get:
-		if is_inside_tree() and get_tree() != null and get_tree().root != null:
-			return get_tree().root.get_node_or_null("ProgressionState")
-		return null
-
-var _transition: Node:
-	get:
-		if is_inside_tree() and get_tree() != null and get_tree().root != null:
-			return get_tree().root.get_node_or_null("SceneTransition")
-		return null
-
-
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 100
@@ -64,19 +45,14 @@ func _apply_configuration() -> void:
 ## and health) and loading the first level.
 func start_game() -> void:
 	start_requested.emit()
-	if _ui != null and "is_in_main_menu" in _ui:
-		_ui.set("is_in_main_menu", false)
-	if _progression != null and _progression.has_method("reset_run"):
-		_progression.call("reset_run")
-	if _transition != null:
-		if _transition.has_method("load_next_level"):
-			_transition.call("load_next_level")
+	UI.is_in_main_menu = false
+	ProgressionState.reset_run()
+	SceneTransition.load_next_level()
 
 
 ## Toggles window fullscreen mode via the global UI service and updates button text.
 func toggle_fullscreen() -> void:
-	if _ui != null and _ui.has_method("toggle_fullscreen"):
-		_ui.call("toggle_fullscreen")
+	UI.toggle_fullscreen()
 	_update_fullscreen_button_text()
 
 
@@ -101,7 +77,7 @@ func _on_quit_pressed() -> void:
 func _update_fullscreen_button_text() -> void:
 	if fullscreen_button == null:
 		return
-	if _ui != null and _ui.has_method("is_fullscreen") and _ui.call("is_fullscreen"):
+	if UI.is_fullscreen():
 		fullscreen_button.text = "Fullscreen: ON"
 	else:
 		fullscreen_button.text = "Fullscreen: OFF"

@@ -74,6 +74,7 @@ script = ExtResource("3_attack_comp")
 damage = 15.0
 damage_type = &"physical"
 shake_on_damage = true
+bind_parent_area = false
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="."]
 material_override = SubResource("StandardMaterial3D_trail")

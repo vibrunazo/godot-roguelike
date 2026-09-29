@@ -76,6 +76,9 @@ var hitstop_base_timescale: float = 1.0
 ## Whether the current attack animation exposes a TimeScale node for slowdown.
 var hitstop_has_timescale: bool = false
 var _was_tag_enabled: bool = false
+## True once this attack pointed character.aim_direction at its target, so
+## exit() clears exactly that.
+var _wrote_character_aim: bool = false
 
 
 func _ready() -> void:
@@ -112,6 +115,10 @@ func _update_tag_enablement() -> void:
 		if start_cooldown_on_enabled:
 			cooldown_timer = cooldown
 	_was_tag_enabled = currently_enabled
+
+
+func is_uninterruptable() -> bool:
+	return uninterruptable
 
 
 ## Returns true if both cooldown and tag requirements allow activation.
@@ -206,14 +213,10 @@ func _arm_attack_component() -> void:
 		component.hit_landed.connect(_on_hit_landed)
 
 
-## The direction this attack is aimed at, snapshotted on entry: the player's
-## live aim, else the character's aim, the order's "aim", the movement
-## direction, the facing, in that order.
+## The direction this attack is aimed at, snapshotted on entry: the
+## character's aim (the player's controller keeps it current), else the
+## order's "aim", the movement direction, the facing, in that order.
 func _resolve_aim(data: Dictionary) -> Vector3:
-	var input_comp: PlayerInputComponent = character.get_node_or_null("PlayerInputComponent") as PlayerInputComponent
-	if input_comp != null and input_comp.is_physics_processing():
-		input_comp.update_aim_intent()
-		return character.aim_direction
 	if not character.aim_direction.is_zero_approx():
 		return character.aim_direction
 	if data.get("aim") is Vector3:
@@ -241,6 +244,7 @@ func _aim_at_current_target() -> void:
 		return
 	aim_direction = to_target.normalized()
 	character.aim_direction = aim_direction
+	_wrote_character_aim = true
 
 
 ## The AttackComponent under the weapon slot's hitbox, or null for attacks
@@ -416,8 +420,11 @@ func exit() -> void:
 	queued_attack = false
 	if character != null:
 		character.is_attacking = false
-		if character.get_node_or_null("PlayerInputComponent") == null:
+		# Undo only the aim this attack set (toward its target); a
+		# controller's own aim is its business.
+		if _wrote_character_aim:
 			character.aim_direction = Vector3.ZERO
+	_wrote_character_aim = false
 	_clear_lunge()
 	_clear_hitstop()
 	if attack_timer != null:

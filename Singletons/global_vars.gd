@@ -40,6 +40,9 @@ extends Node
 @export var hud_scene: PackedScene
 ## Level title overlay scene displayed when entering a level.
 @export var level_title_overlay_scene: PackedScene
+## The main menu scene (the menu diorama level), returned to from the pause and
+## game-over menus.
+@export var menu_scene: PackedScene
 
 
 ## Finds the registered EnemyResource for a given PackedScene or null if not registered.

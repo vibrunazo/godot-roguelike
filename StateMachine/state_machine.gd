@@ -17,7 +17,10 @@ func _ready() -> void:
 	for state_node: State in find_children("*", "State"):
 		state_node.finished.connect(_transition_to_next_state)
 
-	await owner.ready
+	# States enter once the whole owner is ready (they read its components).
+	# A machine built at runtime has no owner and enters at once.
+	if owner != null and not owner.is_node_ready():
+		await owner.ready
 	if state != null:
 		state.enter("")
 
@@ -27,12 +30,7 @@ func _ready() -> void:
 ## Runs the same transition path as the finished signal; returns false (with a
 ## warning) when the target state does not exist.
 func request_state(target_state_path: String, data: Dictionary = {}) -> bool:
-	if not has_node(target_state_path):
-		var machine_name: String = owner.name if owner != null else name
-		printerr(machine_name + ": Trying to transition to state " + target_state_path + " but it does not exist.")
-		return false
-	_transition_to_next_state(target_state_path, data)
-	return true
+	return _transition_to_next_state(target_state_path, data)
 
 
 func _physics_process(delta: float) -> void:
@@ -41,10 +39,12 @@ func _physics_process(delta: float) -> void:
 	state.physics_update(delta)
 
 
-func _transition_to_next_state(target_state_path: String, data: Dictionary = {}) -> void:
+## Exits the current state and enters target_state_path (the finished
+## signals land here too). Returns false, with an error, for a missing state.
+func _transition_to_next_state(target_state_path: String, data: Dictionary = {}) -> bool:
 	if not has_node(target_state_path):
-		printerr(owner.name + ": Trying to transition to state " + target_state_path + " but it does not exist.")
-		return
+		printerr("%s: Trying to transition to state %s but it does not exist." % [owner.name if owner != null else name, target_state_path])
+		return false
 
 	var previous_state_path: String = ""
 	if state != null:
@@ -54,6 +54,7 @@ func _transition_to_next_state(target_state_path: String, data: Dictionary = {})
 	if state != null:
 		state.enter(previous_state_path, data)
 	_clear_stale_intents()
+	return true
 
 
 ## Drops edge intents pending on the newly entered state's character, so a press

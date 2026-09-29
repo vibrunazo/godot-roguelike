@@ -39,7 +39,8 @@ def main() -> int:
     with open(script_path, "r", encoding="utf-8", errors="replace") as f:
         content = f.read()
 
-    if not ("extends SceneTree" in content or "extends MainLoop" in content):
+    extends_line = next((line.strip() for line in content.splitlines() if line.strip().startswith("extends ")), "")
+    if extends_line not in ("extends SceneTree", "extends MainLoop"):
         print(
             f"ERROR: Godot engine invariant violation in '{script_path}':\n"
             f"Scripts executed via 'godot -s' MUST inherit 'SceneTree' (or 'MainLoop') and call 'quit(code)'.\n"
@@ -59,7 +60,9 @@ def main() -> int:
     if not ensure_class_cache():
         return 1
 
-    engine_args = ["--headless", "--path", ".", "--quit-after", "60", "-s", script_path]
+    # No --quit-after: it counts main-loop iterations and would cut a script
+    # that awaits frames short. quit() ends the run; the watchdog backs it up.
+    engine_args = ["--headless", "--path", ".", "-s", script_path]
     if extra_args:
         engine_args.append("--")
         engine_args.extend(extra_args)

@@ -18,7 +18,7 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 	if character == null or not character.is_inside_tree() or character.navigation_agent_3d == null:
 		return
 	var target_pt: Vector3 = Vector3.ZERO
-	if character.home_spawn_area != null and character.home_spawn_area.has_method("get_random_spawn_point"):
+	if character.home_spawn_area != null:
 		target_pt = character.home_spawn_area.get_random_spawn_point()
 	elif not character.home_position.is_zero_approx():
 		var nav_map: RID = character.get_world_3d().navigation_map

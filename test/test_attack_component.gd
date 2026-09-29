@@ -45,6 +45,7 @@ func _spawn_target(at: Vector3) -> Hurtbox:
 	attributes.name = "AttributeComponent"
 	root.add_child(attributes)
 	var hurtbox: Hurtbox = Hurtbox.new()
+	hurtbox.attribute_component = attributes
 	hurtbox.collision_layer = TARGET_LAYER
 	hurtbox.collision_mask = 0
 	hurtbox.add_child(_sphere(0.5))

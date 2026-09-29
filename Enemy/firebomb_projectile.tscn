@@ -85,6 +85,7 @@ script = ExtResource("3_attack_comp")
 damage = 5.0
 damage_type = &"fire"
 effects_to_apply = Array[GameplayEffect]([ExtResource("5_fireburn")])
+bind_parent_area = false
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=341094992]
 material_override = SubResource("StandardMaterial3D_trail")

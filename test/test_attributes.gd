@@ -263,11 +263,10 @@ func test_health_adapter() -> bool:
 	holder.add_child(comp)
 	var hurtbox: Hurtbox = Hurtbox.new()
 	hurtbox.name = "Hurtbox"
+	hurtbox.attribute_component = comp
 	holder.add_child(hurtbox)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if hurtbox.attribute_component != comp:
-		return fail("Hurtbox should resolve its sibling AttributeComponent.")
 	_reset_counters()
 	comp.attribute_changed.connect(_on_attr_changed)
 	comp.defeat.connect(_on_attr_defeat)
@@ -646,13 +645,13 @@ func test_corpse_stays_grounded() -> bool:
 	var enemy: Character = (load("res://Enemy/melee_enemy.tscn") as PackedScene).instantiate() as Character
 	add_child(enemy)
 	enemy.global_position = Vector3(0.0, 1.0, 0.0)
-	for i: int in range(5):
-		await get_tree().physics_frame
+	if not await wait_until(func() -> bool: return enemy.is_on_floor(), "setup: the enemy should land"):
+		return false
 	var rest_y: float = enemy.global_position.y
 	var enemy_attrs: AttributeComponent = enemy.get_node("AttributeComponent") as AttributeComponent
 	enemy_attrs.damage_pool(AttributeComponent.POOL_HEALTH, enemy_attrs.get_current(AttributeComponent.STAT_MAX_HEALTH))
-	for i: int in range(60):
-		await get_tree().physics_frame
+	# Grounding holds over time: give the corpse a second to drift or fall.
+	await wait_physics_frames(Engine.physics_ticks_per_second)
 	if enemy.collision_shape_3d == null or not enemy.collision_shape_3d.disabled:
 		return fail("Defeat must shut off the body shape so corpses never block.")
 	var enemy_hurtbox: Hurtbox = enemy.get_node_or_null("Hurtbox") as Hurtbox
@@ -674,18 +673,15 @@ func test_lethal_hit_reaches_defeat() -> bool:
 	var enemy: Character = (load("res://Enemy/melee_enemy.tscn") as PackedScene).instantiate() as Character
 	add_child(enemy)
 	enemy.global_position = Vector3(0.0, 1.0, 0.0)
-	for i: int in range(5):
-		await get_tree().physics_frame
+	if not await wait_until(func() -> bool: return enemy.is_on_floor(), "setup: the enemy should land"):
+		return false
 	var enemy_hurtbox: Hurtbox = enemy.get_node_or_null("Hurtbox") as Hurtbox
 	if enemy_hurtbox == null:
 		return fail("Melee enemy should wire a Hurtbox.")
 	if not enemy_hurtbox.receive_hit(99999.0, Vector3.ZERO):
 		return fail("Lethal hit should land.")
-	for i: int in range(30):
-		await get_tree().physics_frame
-	var body_sm: StateMachine = enemy.state_machine
-	if body_sm == null or body_sm.state == null or body_sm.state.name != "EnemyDefeat":
-		return fail("Lethal hit should settle in EnemyDefeat.")
+	if not await wait_until(func() -> bool: return enemy.state_machine.state == enemy.defeat_state, "Lethal hit should settle in the defeat state."):
+		return false
 	print("Lethal hit defeat verified.")
 	return true
 
@@ -765,8 +761,7 @@ func test_effect_vfx_bone_attachment() -> bool:
 
 	# Trigger defeat and wait for the defeat animation to collapse the skeleton to the floor
 	enemy.on_defeat()
-	for i: int in range(50):
-		await get_tree().physics_frame
+	await wait_until(func() -> bool: return burn_fx.global_position.y < initial_fx_y - 0.25, "the corpse should collapse")
 	var defeated_fx_y: float = burn_fx.global_position.y
 	if defeated_fx_y >= initial_fx_y - 0.25:
 		return fail("Status visual should fall with the spine bone on defeat; initial=%f, defeated=%f." % [initial_fx_y, defeated_fx_y])

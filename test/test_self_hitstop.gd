@@ -86,7 +86,7 @@ func test_leaving_the_attack_clears_hitstop() -> void:
 	var component: AttackComponent = slash.get_attack_component()
 	if component != null:
 		component.reset_exceptions()
-		component.deal_damage_to(_dummy.hurtbox)
+		component.deal_damage_to(_dummy.hurtbox, component.damage, component.knockback)
 		check(not slash.is_in_hitstop(), "a hit landed after the attack ended must not put that attack back into hitstop")
 
 

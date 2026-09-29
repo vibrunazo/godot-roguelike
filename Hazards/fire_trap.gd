@@ -81,11 +81,8 @@ func _ready() -> void:
 			audio.autoplay = false
 			audio.stop()
 		return
-
-	if duration > 0.0:
-		var timer: Timer = _get_life_timer()
-		if timer != null and not timer.timeout.is_connected(extinguish):
-			timer.timeout.connect(extinguish)
+	# The life timer ends in expire() (wired by DamageArea), which this trap
+	# overrides to extinguish.
 
 
 ## Dynamically scales the collision hitbox, ground plate, and particle emission volume.

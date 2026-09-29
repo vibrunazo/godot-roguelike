@@ -11,7 +11,7 @@ Rules (see the RULES table for the one-line reasons):
     uid-duplicate      two files own the same UID
     uid-noncanonical   a UID spelled in a way Godot would never generate
     uid-mismatch       an ext_resource UID owned by a different file than its path
-    hardcoded-load     preload()/load() of a res:// asset in production code
+    hardcoded-load     a res:// asset path in production code (loaded or kept for later)
     absolute-path      a machine-specific absolute path in code, scenes or docs
     test-key-constant  a physical key constant (KEY_*) in a test
     test-float-literal a check_eq/check_approx against a tuned-looking float literal
@@ -59,7 +59,7 @@ RULES: dict[str, str] = {
     "uid-duplicate": "two files own the same UID; one of them was copied or hand-written",
     "uid-noncanonical": "hand-written UID; let Godot generate it or omit uid=",
     "uid-mismatch": "the UID belongs to a different file than the ext_resource path",
-    "hardcoded-load": "wire assets through @export or GlobalVars, not load()/preload()",
+    "hardcoded-load": "wire assets and scenes through @export or GlobalVars, not res:// paths in code",
     "absolute-path": "machine-specific path; use res:// or a repo-relative path",
     "test-key-constant": "drive input by InputMap action name, never physical keys",
     "test-float-literal": "compare against values the test sets or reads from nodes",
@@ -213,7 +213,7 @@ def check_uids(files: list[str], report: Report) -> None:
                 report.add("uid-mismatch", path, line, f"{uid} points at {res_path} but belongs to {', '.join(sorted(set(owned_by)))}")
 
 
-_LOAD_CALL = re.compile(r'\b(pre)?load\(\s*"res://([^"]+)"')
+_RES_PATH = re.compile(r'"res://([^"]+)"')
 _ALLOWED_LOAD_SUFFIXES = (".gdshader", ".gdshaderinc")
 
 
@@ -224,8 +224,8 @@ def check_hardcoded_loads(files: list[str], report: Report) -> None:
         for number, line in enumerate(read(path).splitlines(), 1):
             if line.lstrip().startswith("#"):
                 continue
-            for match in _LOAD_CALL.finditer(line):
-                if not match.group(2).endswith(_ALLOWED_LOAD_SUFFIXES):
+            for match in _RES_PATH.finditer(line):
+                if not match.group(1).endswith(_ALLOWED_LOAD_SUFFIXES):
                     report.add("hardcoded-load", path, number, line)
 
 

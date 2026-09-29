@@ -413,7 +413,7 @@ _data = {
 &"dash": SubResource("Animation_7emwf")
 }
 
-[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "color_component", "defeat_state", "dash_cooldown") groups=["player"]]
+[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("passive_ability_component", "equipment_component", "hurtbox", "mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "color_component", "defeat_state", "dash_cooldown") groups=["player"]]
 collision_layer = 17
 script = ExtResource("1_l8h54")
 mesh_mount = NodePath("GamedevTV_Mannequin_Medium")
@@ -425,6 +425,9 @@ collision_shape_3d = NodePath("CollisionShape3D")
 color_component = NodePath("CharacterColorComponent")
 defeat_state = NodePath("StateMachine/PlayerDefeat")
 dash_cooldown = NodePath("DashCooldown")
+hurtbox = NodePath("Hurtbox")
+equipment_component = NodePath("EquipmentComponent")
+passive_ability_component = NodePath("PassiveAbilityComponent")
 
 [node name="CharacterColorComponent" type="Node" parent="." unique_id=1982736410]
 script = ExtResource("24_color")

@@ -60,7 +60,7 @@ func refresh() -> void:
 	if attrs == null:
 		_render_placeholders()
 		return
-	var level: int = ProgressionState.dungeon_level if ProgressionState != null else 1
+	var level: int = ProgressionState.dungeon_level
 	_set_row(level_row, "Level", "%d" % level, "e8c85a")
 	_render_pool_row(hp_row, "HP", AttributeComponent.POOL_HEALTH, AttributeComponent.STAT_MAX_HEALTH, attrs, equipment, "7fe8a8")
 	_render_pool_row(mana_row, "Mana", AttributeComponent.POOL_MANA, AttributeComponent.STAT_MAX_MANA, attrs, equipment, "8ac8ff")

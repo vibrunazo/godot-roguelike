@@ -42,6 +42,7 @@
 [ext_resource type="Resource" path="res://Items/ItemResources/item_dash_blast.tres" id="41_dashblast"]
 [ext_resource type="Resource" path="res://Items/ItemResources/item_landing_blast.tres" id="42_landblast"]
 [ext_resource type="Resource" path="res://Levels/DungeonResources/boss_arena_1.tres" id="43_boss_arena_1"]
+[ext_resource type="PackedScene" path="res://Levels/menu_level.tscn" id="cleanup_menu_scene"]
 
 [node name="GlobalVars" type="Node" unique_id=1670957482]
 script = ExtResource("1_vars")
@@ -59,3 +60,4 @@ upgrade_shop_scene = ExtResource("10_shop")
 pause_menu_scene = ExtResource("19_pause_menu")
 hud_scene = ExtResource("34_hud")
 level_title_overlay_scene = ExtResource("35_level_title")
+menu_scene = ExtResource("cleanup_menu_scene")

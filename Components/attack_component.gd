@@ -23,7 +23,17 @@ signal hit_landed(target: Node)
 
 ## Minimum interval (in seconds) before the same target can be damaged again by this attack.
 ## If <= 0.0, the target is only hit once per attack cycle until reset_exceptions() is called.
-@export var rehit_interval: float = 0.0
+## Only multi-hit attacks (> 0.0) need the per-tick re-check, so the component
+## processes only then.
+@export var rehit_interval: float = 0.0:
+	set(value):
+		rehit_interval = value
+		set_physics_process(rehit_interval > 0.0)
+
+## Whether this component hits through its parent Area3D (a weapon or hazard
+## hitbox). Off for projectiles, which route their own hits through
+## deal_damage_to().
+@export var bind_parent_area: bool = true
 
 ## GameplayEffects applied to each victim on a confirmed hit (slow, burn, ...).
 ## Melee states copy their effects_to_apply here on enter; projectiles and
@@ -44,9 +54,9 @@ var wielder: Character = null
 
 
 func _ready() -> void:
-	var parent: Node = get_parent()
-	if parent is Area3D and not (parent is EnemyProjectile):
-		set_attack_area(parent as Area3D)
+	set_physics_process(rehit_interval > 0.0)
+	if bind_parent_area and get_parent() is Area3D:
+		set_attack_area(get_parent() as Area3D)
 
 
 func set_attack_area(area: Area3D) -> void:
@@ -84,34 +94,30 @@ func _physics_process(delta: float) -> void:
 		_refresh_cooldowns(rehit_interval)
 		for area: Area3D in attack_area.get_overlapping_areas():
 			if _is_valid_target(area) and not temporary_exceptions.has(area as CollisionObject3D):
-				deal_damage_to(area as Hurtbox, damage, knockback, rehit_interval)
+				deal_damage_to(area as Hurtbox, damage, knockback)
 
 
 func _on_area_entered(area: Area3D) -> void:
 	if _is_valid_target(area):
-		deal_damage_to(area as Hurtbox, damage, knockback, rehit_interval)
+		deal_damage_to(area as Hurtbox, damage, knockback)
 
 
-## Deals damage and knockback to a hurtbox if eligible (respecting rehit intervals and exceptions).
+## Deals dmg and knockback kb (both explicit: zero means zero) to a hurtbox if
+## eligible, respecting this attack's exceptions and rehit_interval.
 ## Returns true if damage was successfully applied.
-func deal_damage_to(hurtbox: Hurtbox, dmg: float = -1.0, kb: Vector3 = Vector3.ZERO, custom_rehit_interval: float = -1.0) -> bool:
+func deal_damage_to(hurtbox: Hurtbox, dmg: float, kb: Vector3) -> bool:
 	if not is_instance_valid(hurtbox):
 		return false
-
-	var d: float = dmg if dmg >= 0.0 else damage
-	var k: Vector3 = kb if kb != Vector3.ZERO else knockback
-
-	var interval: float = custom_rehit_interval if custom_rehit_interval >= 0.0 else rehit_interval
-	if interval > 0.0:
-		_refresh_cooldowns(interval)
+	if rehit_interval > 0.0:
+		_refresh_cooldowns(rehit_interval)
 
 	if temporary_exceptions.has(hurtbox as CollisionObject3D):
 		return false
 
-	var has_hit: bool = hurtbox.receive_hit(d, k, damage_type)
+	var has_hit: bool = hurtbox.receive_hit(dmg, kb, damage_type)
 	if has_hit:
 		temporary_exceptions.append(hurtbox as CollisionObject3D)
-		if interval > 0.0:
+		if rehit_interval > 0.0:
 			hit_timestamps[hurtbox as CollisionObject3D] = current_time
 		_apply_hit_effects(hurtbox)
 		hit_landed.emit(hurtbox)
@@ -132,17 +138,15 @@ func _apply_hit_effects(hurtbox: Hurtbox) -> void:
 			victim_attrs.apply_effect(effect)
 
 
-func deal_damage(dmg: float = -1.0, kb: Vector3 = Vector3.ZERO, custom_rehit_interval: float = -1.0) -> void:
+## Hits every eligible hurtbox already overlapping the (monitoring) attack
+## area with this component's damage and knockback, e.g. on a hazard's spawn
+## frame, before any area_entered arrives.
+func deal_damage() -> void:
 	if attack_area == null or not attack_area.monitoring:
 		return
-	var d: float = dmg if dmg >= 0.0 else damage
-	var k: Vector3 = kb if kb != Vector3.ZERO else knockback
-	var interval: float = custom_rehit_interval if custom_rehit_interval >= 0.0 else rehit_interval
-	if interval > 0.0:
-		_refresh_cooldowns(interval)
 	for area: Area3D in attack_area.get_overlapping_areas():
 		if _is_valid_target(area) and not temporary_exceptions.has(area as CollisionObject3D):
-			deal_damage_to(area as Hurtbox, d, k, interval)
+			deal_damage_to(area as Hurtbox, damage, knockback)
 
 
 func add_exception(col: CollisionObject3D) -> void:

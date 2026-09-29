@@ -10,8 +10,6 @@
 class_name AkiraBossRiders
 extends Node
 
-## Side-slash animation resource played on each rider.
-const SLASH_PATH: String = "res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/Animations/Melee_1H_Attack_Slice_Horizontal.res"
 ## Library name under which the slash is registered on rider AnimationPlayers.
 const SLASH_LIBRARY: StringName = &"RiderExtra"
 ## Slash animation node name inside the runtime library.
@@ -22,9 +20,11 @@ const SLASH_LENGTH: float = 1.45
 ## Boss character carrying the riders. Used for liveness and target lookup.
 @export var character: Character
 ## AnimationTree of the left backpack rider.
-@export var left_rider_tree: AnimationTree
+@export var left_rider_tree: MannequinAnimationTree
 ## AnimationTree of the right backpack rider.
-@export var right_rider_tree: AnimationTree
+@export var right_rider_tree: MannequinAnimationTree
+## Side-slash animation played on each rider (added to its AnimationPlayer).
+@export var side_slash_animation: Animation
 ## Node3D root of the left rider (for distance checks to the player).
 @export var left_rider_root: Node3D
 ## Node3D root of the right rider (for distance checks to the player).
@@ -112,7 +112,7 @@ func _physics_process(delta: float) -> void:
 
 ## Registers the side-slash on one rider's AnimationPlayer and idles its tree.
 func _setup_rider(is_left: bool) -> AnimationPlayer:
-	var rider_tree: AnimationTree = left_rider_tree if is_left else right_rider_tree
+	var rider_tree: MannequinAnimationTree = left_rider_tree if is_left else right_rider_tree
 	var rider_root: Node3D = left_rider_root if is_left else right_rider_root
 	if rider_tree == null or rider_root == null:
 		return null
@@ -123,13 +123,13 @@ func _setup_rider(is_left: bool) -> AnimationPlayer:
 		# clock like the character AnimationTrees.
 		player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_PHYSICS
 	if player != null and not player.has_animation_library(SLASH_LIBRARY):
-		var slash: Animation = load(SLASH_PATH) as Animation
-		if slash != null:
+		if side_slash_animation == null:
+			push_error("%s: side_slash_animation is not set." % name)
+		else:
 			var lib := AnimationLibrary.new()
-			lib.add_animation(SLASH_ANIM, slash)
+			lib.add_animation(SLASH_ANIM, side_slash_animation)
 			player.add_animation_library(SLASH_LIBRARY, lib)
-	if rider_tree.has_method("change_immediate"):
-		rider_tree.call("change_immediate", "WalkSpace")
+	rider_tree.change_immediate("WalkSpace")
 	return player
 
 
@@ -138,7 +138,7 @@ func _try_rider_attack(is_left: bool, player: Character) -> void:
 	if not _has_riders:
 		return
 	var rider_root: Node3D = left_rider_root if is_left else right_rider_root
-	var rider_tree: AnimationTree = left_rider_tree if is_left else right_rider_tree
+	var rider_tree: MannequinAnimationTree = left_rider_tree if is_left else right_rider_tree
 	var cooldown: float = _left_cooldown if is_left else _right_cooldown
 	var swinging: bool = _left_swinging if is_left else _right_swinging
 	if rider_root == null or rider_tree == null:
@@ -156,7 +156,7 @@ func _try_rider_attack(is_left: bool, player: Character) -> void:
 ## Plays the rider side-slash animation and starts its cooldown.
 ## The slash resource drives WeaponSlot:enabled itself (0.2s-0.4s window).
 func _play_rider_attack(is_left: bool) -> void:
-	var rider_tree: AnimationTree = left_rider_tree if is_left else right_rider_tree
+	var rider_tree: MannequinAnimationTree = left_rider_tree if is_left else right_rider_tree
 	var rider_root: Node3D = left_rider_root if is_left else right_rider_root
 	var player: AnimationPlayer = _left_player if is_left else _right_player
 	var swinging: bool = _left_swinging if is_left else _right_swinging
@@ -193,7 +193,7 @@ func _end_rider_swing(is_left: bool) -> void:
 		_left_swinging = false
 	else:
 		_right_swinging = false
-	var rider_tree: AnimationTree = left_rider_tree if is_left else right_rider_tree
+	var rider_tree: MannequinAnimationTree = left_rider_tree if is_left else right_rider_tree
 	if rider_tree == null or not is_instance_valid(rider_tree):
 		return
 	if not rider_tree.is_inside_tree():

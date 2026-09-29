@@ -25,6 +25,23 @@ signal transient_state_cancelled
 ## Fallback rotation speed in degrees per second when no AttributeComponent is
 ## attached. Mirrors AttributeComponent.base_rotation_speed.
 const DEFAULT_ROTATION_SPEED: float = 360.0
+## Navigation auto-configuration (see _auto_configure_navigation()): the
+## navmesh surface is baked this far above the floor geometry, in meters.
+const NAV_SURFACE_ELEVATION: float = 0.35
+## Waypoints count as reached within the agent radius plus this margin,
+## clamped to [PATH_DISTANCE_MIN, PATH_DISTANCE_MAX], so corners round cleanly.
+const PATH_DISTANCE_MARGIN: float = 0.3
+const PATH_DISTANCE_MIN: float = 0.6
+const PATH_DISTANCE_MAX: float = 1.5
+## The final target counts as reached within the agent radius plus this
+## margin, and never closer than TARGET_DISTANCE_MIN.
+const TARGET_DISTANCE_MARGIN: float = 0.8
+const TARGET_DISTANCE_MIN: float = 1.5
+## Head slide (see _slide_off_enemy_head()): the lift out of margin contact
+## before the retried step, and the minimum fall speed kept while sliding off,
+## so landing checks stay airborne.
+const HEAD_SLIDE_LIFT: float = 0.01
+const HEAD_SLIDE_FALL_SPEED: float = 0.5
 
 ## The visual mount node rotated to face movement or aim directions.
 @export var mesh_mount: Node3D
@@ -49,7 +66,7 @@ const DEFAULT_ROTATION_SPEED: float = 360.0
 @export var collision_shape_3d: CollisionShape3D
 ## Optional Area3D weapon hitbox for melee attacks.
 @export var weapon_hitbox: Area3D
-## Optional Hurtbox for taking damage.
+## The Hurtbox that takes this character's hits (required).
 @export var hurtbox: Hurtbox
 ## Optional CharacterColorComponent for palette recoloring and tints.
 @export var color_component: CharacterColorComponent
@@ -116,77 +133,40 @@ var _movement_updated: bool = false
 ## Whether this character has been alerted to player presence. Defaults to true.
 var is_alerted: bool = true
 ## Home spawn area bounding idle patrol.
-var home_spawn_area: Node3D = null
+var home_spawn_area: RoomSpawnArea = null
 ## Home world position where this character spawned.
 var home_position: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
-	_resolve_body_nodes()
-	_resolve_components()
+	_check_wiring()
+	if equipment_component != null:
+		equipment_component.character = self
+	if passive_ability_component != null:
+		passive_ability_component.character = self
 	_auto_configure_navigation()
-	_check_enemy_states()
 	_connect_combat_signals()
 
 
-## Fills in every body node reference the scene left unset, by its
-## conventional name.
-func _resolve_body_nodes() -> void:
-	if knockback_component == null:
-		knockback_component = get_node_or_null("KnockbackComponent") as KnockbackComponent
-	if state_machine == null:
-		state_machine = get_node_or_null("StateMachine") as StateMachine
-	if ai_state_machine == null:
-		ai_state_machine = get_node_or_null("AIStateMachine") as AIStateMachine
-	if navigation_agent_3d == null:
-		navigation_agent_3d = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
-	if collision_shape_3d == null:
-		collision_shape_3d = get_node_or_null("CollisionShape3D") as CollisionShape3D
-	if hurtbox == null:
-		hurtbox = get_node_or_null("Hurtbox") as Hurtbox
-	if mesh_mount == null:
-		mesh_mount = get_node_or_null("AnimationAnchor") as Node3D
-		if mesh_mount == null:
-			mesh_mount = get_node_or_null("GamedevTV_Mannequin_Medium") as Node3D
-	if animation_tree == null:
-		animation_tree = find_child("AnimationTree", true, false) as AnimationTree
-
-
-## Finds the attribute, equipment and passive components (by conventional
-## name, else by type) and hands the latter two their character.
-func _resolve_components() -> void:
-	if attribute_component == null:
-		attribute_component = _find_child_of(AttributeComponent, "AttributeComponent") as AttributeComponent
-	if equipment_component == null:
-		equipment_component = _find_child_of(EquipmentComponent, "EquipmentComponent") as EquipmentComponent
-	if equipment_component != null:
-		equipment_component.character = self
-	if passive_ability_component == null:
-		passive_ability_component = _find_child_of(PassiveAbilityComponent, "PassiveAbilityComponent") as PassiveAbilityComponent
-	if passive_ability_component != null:
-		passive_ability_component.character = self
-
-
-## The child named node_name when it is of the given class, else the first
-## direct child of that class, else null.
-func _find_child_of(type: Variant, node_name: String) -> Node:
-	var named: Node = get_node_or_null(node_name)
-	if named != null and is_instance_of(named, type):
-		return named
-	for child: Node in get_children():
-		if is_instance_of(child, type):
-			return child
-	return null
-
-
-## Enemies need a stun and a defeat state to react to hits.
-func _check_enemy_states() -> void:
-	if not is_enemy():
-		return
-	if stun_state == null:
-		push_warning("Character '%s' in 'enemy' group has no stun_state assigned." % name)
-	if defeat_state == null:
-		push_warning("Character '%s' in 'enemy' group has no defeat_state assigned." % name)
+## Reports every required reference the scene left unwired, so a
+## misconfigured character fails loudly instead of limping along. Enemies
+## also need a stun and a defeat state to react to hits.
+func _check_wiring() -> void:
+	var required: Dictionary[String, Object] = {
+		"state_machine": state_machine,
+		"attribute_component": attribute_component,
+		"knockback_component": knockback_component,
+		"collision_shape_3d": collision_shape_3d,
+		"hurtbox": hurtbox,
+		"mesh_mount": mesh_mount,
+		"animation_tree": animation_tree,
+	}
+	if is_enemy():
+		required["stun_state"] = stun_state
+		required["defeat_state"] = defeat_state
+	for export_name: String in required:
+		if required[export_name] == null:
+			push_error("Character '%s': %s is not set." % [name, export_name])
 
 
 ## Wires defeat, hit reactions, and every attack component this character
@@ -197,19 +177,10 @@ func _connect_combat_signals() -> void:
 			attribute_component.defeat.connect(_on_attribute_defeat)
 	if hurtbox != null and not hurtbox.struck.is_connected(_on_hurtbox_struck):
 		hurtbox.struck.connect(_on_hurtbox_struck)
-	if weapon_hitbox != null:
-		var weapon_component: AttackComponent = weapon_hitbox.get_node_or_null("AttackComponent") as AttackComponent
-		if weapon_component != null:
-			_register_attack_component(weapon_component)
+	# Every attack component this character owns (the weapon's included)
+	# reports its hits as this character's hit_landed. Its own hurtbox is
+	# never a target: AttackComponent skips its wielder's hurtbox.
 	for component: AttackComponent in find_children("*", "AttackComponent"):
-		_register_attack_component(component)
-
-
-## Keeps the component from hitting its own character and forwards its hits
-## as this character's hit_landed.
-func _register_attack_component(component: AttackComponent) -> void:
-	component.add_exception(self)
-	if not component.hit_landed.is_connected(_on_attack_component_hit_landed):
 		component.hit_landed.connect(_on_attack_component_hit_landed.bind(component))
 
 
@@ -223,9 +194,8 @@ func _auto_configure_navigation() -> void:
 	if shape == null:
 		return
 
-	var height: float = 2.0
-	var radius: float = 0.5
-
+	var height: float
+	var radius: float
 	if shape is CapsuleShape3D:
 		var cap: CapsuleShape3D = shape as CapsuleShape3D
 		height = cap.height
@@ -242,13 +212,10 @@ func _auto_configure_navigation() -> void:
 		return
 
 	var origin_height: float = height * 0.5 - collision_shape_3d.position.y
-	# Standard navmesh surface is baked slightly above floor geometry (~0.35m).
-	var nav_elevation: float = 0.35
-
 	navigation_agent_3d.radius = radius
-	navigation_agent_3d.path_height_offset = -maxf(0.0, origin_height - nav_elevation)
-	navigation_agent_3d.path_desired_distance = clampf(radius + 0.3, 0.6, 1.5)
-	navigation_agent_3d.target_desired_distance = maxf(1.5, radius + 0.8)
+	navigation_agent_3d.path_height_offset = -maxf(0.0, origin_height - NAV_SURFACE_ELEVATION)
+	navigation_agent_3d.path_desired_distance = clampf(radius + PATH_DISTANCE_MARGIN, PATH_DISTANCE_MIN, PATH_DISTANCE_MAX)
+	navigation_agent_3d.target_desired_distance = maxf(TARGET_DISTANCE_MIN, radius + TARGET_DISTANCE_MARGIN)
 
 
 ## Moves normally, except enemy tops are never usable floors for the player.
@@ -285,7 +252,7 @@ func _slide_off_enemy_head(enemy: Character, start_transform: Transform3D, inten
 	# Lift out of margin contact first: starting the sweep while touching
 	# makes move_and_slide spend its step on penetration recovery and skip
 	# the actual motion, wedging the player against the surface.
-	global_position += support_normal * 0.01
+	global_position += support_normal * HEAD_SLIDE_LIFT
 	var outward: Vector3 = (global_position - enemy.global_position).slide(up_direction)
 	if outward.is_zero_approx():
 		outward = intended_velocity.slide(up_direction)
@@ -298,7 +265,7 @@ func _slide_off_enemy_head(enemy: Character, start_transform: Transform3D, inten
 	flat += outward * maxf(0.0, flat.dot(outward * -1.0))
 	flat += outward * maxf(0.0, head_slide_speed - flat.dot(outward))
 	# Keep falling (never rest or launch) so landing checks stay airborne.
-	velocity = Vector3(flat.x, minf(intended_velocity.y, -0.5), flat.z)
+	velocity = Vector3(flat.x, minf(intended_velocity.y, -HEAD_SLIDE_FALL_SPEED), flat.z)
 	var saved_mode: MotionMode = motion_mode
 	motion_mode = MOTION_MODE_FLOATING
 	move_and_slide()
@@ -306,8 +273,8 @@ func _slide_off_enemy_head(enemy: Character, start_transform: Transform3D, inten
 	# Bank the drift as distance: velocity is re-derived from input next frame,
 	# so a velocity-only push would be erased before it ever moves the body.
 	global_position += outward * head_slide_speed * get_physics_process_delta_time()
-	if velocity.y > -0.5:
-		velocity.y = -0.5
+	if velocity.y > -HEAD_SLIDE_FALL_SPEED:
+		velocity.y = -HEAD_SLIDE_FALL_SPEED
 
 
 ## Returns the enemy currently supporting the player from below, or null.
@@ -549,13 +516,7 @@ func get_nearest_target(group_name: String = "") -> Character:
 
 ## Returns true if this character is executing an uninterruptable attack or ability (hyper-armor).
 func is_uninterruptable() -> bool:
-	if state_machine != null and state_machine.state is CharacterAttack:
-		return (state_machine.state as CharacterAttack).uninterruptable
-	if state_machine != null and state_machine.state != null:
-		var unintr: Variant = state_machine.state.get("uninterruptable")
-		if unintr != null and bool(unintr):
-			return true
-	return false
+	return state_machine != null and state_machine.state is CharacterState and (state_machine.state as CharacterState).is_uninterruptable()
 
 
 ## Reacts to being struck: forwards the current health pool as health_changed
@@ -661,18 +622,12 @@ func on_defeat() -> void:
 	_switch_corpse_off()
 
 
-## Shuts off the body shape and the hurtbox, so the corpse never blocks
-## movement or takes hits. It still rests where it fell: the defeat states pin
-## velocity to zero every frame.
+## Shuts off the body shape, so the corpse never blocks movement (the hurtbox
+## switches itself off on defeat, see Hurtbox). It still rests where it fell:
+## the defeat states pin velocity to zero every frame.
 func _switch_corpse_off() -> void:
 	if collision_shape_3d != null:
 		collision_shape_3d.set_deferred("disabled", true)
-	if hurtbox != null:
-		hurtbox.set_deferred("monitoring", false)
-		hurtbox.set_deferred("monitorable", false)
-		var hurtbox_shape: CollisionShape3D = hurtbox.get_node_or_null("CollisionShape3D") as CollisionShape3D
-		if hurtbox_shape != null:
-			hurtbox_shape.set_deferred("disabled", true)
 
 
 func _on_attribute_defeat() -> void:

@@ -130,6 +130,10 @@ func command_dash() -> void:
 func order_attack() -> bool:
 	if character == null or character.state_machine == null:
 		return false
+	# The attack snapshots the character's aim on entry: make it current,
+	# while live aiming runs (it is part of this component's physics tick).
+	if is_physics_processing():
+		update_aim_intent()
 	command_attack()
 	var body_state: CharacterState = character.state_machine.state as CharacterState
 	if body_state == null:
@@ -222,17 +226,14 @@ func get_forward_jump_ratio() -> float:
 	var body_state: CharacterState = character.state_machine.state as CharacterState
 	if body_state == null or body_state.jump_state == null:
 		return -1.0
-	var jump_height: float = 0.0
-	if body_state.jump_state.get("jump_height") != null:
-		jump_height = float(body_state.jump_state.get("jump_height"))
-	if jump_height <= 0.0:
+	var jump: PlayerJump = body_state.jump_state as PlayerJump
+	if jump == null or jump.jump_height <= 0.0:
 		return -1.0
-	var speed: float = character.attribute_component.get_current(AttributeComponent.STAT_SPEED) if character.attribute_component != null else 8.0
-	if speed <= 0.0:
-		return -1.0
+	var jump_height: float = jump.jump_height
+	var speed: float = character.attribute_component.get_current(AttributeComponent.STAT_SPEED)
 	var gravity_mag: float = character.get_gravity().length()
-	if is_zero_approx(gravity_mag):
-		gravity_mag = 9.8
+	if speed <= 0.0 or is_zero_approx(gravity_mag):
+		return -1.0
 	var air_time: float = 2.0 * sqrt(2.0 * jump_height / gravity_mag)
 	var full_range: float = speed * air_time
 	if full_range <= 0.0:

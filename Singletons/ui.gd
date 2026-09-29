@@ -11,7 +11,8 @@
 extends Node
 
 
-## Damage dealt to each enemy by the `debug_kill` action.
+## Damage dealt to each enemy by the `debug_kill` action (a debug-build cheat,
+## not balance).
 const DEBUG_KILL_DAMAGE: float = 50.0
 
 ## Emitted when the game pause state changes.
@@ -49,7 +50,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_pause"):
 		toggle_pause()
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("debug_kill"):
+	elif OS.is_debug_build() and event.is_action_pressed("debug_kill"):
 		debug_kill_enemies()
 		get_viewport().set_input_as_handled()
 
@@ -63,7 +64,7 @@ func is_fullscreen() -> bool:
 ## Switches the window to exclusive fullscreen, unless the game is embedded in the editor.
 func go_fullscreen() -> void:
 	if Engine.is_embedded_in_editor() or get_window().is_embedded():
-		print("Cannot toggle fullscreen while game is embedded in the editor. Disable 'Game Embed Mode' in Editor Settings -> Run -> Window Placement.")
+		push_warning("Cannot toggle fullscreen while game is embedded in the editor. Disable 'Game Embed Mode' in Editor Settings -> Run -> Window Placement.")
 		return
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
 
@@ -71,7 +72,7 @@ func go_fullscreen() -> void:
 ## Toggles the window between fullscreen and windowed mode, unless embedded in the editor.
 func toggle_fullscreen() -> void:
 	if Engine.is_embedded_in_editor() or get_window().is_embedded():
-		print("Cannot toggle fullscreen while game is embedded in the editor. Disable 'Game Embed Mode' in Editor Settings -> Run -> Window Placement.")
+		push_warning("Cannot toggle fullscreen while game is embedded in the editor. Disable 'Game Embed Mode' in Editor Settings -> Run -> Window Placement.")
 		return
 	if is_fullscreen():
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
@@ -218,8 +219,8 @@ func toggle_pause() -> void:
 
 ## Deals damage to every living enemy in the "enemy" group. Routes hits
 ## through Hurtbox.receive_hit() so damage numbers, hit audio, and stun
-## reactions fire exactly like combat hits; falls back to direct pool
-## damage only when an enemy has no wired hurtbox.
+## reactions fire exactly like combat hits. Bound to the debug_kill action in
+## debug builds only.
 func debug_kill_enemies(damage: float = DEBUG_KILL_DAMAGE) -> void:
 	var enemies: Array[Node] = get_tree().get_nodes_in_group("enemy")
 	for node: Node in enemies:
@@ -228,10 +229,4 @@ func debug_kill_enemies(damage: float = DEBUG_KILL_DAMAGE) -> void:
 		var enemy: Character = node as Character
 		if not enemy.is_alive():
 			continue
-		var hurtbox: Hurtbox = enemy.hurtbox
-		if hurtbox == null or not is_instance_valid(hurtbox):
-			hurtbox = enemy.get_node_or_null("Hurtbox") as Hurtbox
-		if hurtbox != null and is_instance_valid(hurtbox):
-			hurtbox.receive_hit(damage, Vector3.ZERO)
-		elif enemy.attribute_component != null and is_instance_valid(enemy.attribute_component):
-			enemy.attribute_component.damage_pool(AttributeComponent.POOL_HEALTH, damage)
+		enemy.hurtbox.receive_hit(damage, Vector3.ZERO)

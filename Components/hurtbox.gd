@@ -27,9 +27,10 @@ signal struck(damage: float)
 
 
 func _ready() -> void:
-	_resolve_attributes()
-	if attribute_component != null and not attribute_component.defeat.is_connected(_on_defeat):
-		attribute_component.defeat.connect(_on_defeat)
+	if attribute_component == null:
+		push_error("%s: attribute_component is not set." % name)
+		return
+	attribute_component.defeat.connect(_on_defeat)
 
 
 ## Returns true if the owning target is alive and eligible to receive hits.
@@ -76,20 +77,3 @@ func receive_hit(damage: float, knockback: Vector3, damage_type: StringName = Da
 	if hit_audio: hit_audio.play()
 	struck.emit(effective)
 	return true
-
-
-## Falls back to the "../AttributeComponent" sibling (then any sibling of that
-## class) when the export is unset.
-func _resolve_attributes() -> void:
-	if attribute_component != null and is_instance_valid(attribute_component):
-		return
-	attribute_component = get_node_or_null("../AttributeComponent") as AttributeComponent
-	if attribute_component != null:
-		return
-	var parent: Node = get_parent()
-	if parent == null:
-		return
-	for child: Node in parent.get_children():
-		if child is AttributeComponent:
-			attribute_component = child as AttributeComponent
-			break

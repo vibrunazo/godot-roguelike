@@ -61,6 +61,29 @@ Every suite now runs on the harness (Phase B step 4 is done).
 
 ## Architecture backlog
 
+Items 19 to 23 are what the closed code review (`CODE_REVIEW.md`) left for
+later: none is a defect.
+
+19. **Mobile performance workstream** (with decision 3). A physics tick-rate
+    axis for the tests (`--physics-tps`, to catch tick-dependent code before
+    anyone lowers the rate to save battery), count-based budgets per level
+    (nodes, bodies, particles, lights, draw calls), a worst-case benchmark
+    scenario logged as a trend, and profiling on a real target phone. (§3.9)
+20. **Tooling:** run the suites in parallel (`run_tests.py -j N`: about 0.7 s
+    of each suite is engine startup); resolve UIDs inside binary `.res` files
+    in the lint (a headless GDScript step); a pre-commit hook that runs the
+    lint. (§4.3, §4.4, §5.2)
+21. **Hang prevention that does not rely on the agent:** block direct
+    `godot` calls in the agent harness (a Claude Code `PreToolUse` hook or
+    permission rule pointing at the runners), and prototype an engine-side
+    self-kill autoload for headless runs. (§5.2)
+22. **A `CharacterController` base** for `PlayerInputComponent` and
+    `AIStateMachine`, whose `command_*`/`order_*` methods are duplicated
+    pairs today. (§5.3)
+23. **Scratch harness:** let checks in `.scratch/` extend the test harness,
+    and let `run_scratch.py` run a `.tscn`, so verifying a change in a scene
+    never pushes agents toward `test/`. (§5.4)
+
 7. **Data-driven attacks (`AttackData` resources).** Every attack and combo
     step is its own hand-built state node, with combo branches and timings
     spread across state scripts and scenes. An `AttackData` resource

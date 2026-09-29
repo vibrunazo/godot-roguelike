@@ -31,13 +31,13 @@ func _ready() -> void:
 		child.queue_free()
 
 	var card_scene: PackedScene = upgrade_card_scene
-	if card_scene == null and GlobalVars != null:
+	if card_scene == null:
 		card_scene = GlobalVars.upgrade_icon_scene
 	if card_scene == null:
 		return
 
 	var pool: Array[ItemResource] = available_items
-	if pool.is_empty() and GlobalVars != null:
+	if pool.is_empty():
 		pool = GlobalVars.items
 
 	# Only deal items that can still be picked: anything already purchased

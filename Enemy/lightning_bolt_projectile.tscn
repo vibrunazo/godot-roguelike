@@ -84,6 +84,7 @@ autostart = true
 [node name="AttackComponent" type="Node" parent="." unique_id=321443246]
 script = ExtResource("3_attack_comp")
 damage = 15.0
+bind_parent_area = false
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=341094992]
 material_override = SubResource("StandardMaterial3D_sparks")

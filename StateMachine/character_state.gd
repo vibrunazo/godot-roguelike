@@ -26,6 +26,12 @@ func accepts_orders() -> bool:
 	return true
 
 
+## Whether this state has hyper-armor right now (hits hurt but never stun).
+## Attacks and abilities with an uninterruptable export override this.
+func is_uninterruptable() -> bool:
+	return false
+
+
 ## Whether this state is on its cooldown. States with a cooldown (attacks,
 ## abilities) override this; they own and tick their cooldown themselves.
 func is_on_cooldown() -> bool:
