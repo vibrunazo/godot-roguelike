@@ -140,7 +140,7 @@ func test_riders_slash_a_player_in_their_zone_and_swing_again_after_cooldown() -
 	# one cooldown (stale hit exceptions would block it).
 	var second_hit: bool = false
 	if first_hit:
-		second_hit = await wait_signal(player.hurtbox.struck, "the rider should hit again after its cooldown (no stale hit exceptions)", _frames_for(AkiraBossRiders.SLASH_LENGTH + riders.attack_cooldown))
+		second_hit = await wait_signal(player.hurtbox.struck, "the rider should hit again after its cooldown (no stale hit exceptions)", _frames_for(_slash_length(riders) + riders.attack_cooldown))
 	get_tree().physics_frame.disconnect(watch_vfx)
 	if vfx != null:
 		check(vfx_seen[0], "the fire slash VFX should show during the swing")
@@ -152,11 +152,18 @@ func test_riders_return_to_idle_after_a_swing() -> void:
 	var riders: AkiraBossRiders = boss.get_node("RiderController") as AkiraBossRiders
 	var tree: MannequinAnimationTree = riders.left_rider_tree
 	riders.force_rider_attack(true)
-	check(not tree.active, "the rider's tree should hand over to the slash during a swing")
-	if not await wait_until(func() -> bool: return tree.active, "the rider's tree should take control back after the swing", _frames_for(AkiraBossRiders.SLASH_LENGTH) + 10):
+	if not await wait_until(func() -> bool: return riders.is_rider_swinging(true), "a forced swing should put the rider in its slash state", 10):
 		return
-	await wait_physics_frames(5)
-	check_eq(tree.playback.get_current_node(), &"WalkSpace", "the rider should idle after a swing, not T-pose at Start")
+	if not await wait_until(func() -> bool: return not riders.is_rider_swinging(true), "the rider's swing should end", _frames_for(_slash_length(riders)) + 30):
+		return
+	check_eq(tree.playback.get_current_node(), &"WalkSpace", "the rider should idle after a swing, not T-pose")
+
+
+## Seconds the riders' side-slash animation lasts.
+func _slash_length(riders: AkiraBossRiders) -> float:
+	var tree: MannequinAnimationTree = riders.left_rider_tree
+	var state: AnimationNodeAnimation = (tree.tree_root as AnimationNodeStateMachine).get_node(riders.slash_state) as AnimationNodeAnimation
+	return (tree.get_node(tree.anim_player) as AnimationPlayer).get_animation(state.animation).length
 
 
 # --- Fire immunity -------------------------------------------------------------

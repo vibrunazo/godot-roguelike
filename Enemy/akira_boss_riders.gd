@@ -1,21 +1,15 @@
 ## Backpack rider controller for the Akira boss.
 ## Drives the two melee riders mounted on the boss waist: they idle in
-## WalkSpace (never stuck T-posing on Start) and side-slash with melee-equal
-## swords when the player comes close. The slash animation carries its own
-## WeaponSlot:enabled track, opening a large hitbox zone around the rider so
-## approaching is costly, while the slot's Slash attack_mode drives a
-## player-style fire SlashVFX quad and fire-slash audio. Riders are visual
+## WalkSpace and side-slash with melee-equal swords when the player comes
+## close, by switching their AnimationTree to its SideSlash state, which
+## returns to WalkSpace on its own when the swing ends. The slash animation
+## carries its own WeaponSlot:enabled track, opening a large hitbox zone
+## around the rider so approaching is costly, while the slot's Slash
+## attack_mode drives a player-style fire SlashVFX quad and fire-slash audio. Riders are visual
 ## AnimatedEnemy rigs (legs hidden, torso up out of primitive backpacks),
 ## not full Characters.
 class_name AkiraBossRiders
 extends Node
-
-## Library name under which the slash is registered on rider AnimationPlayers.
-const SLASH_LIBRARY: StringName = &"RiderExtra"
-## Slash animation node name inside the runtime library.
-const SLASH_ANIM: StringName = &"SideSlash"
-## Seconds after swing start when tree control returns (slash is 1.37s long).
-const SLASH_LENGTH: float = 1.45
 
 ## Boss character carrying the riders. Used for liveness and target lookup.
 @export var character: Character
@@ -23,8 +17,8 @@ const SLASH_LENGTH: float = 1.45
 @export var left_rider_tree: MannequinAnimationTree
 ## AnimationTree of the right backpack rider.
 @export var right_rider_tree: MannequinAnimationTree
-## Side-slash animation played on each rider (added to its AnimationPlayer).
-@export var side_slash_animation: Animation
+## Rider AnimationTree state that plays the side-slash.
+@export var slash_state: StringName = &"SideSlash"
 ## Node3D root of the left rider (for distance checks to the player).
 @export var left_rider_root: Node3D
 ## Node3D root of the right rider (for distance checks to the player).
@@ -36,10 +30,6 @@ const SLASH_LENGTH: float = 1.45
 
 var _left_cooldown: float = 0.0
 var _right_cooldown: float = 0.0
-var _left_swinging: bool = false
-var _right_swinging: bool = false
-var _left_player: AnimationPlayer = null
-var _right_player: AnimationPlayer = null
 var _has_riders: bool = true
 
 
@@ -47,8 +37,9 @@ func _ready() -> void:
 	if character == null:
 		character = get_parent() as Character
 	_hide_rider_legs()
-	_left_player = _setup_rider(true)
-	_right_player = _setup_rider(false)
+	for rider_tree: MannequinAnimationTree in [left_rider_tree, right_rider_tree]:
+		if rider_tree != null:
+			rider_tree.change_immediate("WalkSpace")
 	if character != null and character.attribute_component != null:
 		character.attribute_component.tag_added.connect(_on_tag_added)
 		character.attribute_component.tag_removed.connect(_on_tag_removed)
@@ -84,6 +75,10 @@ func attach_riders() -> void:
 
 
 func _apply_rider_presence() -> void:
+	# A detached rider must not finish a swing (its slash keys the hitbox on).
+	for rider_tree: MannequinAnimationTree in [left_rider_tree, right_rider_tree]:
+		if rider_tree != null:
+			rider_tree.change_immediate("WalkSpace")
 	for root: Node3D in [left_rider_root, right_rider_root]:
 		if root != null and is_instance_valid(root):
 			root.visible = _has_riders
@@ -110,29 +105,6 @@ func _physics_process(delta: float) -> void:
 	_try_rider_attack(false, player)
 
 
-## Registers the side-slash on one rider's AnimationPlayer and idles its tree.
-func _setup_rider(is_left: bool) -> AnimationPlayer:
-	var rider_tree: MannequinAnimationTree = left_rider_tree if is_left else right_rider_tree
-	var rider_root: Node3D = left_rider_root if is_left else right_rider_root
-	if rider_tree == null or rider_root == null:
-		return null
-	var player: AnimationPlayer = rider_root.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	if player != null:
-		# The slash is played on this player directly (tree deactivated) and its
-		# WeaponSlot:enabled track is the hit window, so it runs on the physics
-		# clock like the character AnimationTrees.
-		player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_PHYSICS
-	if player != null and not player.has_animation_library(SLASH_LIBRARY):
-		if side_slash_animation == null:
-			push_error("%s: side_slash_animation is not set." % name)
-		else:
-			var lib := AnimationLibrary.new()
-			lib.add_animation(SLASH_ANIM, side_slash_animation)
-			player.add_animation_library(SLASH_LIBRARY, lib)
-	rider_tree.change_immediate("WalkSpace")
-	return player
-
-
 ## Checks range and cooldown for one rider and triggers its sword swing.
 func _try_rider_attack(is_left: bool, player: Character) -> void:
 	if not _has_riders:
@@ -140,10 +112,9 @@ func _try_rider_attack(is_left: bool, player: Character) -> void:
 	var rider_root: Node3D = left_rider_root if is_left else right_rider_root
 	var rider_tree: MannequinAnimationTree = left_rider_tree if is_left else right_rider_tree
 	var cooldown: float = _left_cooldown if is_left else _right_cooldown
-	var swinging: bool = _left_swinging if is_left else _right_swinging
 	if rider_root == null or rider_tree == null:
 		return
-	if cooldown > 0.0 or swinging:
+	if cooldown > 0.0 or is_rider_swinging(is_left):
 		return
 	if not rider_root.is_inside_tree():
 		return
@@ -153,16 +124,14 @@ func _try_rider_attack(is_left: bool, player: Character) -> void:
 	_play_rider_attack(is_left)
 
 
-## Plays the rider side-slash animation and starts its cooldown.
+## Switches the rider's tree to its side-slash state and starts its cooldown.
 ## The slash resource drives WeaponSlot:enabled itself (0.2s-0.4s window).
 func _play_rider_attack(is_left: bool) -> void:
 	var rider_tree: MannequinAnimationTree = left_rider_tree if is_left else right_rider_tree
 	var rider_root: Node3D = left_rider_root if is_left else right_rider_root
-	var player: AnimationPlayer = _left_player if is_left else _right_player
-	var swinging: bool = _left_swinging if is_left else _right_swinging
-	if rider_tree == null or rider_root == null or player == null or swinging:
+	if rider_tree == null or rider_root == null or is_rider_swinging(is_left):
 		return
-	if not rider_tree.is_inside_tree() or not player.is_inside_tree():
+	if not rider_tree.is_inside_tree():
 		return
 	# Fresh hit exceptions every swing: riders own no CharacterAttack state to
 	# reset for them, so without this only the first swing could ever land.
@@ -174,36 +143,20 @@ func _play_rider_attack(is_left: bool) -> void:
 			att.reset_exceptions()
 			if character != null and is_instance_valid(character):
 				att.add_exception(character)
-	rider_tree.active = false
-	var anim_name: String = String(SLASH_LIBRARY) + "/" + String(SLASH_ANIM)
-	player.play(StringName(anim_name))
+	rider_tree.change_immediate(slash_state)
 	if is_left:
-		_left_swinging = true
 		_left_cooldown = attack_cooldown
 	else:
-		_right_swinging = true
 		_right_cooldown = attack_cooldown
-	var timer: SceneTreeTimer = get_tree().create_timer(SLASH_LENGTH, true, true)
-	timer.timeout.connect(_end_rider_swing.bind(is_left))
 
 
-## Returns tree control to the rider after its slash finishes, back in WalkSpace.
-func _end_rider_swing(is_left: bool) -> void:
-	if is_left:
-		_left_swinging = false
-	else:
-		_right_swinging = false
+## Returns true while the given rider's tree is in its side-slash state
+## (from the tree's next physics step after the swing starts).
+func is_rider_swinging(is_left: bool) -> bool:
 	var rider_tree: MannequinAnimationTree = left_rider_tree if is_left else right_rider_tree
-	if rider_tree == null or not is_instance_valid(rider_tree):
-		return
-	if not rider_tree.is_inside_tree():
-		return
-	if character != null and is_instance_valid(character) and not character.is_alive():
-		return
-	rider_tree.active = true
-	# Re-activating the tree restarts its state machine at Start (a T-pose):
-	# send it back to the idle blend explicitly.
-	rider_tree.change_immediate("WalkSpace")
+	if rider_tree == null or rider_tree.playback == null:
+		return false
+	return rider_tree.playback.get_current_node() == slash_state
 
 
 ## Hides leg meshes on both riders so they read as torso-up in backpacks.
