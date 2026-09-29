@@ -187,7 +187,7 @@ func _play_rider_attack(is_left: bool) -> void:
 	timer.timeout.connect(_end_rider_swing.bind(is_left))
 
 
-## Returns tree control to the rider after its slash finishes.
+## Returns tree control to the rider after its slash finishes, back in WalkSpace.
 func _end_rider_swing(is_left: bool) -> void:
 	if is_left:
 		_left_swinging = false
@@ -201,6 +201,9 @@ func _end_rider_swing(is_left: bool) -> void:
 	if character != null and is_instance_valid(character) and not character.is_alive():
 		return
 	rider_tree.active = true
+	# Re-activating the tree restarts its state machine at Start (a T-pose):
+	# send it back to the idle blend explicitly.
+	rider_tree.change_immediate("WalkSpace")
 
 
 ## Hides leg meshes on both riders so they read as torso-up in backpacks.

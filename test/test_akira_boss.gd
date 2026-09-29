@@ -5,6 +5,7 @@
 ## - Throws firebombs that leave fire traps built from that bomb's settings.
 ## - Its backpack riders side-slash a player in their zone with the fire slash
 ##   VFX, then can swing again once their own cooldown has passed.
+## - After a swing the riders go back to idling (not a T-pose).
 ## - With full fire resistance it ignores fire (no damage, reaction, stun or
 ##   burn) but not physical hits; burns apply once resistance is lowered; a
 ##   live fire trap harms a normal enemy next to it but not the boss.
@@ -144,6 +145,18 @@ func test_riders_slash_a_player_in_their_zone_and_swing_again_after_cooldown() -
 	if vfx != null:
 		check(vfx_seen[0], "the fire slash VFX should show during the swing")
 		check(min_threshold[0] < 1.0, "the fire slash VFX should sweep during the swing")
+
+
+func test_riders_return_to_idle_after_a_swing() -> void:
+	var boss: Character = await _settled_boss()
+	var riders: AkiraBossRiders = boss.get_node("RiderController") as AkiraBossRiders
+	var tree: MannequinAnimationTree = riders.left_rider_tree
+	riders.force_rider_attack(true)
+	check(not tree.active, "the rider's tree should hand over to the slash during a swing")
+	if not await wait_until(func() -> bool: return tree.active, "the rider's tree should take control back after the swing", _frames_for(AkiraBossRiders.SLASH_LENGTH) + 10):
+		return
+	await wait_physics_frames(5)
+	check_eq(tree.playback.get_current_node(), &"WalkSpace", "the rider should idle after a swing, not T-pose at Start")
 
 
 # --- Fire immunity -------------------------------------------------------------
