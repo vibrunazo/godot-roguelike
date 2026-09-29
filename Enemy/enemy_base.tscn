@@ -14,6 +14,9 @@
 [ext_resource type="Script" uid="uid://bktjbk1s3kg6n" path="res://StateMachine/ai_state_machine.gd" id="11_aism"]
 [ext_resource type="Script" uid="uid://c8j4cclflxm5n" path="res://Components/character_color_component.gd" id="13_color"]
 [ext_resource type="Script" uid="uid://d1jynuos72fph" path="res://Components/attribute_component.gd" id="14_attr"]
+[ext_resource type="Script" path="res://Components/airborne_tracker.gd" id="d11_AirborneTracker"]
+[ext_resource type="Script" path="res://Components/loot_component.gd" id="d11_LootComponent"]
+[ext_resource type="Script" path="res://Components/status_visuals_component.gd" id="d11_StatusVisualsComponent"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ncf7h"]
 radius = 0.375
@@ -108,6 +111,19 @@ base_attack = 100.0
 base_speed = 3.5
 
 
+
+[node name="AirborneTracker" type="Node" parent="." node_paths=PackedStringArray("character")]
+script = ExtResource("d11_AirborneTracker")
+character = NodePath("..")
+
+[node name="LootComponent" type="Node" parent="." node_paths=PackedStringArray("character")]
+script = ExtResource("d11_LootComponent")
+character = NodePath("..")
+
+[node name="StatusVisualsComponent" type="Node" parent="." node_paths=PackedStringArray("attribute_component", "visual_parent")]
+script = ExtResource("d11_StatusVisualsComponent")
+attribute_component = NodePath("../AttributeComponent")
+visual_parent = NodePath("..")
 
 [editable path="AnimationAnchor/AnimatedEnemy"]
 [editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]

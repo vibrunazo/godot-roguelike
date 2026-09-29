@@ -28,7 +28,7 @@ const COVER_CLEARANCE: float = 3.0
 
 
 func before_each() -> void:
-	SceneTransition.player_cache = null
+	ProgressionState.reset_run()
 
 
 func test_every_level_the_run_can_load_is_sound() -> void:

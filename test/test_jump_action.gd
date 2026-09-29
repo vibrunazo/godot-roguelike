@@ -69,7 +69,7 @@ func before_each() -> void:
 # --- Jump -------------------------------------------------------------------
 
 func test_a_neutral_jump_rises_to_its_jump_height_and_lands_in_place() -> void:
-	await _lock_foe(Vector3.BACK * _player.auto_aim_range * 0.5)
+	await _lock_foe(Vector3.BACK * _aim().auto_aim_range * 0.5)
 	for height: float in [_jump.jump_height, _jump.jump_height * 1.5]:
 		_jump.jump_height = height
 		await _reset_at_home()
@@ -156,7 +156,7 @@ func test_out_of_combat_the_jump_button_always_dashes() -> void:
 
 
 func test_in_combat_the_jump_button_jumps_toward_the_target_and_dashes_otherwise() -> void:
-	var foe: Character = await _lock_foe(Vector3.BACK * _player.auto_aim_range * 0.5)
+	var foe: Character = await _lock_foe(Vector3.BACK * _aim().auto_aim_range * 0.5)
 	var threshold: float = rad_to_deg(acos(clampf(_input.jump_dash_alignment, -1.0, 1.0)))
 	var inside: float = maxf(threshold - ALIGNMENT_MARGIN_DEGREES, 0.0)
 	var outside: float = minf(threshold + ALIGNMENT_MARGIN_DEGREES, 180.0)
@@ -184,7 +184,7 @@ func test_in_combat_the_jump_button_jumps_toward_the_target_and_dashes_otherwise
 func test_a_combat_leap_snaps_onto_the_target_bearing() -> void:
 	var threshold: float = rad_to_deg(acos(clampf(_input.jump_dash_alignment, -1.0, 1.0)))
 	var off_axis: Vector3 = Vector3.BACK.rotated(Vector3.UP, deg_to_rad(threshold * 0.5))
-	var foe: Character = await _lock_foe(off_axis * _player.auto_aim_range * 0.5)
+	var foe: Character = await _lock_foe(off_axis * _aim().auto_aim_range * 0.5)
 	_player.move_direction = Vector3.BACK
 	press_action(&"jump")
 	if not await wait_until(func() -> bool: return _state() == _jump.name, "holding roughly toward the target should jump", 10):
@@ -200,7 +200,7 @@ func test_a_combat_leap_lands_its_landing_gap_short_of_the_target_and_restores_i
 	_input.jump_landing_gap = LANDING_GAP
 	# Midway between the landing gap and the edge of the aim range, so the leap
 	# is sized well inside its clamp limits.
-	var foe: Character = await _lock_foe(Vector3.BACK * (LANDING_GAP + _player.auto_aim_range * 0.9) * 0.5)
+	var foe: Character = await _lock_foe(Vector3.BACK * (LANDING_GAP + _aim().auto_aim_range * 0.9) * 0.5)
 	_player.move_direction = Vector3.BACK
 	var ratio: float = _input.get_forward_jump_ratio()
 	if not check(ratio > _input.min_forward_jump_ratio and ratio < _input.max_forward_jump_ratio, "setup: the leap ratio should be unclamped at this distance (%.3f)" % ratio):
@@ -220,7 +220,7 @@ func test_a_combat_leap_lands_its_landing_gap_short_of_the_target_and_restores_i
 
 func test_the_leap_ratio_is_clamped_to_its_limits() -> void:
 	_input.jump_landing_gap = LANDING_GAP
-	await _lock_foe(Vector3.BACK * _player.auto_aim_range * 0.9)
+	await _lock_foe(Vector3.BACK * _aim().auto_aim_range * 0.9)
 	_player.move_direction = Vector3.BACK
 	_input.min_forward_jump_ratio = 0.0
 	_input.max_forward_jump_ratio = INF
@@ -237,7 +237,7 @@ func test_the_leap_ratio_is_clamped_to_its_limits() -> void:
 # --- Attacks and the jump kick -----------------------------------------------
 
 func test_a_dash_cancellable_attack_can_be_jump_cancelled() -> void:
-	await _lock_foe(Vector3.BACK * _player.auto_aim_range * 0.5)
+	await _lock_foe(Vector3.BACK * _aim().auto_aim_range * 0.5)
 	var attack: CharacterAttack = _run.attack_state as CharacterAttack
 	attack.dash_cancel = true
 	press_action(&"click")
@@ -248,7 +248,7 @@ func test_a_dash_cancellable_attack_can_be_jump_cancelled() -> void:
 
 
 func test_an_attack_without_dash_cancel_ignores_the_jump_button() -> void:
-	await _lock_foe(Vector3.BACK * _player.auto_aim_range * 0.5)
+	await _lock_foe(Vector3.BACK * _aim().auto_aim_range * 0.5)
 	var attack: CharacterAttack = _run.attack_state as CharacterAttack
 	attack.dash_cancel = false
 	press_action(&"click")
@@ -261,7 +261,7 @@ func test_an_attack_without_dash_cancel_ignores_the_jump_button() -> void:
 
 
 func test_attacking_mid_air_performs_a_lunging_jump_kick_that_landing_cancels_into_running() -> void:
-	await _lock_foe(Vector3.BACK * _player.auto_aim_range * 0.5)
+	await _lock_foe(Vector3.BACK * _aim().auto_aim_range * 0.5)
 	press_action(&"jump")
 	if not await wait_until(func() -> bool: return _state() == _jump.name, "setup: a neutral press in combat should jump", 10):
 		return
@@ -277,7 +277,7 @@ func test_attacking_mid_air_performs_a_lunging_jump_kick_that_landing_cancels_in
 
 
 func test_an_attack_pressed_during_the_kick_lands_straight_into_the_ground_attack() -> void:
-	await _lock_foe(Vector3.BACK * _player.auto_aim_range * 0.5)
+	await _lock_foe(Vector3.BACK * _aim().auto_aim_range * 0.5)
 	press_action(&"jump")
 	if not await wait_until(func() -> bool: return _state() == _jump.name, "setup: a neutral press in combat should jump", 10):
 		return
@@ -369,3 +369,8 @@ func _horizontal(vector: Vector3) -> Vector3:
 
 func _state() -> String:
 	return str(_player.state_machine.state.name)
+
+
+## The player's auto-aim (TargetingComponent).
+func _aim() -> TargetingComponent:
+	return _player.get_node("TargetingComponent") as TargetingComponent

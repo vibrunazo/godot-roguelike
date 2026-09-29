@@ -7,13 +7,12 @@
 ## - Loading the next encounter's dungeon (`load_next_level`; the dungeon,
 ##   boss arenas included, is chosen by `ProgressionState` from the
 ##   `GlobalVars.dungeons` registry) and direct scene loading
-##   (`load_scene_path`), preserving the player across scene changes
-##   (`player_cache`).
+##   (`load_scene_path`). The outgoing player's run state (gear, pools) is
+##   captured into ProgressionState.player_state; the next level spawns its
+##   own fresh player and applies it (see PlayerRunState).
 extends CanvasLayer
 
 @onready var color_rect: ColorRect = $ColorRect
-
-var player_cache: Character
 
 
 func _ready() -> void:
@@ -31,22 +30,16 @@ func fade_in(tween: Tween) -> void:
 func load_scene_path(path_in: String, args: Dictionary = {}) -> void:
 	var player: Character = get_tree().get_first_node_in_group("player") as Character
 	if player:
-		# Cancel upfront so movement, abilities, SFX, damage flash, fire,
-		# and temporary status effects stop the moment the fade starts
-		# (not only after the new level adopts the player). LevelTemplate
-		# re-applies the same cancel on restore as a safety net.
+		ProgressionState.player_state.capture(player)
+		# Silence the outgoing player at once: movement, abilities, SFX,
+		# damage flash, fire and status effects stop when the fade starts,
+		# not when its scene is freed.
 		player.cancel_movement_and_abilities()
 		player.process_mode = Node.PROCESS_MODE_DISABLED
 	VfxManager.clear_temporary_effects()
 	var tween: Tween = create_tween()
 	fade_in(tween)
-	tween.tween_callback(
-		func() -> void:
-			if player:
-				player.reparent(self)
-				player_cache = player
-			get_tree().change_scene_to_file(path_in)
-	)
+	tween.tween_callback(func() -> void: get_tree().change_scene_to_file(path_in))
 	tween.tween_interval(0.5)
 	fade_out(tween)
 

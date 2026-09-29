@@ -26,6 +26,14 @@ func _ready() -> void:
 			character.health_changed.connect(_on_character_health_changed)
 		if not character.hit_landed.is_connected(_on_character_hit_landed):
 			character.hit_landed.connect(_on_character_hit_landed)
+		character.transient_state_cancelled.connect(_on_transient_state_cancelled)
+
+
+## A cancel (e.g. carrying the player into a new level) stops any shake.
+func _on_transient_state_cancelled() -> void:
+	var active_camera: ShakeCamera3D = get_camera()
+	if active_camera != null:
+		active_camera.trauma = 0.0
 
 
 ## Returns the active ShakeCamera3D, resolving dynamically from viewport if not assigned.

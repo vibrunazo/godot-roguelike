@@ -6,7 +6,7 @@
 ## - The game-over screen (show_game_over) hides resume, keeps restart, and
 ##   locks the pause toggle until resume_game() clears it.
 ## - Player defeat shows the game-over screen only after
-##   Character.DEFEAT_MENU_DELAY, and dying never resets run progression.
+##   PlayerDefeatHandler.menu_delay, and dying never resets run progression.
 ## - Regression guards: the pause menu never renders its own gold counter (the
 ##   HUD owns it), and without a selected item the stats panel shows no
 ##   comparison arrows.
@@ -94,11 +94,12 @@ func test_player_defeat_shows_game_over_after_the_delay_without_resetting_progre
 	var saved_dungeon_level: int = ProgressionState.dungeon_level
 	ProgressionState.difficulty_level = TEST_DIFFICULTY
 	ProgressionState.dungeon_level = TEST_DUNGEON_LEVEL
+	var menu_delay: float = (player.get_node("PlayerDefeatHandler") as PlayerDefeatHandler).menu_delay
 	player.hurtbox.receive_hit(player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), Vector3.ZERO)
-	await wait_physics_frames(_frames_for(Character.DEFEAT_MENU_DELAY * 0.5))
+	await wait_physics_frames(_frames_for(menu_delay * 0.5))
 	check(not UI.is_paused(), "the game-over screen must wait for the defeat delay")
 	check_eq(str(player.state_machine.state.name), "PlayerDefeat", "a defeated player should enter PlayerDefeat")
-	await wait_until(func() -> bool: return UI.is_paused(), "the game-over screen should appear after the defeat delay", _frames_for(Character.DEFEAT_MENU_DELAY))
+	await wait_until(func() -> bool: return UI.is_paused(), "the game-over screen should appear after the defeat delay", _frames_for(menu_delay))
 	var menu: PauseMenu = _open_menu()
 	check(menu != null and not menu.buttons_panel.resume_button.visible, "defeat should open the game-over screen")
 	check_eq(ProgressionState.difficulty_level, TEST_DIFFICULTY, "dying must not reset the difficulty (reset happens on restart)")

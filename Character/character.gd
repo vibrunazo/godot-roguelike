@@ -9,7 +9,7 @@ signal defeat
 ## Emitted when this character's health changes.
 signal health_changed(value: float)
 
-## Emitted when the auto-aim target changes (including clearing to null).
+## Emitted when current_target changes (including clearing to null).
 signal target_changed(new_target: Node3D)
 
 ## Emitted when an attack belonging to this character lands a hit on a target.
@@ -18,19 +18,13 @@ signal hit_landed(target: Node, attack_component: AttackComponent)
 ## Emitted when this character is alerted into active combat.
 signal alerted
 
+## Emitted by cancel_movement_and_abilities(): components holding transient
+## feedback (damage tint, camera shake, ...) reset it.
+signal transient_state_cancelled
+
 ## Fallback rotation speed in degrees per second when no AttributeComponent is
 ## attached. Mirrors AttributeComponent.base_rotation_speed.
 const DEFAULT_ROTATION_SPEED: float = 360.0
-## Gameplay tag carried while the character is airborne (left the floor and not
-## grounded again). Passive required/blocked gates can use it ("only while
-## airborne"); the grounded->airborne and airborne->grounded edges are also
-## broadcast as movement lifecycle events (see _update_airborne_state).
-const TAG_AIRBORNE: StringName = &"movement.airborne"
-## Extra tag on an airborne episode's ENDED event: the character just landed.
-const TAG_LANDED: StringName = &"movement.landed"
-## Seconds between player defeat and the game-over screen, letting the death
-## animation and corpse read before the menu takes over.
-const DEFEAT_MENU_DELAY: float = 2.0
 
 ## The visual mount node rotated to face movement or aim directions.
 @export var mesh_mount: Node3D
@@ -77,14 +71,6 @@ const DEFEAT_MENU_DELAY: float = 2.0
 ## Optional cooldown timer preventing dash spamming. Wired on the player;
 ## characters without one (enemies) are always ready and rely on AI gating.
 @export var dash_cooldown: Timer
-## Maximum distance in meters at which auto-aim acquires opposing characters.
-## Values <= 0.0 disable auto-aim acquisition entirely (the default: enemies
-## never auto-aim; the player scene sets its range).
-@export var auto_aim_range: float = 0.0
-## Minimum interval in seconds between auto-aim target re-evaluations, so the
-## target does not flicker every tick when candidates sit at similar distances.
-@export var target_retarget_cooldown: float = 0.3
-
 
 ## Minimum outward drift speed enforced while the player is supported by an
 ## enemy head. Applied every contact frame as retry velocity and banked as
@@ -113,8 +99,9 @@ var attack_requested: bool = false
 var dash_requested: bool = false
 ## Edge-triggered jump request, raised by PlayerInputComponent (or AI) and consumed exactly once by body states.
 var jump_requested: bool = false
-## Current auto-aim target for attacks and the player reticle. Null when no
-## valid target exists. Written by the auto-aim tick; read by attack states.
+## Current target for attacks and the player reticle. Null when no valid
+## target exists. Written through set_current_target() (by the player's
+## TargetingComponent); read by attack states and projectiles.
 var current_target: Node3D = null
 ## True while the body StateMachine is inside an attack state. Set by
 ## CharacterAttack enter/exit; while true the auto-aim target never changes
@@ -122,18 +109,9 @@ var current_target: Node3D = null
 var is_attacking: bool = false
 
 var _is_defeated: bool = false
-## True while an airborne episode is in progress (left the floor and not yet
-## grounded again). Drives the movement lifecycle events and TAG_AIRBORNE.
-var _airborne: bool = false
-## Elapsed seconds of the current/last airborne episode, reported in the
-## landing event's "airborne_time" data for future passive filters.
-var _airborne_time: float = 0.0
-## True once move_character() has slid the body, so floor state is real.
-## is_on_floor() is false before the first move_and_slide and would otherwise
-## fake an airborne episode (and a landing) at spawn.
+## True once move_character() has slid the body, so floor state is real (see
+## has_moved()).
 var _movement_updated: bool = false
-## Time in seconds until the next allowed auto-aim re-evaluation.
-var _retarget_timer: float = 0.0
 
 ## Whether this character has been alerted to player presence. Defaults to true.
 var is_alerted: bool = true
@@ -211,14 +189,12 @@ func _check_enemy_states() -> void:
 		push_warning("Character '%s' in 'enemy' group has no defeat_state assigned." % name)
 
 
-## Wires defeat (and, for the player, the game-over flow), hit reactions, and
-## every attack component this character owns.
+## Wires defeat, hit reactions, and every attack component this character
+## owns.
 func _connect_combat_signals() -> void:
 	if attribute_component != null:
 		if not attribute_component.defeat.is_connected(_on_attribute_defeat):
 			attribute_component.defeat.connect(_on_attribute_defeat)
-		if is_player() and not attribute_component.defeat.is_connected(reset_game_state):
-			attribute_component.defeat.connect(reset_game_state)
 	if hurtbox != null and not hurtbox.struck.is_connected(_on_hurtbox_struck):
 		hurtbox.struck.connect(_on_hurtbox_struck)
 	if weapon_hitbox != null:
@@ -273,12 +249,6 @@ func _auto_configure_navigation() -> void:
 	navigation_agent_3d.path_height_offset = -maxf(0.0, origin_height - nav_elevation)
 	navigation_agent_3d.path_desired_distance = clampf(radius + 0.3, 0.6, 1.5)
 	navigation_agent_3d.target_desired_distance = maxf(1.5, radius + 0.8)
-
-
-func _physics_process(delta: float) -> void:
-	if auto_aim_range > 0.0:
-		_update_auto_aim(delta)
-	_update_airborne_state(delta)
 
 
 ## Moves normally, except enemy tops are never usable floors for the player.
@@ -362,95 +332,18 @@ func _get_enemy_head_support() -> Character:
 	return null
 
 
-## Advances auto-aim: drops invalid targets. If no target is currently held,
-## checks for a new target every tick to ensure immediate acquisition. Once a
-## target is acquired, enforces target_retarget_cooldown before switching targets
-## to prevent flicker between candidates at similar distances. Never changes the
-## target while an attack is running (covers combo chains, which stay inside attack
-## states), except clearing a freed node to avoid holding a dangling reference.
-func _update_auto_aim(delta: float) -> void:
-	if auto_aim_range <= 0.0 or not is_inside_tree() or not is_alive():
-		return
-	if is_attacking:
-		if current_target != null and not is_instance_valid(current_target):
-			_set_current_target(null)
-		return
-	if not _is_current_target_valid():
-		_set_current_target(null)
-
-	if current_target == null:
-		var nearest: Character = get_nearest_target()
-		if nearest != null and global_position.distance_to(nearest.global_position) <= auto_aim_range:
-			_set_current_target(nearest)
-			_retarget_timer = target_retarget_cooldown
-		return
-
-	_retarget_timer -= delta
-	if _retarget_timer > 0.0:
-		return
-	_retarget_timer = target_retarget_cooldown
-	var candidate: Character = get_nearest_target()
-	if candidate != null and global_position.distance_to(candidate.global_position) <= auto_aim_range:
-		_set_current_target(candidate)
-
-
-## Returns true when the current target is still a usable aim point: a live
-## node within auto-aim range (Characters must additionally be alive).
-func _is_current_target_valid() -> bool:
-	if current_target == null or not is_instance_valid(current_target):
-		return false
-	if current_target is Character and not (current_target as Character).is_alive():
-		return false
-	if global_position.distance_to(current_target.global_position) > auto_aim_range:
-		return false
-	return true
-
-
-## Resets the retarget cooldown so the next physics tick re-evaluates the
-## target immediately. Used by tests and event-driven retarget triggers.
-func force_retarget() -> void:
-	_retarget_timer = 0.0
-
-
-## Assigns the auto-aim target, emitting target_changed only on real changes.
-## Tracks the new target's death (and untracks the old one) so a kill drops
-## the corpse at once instead of lingering until the next tick.
-func _set_current_target(new_target: Node3D) -> void:
+## Sets current_target, emitting target_changed only on a real change.
+func set_current_target(new_target: Node3D) -> void:
 	if new_target == current_target:
 		return
-	_disconnect_target_death()
 	current_target = new_target
-	_connect_target_death()
-	if new_target == null:
-		_retarget_timer = 0.0
 	target_changed.emit(new_target)
 
 
-## Watches the current target's death signal when it is a Character, so the
-## kill clears synchronously. Non-Character targets have no death signal and
-## stay covered by the per-tick validity check.
-func _connect_target_death() -> void:
-	if current_target != null and is_instance_valid(current_target) and current_target is Character:
-		var target_char: Character = current_target as Character
-		if not target_char.defeat.is_connected(_on_target_defeat):
-			target_char.defeat.connect(_on_target_defeat)
-
-
-## Stops watching the previous target. Safe against already-freed targets.
-func _disconnect_target_death() -> void:
-	if current_target != null and is_instance_valid(current_target) and current_target is Character:
-		var target_char: Character = current_target as Character
-		if target_char.defeat.is_connected(_on_target_defeat):
-			target_char.defeat.disconnect(_on_target_defeat)
-
-
-## Drops a killed target the same frame it dies and re-arms immediate
-## re-evaluation, so the next tick outside an attack acquires a living
-## replacement without waiting out the retarget cooldown. Dead nodes are
-## never valid targets, even while still sitting in the level.
-func _on_target_defeat() -> void:
-	_set_current_target(null)
-	_retarget_timer = 0.0
+## True once move_character() has slid the body at least once, so its floor
+## state is real: is_on_floor() is false before the first move_and_slide.
+func has_moved() -> bool:
+	return _movement_updated
 
 
 ## Returns true if the character is alive (attribute health pool above zero and
@@ -502,61 +395,6 @@ func remove_tag(tag: StringName) -> void:
 func broadcast_ability_event(event: AbilityEvent) -> void:
 	if passive_ability_component != null and is_instance_valid(passive_ability_component):
 		passive_ability_component.notify_ability_event(event)
-
-
-## Tracks the grounded<->airborne edge and broadcasts movement lifecycle events
-## through the passive bus - state-agnostically (jump, jump kick, knockback
-## launches: whichever state is active when the edge happens). Leaving the
-## floor emits (TAG_AIRBORNE) / STARTED; touching down emits
-## (TAG_AIRBORNE + TAG_LANDED) / ENDED with {"airborne_time": seconds}. A
-## landing blast passive therefore fires exactly once per airborne episode,
-## even when a jump turns into a jump kick mid-flight. Defeated characters
-## stay silent (no corpse detonations).
-func _update_airborne_state(delta: float) -> void:
-	if _is_defeated or not is_alive():
-		_clear_airborne_tracking()
-		return
-	if not _movement_updated:
-		return
-	if not is_on_floor():
-		if not _airborne:
-			_airborne = true
-			_airborne_time = 0.0
-			add_tag(TAG_AIRBORNE)
-			var started_tags: Array[StringName] = [TAG_AIRBORNE]
-			_broadcast_movement_event(AbilityEvent.Phase.STARTED, started_tags)
-		_airborne_time += delta
-	elif _airborne:
-		_airborne = false
-		remove_tag(TAG_AIRBORNE)
-		var landed_tags: Array[StringName] = [TAG_AIRBORNE, TAG_LANDED]
-		_broadcast_movement_event(AbilityEvent.Phase.ENDED, landed_tags, {"airborne_time": _airborne_time})
-
-
-## Clears airborne episode tracking silently (defeat/reset paths), dropping the
-## TAG_AIRBORNE marker without broadcasting a landing.
-func _clear_airborne_tracking() -> void:
-	if _airborne:
-		_airborne = false
-		remove_tag(TAG_AIRBORNE)
-
-
-## Builds and broadcasts one movement lifecycle event (source is this
-## character; direction is the current horizontal velocity or facing).
-func _broadcast_movement_event(phase: int, tags: Array[StringName], extra_data: Dictionary = {}) -> void:
-	var event: AbilityEvent = AbilityEvent.new()
-	var event_tags: Array[StringName] = []
-	event_tags.assign(tags)
-	event.tags = event_tags
-	event.phase = phase
-	event.instigator = self
-	event.source = self
-	event.position = global_position
-	event.direction = Vector3(velocity.x, 0.0, velocity.z)
-	if event.direction.is_zero_approx() and mesh_mount != null:
-		event.direction = mesh_mount.global_basis.z.normalized()
-	event.data = extra_data
-	broadcast_ability_event(event)
 
 
 ## Returns all currently active gameplay tags.
@@ -709,18 +547,6 @@ func get_nearest_target(group_name: String = "") -> Character:
 	return closest_char
 
 
-## Shows the game-over screen shortly after player defeat instead of
-## reloading instantly. The run itself resets only when restart is chosen
-## from the menu.
-func reset_game_state() -> void:
-	if not is_inside_tree():
-		return
-	await get_tree().create_timer(DEFEAT_MENU_DELAY).timeout
-	if not is_inside_tree():
-		return
-	UI.show_game_over()
-
-
 ## Returns true if this character is executing an uninterruptable attack or ability (hyper-armor).
 func is_uninterruptable() -> bool:
 	if state_machine != null and state_machine.state is CharacterAttack:
@@ -766,8 +592,10 @@ func alert() -> void:
 ## weapon hitboxes, active weapon VFX modes, any active dash/attack/fall body state
 ## (returned to the machine's home state via its normal exit path, so attack timers,
 ## lunges, and hitstop are cleaned up), all in-flight character SFX (dash, damage,
-## attack, footsteps), the damage vignette flash, camera shake trauma, and all
-## temporary status effects (fire/burn DoTs, timed stat modifiers, status visual effects).
+## attack, footsteps), and all temporary status effects (fire/burn DoTs, timed stat
+## modifiers, status visual effects). Components holding other transient
+## feedback (the damage vignette, camera shake trauma) reset it on
+## transient_state_cancelled.
 ## Called when this character is carried into a new level so no dash, attack, sound,
 ## red flash, camera shake, or fire leak across the transition.
 func cancel_movement_and_abilities() -> void:
@@ -780,11 +608,12 @@ func cancel_movement_and_abilities() -> void:
 			home = state_machine.get_child(0) as State
 		if home != null and state_machine.state != home:
 			state_machine.request_state(home.name)
-	_silence_weapons_and_feedback()
+	_silence_weapons_and_sounds()
 	if attribute_component != null:
 		# Also frees every status visual (burning fire, ...): the component
 		# tracks the visual of each effect it applied.
 		attribute_component.clear_temporary_effects()
+	transient_state_cancelled.emit()
 
 
 ## Drops every pending intent, the aim and facing requests, the auto-aim
@@ -797,13 +626,12 @@ func _clear_intents_and_motion() -> void:
 	dash_requested = false
 	jump_requested = false
 	is_attacking = false
-	_set_current_target(null)
+	set_current_target(null)
 	velocity = Vector3.ZERO
 
 
-## Closes every weapon hit window and trail, stops every character sound, and
-## clears the damage flash and camera shake.
-func _silence_weapons_and_feedback() -> void:
+## Closes every weapon hit window and trail and stops every character sound.
+func _silence_weapons_and_sounds() -> void:
 	for slot: Node in find_children("*", "WeaponSlot"):
 		if slot is WeaponSlot:
 			var ws: WeaponSlot = slot as WeaponSlot
@@ -814,45 +642,23 @@ func _silence_weapons_and_feedback() -> void:
 		(audio_3d as AudioStreamPlayer3D).stop()
 	for audio_2d: Node in find_children("*", "AudioStreamPlayer"):
 		(audio_2d as AudioStreamPlayer).stop()
-	var input_comp: PlayerInputComponent = get_node_or_null("PlayerInputComponent") as PlayerInputComponent
-	if input_comp != null:
-		input_comp.cancel_damage_tint()
-	else:
-		var tint: ColorRect = get_node_or_null("DamageTint") as ColorRect
-		if tint != null:
-			tint.color = Color(Color.RED, 0.0)
-	var camera: ShakeCamera3D = get_node_or_null("CameraRoot/ShakeCamera3D") as ShakeCamera3D
-	if camera != null:
-		camera.trauma = 0.0
 
 
-## Centralized idempotent defeat handler that halts motion, disables AI & input, and enters defeat state.
+## Centralized idempotent defeat handler: emits defeat (components react to it:
+## the player's input stops, an enemy's loot is awarded, the game-over flow
+## starts), halts motion and the AI, and enters the defeat state.
 func on_defeat() -> void:
 	if _is_defeated:
 		return
 	_is_defeated = true
 	defeat.emit()
-	_clear_airborne_tracking()
-	if is_enemy():
-		ProgressionState.add_gold(_gold_drop())
 	_clear_intents_and_motion()
 	if ai_state_machine != null:
 		ai_state_machine.command_stop()
 		ai_state_machine.set_physics_process(false)
-	var input_comp: PlayerInputComponent = get_node_or_null("PlayerInputComponent") as PlayerInputComponent
-	if input_comp != null:
-		input_comp.set_physics_process(false)
 	if defeat_state != null and state_machine != null and state_machine.state != null:
 		state_machine.state.finished.emit(defeat_state.name)
 	_switch_corpse_off()
-
-
-## Gold this enemy awards on defeat: its EnemyResource's gold_drop (see
-## enemy_resource). An enemy with no registered archetype awards none.
-func _gold_drop() -> int:
-	if enemy_resource == null:
-		enemy_resource = GlobalVars.get_enemy_resource_for_path(scene_file_path)
-	return enemy_resource.gold_drop if enemy_resource != null else 0
 
 
 ## Shuts off the body shape and the hurtbox, so the corpse never blocks

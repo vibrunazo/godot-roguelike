@@ -44,13 +44,9 @@ func _ready() -> void:
 	# the maximum allowed times never shows up as an option again.
 	# Affordability is not filtered here; unaffordable cards still show up
 	# with a disabled button.
-	var player: Character = get_tree().get_first_node_in_group("player") as Character
-	var equipment: EquipmentComponent = null
-	if player != null:
-		equipment = player.equipment_component
 	var item_options: Array[ItemResource] = []
 	for item: ItemResource in pool:
-		if _has_stock_left(item, equipment):
+		if _has_stock_left(item):
 			item_options.append(item)
 	item_options.shuffle()
 	for resource: ItemResource in item_options.slice(0, 2):
@@ -60,17 +56,12 @@ func _ready() -> void:
 		current_card.upgrade_taken.connect(exit_shop)
 
 
-## Returns true when the shop may still offer the item. Items purchased up
-## to their maximum allowed times are out of stock; without tracked purchase
-## history (no player equipment) everything is offered.
-func _has_stock_left(item: ItemResource, equipment: EquipmentComponent) -> bool:
+## Returns true when the shop may still offer the item: items purchased up to
+## their maximum allowed times this run are out of stock.
+func _has_stock_left(item: ItemResource) -> bool:
 	if item == null:
 		return false
-	if equipment == null:
-		return true
-	if item.max_purchases <= 0:
-		return true
-	return equipment.get_purchase_count(item) < item.max_purchases
+	return item.max_purchases <= 0 or ProgressionState.get_purchase_count(item) < item.max_purchases
 
 
 func _unhandled_input(event: InputEvent) -> void:

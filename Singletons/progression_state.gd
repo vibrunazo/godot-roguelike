@@ -47,6 +47,13 @@ var current_dungeon: DungeonResource = null
 ## History of recently visited dungeon resources to avoid back-to-back repetitions.
 var recently_visited_dungeons: Array[DungeonResource] = []
 
+## The player's gear, pools and pending purchases, carried from scene to
+## scene (see PlayerRunState).
+var player_state: PlayerRunState = PlayerRunState.new()
+
+## Item key -> times purchased this run (see get_purchase_count()).
+var _purchase_counts: Dictionary[StringName, int] = {}
+
 
 func _ready() -> void:
 	reset_run()
@@ -95,6 +102,40 @@ func reset_run() -> void:
 	current_planned_enemies.clear()
 	current_dungeon = null
 	recently_visited_dungeons.clear()
+	player_state = PlayerRunState.new()
+	_purchase_counts.clear()
+
+
+## Times the item was purchased this run.
+func get_purchase_count(item: ItemResource) -> int:
+	return _purchase_counts.get(_item_key(item), 0) if item != null else 0
+
+
+## Whether the item can be bought now: in stock (under max_purchases, when
+## limited) and affordable.
+func can_purchase(item: ItemResource) -> bool:
+	if item == null:
+		return false
+	if item.max_purchases > 0 and get_purchase_count(item) >= item.max_purchases:
+		return false
+	return has_gold(item.cost)
+
+
+## Counts one purchase of the item.
+func record_purchase(item: ItemResource) -> void:
+	if item != null:
+		var key: StringName = _item_key(item)
+		_purchase_counts[key] = _purchase_counts.get(key, 0) + 1
+
+
+## The identity purchases are counted under: the item id, else its resource
+## path, else its title.
+func _item_key(item: ItemResource) -> StringName:
+	if not item.id.is_empty():
+		return item.id
+	if not item.resource_path.is_empty():
+		return StringName(item.resource_path)
+	return StringName(item.title)
 
 
 ## Groups available enemy resources into tiers by difficulty level.

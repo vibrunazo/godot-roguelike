@@ -41,5 +41,6 @@ func test_the_player_falling_off_the_level_dies_and_gets_the_game_over_screen() 
 	player.global_position = OFF_THE_LEVEL
 	if not await wait_until(func() -> bool: return not player.is_alive(), "the player falling off the level should die", FALL_FRAMES):
 		return
-	var frames: int = ceili(Character.DEFEAT_MENU_DELAY * Engine.physics_ticks_per_second) + 10
+	var menu_delay: float = (player.get_node("PlayerDefeatHandler") as PlayerDefeatHandler).menu_delay
+	var frames: int = ceili(menu_delay * Engine.physics_ticks_per_second) + 10
 	await wait_until(func() -> bool: return UI.is_paused(), "the game-over screen should follow the player's death", frames)

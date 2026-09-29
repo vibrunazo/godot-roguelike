@@ -15,7 +15,7 @@ var _wave: WaveObjective
 
 
 func before_each() -> void:
-	SceneTransition.player_cache = null
+	ProgressionState.reset_run()
 	_level = spawn(LEVEL_TEMPLATE_SCENE) as Node3D
 	_wave = _level.get_node("WaveObjective") as WaveObjective
 

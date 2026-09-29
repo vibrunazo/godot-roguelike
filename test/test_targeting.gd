@@ -1,5 +1,6 @@
 ## Player auto-aim targeting:
-## - acquires the nearest enemy within auto_aim_range; enemies do not auto-aim,
+## - acquires the nearest enemy within its TargetingComponent's auto_aim_range;
+##   enemies (no TargetingComponent) do not auto-aim,
 ## - a single player-only reticle follows the target and hides without one,
 ## - the retarget cooldown holds the current target until it expires or
 ##   force_retarget() is called,
@@ -43,7 +44,7 @@ func before_each() -> void:
 	# Live mouse aim off: the test sets the aim direction itself.
 	(_player.get_node("PlayerInputComponent") as PlayerInputComponent).set_physics_process(false)
 	await wait_until(func() -> bool: return _player.is_on_floor() and _state() == "PlayerRun", "the player should settle")
-	check(_player.auto_aim_range > 0.0, "setup: the player should have auto-aim enabled")
+	check(_aim().auto_aim_range > 0.0, "setup: the player should have auto-aim enabled")
 
 
 func test_acquires_the_nearest_enemy_in_range_and_enemies_do_not_auto_aim() -> void:
@@ -64,19 +65,19 @@ func test_the_reticle_follows_the_target_and_hides_without_one() -> void:
 
 
 func test_the_retarget_cooldown_holds_the_target_until_forced() -> void:
-	_player.target_retarget_cooldown = LONG_COOLDOWN
+	_aim().target_retarget_cooldown = LONG_COOLDOWN
 	var first: Character = await _spawn_enemy(_at(0.4, Vector3.RIGHT))
 	var second: Character = await _spawn_enemy(_at(0.6, Vector3.LEFT))
 	if not await wait_until(func() -> bool: return _player.current_target == first, "setup: the player should target the nearer enemy"):
 		return
 	second.global_position = _at(0.2, Vector3.LEFT)
 	await _check_target_held(first, "the target should not switch while the retarget cooldown runs")
-	_player.force_retarget()
+	_aim().force_retarget()
 	await wait_until(func() -> bool: return _player.current_target == second, "force_retarget() should switch to the nearer enemy", REACT_FRAMES)
 
 
 func test_a_target_leaving_the_range_clears_at_once() -> void:
-	_player.target_retarget_cooldown = LONG_COOLDOWN
+	_aim().target_retarget_cooldown = LONG_COOLDOWN
 	var enemy: Character = await _spawn_enemy(_at(0.3, Vector3.RIGHT))
 	if not await wait_until(func() -> bool: return _player.current_target == enemy, "setup: the player should target the enemy"):
 		return
@@ -85,7 +86,7 @@ func test_a_target_leaving_the_range_clears_at_once() -> void:
 
 
 func test_with_no_target_held_an_enemy_entering_range_is_acquired_at_once() -> void:
-	_player.target_retarget_cooldown = LONG_COOLDOWN
+	_aim().target_retarget_cooldown = LONG_COOLDOWN
 	var enemy: Character = await _spawn_enemy(_at(1.5, Vector3.RIGHT))
 	await _check_target_held(null, "nothing should be targeted while every enemy is out of range")
 	enemy.global_position = _at(0.3, Vector3.RIGHT)
@@ -115,7 +116,7 @@ func test_the_target_is_frozen_during_an_attack_and_a_kill_is_not_replaced_until
 	# A nearer living enemy appears and the target moves away (still in range).
 	var alternative: Character = await _spawn_enemy(_at(0.2, Vector3.BACK))
 	target.global_position = _at(0.6, Vector3.LEFT)
-	_player.force_retarget()
+	_aim().force_retarget()
 	await wait_physics_frames(REACT_FRAMES)
 	if not check(_player.is_attacking, "setup: the attack should outlast the retarget reaction time"):
 		return
@@ -131,7 +132,7 @@ func test_the_target_is_frozen_during_an_attack_and_a_kill_is_not_replaced_until
 
 
 func test_killing_the_target_switches_to_the_nearest_living_enemy_at_once() -> void:
-	_player.target_retarget_cooldown = LONG_COOLDOWN
+	_aim().target_retarget_cooldown = LONG_COOLDOWN
 	var nearest: Character = await _spawn_enemy(_at(0.2, Vector3.RIGHT))
 	var next: Character = await _spawn_enemy(_at(0.4, Vector3.LEFT))
 	await _spawn_enemy(_at(0.6, Vector3.BACK))
@@ -141,7 +142,7 @@ func test_killing_the_target_switches_to_the_nearest_living_enemy_at_once() -> v
 	check(_player.current_target == null, "a killed target should clear in the same frame")
 	if not await wait_until(func() -> bool: return _player.current_target == next, "the nearest living enemy should be targeted without waiting out the cooldown", REACT_FRAMES):
 		return
-	_player.force_retarget()
+	_aim().force_retarget()
 	await _check_target_held(next, "the corpse must never be targeted again")
 
 
@@ -172,7 +173,7 @@ func _spawn_enemy(at: Vector3) -> Character:
 ## Point at the given fraction of the player's auto-aim range from the player
 ## spawn, along a horizontal direction.
 func _at(range_fraction: float, direction: Vector3) -> Vector3:
-	return _home + direction * _player.auto_aim_range * range_fraction
+	return _home + direction * _aim().auto_aim_range * range_fraction
 
 
 func _reticle() -> TargetReticle:
@@ -189,3 +190,8 @@ func _flat(vector: Vector3) -> Vector3:
 
 func _state() -> String:
 	return str(_player.state_machine.state.name)
+
+
+## The player's auto-aim (TargetingComponent).
+func _aim() -> TargetingComponent:
+	return _player.get_node("TargetingComponent") as TargetingComponent

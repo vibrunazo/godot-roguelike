@@ -37,6 +37,7 @@ func _ready() -> void:
 		character = get_parent() as Character
 	if character != null:
 		character.health_changed.connect(_on_character_health_changed)
+		character.transient_state_cancelled.connect(cancel_damage_tint)
 
 
 func _physics_process(_delta: float) -> void:

@@ -5,12 +5,13 @@
 ## - however long the flavor grows, the stats and footer stay inside the card,
 ## - the running shop deals real item cards, never the editor-only previews,
 ## - switching the card's resource, or editing it in place, refreshes the
-##   card; a free item hides the footer,
+##   card; a free, unlimited item hides the footer,
 ## - items bought up to their stock limit are never dealt again,
 ## - a card is narrow enough for a four-column layout across the screen,
 ## - only a card's button takes the mouse; its labels never block it,
 ## - taking a card charges it, applies the item once and disables every card
-##   on offer; taking again does nothing,
+##   on offer; taking again does nothing; with no player in the scene (the
+##   shop between levels) the item waits for the next level's player,
 ## - buying a card exits the shop. That changes the scene, so it runs last.
 ## Every item here is test-owned.
 extends "res://test/lib/test_suite.gd"
@@ -30,6 +31,8 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	# Purchases are run state: forget this test's, then restore the gold.
+	ProgressionState.reset_run()
 	ProgressionState.currency_gold = _saved_gold
 	ProgressionState.currency_gold_changed.emit(_saved_gold)
 
@@ -65,10 +68,11 @@ func test_switching_or_editing_the_resource_refreshes_the_card() -> void:
 	var card: UpgradeIcon = await _card_for(first)
 	check_eq(card.title.text, first.title, "the card should show the first item")
 	var second: GearItemResource = _gear(&"test_second", "Second flavor.", 0)
+	second.max_purchases = 0
 	card.set_item_resource(second)
 	await get_tree().process_frame
 	check(card.title.text == second.title and card.description.text == second.description, "switching the resource should refresh the card")
-	check(not card.cost_label.visible, "a free item should hide the cost footer")
+	check(not card.cost_label.visible, "a free, unlimited item has no cost or stock to show, so the footer should hide")
 	second.description = "Edited flavor."
 	second.emit_changed()
 	await get_tree().process_frame
@@ -76,12 +80,10 @@ func test_switching_or_editing_the_resource_refreshes_the_card() -> void:
 
 
 func test_items_bought_up_to_their_stock_limit_are_never_dealt() -> void:
-	var shopper: Character = spawn(PLAYER_SCENE) as Character
-	await get_tree().process_frame
 	var limited: GearItemResource = _gear(&"test_limited", "Limited.", 1)
 	limited.max_purchases = 1
 	var unlimited: GearItemResource = _gear(&"test_unlimited", "Unlimited.", 1)
-	shopper.equipment_component.record_purchase(limited)
+	ProgressionState.record_purchase(limited)
 	var shop: Control = SHOP_SCENE.instantiate() as Control
 	var pool: Array[ItemResource] = [limited, unlimited]
 	shop.set("available_items", pool)
@@ -129,6 +131,15 @@ func test_taking_a_card_applies_it_once_and_disables_every_card() -> void:
 	card.take_upgrade()
 	check_approx(player.attribute_component.get_current(AttributeComponent.STAT_ATTACK), boosted, "taking the card again must not apply it twice")
 	check_eq(taken.size(), 1, "taking the card again must not report it again")
+
+
+func test_buying_with_no_player_queues_the_item_for_the_next_player() -> void:
+	var item: GearItemResource = _gear(&"test_queued", "Flavor.", 10)
+	var card: UpgradeIcon = await _card_for(item)
+	ProgressionState.add_gold(TEST_GOLD)
+	card.take_upgrade()
+	check(ProgressionState.player_state.pending_items.size() == 1 and ProgressionState.player_state.pending_items[0] == item, "the item should wait for the next player")
+	check_eq(ProgressionState.get_purchase_count(item), 1, "the purchase should count at once")
 
 
 ## Changes the scene: keep it the last test.

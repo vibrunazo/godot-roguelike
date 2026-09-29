@@ -28,7 +28,7 @@ var _player: Character
 
 
 func before_each() -> void:
-	SceneTransition.player_cache = null
+	ProgressionState.reset_run()
 	_level = spawn(LEVEL_SCENE) as Node3D
 	(_level.get_node("WaveObjective") as WaveObjective).stop_spawning()
 	# No props: the enemy paths on floor and pit edges only.

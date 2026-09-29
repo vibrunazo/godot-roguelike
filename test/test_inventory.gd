@@ -38,6 +38,8 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	# Purchases are run state: forget this test's, then restore the gold.
+	ProgressionState.reset_run()
 	ProgressionState.currency_gold = _saved_gold
 	ProgressionState.currency_gold_changed.emit(_saved_gold)
 
@@ -76,8 +78,8 @@ func test_the_inventory_lists_equipped_gear_and_shows_the_selection() -> void:
 	_equip(alpha)
 	_equip(beta)
 	# Owned twice, so its row carries a count.
-	_player.equipment_component.record_purchase(alpha)
-	_player.equipment_component.record_purchase(alpha)
+	ProgressionState.record_purchase(alpha)
+	ProgressionState.record_purchase(alpha)
 	var inventory: InventoryMenu = spawn(INVENTORY_SCENE) as InventoryMenu
 	await get_tree().process_frame
 	if not check_eq(inventory.gear_list.item_count, 2, "the list should show both equipped items"):

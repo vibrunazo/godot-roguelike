@@ -41,7 +41,7 @@ func before_each() -> void:
 	_player = spawn(PLAYER_SCENE, _arena, Vector3(0.0, 1.0, _adjacent_distance())) as Character
 	# Out of combat on purpose: without an auto-aim lock the jump button
 	# always dashes. Live mouse aim off: attacks aim at the dummy.
-	_player.auto_aim_range = 0.0
+	_aim().auto_aim_range = 0.0
 	(_player.get_node("PlayerInputComponent") as PlayerInputComponent).set_physics_process(false)
 	_player.aim_direction = Vector3.FORWARD
 	var run: CharacterState = _player.state_machine.get_node("PlayerRun") as CharacterState
@@ -203,3 +203,8 @@ func _adjacent_distance() -> float:
 	var player_radius: float = float((player.get_node("CollisionShape3D") as CollisionShape3D).shape.get("radius"))
 	player.free()
 	return float(_dummy.collision_shape_3d.shape.get("radius")) + player_radius + 0.3
+
+
+## The player's auto-aim (TargetingComponent).
+func _aim() -> TargetingComponent:
+	return _player.get_node("TargetingComponent") as TargetingComponent

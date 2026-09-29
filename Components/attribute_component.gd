@@ -27,6 +27,12 @@ signal defeat()
 signal tag_added(tag: StringName)
 ## Emitted when a gameplay tag is removed from this component.
 signal tag_removed(tag: StringName)
+## Emitted when a timed effect instance starts (or is refreshed: same
+## instance_id). Status visuals (StatusVisualsComponent) show on it.
+signal effect_applied(instance_id: StringName, effect: GameplayEffect)
+## Emitted after effect instances ended (expired, removed or cleared);
+## listeners check has_effect_instance() for the ones they track.
+signal effects_ended
 
 ## Pool names (read via get_current, written via damage/restore/set_pool_current).
 const POOL_HEALTH: StringName = &"health"
@@ -50,6 +56,9 @@ const STAT_NAMES: Array[StringName] = [STAT_MAX_HEALTH, STAT_MAX_MANA, STAT_ATTA
 const POOL_NAMES: Array[StringName] = [POOL_HEALTH, POOL_MANA]
 ## Maps each pool to the stat that caps it.
 const POOL_MAX_LINK: Dictionary = {POOL_HEALTH: STAT_MAX_HEALTH, POOL_MANA: STAT_MAX_MANA}
+## The stat that scales each resisted damage type (see DamageType); types not
+## listed are unresisted.
+const RESISTANCE_STATS: Dictionary[StringName, StringName] = {DamageType.FIRE: STAT_FIRE_RESISTANCE}
 
 ## Base maximum health. Seeds the max_health stat once on tree entry.
 @export var base_max_health: float = 100.0
@@ -86,12 +95,6 @@ var _dots: Array[Dictionary] = []
 ## Stat names whose base was written programmatically before tree entry.
 ## Export seeding skips these so explicit setup is never overwritten.
 var _base_overrides: Dictionary = {}
-## Live status visuals: effect instance id (StringName) -> instanced
-## GameplayEffect.vfx_scene node, parented to the nearest Node3D ancestor
-## (the character body) at the effect's vfx_offset. One entry per timed
-## effect instance, so stacked effects show one visual each and refreshes
-## reuse theirs. Freed when the instance expires or is removed.
-var _effect_vfx: Dictionary = {}
 var _stack_counter: int = 0
 var _seeded_from_exports: bool = false
 ## Tag name -> int count of active sources granting the tag.
@@ -178,7 +181,7 @@ func get_tags() -> Array[StringName]:
 	return active_tags
 
 
-## Returns true for the six buffable stat names.
+## Returns true for a buffable stat name (see STAT_NAMES).
 func is_stat(attribute_name: StringName) -> bool:
 	return _stats.has(attribute_name)
 
@@ -264,7 +267,8 @@ func remove_modifier(target_stat: StringName, modifier_id: StringName) -> bool:
 	var before: float = attr.current_value
 	var removed: bool = attr.remove_modifier(modifier_id)
 	_update_processing()
-	_reap_effect_vfx()
+	if removed:
+		effects_ended.emit()
 	if removed and not is_equal_approx(before, attr.current_value):
 		attribute_changed.emit(target_stat, attr.current_value)
 	if removed:
@@ -333,14 +337,14 @@ func apply_effect(effect: GameplayEffect) -> StringName:
 			if not _permanent_tag_effects.has(instance_id):
 				_permanent_tag_effects.append(instance_id)
 		_register_granted_tags(instance_id, effect.granted_tags)
-		_show_effect_vfx(instance_id, effect)
+		effect_applied.emit(instance_id, effect)
 		return instance_id
 	if effect.total_damage != 0.0:
 		push_warning("AttributeComponent: total_damage only applies to pool targets; ignored on '%s'." % effect.target_attribute)
 	if not apply_modifier(effect.target_attribute, instance_id, effect.operation, effect.magnitude, effect.duration):
 		return &""
 	_register_granted_tags(instance_id, effect.granted_tags)
-	_show_effect_vfx(instance_id, effect)
+	effect_applied.emit(instance_id, effect)
 	return instance_id
 
 
@@ -367,7 +371,7 @@ func _apply_pool_effect(effect: GameplayEffect) -> StringName:
 			"dtype": effect.damage_type,
 		})
 		_update_processing()
-		_show_effect_vfx(instance_id, effect)
+		effect_applied.emit(instance_id, effect)
 	else:
 		if effect.total_damage >= 0.0:
 			damage_pool(effect.target_attribute, effect.total_damage)
@@ -394,20 +398,22 @@ func remove_effect(instance_id: StringName) -> bool:
 		found = true
 	if _unregister_granted_tags(instance_id):
 		found = true
-	_reap_effect_vfx()
+	if found:
+		effects_ended.emit()
 	return found
 
 
 ## Drops one damage-over-time entry by id. Returns true when one existed.
-## Refresh re-application passes keep_visual to reuse the live status visual.
-func _remove_dot(instance_id: StringName, keep_visual: bool = false) -> bool:
+## A refresh (which re-adds the instance at once) passes refreshing, so
+## listeners are not told the instance ended and its visual survives.
+func _remove_dot(instance_id: StringName, refreshing: bool = false) -> bool:
 	for i: int in range(_dots.size()):
 		var entry: Dictionary = _dots[i]
 		if StringName(entry.get("id", &"")) == instance_id:
 			_dots.remove_at(i)
 			_update_processing()
-			if not keep_visual:
-				_reap_effect_vfx()
+			if not refreshing:
+				effects_ended.emit()
 			return true
 	return false
 
@@ -436,93 +442,21 @@ func _unregister_granted_tags(instance_id: StringName) -> bool:
 	return true
 
 
-func _remove_timed_tag_effect(instance_id: StringName, keep_visual: bool = false) -> bool:
+func _remove_timed_tag_effect(instance_id: StringName, refreshing: bool = false) -> bool:
 	for i: int in range(_timed_tag_effects.size()):
 		var entry: Dictionary = _timed_tag_effects[i]
 		if StringName(entry.get("id", &"")) == instance_id:
 			_timed_tag_effects.remove_at(i)
 			_update_processing()
-			if not keep_visual:
-				_reap_effect_vfx()
+			if not refreshing:
+				effects_ended.emit()
 			return true
 	return false
 
 
-## Instances the effect's vfx_scene on this component while the timed instance
-## lives. Refreshes reuse the existing node (same instance id); stacked
-## instances each get their own. No scene (or an instant pool effect, which
-## never reaches here) means no visual. Attaches to a BoneAttachment3D if
-## effect.vfx_bone is specified and a Skeleton3D is available.
-func _show_effect_vfx(instance_id: StringName, effect: GameplayEffect) -> void:
-	if effect.vfx_scene == null or _effect_vfx.has(instance_id):
-		return
-	var fx: Node = effect.vfx_scene.instantiate()
-	var parent_node: Node = _get_vfx_parent_for_effect(effect)
-	parent_node.add_child(fx)
-	if fx is Node3D:
-		(fx as Node3D).position = effect.vfx_offset
-	_effect_vfx[instance_id] = fx
-
-
-## Finds the Skeleton3D associated with this component's parent or character, if any.
-func _find_skeleton() -> Skeleton3D:
-	var p: Node = get_parent()
-	if p == null:
-		return null
-	var c: Character = p as Character
-	if c != null and c.mesh_mount != null:
-		var skel_in_mount: Skeleton3D = c.mesh_mount.find_child("*Skeleton*", true, false) as Skeleton3D
-		if skel_in_mount != null:
-			return skel_in_mount
-	return p.find_child("*Skeleton*", true, false) as Skeleton3D
-
-
-## Finds an existing BoneAttachment3D targeting the given bone, or creates a new one.
-func _find_or_create_bone_slot(skeleton: Skeleton3D, bone_name: String) -> BoneAttachment3D:
-	for child: Node in skeleton.get_children():
-		if child is BoneAttachment3D and (child as BoneAttachment3D).bone_name == bone_name:
-			return child as BoneAttachment3D
-	var bone_idx: int = skeleton.find_bone(bone_name)
-	if bone_idx < 0:
-		return null
-	var new_slot: BoneAttachment3D = BoneAttachment3D.new()
-	new_slot.name = bone_name.replace(".", "_").capitalize().replace(" ", "") + "Slot"
-	new_slot.bone_name = bone_name
-	new_slot.bone_idx = bone_idx
-	skeleton.add_child(new_slot)
-	return new_slot
-
-
-## Resolves the target parent Node for an effect's instanced status visual.
-## When vfx_bone is set, attaches to a BoneAttachment3D on the character's Skeleton3D
-## so the visual tracks skeletal poses and remains on the body after death.
-## Falls back to the nearest Node3D ancestor if no skeleton or bone is found.
-func _get_vfx_parent_for_effect(effect: GameplayEffect) -> Node:
-	if effect != null and not effect.vfx_bone.is_empty():
-		var skeleton: Skeleton3D = _find_skeleton()
-		if skeleton != null:
-			var slot: BoneAttachment3D = _find_or_create_bone_slot(skeleton, String(effect.vfx_bone))
-			if slot != null:
-				return slot
-	return _effect_vfx_parent()
-
-
-## Status visuals must live under a Node3D to inherit the target's transform:
-## a Node3D parented to this plain-Node component would sit at its local
-## position in world space instead of on the character. Falls back to this
-## component when no Node3D ancestor exists (bare test setups).
-func _effect_vfx_parent() -> Node:
-	var node: Node = get_parent()
-	while node != null:
-		if node is Node3D:
-			return node
-		node = node.get_parent()
-	return self
-
-
-## Returns true while the instance id still owns a stat modifier or a
-## damage-over-time entry.
-func _has_effect_instance(instance_id: StringName) -> bool:
+## Returns true while the instance id is still live: it owns a stat modifier,
+## a damage-over-time entry or a tag-only effect.
+func has_effect_instance(instance_id: StringName) -> bool:
 	for i: int in range(_dots.size()):
 		if StringName((_dots[i] as Dictionary).get("id", &"")) == instance_id:
 			return true
@@ -542,7 +476,7 @@ func _has_effect_instance(instance_id: StringName) -> bool:
 ## - All damage-over-time (DoTs) such as fire burn and poison.
 ## - All timed stat modifiers (e.g. slows, temporary buffs/debuffs).
 ## - All timed gameplay tag effects and their granted tags.
-## - All status visual effects (e.g. burning fire particles/lights).
+## Status visuals follow through effects_ended.
 ## Permanent base stats and permanent modifiers remain intact.
 func clear_temporary_effects() -> void:
 	for dot: Dictionary in _dots:
@@ -565,27 +499,8 @@ func clear_temporary_effects() -> void:
 				_clamp_pool_to_max(stat_name)
 
 	_reap_effect_tags()
-	_reap_effect_vfx()
+	effects_ended.emit()
 	_update_processing()
-
-
-## Frees status visuals whose effect instance expired or was removed.
-## Refreshes keep their id alive, so their visual survives untouched.
-func _reap_effect_vfx() -> void:
-	var dead: Array[StringName] = []
-	for instance_id: StringName in _effect_vfx:
-		if not _has_effect_instance(instance_id):
-			dead.append(instance_id)
-	for instance_id: StringName in dead:
-		var fx: Node = _effect_vfx[instance_id] as Node
-		_effect_vfx.erase(instance_id)
-		if fx != null and is_instance_valid(fx):
-			if fx is Node3D:
-				(fx as Node3D).visible = false
-			elif fx is CanvasItem:
-				(fx as CanvasItem).visible = false
-			fx.queue_free()
-
 
 
 ## Subtracts an instant delta from a pool (damage, mana spend), clamped at
@@ -603,12 +518,10 @@ func damage_pool(pool_name: StringName, amount: float) -> void:
 		defeat.emit()
 
 
-## Maps a damage type to the resistance stat that scales it. Empty means the
-## type is unresisted. Add new mappings here when damage types grow.
+## The resistance stat that scales damage_type (RESISTANCE_STATS); empty when
+## the type is unresisted.
 static func resistance_stat_for(damage_type: StringName) -> StringName:
-	if damage_type == &"fire":
-		return STAT_FIRE_RESISTANCE
-	return &""
+	return RESISTANCE_STATS.get(damage_type, &"")
 
 
 ## Fraction of damage_type damage that lands after resistance (1.0 = full,
@@ -622,7 +535,7 @@ func get_damage_multiplier(damage_type: StringName) -> float:
 
 ## damage_pool with a damage type: scales by resistance first. Fully-resisted
 ## hits change nothing and never emit defeat, so callers can skip reactions.
-func damage_pool_typed(pool_name: StringName, amount: float, damage_type: StringName = &"physical") -> void:
+func damage_pool_typed(pool_name: StringName, amount: float, damage_type: StringName = DamageType.PHYSICAL) -> void:
 	var mult: float = get_damage_multiplier(damage_type)
 	if mult <= 0.0:
 		return
@@ -658,8 +571,8 @@ func is_alive() -> bool:
 
 
 func _process(delta: float) -> void:
-	_tick_dots(delta)
-	_tick_timed_tag_effects(delta)
+	var ended: bool = _tick_dots(delta)
+	ended = _tick_timed_tag_effects(delta) or ended
 	var changed_stats: Array[StringName] = []
 	for stat_name: StringName in STAT_NAMES:
 		var attr: Attribute = _stats[stat_name] as Attribute
@@ -670,31 +583,39 @@ func _process(delta: float) -> void:
 		_clamp_pool_to_max(stat_name)
 	_reap_effect_tags()
 	_update_processing()
-	_reap_effect_vfx()
+	if ended or not changed_stats.is_empty():
+		effects_ended.emit()
 
 
 ## Advances damage-over-time entries, applying each entry's share of pool
 ## damage (or healing for negative rates) and dropping expired entries.
-func _tick_dots(delta: float) -> void:
+## Returns true when an entry expired.
+func _tick_dots(delta: float) -> bool:
+	var expired: bool = false
 	for i: int in range(_dots.size() - 1, -1, -1):
 		var entry: Dictionary = _dots[i]
 		var remaining: float = float(entry.get("remaining", 0.0))
 		var step: float = minf(delta, remaining)
 		var tick_amount: float = float(entry.get("rate", 0.0)) * step
 		var pool_name: StringName = StringName(entry.get("pool", POOL_HEALTH))
-		var dtype: StringName = StringName(entry.get("dtype", &"physical"))
+		var dtype: StringName = StringName(entry.get("dtype", DamageType.PHYSICAL))
 		if tick_amount >= 0.0:
 			damage_pool_typed(pool_name, tick_amount, dtype)
 		else:
 			restore_pool(pool_name, -tick_amount)
 		if remaining <= delta:
 			_dots.remove_at(i)
+			expired = true
 		else:
 			entry["remaining"] = remaining - delta
 			_dots[i] = entry
+	return expired
 
 
-func _tick_timed_tag_effects(delta: float) -> void:
+## Advances timed tag-only effects, dropping (and ungranting) expired ones.
+## Returns true when one expired.
+func _tick_timed_tag_effects(delta: float) -> bool:
+	var expired: bool = false
 	for i: int in range(_timed_tag_effects.size() - 1, -1, -1):
 		var entry: Dictionary = _timed_tag_effects[i]
 		var remaining: float = float(entry.get("remaining", 0.0)) - delta
@@ -702,15 +623,17 @@ func _tick_timed_tag_effects(delta: float) -> void:
 			var id: StringName = StringName(entry.get("id", &""))
 			_timed_tag_effects.remove_at(i)
 			_unregister_granted_tags(id)
+			expired = true
 		else:
 			entry["remaining"] = remaining
 			_timed_tag_effects[i] = entry
+	return expired
 
 
 func _reap_effect_tags() -> void:
 	var expired: Array[StringName] = []
 	for instance_id: StringName in _effect_tags.keys():
-		if not _has_effect_instance(instance_id):
+		if not has_effect_instance(instance_id):
 			expired.append(instance_id)
 	for instance_id: StringName in expired:
 		_unregister_granted_tags(instance_id)

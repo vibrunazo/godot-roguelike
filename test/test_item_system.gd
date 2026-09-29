@@ -37,6 +37,8 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	# Purchases are run state: forget this test's, then restore the gold.
+	ProgressionState.reset_run()
 	ProgressionState.currency_gold = _saved_gold
 	ProgressionState.currency_gold_changed.emit(_saved_gold)
 
@@ -103,10 +105,10 @@ func test_an_item_can_be_bought_up_to_its_limit_and_no_more() -> void:
 		gear.cost = 1
 		gear.max_purchases = limit
 		for purchase: int in range(limit):
-			check(_player.equipment_component.can_purchase(gear), "purchase %d of %d should be allowed" % [purchase + 1, limit])
-			_player.equipment_component.record_purchase(gear)
-		check_eq(_player.equipment_component.get_purchase_count(gear), limit, "the purchase count should reach the limit")
-		check(not _player.equipment_component.can_purchase(gear), "a purchase past max_purchases (%d) should be refused" % limit)
+			check(ProgressionState.can_purchase(gear), "purchase %d of %d should be allowed" % [purchase + 1, limit])
+			ProgressionState.record_purchase(gear)
+		check_eq(ProgressionState.get_purchase_count(gear), limit, "the purchase count should reach the limit")
+		check(not ProgressionState.can_purchase(gear), "a purchase past max_purchases (%d) should be refused" % limit)
 
 
 func test_an_item_visual_attaches_to_a_bone_and_detaches() -> void:

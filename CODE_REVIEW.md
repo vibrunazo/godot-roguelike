@@ -91,7 +91,7 @@ Severity labels are words, not colors: **HIGH** = correctness risk or blocks sca
 
 ## 2. Production code: design and practices
 
-### 2.1 [MED] God classes
+### 2.1 [MED] God classes *(fixed 2026-09-28, D11. `Character` (877 → 683 lines) keeps the body: movement, facing, intents, orders, defeat. Moved out: auto-aim to the player's `TargetingComponent` (the target itself stays on `Character`, set through `set_current_target()`); airborne tags and landing events to `AirborneTracker`; gold to the enemies' `LootComponent`; the game-over flow to the player's `PlayerDefeatHandler`. `cancel_movement_and_abilities()` no longer reaches into other nodes by name: it emits `transient_state_cancelled`, and the input and screen-shake components reset their own tint and trauma. From `AttributeComponent`: status visuals and the bone lookup moved to `StatusVisualsComponent`, which follows the new `effect_applied`/`effects_ended` signals; damage types are `DamageType` constants with one `RESISTANCE_STATS` table; the `is_stat()` docstring is fixed. Considered and left as is: a `TagContainer` (the tag code is about 50 cohesive lines) and an `AttributeSet` resource (it would change every character scene for little gain today). The head-slide physics stays in `Character.move_character()`, since it is body movement. TODO 11 was done with it: every level spawns its own player, and `PlayerRunState` carries gear, pools and items bought in the shop between levels; purchase counts moved to `ProgressionState`. That also fixed the camera floor bug (old TODO 5). New tests cover the run-state carry-over, the real transition's capture, the shop's queued purchase and a tag-only effect's visual.)*
 
 **`Character/character.gd` (824 lines)** handles at least 11 concerns:
 
@@ -678,7 +678,7 @@ Caveats:
 | C8 Shared launcher, `GODOT_BIN`, CI | Done 2026-09-28 for the local parts; CI skipped (owner decision: single developer, local lint and tests are the gate) |
 | D9 Aliases, fallbacks, sentinel | Done 2026-09-28 |
 | D10 Level registry and duplicated owners | Done 2026-09-28 |
-| D11 Structural refactors | Partly done (input bridge, state names, `AIAttackBase` and body-owned cooldowns, `BallisticProjectile`); the `Character`/`AttributeComponent` split is left |
+| D11 Structural refactors | Done 2026-09-28 |
 
 **The key point:** "fix the bad tests" and "move to the new harness" are **one step** (step 4), not two. Rewriting a suite onto the harness means rewriting each of its checks anyway, and that's when its hardcoded values get removed. Revision 1 had these as separate steps (first and last), which would have touched every assertion twice.
 
@@ -731,9 +731,9 @@ The harness depends on the runner being trustworthy and fast, so the runner is f
 
 9. *(Done 2026-09-28: every §2.6 alias and §2.7 fallback is gone (the lint's `compat-wording` and `hardcoded-load` rules now report zero), and the `AILeapingDodge` sentinel (§2.8) was fixed earlier.)* **Remove the aliases and legacy paths** (§2.6) and the hardcoded fallbacks (§2.7). Fix the `AILeapingDodge` sentinel (§2.8). The migrated tests no longer depend on the aliases, so this is safe.
 10. *(Done 2026-09-28: every §2.5 row has a single owner.)* **Unify the level registry and the other duplicated owners** (§2.5).
-11. *(Partly done: everything but the `Character`/`AttributeComponent` split.)* **Structural refactors:**
+11. *(Done 2026-09-28.)* **Structural refactors:**
     - *(done 2026-09-28)* string state names → exports (§2.2)
     - *(done 2026-09-27)* input bridge out of `StateMachine` (§2.3)
     - *(done 2026-09-28)* `AIAttackBase` and body-owned cooldown ticking (§2.9)
     - *(done 2026-09-28)* `BallisticProjectile` (§2.9)
-    - split `Character`/`AttributeComponent` (§2.1)
+    - *(done 2026-09-28)* split `Character`/`AttributeComponent` (§2.1)

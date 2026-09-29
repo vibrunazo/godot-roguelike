@@ -252,10 +252,10 @@ func test_a_payload_spawned_during_a_physics_callback_still_lands_its_hit() -> v
 func test_a_jump_turned_into_a_kick_lands_exactly_one_blast() -> void:
 	_player.passive_ability_component.add_passive(LANDING_BLAST_SCENE)
 	_player.state_machine.request_state("PlayerJump", {"direction": Vector3.ZERO})
-	if not await wait_until(func() -> bool: return _player.has_tag(Character.TAG_AIRBORNE), "the jump should mark the player airborne", ACTION_FRAMES):
+	if not await wait_until(func() -> bool: return _player.has_tag(AirborneTracker.TAG_AIRBORNE), "the jump should mark the player airborne", ACTION_FRAMES):
 		return
 	_player.state_machine.request_state("PlayerJumpKick")
-	if not await wait_until(func() -> bool: return not _player.has_tag(Character.TAG_AIRBORNE), "the player should land", ACTION_FRAMES):
+	if not await wait_until(func() -> bool: return not _player.has_tag(AirborneTracker.TAG_AIRBORNE), "the player should land", ACTION_FRAMES):
 		return
 	await wait_physics_frames(PAYLOAD_FRAMES)
 	check_eq(_payload_spawns, 1, "one airborne episode should give exactly one landing blast")

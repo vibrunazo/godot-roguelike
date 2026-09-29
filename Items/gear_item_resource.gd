@@ -20,10 +20,15 @@ func _init() -> void:
 	max_purchases = 3
 
 
-## Equips this gear onto the character. Returns a Dictionary containing:
+## Attaches the lasting part of this gear to the character: its persistent
+## GameplayEffects, granted passives and visual. The instant effects (apply())
+## are not part of it: EquipmentComponent runs those once, when the gear is
+## first equipped, and re-attaches only this part to a respawned player.
+## Returns a Dictionary containing:
 ## - "effect_ids": Array[StringName] of active modifier instance IDs on AttributeComponent
+## - "passives": Array[PassiveAbility] granted to the character
 ## - "visual": Node3D (or null) of the instanced visual scene mounted to the rig
-func equip(character: Character) -> Dictionary:
+func attach(character: Character) -> Dictionary:
 	var result: Dictionary = {
 		"effect_ids": [] as Array[StringName],
 		"visual": null,
@@ -31,8 +36,6 @@ func equip(character: Character) -> Dictionary:
 	}
 	if character == null or not is_instance_valid(character):
 		return result
-	# Apply base instant effects (healing, instant damage)
-	apply(character)
 	result["effect_ids"] = _apply_persistent_effects(character)
 	result["passives"] = _grant_passives(character)
 	result["visual"] = _mount_visual(character)

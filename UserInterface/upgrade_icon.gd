@@ -39,7 +39,6 @@ enum CardMode { SHOP, INSPECT }
 ## Footer label pinning cost/stock to the bottom of the card so long
 ## descriptions scroll in the middle instead of pushing the cost off-panel.
 @onready var cost_label: RichTextLabel = %CostLabel
-@onready var player: Character = get_tree().get_first_node_in_group("player") as Character
 
 var _already_taken: bool = false
 
@@ -52,9 +51,7 @@ func _ready() -> void:
 		setup_label()
 		return
 	texture_button.pressed.connect(take_upgrade)
-	if player == null and is_inside_tree():
-		player = get_tree().get_first_node_in_group("player") as Character
-	if ProgressionState != null and not ProgressionState.currency_gold_changed.is_connected(_on_currency_gold_changed):
+	if not ProgressionState.currency_gold_changed.is_connected(_on_currency_gold_changed):
 		ProgressionState.currency_gold_changed.connect(_on_currency_gold_changed)
 	setup_label()
 
@@ -107,29 +104,16 @@ func take_upgrade() -> void:
 	if _already_taken or (texture_button != null and texture_button.disabled):
 		return
 
-	if player == null and is_inside_tree():
-		player = get_tree().get_first_node_in_group("player") as Character
-
-	# Check affordability and stock
-	if player != null and player.equipment_component != null:
-		if not player.equipment_component.can_purchase(item_resource):
-			return
-	elif ProgressionState != null and not ProgressionState.has_gold(item_resource.cost):
+	if not ProgressionState.can_purchase(item_resource) or not ProgressionState.spend_gold(item_resource.cost):
 		return
-
-	# Deduct gold
-	if ProgressionState != null and item_resource.cost > 0:
-		var spent: bool = ProgressionState.spend_gold(item_resource.cost)
-		if not spent:
-			return
-
-	# Apply item to character
+	ProgressionState.record_purchase(item_resource)
+	# A player in the scene gets the item now; in the shop between levels
+	# there is none, so the next level's player gets it on spawn.
+	var player: Character = get_tree().get_first_node_in_group("player") as Character
 	if player != null:
-		if player.equipment_component != null:
-			player.equipment_component.apply_item(item_resource)
-			player.equipment_component.record_purchase(item_resource)
-		else:
-			item_resource.apply(player)
+		player.equipment_component.apply_item(item_resource)
+	else:
+		ProgressionState.player_state.pending_items.append(item_resource)
 
 	_already_taken = true
 	if texture_button != null:
@@ -143,8 +127,6 @@ func take_upgrade() -> void:
 func setup_label() -> void:
 	if not is_inside_tree() or title == null or description == null:
 		return
-	if player == null and is_inside_tree():
-		player = get_tree().get_first_node_in_group("player") as Character
 
 	if item_resource == null:
 		return
@@ -179,8 +161,8 @@ func _shop_footer_text() -> String:
 	var parts: Array[String] = []
 	if item_resource.cost > 0:
 		parts.append("[color=gold]Cost: %d Gold[/color]" % item_resource.cost)
-	if player != null and player.equipment_component != null and item_resource.max_purchases > 0:
-		var owned: int = player.equipment_component.get_purchase_count(item_resource)
+	if not Engine.is_editor_hint() and item_resource.max_purchases > 0:
+		var owned: int = ProgressionState.get_purchase_count(item_resource)
 		parts.append("[color=gray](%d/%d owned)[/color]" % [owned, item_resource.max_purchases])
 	return "  ".join(parts)
 
@@ -188,8 +170,4 @@ func _shop_footer_text() -> String:
 ## Whether the player can take the item now (affordability and stock). The
 ## currency check is runtime-only; editor previews stay enabled.
 func _can_buy() -> bool:
-	if player != null and player.equipment_component != null:
-		return player.equipment_component.can_purchase(item_resource)
-	if not Engine.is_editor_hint() and item_resource.cost > 0:
-		return ProgressionState.has_gold(item_resource.cost)
-	return true
+	return Engine.is_editor_hint() or ProgressionState.can_purchase(item_resource)

@@ -50,7 +50,7 @@ func _get_audio_player() -> AudioStreamPlayer3D:
 func _init() -> void:
 	damage = 5.0
 	damage_interval = 2.0
-	damage_type = &"fire"
+	damage_type = DamageType.FIRE
 	hits_all = true
 
 

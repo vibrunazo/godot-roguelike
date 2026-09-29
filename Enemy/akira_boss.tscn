@@ -35,6 +35,9 @@
 [ext_resource type="Resource" path="res://Components/effect_has_riders.tres" id="29_riders_effect"]
 [ext_resource type="PackedScene" path="res://Enemy/lobbed_spawn_projectile.tscn" id="90_lobbed_proj"]
 [ext_resource type="PackedScene" path="res://Hazards/ground_damage_aoe.tscn" id="91_ground_aoe"]
+[ext_resource type="Script" path="res://Components/airborne_tracker.gd" id="d11_AirborneTracker"]
+[ext_resource type="Script" path="res://Components/loot_component.gd" id="d11_LootComponent"]
+[ext_resource type="Script" path="res://Components/status_visuals_component.gd" id="d11_StatusVisualsComponent"]
 
 [sub_resource type="Gradient" id="Gradient_ib8qb"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -612,6 +615,19 @@ left_rider_tree = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Lar
 right_rider_tree = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/AnimationTree")
 left_rider_root = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft")
 right_rider_root = NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight")
+
+[node name="AirborneTracker" type="Node" parent="." node_paths=PackedStringArray("character")]
+script = ExtResource("d11_AirborneTracker")
+character = NodePath("..")
+
+[node name="LootComponent" type="Node" parent="." node_paths=PackedStringArray("character")]
+script = ExtResource("d11_LootComponent")
+character = NodePath("..")
+
+[node name="StatusVisualsComponent" type="Node" parent="." node_paths=PackedStringArray("attribute_component", "visual_parent")]
+script = ExtResource("d11_StatusVisualsComponent")
+attribute_component = NodePath("../AttributeComponent")
+visual_parent = NodePath("..")
 
 [connection signal="slash" from="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
 [connection signal="slash" from="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]

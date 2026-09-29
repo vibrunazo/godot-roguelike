@@ -107,11 +107,16 @@ prints the error and idles forever. `--quit-after` does not help.
   `Character.can_accept_order()` is the one rule for when the body takes an
   order.
 - **Components** on each character: `AttributeComponent` (health/mana pools,
-  buffable stats, timed effects and DoTs; `defeat` fires once on the killing
-  transition), `Hurtbox` (receives hits), `KnockbackComponent`,
-  `EquipmentComponent` (gear, consumables, purchase counts),
-  `PassiveAbilityComponent` (passives triggered by ability lifecycle events),
-  `CharacterColorComponent` (palette), and on the player `ScreenShakeComponent`.
+  buffable stats, tags, timed effects and DoTs; `defeat` fires once on the
+  killing transition), `StatusVisualsComponent` (effect visuals, on bones
+  when asked), `Hurtbox` (receives hits), `KnockbackComponent`,
+  `AirborneTracker` (airborne tag and landing events), `EquipmentComponent`
+  (gear and consumables), `PassiveAbilityComponent` (passives triggered by
+  ability lifecycle events), `CharacterColorComponent` (palette). Enemies add
+  `LootComponent` (gold on defeat); the player adds `TargetingComponent`
+  (auto-aim), `ScreenShakeComponent` and `PlayerDefeatHandler` (game over).
+  `Character` itself owns the body: movement, facing, intents, orders and
+  defeat. Damage types are `DamageType` constants.
 - **Damage pipeline:** a `WeaponSlot` (bone attachment) switches its
   `Area3D` hitbox with its `enabled` property, which animations key. The
   hitbox's `AttackComponent` hits `Hurtbox.receive_hit()`, which damages the
@@ -121,9 +126,12 @@ prints the error and idles forever. `--quit-after` does not help.
   `AttackComponent.rehit_interval <= 0` hits a target once per attack;
   `> 0` lets it hit again after that interval.
 - **Registries:** `GlobalVars` (items, enemies, dungeons, shared scenes),
-  `ProgressionState` (run state: difficulty, dungeon level, gold, the
-  planned encounter and its wave plan), `SceneTransition` (fades, level
-  loading, the carried player), `UI` (HUD, pause and game-over menus, fullscreen), `VfxManager`
+  `ProgressionState` (run state: difficulty, dungeon level, gold, purchases,
+  the planned encounter and its wave plan, and `player_state`: the player's
+  gear and pools, a `PlayerRunState`), `SceneTransition` (fades and level
+  loading; it captures the outgoing player's run state, and every level
+  spawns its own fresh player that takes it over), `UI` (HUD, pause and
+  game-over menus, fullscreen), `VfxManager`
   (world VFX, damage numbers, the target reticle). All five are autoloads.
 - **Levels** inherit `Levels/level_template.tscn` (lighting, wave objective,
   kill plane, exit). `GlobalVars.dungeons` (`DungeonResource`s) is the only

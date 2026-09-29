@@ -36,6 +36,10 @@
 [ext_resource type="AudioStream" uid="uid://berff6qe7j1yi" path="res://Assets/Audio/boing/540790__magnuswaker__boing-2.ogg" id="32_i4o1l"]
 [ext_resource type="Script" path="res://Components/equipment_component.gd" id="33_equip"]
 [ext_resource type="Script" path="res://Components/passive_ability_component.gd" id="34_passive"]
+[ext_resource type="Script" path="res://Components/targeting_component.gd" id="d11_TargetingComponent"]
+[ext_resource type="Script" path="res://Components/player_defeat_handler.gd" id="d11_PlayerDefeatHandler"]
+[ext_resource type="Script" path="res://Components/airborne_tracker.gd" id="d11_AirborneTracker"]
+[ext_resource type="Script" path="res://Components/status_visuals_component.gd" id="d11_StatusVisualsComponent"]
 
 [sub_resource type="Gradient" id="Gradient_i4o1l"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -414,7 +418,6 @@ collision_layer = 17
 script = ExtResource("1_l8h54")
 mesh_mount = NodePath("GamedevTV_Mannequin_Medium")
 dash_cooldown = NodePath("DashCooldown")
-auto_aim_range = 10.0
 attribute_component = NodePath("AttributeComponent")
 knockback_component = NodePath("KnockbackComponent")
 animation_tree = NodePath("GamedevTV_Mannequin_Medium/MannequinAnimationTree")
@@ -798,6 +801,24 @@ script = ExtResource("33_equip")
 
 [node name="PassiveAbilityComponent" type="Node" parent="."]
 script = ExtResource("34_passive")
+
+[node name="TargetingComponent" type="Node" parent="." node_paths=PackedStringArray("character")]
+script = ExtResource("d11_TargetingComponent")
+character = NodePath("..")
+auto_aim_range = 10.0
+
+[node name="PlayerDefeatHandler" type="Node" parent="." node_paths=PackedStringArray("character")]
+script = ExtResource("d11_PlayerDefeatHandler")
+character = NodePath("..")
+
+[node name="AirborneTracker" type="Node" parent="." node_paths=PackedStringArray("character")]
+script = ExtResource("d11_AirborneTracker")
+character = NodePath("..")
+
+[node name="StatusVisualsComponent" type="Node" parent="." node_paths=PackedStringArray("attribute_component", "visual_parent")]
+script = ExtResource("d11_StatusVisualsComponent")
+attribute_component = NodePath("../AttributeComponent")
+visual_parent = NodePath("..")
 
 [connection signal="slash" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
 [connection signal="footstep" from="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone" to="GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/RightFootBone/AudioStreamPlayer3D" method="play"]

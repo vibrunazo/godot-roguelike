@@ -58,7 +58,7 @@ func _on_defeat() -> void:
 ## Returns true when damage was dealt. Returns false when no AttributeComponent
 ## is wired or the owner is already defeated (health pool at zero), so corpses
 ## can never be re-hit for extra damage numbers, knockback, or screen shake.
-func receive_hit(damage: float, knockback: Vector3, damage_type: StringName = &"physical") -> bool:
+func receive_hit(damage: float, knockback: Vector3, damage_type: StringName = DamageType.PHYSICAL) -> bool:
 	if not is_alive():
 		return false
 	var mult: float = 1.0

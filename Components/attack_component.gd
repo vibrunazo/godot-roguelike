@@ -14,9 +14,9 @@ signal hit_landed(target: Node)
 ## Current knockback vector applied to hit targets upon collision.
 @export var knockback: Vector3 = Vector3.ZERO
 
-## Damage type tag routed to Hurtbox.receive_hit (e.g. &"physical", &"fire").
+## Damage type routed to Hurtbox.receive_hit (a DamageType constant).
 ## Resistance stats scale typed damage; hazards and projectiles that burn set fire.
-@export var damage_type: StringName = &"physical"
+@export var damage_type: StringName = DamageType.PHYSICAL
 
 ## Whether landing a hit with this attack component triggers a camera screen shake.
 @export var shake_on_damage: bool = false

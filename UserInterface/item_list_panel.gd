@@ -110,6 +110,6 @@ func _display_name(gear: GearItemResource, equipment: EquipmentComponent) -> Str
 			plain = String(gear.id)
 		else:
 			plain = "Unnamed gear"
-	if equipment != null and equipment.get_purchase_count(gear) > 1:
-		plain += " x%d" % equipment.get_purchase_count(gear)
+	if ProgressionState.get_purchase_count(gear) > 1:
+		plain += " x%d" % ProgressionState.get_purchase_count(gear)
 	return plain

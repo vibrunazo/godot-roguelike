@@ -56,6 +56,30 @@ func _make_component() -> AttributeComponent:
 	return comp
 
 
+## An AttributeComponent on a bare Node3D body with a StatusVisualsComponent,
+## so status visuals show under that body (see _visuals()).
+func _make_visual_host() -> AttributeComponent:
+	var body: Node3D = Node3D.new()
+	add_child(body)
+	var comp: AttributeComponent = AttributeComponent.new()
+	body.add_child(comp)
+	var visuals: StatusVisualsComponent = StatusVisualsComponent.new()
+	visuals.attribute_component = comp
+	visuals.visual_parent = body
+	body.add_child(visuals)
+	return comp
+
+
+## The status visuals shown on comp's body (its Node3D children; the
+## components themselves are plain Nodes).
+func _visuals(comp: AttributeComponent) -> Array[Node3D]:
+	var found: Array[Node3D] = []
+	for child: Node in comp.get_parent().get_children():
+		if child is Node3D and not child.is_queued_for_deletion():
+			found.append(child as Node3D)
+	return found
+
+
 ## A test-owned health-pool effect draining total_damage over duration
 ## (0 = instant), optionally showing vfx_scene at VFX_OFFSET.
 func _pool_effect(effect_name: String, total_damage: float, duration: float, vfx_scene: PackedScene = null) -> GameplayEffect:
@@ -537,43 +561,43 @@ func test_effect_vfx_lifecycle() -> bool:
 	var burn_vfx: PackedScene = load("res://Singletons/VFX/status_burning.tscn") as PackedScene
 	if burn_vfx == null:
 		return fail("Status burning VFX scene should load.")
-	var comp: AttributeComponent = _make_component()
+	var comp: AttributeComponent = _make_visual_host()
 	comp.set_base(AttributeComponent.STAT_MAX_HEALTH, 200.0)
 	comp.restore_pool(AttributeComponent.POOL_HEALTH, 200.0)
 	var burn: GameplayEffect = _pool_effect("test_burn_vfx", 10.0, 0.3, burn_vfx)
 	var burn_id: StringName = comp.apply_effect(burn)
 	if burn_id == &"":
 		return fail("Burn application should return a live instance id.")
-	if comp.get_child_count() != 1:
+	if _visuals(comp).size() != 1:
 		return fail("Timed effect with a scene should spawn exactly one visual.")
-	var fx: Node = comp.get_child(0)
-	if not (fx is Node3D) or not is_equal_approx((fx as Node3D).position.y, VFX_OFFSET.y):
+	var fx: Node3D = _visuals(comp)[0]
+	if not is_equal_approx(fx.position.y, VFX_OFFSET.y):
 		return fail("Effect visual should sit at the configured offset.")
 	var refresh_id: StringName = comp.apply_effect(burn)
-	if refresh_id != burn_id or comp.get_child_count() != 1 or comp.get_child(0) != fx:
+	if refresh_id != burn_id or _visuals(comp).size() != 1 or _visuals(comp)[0] != fx:
 		return fail("Refresh should reuse the live visual, not spawn a second.")
 	await get_tree().create_timer(0.5).timeout
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if is_instance_valid(fx) or comp.get_child_count() != 0:
+	if is_instance_valid(fx) or not _visuals(comp).is_empty():
 		return fail("Expired effect should free its visual.")
 	print("Effect visual spawn, refresh reuse, and expiry verified.")
 	return true
 
 
-## PART 13b: only timed effects with a scene show a visual: instant effects and
-## sceneless effects spawn nothing, and a timed stat effect's visual frees on
-## manual removal.
+## PART 13b: only effects with a scene that last show a visual: instant effects
+## and sceneless effects spawn nothing, and a timed stat effect's or a
+## permanent tag-only effect's visual frees on manual removal.
 func test_effect_vfx_needs_timed_effect_and_scene() -> bool:
 	print("\n>>> PART 13b: Which effects show a status visual")
 	var burn_vfx: PackedScene = load("res://Singletons/VFX/status_burning.tscn") as PackedScene
 	if burn_vfx == null:
 		return fail("Status burning VFX scene should load.")
-	var comp: AttributeComponent = _make_component()
+	var comp: AttributeComponent = _make_visual_host()
 	comp.set_base(AttributeComponent.STAT_MAX_HEALTH, 200.0)
 	comp.restore_pool(AttributeComponent.POOL_HEALTH, 200.0)
 	comp.apply_effect(_pool_effect("test_instant_vfx", 5.0, 0.0, burn_vfx))
-	if comp.get_child_count() != 0:
+	if not _visuals(comp).is_empty():
 		return fail("Instant effects must never spawn a visual.")
 	var chill: GameplayEffect = GameplayEffect.new()
 	chill.effect_name = "test_chill_vfx"
@@ -583,19 +607,32 @@ func test_effect_vfx_needs_timed_effect_and_scene() -> bool:
 	chill.duration = 30.0
 	chill.vfx_scene = burn_vfx
 	var chill_id: StringName = comp.apply_effect(chill)
-	if chill_id == &"" or comp.get_child_count() != 1:
+	if chill_id == &"" or _visuals(comp).size() != 1:
 		return fail("Timed stat effect should spawn its visual.")
-	var chill_fx: Node = comp.get_child(0)
+	var chill_fx: Node3D = _visuals(comp)[0]
 	if not comp.remove_effect(chill_id):
 		return fail("Stat effect removal should succeed.")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if is_instance_valid(chill_fx) or comp.get_child_count() != 0:
+	if is_instance_valid(chill_fx) or not _visuals(comp).is_empty():
 		return fail("Removed effect should free its visual.")
 	if comp.apply_effect(_pool_effect("test_plain_dot", 5.0, 0.3)) == &"":
 		return fail("Sceneless DoT should still apply.")
-	if comp.get_child_count() != 0:
+	if not _visuals(comp).is_empty():
 		return fail("Effects without a scene must spawn nothing.")
+	var marked: GameplayEffect = GameplayEffect.new()
+	marked.effect_name = "test_marked_vfx"
+	marked.target_attribute = &""
+	marked.granted_tags = [&"test.marked"]
+	marked.vfx_scene = burn_vfx
+	var marked_id: StringName = comp.apply_effect(marked)
+	if marked_id == &"" or _visuals(comp).size() != 1:
+		return fail("A permanent tag-only effect with a scene should show its visual.")
+	var marked_fx: Node3D = _visuals(comp)[0]
+	comp.remove_effect(marked_id)
+	await get_tree().process_frame
+	if is_instance_valid(marked_fx):
+		return fail("Removing a tag-only effect should free its visual.")
 	print("Instant, sceneless and removed-effect visuals verified.")
 	return true
 

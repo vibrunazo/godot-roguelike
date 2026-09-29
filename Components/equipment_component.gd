@@ -1,4 +1,5 @@
-## Actor component managing equipped gear items, consumables, active effect tracking, and item purchases.
+## Actor component managing equipped gear items, consumables and their active
+## effects. Purchases are run state (ProgressionState), not the character's.
 class_name EquipmentComponent
 extends Node
 
@@ -17,6 +18,11 @@ var character: Character = null
 ## Array of currently equipped gear resources.
 var equipped_gear: Array[GearItemResource] = []
 
+## Every equip of the gear still worn, in order (gear equipped twice appears
+## twice). PlayerRunState captures it to re-attach the gear to the next level's
+## player.
+var gear_history: Array[GearItemResource] = []
+
 ## Maps GearItemResource -> Array[StringName] of active GameplayEffect IDs on AttributeComponent.
 var _gear_effect_ids: Dictionary = {}
 
@@ -26,8 +32,6 @@ var _gear_visuals: Dictionary = {}
 ## Maps GearItemResource -> Array[PassiveAbility] granted by that gear.
 var _gear_passives: Dictionary = {}
 
-## Maps item identifier -> int count of times purchased this run.
-var _purchase_counts: Dictionary = {}
 
 
 func _ready() -> void:
@@ -51,12 +55,22 @@ func apply_item(item: ItemResource) -> bool:
 	return success
 
 
-## Equips a gear item onto the character, tracking its effects and mounting visuals.
+## Equips a gear item onto the character: its instant effects (healing, ...)
+## once, then its lasting part (see restore_gear()).
 func equip_gear(gear: GearItemResource) -> bool:
 	if gear == null or character == null:
 		return false
+	gear.apply(character)
+	return restore_gear(gear)
 
-	var equip_data: Dictionary = gear.equip(character)
+
+## Attaches a gear's lasting part (effects, passives, visual) without its
+## instant effects: how a respawned player gets back gear it already had.
+func restore_gear(gear: GearItemResource) -> bool:
+	if gear == null or character == null:
+		return false
+
+	var equip_data: Dictionary = gear.attach(character)
 	var new_effect_ids: Array[StringName] = equip_data.get("effect_ids", []) as Array[StringName]
 	var visual_node: Node3D = equip_data.get("visual", null) as Node3D
 
@@ -76,6 +90,7 @@ func equip_gear(gear: GearItemResource) -> bool:
 		existing_passives.append_array(new_passives)
 	else:
 		_gear_passives[gear] = new_passives
+	gear_history.append(gear)
 
 	gear_equipped.emit(gear)
 	item_applied.emit(gear)
@@ -97,6 +112,8 @@ func unequip_gear(gear: GearItemResource) -> bool:
 	_gear_visuals.erase(gear)
 	_gear_passives.erase(gear)
 	equipped_gear.erase(gear)
+	while gear_history.has(gear):
+		gear_history.erase(gear)
 
 	gear_unequipped.emit(gear)
 	return true
@@ -119,41 +136,3 @@ func use_consumable(consumable: ConsumableItemResource) -> bool:
 		item_consumed.emit(consumable)
 		item_applied.emit(consumable)
 	return success
-
-
-## Returns true if the item can be purchased given current gold balance and stock limits.
-func can_purchase(item: ItemResource) -> bool:
-	if item == null:
-		return false
-
-	if item.max_purchases > 0 and get_purchase_count(item) >= item.max_purchases:
-		return false
-
-	if ProgressionState != null and not ProgressionState.has_gold(item.cost):
-		return false
-
-	return true
-
-
-## Returns the number of times this item has been purchased during the current run.
-func get_purchase_count(item: ItemResource) -> int:
-	if item == null:
-		return 0
-	var key: StringName = _get_item_key(item)
-	return _purchase_counts.get(key, 0)
-
-
-## Records a purchase of the specified item, incrementing its run purchase count.
-func record_purchase(item: ItemResource) -> void:
-	if item == null:
-		return
-	var key: StringName = _get_item_key(item)
-	_purchase_counts[key] = _purchase_counts.get(key, 0) + 1
-
-
-func _get_item_key(item: ItemResource) -> StringName:
-	if not item.id.is_empty():
-		return item.id
-	if not item.resource_path.is_empty():
-		return StringName(item.resource_path)
-	return StringName(item.title)

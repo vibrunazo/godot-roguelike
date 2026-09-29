@@ -15,13 +15,20 @@ are in `CODE_REVIEW.md`; section numbers below point there.
    `WeaponSlot:enabled` keys 0.790–0.820 s), about 2 physics ticks. It works on
    the physics clock at 60 Hz, but would become hit-or-miss if the physics tick
    rate were lowered. Consider a window of at least 0.05 s. (§3.9)
-5. **The camera keeps the first level's height floor.** `CameraRig3D` records
-   the lowest height it may follow down to once, in `_ready()`. A player carried
-   into the next level is reparented and moved, not re-readied, so the floor
-   stays at the first level's spawn height: on a level that spawns lower, the
-   camera would not follow the player down to it. Recreating the player per
-   level (item 11) fixes this for free; until then, re-base the floor when the
-   level places the carried player (`level_template.gd`).
+16. **Enemies get stuck in each other's paths and never reach their
+    destinations.** Two tasks:
+    - Fix the stuck crowds, and measure whether enemies avoiding each other
+      (`NavigationAgent3D` avoidance) is worth its CPU cost on the target
+      devices.
+    - Give the AI's walk-to states (`AIMeander` and any other state that walks
+      to a point) a timeout, so a blocked walk gives up instead of waiting
+      forever.
+17. **The landing blast item fires on tiny bumps.** It is meant to deal damage
+    when the player lands from a fall, but a dash that bumps over a 1 cm step
+    and drops back down triggers it too. Every airborne-to-grounded edge
+    broadcasts `movement.landed` (`Character._update_airborne_state()`), and
+    `passive_landing_blast` fires on all of them. Gate it on a minimum fall:
+    height, fall speed, or `airborne_time`, which the event already carries.
 
 ## Decisions needed
 
@@ -46,35 +53,23 @@ Every suite now runs on the harness (Phase B step 4 is done).
     fixture (e.g. an arena variant with an L-shaped pit) where the old tuning
     fails, and test it there.
 
+## Features
+
+18. **Player active abilities.** Four ability slots, bound by default to the
+    keyboard keys 1 to 4 (as `InputMap` actions, so they can be rebound).
+    The first test ability is a fireball.
+
 ## Architecture backlog
 
-7. **Data-driven attacks (`AttackData` resources).** Attacks and combos are
-    wired through string state names (`"SlashAttack"`, `"EnemyAttack"`, ...) with
-    combo branches and timings spread across state scripts and scenes. An
-    `AttackData` resource (animation, damage, knockback, combo window, audio)
-    played by one generic attack state would let new weapons and enemy attacks
-    be authored as data. Related: §2.2 (string state names).
+7. **Data-driven attacks (`AttackData` resources).** Every attack and combo
+    step is its own hand-built state node, with combo branches and timings
+    spread across state scripts and scenes. An `AttackData` resource
+    (animation, damage, knockback, combo window, audio) played by one generic
+    attack state would let new weapons and enemy attacks be authored as
+    data.
 8. **Rig and bone-attachment decoupling.** `animated_player.tscn` and
     `animated_enemy.tscn` hand-place their skeleton attachments (`WeaponSlot`,
     foot bones); reusing animations across skeletons breaks when a track
     references an attachment that is missing. Bind sockets from one component
     at setup, and keep gameplay logic off animation method tracks where
     possible.
-11. **Recreate the player between levels instead of reparenting it.** Today
-    `SceneTransition.load_scene_path()` reparents the live player node into
-    the autoload (`player_cache`) and `LevelTemplate._ready()` swaps it in for
-    the level's own `Player`, then calls `cancel_movement_and_abilities()` to
-    scrub the leftovers. Every piece of per-level runtime state (timers,
-    tweens, `_ready()`-time snapshots like the camera floor in item 5, status
-    visuals, state-machine wiring) then has to be cleaned by hand, and each
-    one missed is a bug. Instead, keep the run state that should persist
-    (health, equipped gear and purchase counts, granted passives, anything
-    else the run owns) in a plain resource or `ProgressionState`, let each
-    level instantiate a fresh `Player`, and apply that state to it on spawn.
-    `cancel_movement_and_abilities()` and the `player_cache` reparenting then
-    go away. `test_level_transition_reset` covers today's carry-over and would
-    become the contract for the new one.
-15. The remaining review step, D11 (structural refactors), comes before new
-    features: the `Character`/`AttributeComponent` split (§2.1), which item
-    11 is scheduled inside.
-    See §5.5.

@@ -23,8 +23,8 @@ extends Node3D
 		knockback_vector = value
 		_sync_attack_component()
 
-## Damage type tag routed to Hurtbox.receive_hit (e.g. &"physical", &"fire").
-@export var damage_type: StringName = &"physical":
+## Damage type routed to Hurtbox.receive_hit (a DamageType constant).
+@export var damage_type: StringName = DamageType.PHYSICAL:
 	set(value):
 		damage_type = value
 		_sync_attack_component()
