@@ -29,9 +29,10 @@ refuses to ship on engine errors.
 - **VoxelGI:** bake per level to
   `Levels/GlobalIlluminationData/<level_name>_voxel_gi_data.res`, with a volume
   that encloses the playable floor, the spawn, pits and the exit. Anything
-  placed in the level at bake time that moves (the player) must have
-  `gi_mode = DISABLED`, or it bakes a permanent shadow. (Baking needs a display
-  server; see the README.)
+  placed in the level at bake time that moves must have `gi_mode = DISABLED`,
+  or it bakes a permanent shadow. Every character (the player and every
+  registered enemy) already does, and `test_voxel_gi` checks it. (Baking needs
+  a display server; see the README.)
 - **Spawn and exit:** place `Player` at the start and `ExitPoint` at the end;
   there must be a navigation path between them.
 - Group decorative props under a `Litter` node.

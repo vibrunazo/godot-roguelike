@@ -36,12 +36,6 @@ Section numbers (§) point into the closed 2026-09-23 code review,
    is Forward+-only, so it will *probably* be dropped (e.g. for LightmapGI or
    ambient lighting); not decided yet, and not urgent until touch input exists.
    Until then, avoid deepening the per-level VoxelGI dependency. (§3.9)
-6. **Enemy meshes are included in GI baking**, against the old level rule that
-   dynamic entities stay out of GI. Every enemy scene (melee, ranged, brute,
-   firebomber, thunder mage, Akira) uses `gi_mode = STATIC`. It is harmless
-   today, because enemies only arrive after the bake, from the wave. Either set
-   them to disabled, or write the rule down as "anything placed in the level
-   when GI is baked", which is what `test_voxel_gi` checks.
 
 ## Test suite bugs
 

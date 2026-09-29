@@ -4,6 +4,8 @@
 ## - characters placed in the level when GI is baked (the player) never bake
 ##   into it: none of their meshes is included in GI baking, or a moving body
 ##   would leave a permanent shadow where it stood during the bake.
+## - no registered enemy bakes into GI either, so one placed in a level when
+##   GI is baked cannot leave a permanent shadow.
 ## (Every level in the rotation is checked for baked GI and floor coverage by
 ## test_level_rotation_nav.)
 extends "res://test/lib/test_suite.gd"
@@ -34,5 +36,17 @@ func test_characters_present_at_bake_time_never_bake_into_gi() -> void:
 	if not check(not characters.is_empty(), "setup: the template should place a character (the player)"):
 		return
 	for character: Node in characters:
-		for mesh: Node in character.find_children("*", "MeshInstance3D", true, false):
-			check_eq((mesh as MeshInstance3D).gi_mode, GeometryInstance3D.GI_MODE_DISABLED, "%s must not bake into GI" % character.get_path_to(mesh))
+		_check_never_bakes_into_gi(character)
+
+
+func test_registered_enemies_never_bake_into_gi() -> void:
+	if not check(not GlobalVars.enemies.is_empty(), "setup: GlobalVars should register enemies"):
+		return
+	for enemy_resource: EnemyResource in GlobalVars.enemies:
+		_check_never_bakes_into_gi(autofree(enemy_resource.scene.instantiate()))
+
+
+## Checks that none of [param root]'s geometry is included in GI baking.
+func _check_never_bakes_into_gi(root: Node) -> void:
+	for geometry: Node in root.find_children("*", "GeometryInstance3D", true, false):
+		check_eq((geometry as GeometryInstance3D).gi_mode, GeometryInstance3D.GI_MODE_DISABLED, "%s/%s must not bake into GI" % [root.name, root.get_path_to(geometry)])

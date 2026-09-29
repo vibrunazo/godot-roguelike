@@ -146,21 +146,25 @@ bone_idx = 14
 [node name="MagicWand" type="Node3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0" unique_id=2081491024]
 
 [node name="Shaft" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/MagicWand" index="0" unique_id=2081491025]
+gi_mode = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.225, 0)
 material_override = SubResource("StandardMaterial3D_wand")
 mesh = SubResource("CylinderMesh_shaft")
 
 [node name="Pommel" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/MagicWand" index="1" unique_id=2081491026]
+gi_mode = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
 material_override = SubResource("StandardMaterial3D_wand")
 mesh = SubResource("SphereMesh_pommel")
 
 [node name="Collar" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/MagicWand" index="2" unique_id=2081491027]
+gi_mode = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
 material_override = SubResource("StandardMaterial3D_wand_collar")
 mesh = SubResource("CylinderMesh_collar")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1" unique_id=73376948]
+gi_mode = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.62, 0)
 material_override = SubResource("StandardMaterial3D_orb")
 mesh = SubResource("SphereMesh_orb")

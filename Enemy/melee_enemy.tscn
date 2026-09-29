@@ -136,6 +136,7 @@ transform = Transform3D(1, -2.842171e-14, -4.791279e-15, 0, 1, 5.684342e-14, 6.7
 shape = SubResource("BoxShape3D_7r01i")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" index="1" unique_id=1069743798]
+gi_mode = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 material_override = SubResource("StandardMaterial3D_7p80c")
 mesh = SubResource("CylinderMesh_skqvj")

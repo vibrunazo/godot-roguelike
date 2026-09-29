@@ -113,6 +113,7 @@ material_override = SubResource("ShaderMaterial_o4clk")
 material_override = SubResource("ShaderMaterial_o4clk")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" parent_id_path=PackedInt32Array(1495277970, 211580224) index="0" unique_id=73376948]
+gi_mode = 0
 transform = Transform3D(1, 0, 8.526513e-14, 0, 1, 9.256918e-15, 8.526513e-14, -9.322404e-15, 1, -2.1263995e-06, 0.20000017, -8.195639e-08)
 material_override = SubResource("StandardMaterial3D_73kdj")
 mesh = SubResource("SphereMesh_r82ii")

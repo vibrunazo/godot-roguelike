@@ -241,13 +241,16 @@ bone_idx = 2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0.05, -0.45)
 
 [node name="PackBody" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft" unique_id=110832205]
+gi_mode = 0
 mesh = SubResource("Mesh_pack_body")
 
 [node name="PackLid" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft" unique_id=608026224]
+gi_mode = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.36, 0)
 mesh = SubResource("Mesh_pack_lid")
 
 [node name="PackStrap" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft" unique_id=1427110557]
+gi_mode = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, 0)
 mesh = SubResource("Mesh_pack_strap")
 
@@ -295,6 +298,7 @@ damage = 8.0
 knockback = Vector3(0, 2, 12)
 
 [node name="Sword" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountLeft/BackpackLeft/RiderLeft/AnimatedEnemyLeft/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" unique_id=1136192254]
+gi_mode = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 material_override = SubResource("Mat_rider_sword")
 mesh = SubResource("Mesh_rider_sword")
@@ -328,13 +332,16 @@ bone_idx = 2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.75, 0.05, -0.45)
 
 [node name="PackBody" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight" unique_id=919440742]
+gi_mode = 0
 mesh = SubResource("Mesh_pack_body")
 
 [node name="PackLid" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight" unique_id=861823992]
+gi_mode = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.36, 0)
 mesh = SubResource("Mesh_pack_lid")
 
 [node name="PackStrap" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight" unique_id=1380553322]
+gi_mode = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, 0)
 mesh = SubResource("Mesh_pack_strap")
 
@@ -382,6 +389,7 @@ damage = 8.0
 knockback = Vector3(0, 2, 12)
 
 [node name="Sword" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/RiderMountRight/BackpackRight/RiderRight/AnimatedEnemyRight/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea" unique_id=1784349576]
+gi_mode = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 material_override = SubResource("Mat_rider_sword")
 mesh = SubResource("Mesh_rider_sword")
