@@ -113,7 +113,7 @@ func take_upgrade() -> void:
 	if player != null:
 		player.equipment_component.apply_item(item_resource)
 	else:
-		ProgressionState.player_state.pending_items.append(item_resource)
+		ProgressionState.pending_items.append(item_resource)
 
 	_already_taken = true
 	if texture_button != null:

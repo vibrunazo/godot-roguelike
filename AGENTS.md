@@ -127,10 +127,10 @@ prints the error and idles forever. `--quit-after` does not help.
   `> 0` lets it hit again after that interval.
 - **Registries:** `GlobalVars` (items, enemies, dungeons, shared scenes),
   `ProgressionState` (run state: difficulty, dungeon level, gold, purchases,
-  the planned encounter and its wave plan, and `player_state`: the player's
-  gear and pools, a `PlayerRunState`), `SceneTransition` (fades and level
-  loading; it captures the outgoing player's run state, and every level
-  spawns its own fresh player that takes it over), `UI` (HUD, pause and
+  the planned encounter and its wave plan, and the player's gear and health:
+  each level spawns its own fresh player and `bind_player()` gives it the
+  run's gear and health, then records every change), `SceneTransition`
+  (fades and level loading), `UI` (HUD, pause and
   game-over menus, fullscreen), `VfxManager`
   (world VFX, damage numbers, the target reticle). All five are autoloads.
 - **Levels** inherit `Levels/level_template.tscn` (lighting, wave objective,

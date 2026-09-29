@@ -7,9 +7,8 @@
 ## - Loading the next encounter's dungeon (`load_next_level`; the dungeon,
 ##   boss arenas included, is chosen by `ProgressionState` from the
 ##   `GlobalVars.dungeons` registry) and direct scene loading
-##   (`load_scene_path`). The outgoing player's run state (gear, pools) is
-##   captured into ProgressionState.player_state; the next level spawns its
-##   own fresh player and applies it (see PlayerRunState).
+##   (`load_scene_path`). No player crosses: every level spawns its own, and
+##   ProgressionState (always current) gives it the run's gear and health.
 extends CanvasLayer
 
 @onready var color_rect: ColorRect = $ColorRect
@@ -30,7 +29,6 @@ func fade_in(tween: Tween) -> void:
 func load_scene_path(path_in: String, args: Dictionary = {}) -> void:
 	var player: Character = get_tree().get_first_node_in_group("player") as Character
 	if player:
-		ProgressionState.player_state.capture(player)
 		# Silence the outgoing player at once: movement, abilities, SFX,
 		# damage flash, fire and status effects stop when the fade starts,
 		# not when its scene is freed.

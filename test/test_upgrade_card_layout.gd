@@ -138,7 +138,7 @@ func test_buying_with_no_player_queues_the_item_for_the_next_player() -> void:
 	var card: UpgradeIcon = await _card_for(item)
 	ProgressionState.add_gold(TEST_GOLD)
 	card.take_upgrade()
-	check(ProgressionState.player_state.pending_items.size() == 1 and ProgressionState.player_state.pending_items[0] == item, "the item should wait for the next player")
+	check(ProgressionState.pending_items.size() == 1 and ProgressionState.pending_items[0] == item, "the item should wait for the next player")
 	check_eq(ProgressionState.get_purchase_count(item), 1, "the purchase should count at once")
 
 

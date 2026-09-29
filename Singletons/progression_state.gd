@@ -47,9 +47,16 @@ var current_dungeon: DungeonResource = null
 ## History of recently visited dungeon resources to avoid back-to-back repetitions.
 var recently_visited_dungeons: Array[DungeonResource] = []
 
-## The player's gear, pools and pending purchases, carried from scene to
-## scene (see PlayerRunState).
-var player_state: PlayerRunState = PlayerRunState.new()
+## The run's gear: every gear equip, in order (gear bought twice appears
+## twice). Kept current by the bound player (see bind_player()); each level's
+## fresh player gets it re-attached.
+var player_gear: Array[GearItemResource] = []
+## The run's player health, kept current by the bound player. INF until the
+## run's first player is bound: a new run starts at full health.
+var player_health: float = INF
+## Items bought while no player exists (the shop between levels), applied in
+## order to the next bound player.
+var pending_items: Array[ItemResource] = []
 
 ## Item key -> times purchased this run (see get_purchase_count()).
 var _purchase_counts: Dictionary[StringName, int] = {}
@@ -102,8 +109,31 @@ func reset_run() -> void:
 	current_planned_enemies.clear()
 	current_dungeon = null
 	recently_visited_dungeons.clear()
-	player_state = PlayerRunState.new()
+	player_gear.clear()
+	player_health = INF
+	pending_items.clear()
 	_purchase_counts.clear()
+
+
+## Makes player the run's player (each level binds its own fresh one): it gets
+## the run's gear back (only the lasting part: instant effects ran when the
+## gear was first equipped) and the run's health, then the pending items.
+## From then on the run state follows the player: every gear it equips or
+## unequips and every health change is recorded here, so nothing has to be
+## copied when it leaves its scene.
+func bind_player(player: Character) -> void:
+	var equipment: EquipmentComponent = player.equipment_component
+	var attributes: AttributeComponent = player.attribute_component
+	for gear: GearItemResource in player_gear:
+		equipment.restore_gear(gear)
+	attributes.set_pool_current(AttributeComponent.POOL_HEALTH, player_health)
+	player_health = attributes.get_current(AttributeComponent.POOL_HEALTH)
+	equipment.gear_equipped.connect(_record_gear)
+	equipment.gear_unequipped.connect(_forget_gear)
+	attributes.attribute_changed.connect(_on_player_attribute_changed)
+	for item: ItemResource in pending_items:
+		equipment.apply_item(item)
+	pending_items.clear()
 
 
 ## Times the item was purchased this run.
@@ -126,6 +156,21 @@ func record_purchase(item: ItemResource) -> void:
 	if item != null:
 		var key: StringName = _item_key(item)
 		_purchase_counts[key] = _purchase_counts.get(key, 0) + 1
+
+
+func _record_gear(gear: GearItemResource) -> void:
+	player_gear.append(gear)
+
+
+## Drops every equip of gear from the run's gear.
+func _forget_gear(gear: GearItemResource) -> void:
+	while player_gear.has(gear):
+		player_gear.erase(gear)
+
+
+func _on_player_attribute_changed(attribute_name: StringName, current_value: float) -> void:
+	if attribute_name == AttributeComponent.POOL_HEALTH:
+		player_health = current_value
 
 
 ## The identity purchases are counted under: the item id, else its resource

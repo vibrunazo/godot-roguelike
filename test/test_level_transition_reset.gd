@@ -1,6 +1,8 @@
 ## Every level spawns its own fresh player; only the run state crosses
-## (ProgressionState.player_state, a PlayerRunState: gear, pools, and items
-## bought while no player existed):
+## (ProgressionState's player gear and health, and items bought while no
+## player existed):
+## - the bound player's health and gear are recorded as they change (equips
+##   and unequips),
 ## - the next level's player is a new node that keeps the outgoing player's
 ##   health and stands on the new level's spawn point, running,
 ## - gear crosses once per equip (stacks included) without re-running its
@@ -10,9 +12,7 @@
 ##   burning, slowed or shaking hands over a quiet, fresh player,
 ## - the transition-start cancel silences the outgoing player at once (SFX,
 ##   damage tint), also from inside a physics callback (exit portals run it
-##   from body_entered, where direct Area3D writes are locked),
-## - SceneTransition.load_scene_path() captures the outgoing player's run
-##   state. That changes the scene, so it runs last.
+##   from body_entered, where direct Area3D writes are locked).
 extends "res://test/lib/test_suite.gd"
 
 const LEVEL_TEMPLATE_SCENE: PackedScene = preload("res://Levels/level_template.tscn")
@@ -69,7 +69,7 @@ func test_gear_crosses_once_per_equip_without_rerunning_its_instant_effects() ->
 	_player.attribute_component.set_pool_current(AttributeComponent.POOL_HEALTH, wounded)
 	var next: LevelTemplate = _leave_level()
 	check_approx(_attack(next.player), carried_attack, "the next player should wear the gear once per equip")
-	check_eq(next.player.equipment_component.gear_history.size(), 2, "the next player should carry both equips")
+	check_eq(ProgressionState.player_gear.size(), 2, "the run should still hold both equips, once each")
 	check_approx(next.player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), wounded, "re-attaching gear must not run its instant heal again")
 
 
@@ -78,13 +78,23 @@ func test_an_item_bought_with_no_player_reaches_the_next_player() -> void:
 	var wounded: float = _player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) - TEST_WOUND
 	_player.attribute_component.set_pool_current(AttributeComponent.POOL_HEALTH, wounded)
 	var attack_before: float = _attack(_player)
-	ProgressionState.player_state.capture(_player)
 	# Bought in the shop between levels, where no player exists.
-	ProgressionState.player_state.pending_items.append(gear)
+	ProgressionState.pending_items.append(gear)
 	var next: LevelTemplate = _spawn_level() as LevelTemplate
 	check_approx(_attack(next.player), attack_before + TEST_ATTACK_BONUS, "the item bought in between should be equipped on the next player")
 	check_approx(next.player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), wounded + TEST_HEAL, "its instant heal should run once, on the next player")
-	check(ProgressionState.player_state.pending_items.is_empty(), "a pending item should be applied only once")
+	check(ProgressionState.pending_items.is_empty(), "a pending item should be applied only once")
+
+
+func test_the_run_records_the_players_health_and_gear_as_they_change() -> void:
+	var wounded: float = _player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) - TEST_WOUND
+	_player.attribute_component.set_pool_current(AttributeComponent.POOL_HEALTH, wounded)
+	check_approx(ProgressionState.player_health, wounded, "a health change should be recorded at once")
+	var gear: GearItemResource = _stacking_gear(&"test_recorded_blade")
+	_player.equipment_component.equip_gear(gear)
+	check(ProgressionState.player_gear.size() == 1 and ProgressionState.player_gear[0] == gear, "an equip should be recorded at once")
+	_player.equipment_component.unequip_gear(gear)
+	check(ProgressionState.player_gear.is_empty(), "an unequip should be recorded at once")
 
 
 func test_the_transition_start_cancel_silences_sfx_and_the_tint_at_once() -> void:
@@ -169,20 +179,8 @@ func test_burns_modifiers_shake_and_damage_numbers_do_not_cross_the_transition()
 	check_approx(next.attribute_component.get_current(AttributeComponent.POOL_HEALTH), health, "the burn must not hurt the next player")
 
 
-## Changes the scene: keep it the last test.
-func test_leaving_through_the_scene_transition_captures_the_run_state() -> void:
-	_player.equipment_component.equip_gear(_stacking_gear(&"test_transition_blade"))
-	var wounded: float = _player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) - TEST_WOUND
-	_player.attribute_component.set_pool_current(AttributeComponent.POOL_HEALTH, wounded)
-	SceneTransition.load_scene_path(LEVEL_TEMPLATE_SCENE.resource_path)
-	var state: PlayerRunState = ProgressionState.player_state
-	if check(state.pools.has(AttributeComponent.POOL_HEALTH), "the transition should capture the player's pools"):
-		check_approx(state.pools[AttributeComponent.POOL_HEALTH], wounded, "the transition should capture the player's health")
-	check_eq(state.gear.size(), 1, "the transition should capture the player's gear")
-
-
-## A level template with its wave stopped. Its own player takes over the run
-## state (LevelTemplate._ready).
+## A level template with its wave stopped. Its own player becomes the run's
+## player (LevelTemplate._ready binds it).
 func _spawn_level() -> Node3D:
 	var level: Node3D = spawn(LEVEL_TEMPLATE_SCENE) as Node3D
 	(level.get_node("WaveObjective") as WaveObjective).stop_spawning()
@@ -192,10 +190,9 @@ func _spawn_level() -> Node3D:
 
 
 ## Leaves the current level the way SceneTransition.load_scene_path() does
-## (captures the run state, silences the outgoing player, clears world VFX)
-## and spawns the next level, whose own player takes over.
+## (silences the outgoing player, clears world VFX) and spawns the next level,
+## whose own player takes over the run.
 func _leave_level() -> LevelTemplate:
-	ProgressionState.player_state.capture(_player)
 	_player.cancel_movement_and_abilities()
 	_player.process_mode = Node.PROCESS_MODE_DISABLED
 	VfxManager.clear_temporary_effects()

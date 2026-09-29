@@ -60,8 +60,8 @@ func _apply_configuration() -> void:
 		title_label.text = "[center][wave amp=25.0 freq=3.0][color=#%s]%s[/color][/wave][/center]" % [title_color.to_html(false), title_text]
 
 
-## Begins a new run by resetting progression (which also drops the carried
-## player state) and loading the first level.
+## Begins a new run by resetting progression (including the run's player gear
+## and health) and loading the first level.
 func start_game() -> void:
 	start_requested.emit()
 	if _ui != null and "is_in_main_menu" in _ui:

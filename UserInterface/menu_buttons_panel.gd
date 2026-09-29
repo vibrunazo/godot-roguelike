@@ -80,10 +80,8 @@ func show_controls() -> void:
 func exit_to_main_menu() -> void:
 	exit_to_menu_requested.emit()
 	UI.resume_game()
-	SceneTransition.load_scene_path("res://Levels/menu_level.tscn")
-	# After the transition captured the outgoing player, so nothing of this
-	# run survives into the next one.
 	ProgressionState.reset_run()
+	SceneTransition.load_scene_path("res://Levels/menu_level.tscn")
 
 
 ## Quits the application cleanly.

@@ -18,11 +18,6 @@ var character: Character = null
 ## Array of currently equipped gear resources.
 var equipped_gear: Array[GearItemResource] = []
 
-## Every equip of the gear still worn, in order (gear equipped twice appears
-## twice). PlayerRunState captures it to re-attach the gear to the next level's
-## player.
-var gear_history: Array[GearItemResource] = []
-
 ## Maps GearItemResource -> Array[StringName] of active GameplayEffect IDs on AttributeComponent.
 var _gear_effect_ids: Dictionary = {}
 
@@ -90,7 +85,6 @@ func restore_gear(gear: GearItemResource) -> bool:
 		existing_passives.append_array(new_passives)
 	else:
 		_gear_passives[gear] = new_passives
-	gear_history.append(gear)
 
 	gear_equipped.emit(gear)
 	item_applied.emit(gear)
@@ -112,8 +106,6 @@ func unequip_gear(gear: GearItemResource) -> bool:
 	_gear_visuals.erase(gear)
 	_gear_passives.erase(gear)
 	equipped_gear.erase(gear)
-	while gear_history.has(gear):
-		gear_history.erase(gear)
 
 	gear_unequipped.emit(gear)
 	return true

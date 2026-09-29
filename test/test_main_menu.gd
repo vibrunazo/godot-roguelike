@@ -68,10 +68,10 @@ func test_the_menu_hero_idles_outside_the_player_group() -> void:
 ## Changes the scene: keep it the last test.
 func test_pressing_start_leaves_menu_mode_and_starts_a_fresh_run() -> void:
 	# A leftover carried player from an earlier run must not reach the new one.
-	ProgressionState.player_state.pools[AttributeComponent.POOL_HEALTH] = 1.0
+	ProgressionState.player_health = 1.0
 	var started: Array[bool] = [false]
 	_menu.connect(&"start_requested", func() -> void: started[0] = true)
 	(_menu.get_node("%StartButton") as Button).pressed.emit()
 	check(started[0], "pressing Start should request a start")
 	check(not UI.is_in_main_menu, "starting should leave menu mode")
-	check(ProgressionState.player_state.pools.is_empty(), "starting should drop any carried player state")
+	check(ProgressionState.player_health == INF, "starting should give the new run a full-health player")
