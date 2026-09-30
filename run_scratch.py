@@ -7,9 +7,19 @@ and call quit() to prevent indefinite hangs.
 Extra arguments after the script path are forwarded to the running script as
 Godot user args (readable via OS.get_cmdline_user_args()).
 
+Frames run back to back at a fixed timestep (--fixed-fps, like run_tests.py):
+each frame advances exactly 1/fps of game time with physics still at its
+normal rate, so a script that simulates thousands of physics ticks finishes
+in seconds instead of playing them out in real time. The simulation is
+identical to a real-time run. --fps 0 restores wall-clock pacing, for the
+rare script that measures real time (Time.get_ticks_msec(), timers with
+ignore_time_scale). Never speed a run up with Engine.time_scale instead: it
+lengthens every physics step, which changes the simulation itself.
+
 Usage:
     python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_1.tscn
     python run_scratch.py tools/levels/dump_cells.gd --timeout 15 -- --level=Levels/level_1.tscn
+    python run_scratch.py .scratch/probe.gd --fps 20     # emulate a 20 fps device
 
 """
 
@@ -20,12 +30,19 @@ import sys
 from godot_env import ensure_class_cache, run_godot
 
 DEFAULT_TIMEOUT = 15  # seconds
+DEFAULT_FPS = 60  # fixed render frame rate; 0 = real-time pacing
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run a scratch GDScript headlessly with an OS watchdog timeout.")
     parser.add_argument("script", help="Path to GDScript file (e.g. tools/levels/dump_cells.gd)")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help=f"Timeout in seconds (default: {DEFAULT_TIMEOUT})")
+    parser.add_argument(
+        "--fps",
+        type=int,
+        default=DEFAULT_FPS,
+        help=f"Fixed render frame rate, frames run back to back (default: {DEFAULT_FPS}); 0 paces frames to wall-clock time",
+    )
     args, extra_args = parser.parse_known_args()
     # Allow `--` as an explicit separator: everything after it is forwarded.
     extra_args = [a for a in extra_args if a != "--"]
@@ -62,7 +79,13 @@ def main() -> int:
 
     # No --quit-after: it counts main-loop iterations and would cut a script
     # that awaits frames short. quit() ends the run; the watchdog backs it up.
-    engine_args = ["--headless", "--path", ".", "-s", script_path]
+    engine_args = ["--headless"]
+    if args.fps > 0:
+        engine_args += ["--fixed-fps", str(args.fps)]
+    elif args.fps < 0:
+        print(f"ERROR: --fps must be 0 (real time) or positive, got {args.fps}.", file=sys.stderr)
+        return 1
+    engine_args += ["--path", ".", "-s", script_path]
     if extra_args:
         engine_args.append("--")
         engine_args.extend(extra_args)

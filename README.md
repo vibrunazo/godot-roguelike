@@ -37,7 +37,8 @@ python run_tests.py                               # every test suite
 python run_tests.py test/test_jump_action.tscn    # one suite
 python run_tests.py --fps 20                      # emulate a slow device
 python tools/lint_project.py                      # the project lint alone (runs first in run_tests.py)
-python run_scratch.py .scratch/my_check.gd        # a throwaway -s script
+python run_scratch.py .scratch/my_check.gd        # a throwaway -s script (fast-forwarded at 60 fps)
+python run_scratch.py .scratch/my_check.gd --fps 0  # the same, paced to real time
 python capture.py map Levels/level_1.tscn         # screenshots and video into movies/
 python tools/check_runners.py                     # self-test the runners (after changing them)
 ```

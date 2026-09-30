@@ -24,14 +24,23 @@ prints the error and idles forever. `--quit-after` does not help.
     Every lint violation fails the run; there are no suppressions. Fix the
     code, or the rule if it is wrong. **A red lint is never acceptable**:
     never finish a change that leaves a violation behind.
-  - `python run_scratch.py <script.gd> [--timeout N] [-- args]` runs a
-    throwaway `-s` script. It must `extends SceneTree`, do its work in
+  - `python run_scratch.py <script.gd> [--timeout N] [--fps N] [-- args]`
+    runs a throwaway `-s` script. It must `extends SceneTree`, do its work in
     `_initialize()` (in `_init()` autoloads do not exist yet, so game scripts
     it loads fail to compile) and call `quit(code)`. Its own declarations
     must not use game class types (`var c: Character`): those compile with
     the script, before autoloads exist. Use `Node` and `get()` instead.
   - `python capture.py <map|anim|combat|test> ...` captures screenshots and
     video into `movies/`.
+- `run_tests.py` and `run_scratch.py` fast-forward: frames run back to back
+  (`--fixed-fps`, 60 by default), so game time is cheap and the simulation is the same as in real
+  time. `--fps N` emulates an N fps device; `run_scratch.py --fps 0` paces to
+  wall-clock time, only for scripts that measure real time. **Never use
+  `Engine.time_scale` to speed a run up:** it lengthens every physics step
+  (16x = a 3.75 Hz simulation), which changes results. A scratch script that
+  needs more than the default 15 s timeout usually has a bug (a wait that
+  never ends, far more frames than intended): find it before raising
+  `--timeout`.
 - Any new Python launcher must go through `godot_env.run_godot()` (or
   `run_watched()` for other commands): it resolves the engine (`GODOT_BIN`,
   Windows shims unwrapped), streams output, and kills the whole process tree
@@ -83,8 +92,7 @@ prints the error and idles forever. `--quit-after` does not help.
   `run_scratch.py`) is often enough; verify visual changes with `capture.py`.
 - Where files go: everything not meant to be committed goes in `.scratch/`
   (git-ignored): throwaway scripts and probes, and the level pipeline's
-  intermediates in `.scratch/levels/`. Delete your own scratch files when the
-  task is done. Reusable capture scenarios go in `tools/capture/`, and only
+  intermediates in `.scratch/levels/`. Reusable capture scenarios go in `tools/capture/`, and only
   suites, `test/lib/` and `test/fixtures/` in `test/`.
 
 ## 4. Git and workspace

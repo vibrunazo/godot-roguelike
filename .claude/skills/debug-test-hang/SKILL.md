@@ -19,6 +19,12 @@ but no scene change happened. If the log shows no error before the
    budgets, or wait on a condition that is guaranteed to happen.
 3. Remember each suite has a 10 s wall-clock budget, even though game time is
    cheap under `--fixed-fps`.
+4. A `run_scratch.py` script killed at its 15 s default is fast-forwarded too
+   (`--fixed-fps 60` unless run with `--fps 0`), so it rarely needs more:
+   thousands of simulated physics ticks take well under a second. Count the
+   frames it awaits and look for a wait that never ends before raising
+   `--timeout`. Never reach for `Engine.time_scale` to speed it up (see
+   AGENTS.md §1).
 
 ## Real hangs
 
