@@ -47,7 +47,7 @@ func test_a_dash_cancelled_attack_leaves_no_stale_transition() -> void:
 	var attack: CharacterAttack = player.state_machine.get_node("PlayerAttack") as CharacterAttack
 	if not await wait_until(func() -> bool: return player.is_on_floor() and _state(player) == "PlayerRun", "the player should settle"):
 		return
-	if not check(attack.dash_cancel, "setup: the first attack should allow dash cancelling"):
+	if not check(attack.cancelable, "setup: the first attack should allow dash cancelling"):
 		return
 	# Measure an uninterrupted attack, so the watch below outlasts its animation.
 	press_action(&"click")
@@ -60,12 +60,12 @@ func test_a_dash_cancelled_attack_leaves_no_stale_transition() -> void:
 	press_action(&"click")
 	if not await wait_until(func() -> bool: return _state(player) == attack.name, "the attack should start", 10):
 		return
-	check(player.animation_tree.animation_finished.is_connected(attack.finish_attack), "entering the attack should wire animation_finished")
+	check(player.animation_tree.animation_finished.is_connected(attack.finish_action), "entering the attack should wire animation_finished")
 	# No auto-aim target in the arena, so the jump button commands a dash.
 	press_action(&"jump")
 	if not await wait_until(func() -> bool: return _state(player) == "PlayerDash", "the jump button should dash-cancel the attack", 10):
 		return
-	check(not player.animation_tree.animation_finished.is_connected(attack.finish_attack), "leaving the attack should remove its animation_finished wiring")
+	check(not player.animation_tree.animation_finished.is_connected(attack.finish_action), "leaving the attack should remove its animation_finished wiring")
 	var unexpected: Array[String] = []
 	for frame: int in range(attack_frames[0] * 2):
 		await get_tree().physics_frame

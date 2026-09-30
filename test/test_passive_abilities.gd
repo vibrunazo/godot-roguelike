@@ -70,10 +70,10 @@ func test_equipping_gear_grants_its_passive_and_unequipping_revokes_it() -> void
 	gear.granted_passives.append(DASH_EXPLOSION_SCENE)
 	if not check(_player.equipment_component.equip_gear(gear), "equipping passive-granting gear should succeed"):
 		return
-	check(_player.passive_ability_component.has_passive(passive_id), "equipping the gear should grant its passive")
+	check(_player.ability_system_component.has_passive(passive_id), "equipping the gear should grant its passive")
 	check(gear.get_stat_summary(null).contains(display_name), "the gear summary should list the granted passive")
 	check(_player.equipment_component.unequip_gear(gear), "unequipping the gear should succeed")
-	check(not _player.passive_ability_component.has_passive(passive_id), "unequipping the gear should revoke its passive")
+	check(not _player.ability_system_component.has_passive(passive_id), "unequipping the gear should revoke its passive")
 
 
 # --- Trigger matching ---------------------------------------------------------
@@ -137,7 +137,7 @@ func test_the_completion_filter_skips_interrupted_events() -> void:
 # --- Payloads -----------------------------------------------------------------
 
 func test_a_payload_spawns_at_the_event_for_its_owner_and_deals_its_damage() -> void:
-	_player.passive_ability_component.add_passive(DASH_EXPLOSION_SCENE)
+	_player.ability_system_component.add_passive(DASH_EXPLOSION_SCENE)
 	var origin: Vector3 = Vector3(6.0, _floor_y, -6.0)
 	var victim: Character = await _spawn_victim(origin)
 	var health_before: float = _health(victim)
@@ -161,7 +161,7 @@ func test_payload_overrides_patch_the_payload_and_unknown_ones_are_ignored() -> 
 	probe.payload_scene = EXPLOSION_SCENE
 	probe.scale_with_attack = false
 	probe.payload_overrides.append(radius_override)
-	_player.passive_ability_component.add_passive_instance(probe)
+	_player.ability_system_component.add_passive_instance(probe)
 	_broadcast(probe_tags, AbilityEvent.Phase.ENDED, {}, Vector3(6.0, _floor_y, 0.0))
 	var payload: GroundDamageArea = _newest()
 	if check(payload != null and _payload_spawns == 1, "the probe should spawn exactly one payload"):
@@ -178,7 +178,7 @@ func test_payload_overrides_patch_the_payload_and_unknown_ones_are_ignored() -> 
 # --- End to end -----------------------------------------------------------------
 
 func test_a_dash_detonates_once_at_takeoff_even_when_interrupted() -> void:
-	_player.passive_ability_component.add_passive(DASH_EXPLOSION_SCENE)
+	_player.ability_system_component.add_passive(DASH_EXPLOSION_SCENE)
 	var takeoff: Vector3 = _player.global_position
 	_player.state_machine.request_state("PlayerDash", {"direction": Vector3.FORWARD})
 	var explosion: GroundDamageArea = _newest()
@@ -200,7 +200,7 @@ func test_a_completion_gated_payload_fires_only_when_the_dash_completes() -> voi
 	strict.trigger_tags = dash_tags
 	strict.require_completion = true
 	strict.payload_scene = EXPLOSION_SCENE
-	_player.passive_ability_component.add_passive_instance(strict)
+	_player.ability_system_component.add_passive_instance(strict)
 	_player.state_machine.request_state("PlayerDash", {"direction": Vector3.FORWARD})
 	await wait_physics_frames(1)
 	_player.state_machine.request_state("PlayerRun")
@@ -216,7 +216,7 @@ func test_a_completion_gated_payload_fires_only_when_the_dash_completes() -> voi
 ## exit portal's, during a scene transition) spawns its payload while Area3D
 ## monitoring changes are locked; the payload must still arm and hit.
 func test_a_payload_spawned_during_a_physics_callback_still_lands_its_hit() -> void:
-	_player.passive_ability_component.add_passive(DASH_EXPLOSION_SCENE)
+	_player.ability_system_component.add_passive(DASH_EXPLOSION_SCENE)
 	_flush_origin = Vector3(8.0, _floor_y, -8.0)
 	var victim: Character = await _spawn_victim(_flush_origin)
 	var health_before: float = _health(victim)
@@ -250,7 +250,7 @@ func test_a_payload_spawned_during_a_physics_callback_still_lands_its_hit() -> v
 ## character lands in: a jump turned into a jump kick mid-flight still gives
 ## exactly one blast, at the landing point.
 func test_a_jump_turned_into_a_kick_lands_exactly_one_blast() -> void:
-	_player.passive_ability_component.add_passive(LANDING_BLAST_SCENE)
+	_player.ability_system_component.add_passive(LANDING_BLAST_SCENE)
 	_player.state_machine.request_state("PlayerJump", {"direction": Vector3.ZERO})
 	if not await wait_until(func() -> bool: return _player.has_tag(AirborneTracker.TAG_AIRBORNE), "the jump should mark the player airborne", ACTION_FRAMES):
 		return
@@ -296,9 +296,9 @@ func _broadcast(tags: Array[StringName], phase: AbilityEvent.Phase, data: Dictio
 
 func _add_counter(tags: Array[StringName]) -> TriggerCounter:
 	var counter: TriggerCounter = TriggerCounter.new()
-	counter.id = StringName("counter_%d" % _player.passive_ability_component.get_child_count())
+	counter.id = StringName("counter_%d" % _player.ability_system_component.get_child_count())
 	counter.trigger_tags = tags
-	_player.passive_ability_component.add_passive_instance(counter)
+	_player.ability_system_component.add_passive_instance(counter)
 	return counter
 
 

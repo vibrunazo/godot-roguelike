@@ -1,8 +1,12 @@
-## In-game heads-up display overlay showing run statistics such as gold currency.
+## In-game heads-up display overlay showing run statistics such as gold
+## currency, and the bound player's ability slots.
 class_name HUD
 extends CanvasLayer
 
 @onready var gold_label: Label = $MarginContainer/HBoxContainer/GoldLabel
+
+## Row of the player's ability slots, re-bound to each level's fresh player.
+@export var ability_bar: AbilityBar
 
 ## Pop-in scale factor the gold label reaches at the peak of its bounce.
 @export var gold_bounce_peak_scale: Vector2 = Vector2(1.35, 1.35)
@@ -34,12 +38,23 @@ func _ready() -> void:
 		visible = false
 	if not ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
 		ProgressionState.currency_gold_changed.connect(_on_gold_changed)
+	if not ProgressionState.player_bound.is_connected(_on_player_bound):
+		ProgressionState.player_bound.connect(_on_player_bound)
 	_update_gold_display(ProgressionState.currency_gold)
+	if ability_bar == null:
+		push_error("HUD: ability_bar is not set.")
 
 
 func _exit_tree() -> void:
 	if ProgressionState.currency_gold_changed.is_connected(_on_gold_changed):
 		ProgressionState.currency_gold_changed.disconnect(_on_gold_changed)
+	if ProgressionState.player_bound.is_connected(_on_player_bound):
+		ProgressionState.player_bound.disconnect(_on_player_bound)
+
+
+func _on_player_bound(player: Character) -> void:
+	if ability_bar != null:
+		ability_bar.bind(player)
 
 
 func _on_gold_changed(new_amount: int) -> void:

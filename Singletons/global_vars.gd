@@ -16,17 +16,24 @@ extends Node
 ## wing boots). Add or remove entries here to change the shop's item pool.
 @export var items: Array[ItemResource] = []
 
+## Items that can lie in levels for the player to find (ItemSpawner picks from
+## the ones the run may still offer). Each needs a world_visual.
+@export var level_items: Array[ItemResource] = []
+## Pickup scene (an ItemPickup) ItemSpawner places for each level item.
+@export var item_pickup_scene: PackedScene
+
 ## Enemy resources available for spawning, each defining an enemy scene and difficulty level.
 @export var enemies: Array[EnemyResource] = []
 ## Dungeon resources available for progression, each defining a level scene and eligibility constraints.
 @export var dungeons: Array[DungeonResource] = []
-## Projectile scene spawned by ProjectileSpawnerComponent.
-@export var enemy_projectile_scene: PackedScene
+## Projectile a ProjectileSpawnerComponent fires when its own projectile_scene
+## is unset (the fireball).
+@export var default_projectile_scene: PackedScene
 ## Firebomb projectile scene spawned by ProjectileSpawnerComponent.
 @export var firebomb_projectile_scene: PackedScene
 ## Lightning bolt projectile scene spawned by ProjectileSpawnerComponent.
 @export var lightning_bolt_scene: PackedScene
-## Impact effect spawned by EnemyProjectile on collision.
+## Impact effect spawned by Projectile on collision.
 @export var fireball_hit_scene: PackedScene
 ## Floating combat text spawned by VfxManager on damage.
 @export var damage_number_scene: PackedScene

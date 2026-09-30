@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://UserInterface/ability_bar.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://UserInterface/ability_slot_widget.tscn" id="2_widget"]
+
+[node name="AbilityBar" type="HBoxContainer"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -150.0
+offset_top = -96.0
+offset_right = 150.0
+offset_bottom = -32.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 12
+alignment = 1
+script = ExtResource("1_script")
+slot_widget_scene = ExtResource("2_widget")

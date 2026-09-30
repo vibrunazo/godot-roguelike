@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="AbilityResource" format=3]
+
+[ext_resource type="Script" path="res://Abilities/ability_resource.gd" id="1_ability"]
+[ext_resource type="Script" path="res://Passives/payload_property_override.gd" id="2_override"]
+[ext_resource type="PackedScene" path="res://Enemy/fireball_projectile.tscn" id="3_fireball"]
+
+[sub_resource type="Gradient" id="Gradient_icon"]
+offsets = PackedFloat32Array(0, 0.35, 0.7, 0.92, 1)
+colors = PackedColorArray(1, 1, 0.8, 1, 1, 0.82, 0.15, 1, 0.95, 0.3, 0.05, 1, 0.55, 0.08, 0.02, 1, 0.55, 0.08, 0.02, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_icon"]
+gradient = SubResource("Gradient_icon")
+width = 128
+height = 128
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[sub_resource type="Resource" id="Resource_damage"]
+script = ExtResource("2_override")
+property = &"damage"
+float_value = 18.0
+
+[sub_resource type="Resource" id="Resource_speed"]
+script = ExtResource("2_override")
+property = &"speed"
+float_value = 14.0
+
+[resource]
+script = ExtResource("1_ability")
+id = &"fireball"
+display_name = "Fireball"
+description = "Step 1: point your hand at the problem. Step 2: set the problem on fire."
+icon = SubResource("GradientTexture2D_icon")
+ability_tags = Array[StringName]([&"ability.spell.fire"])
+cooldown = 2.0
+release_time = 0.35
+movement_speed = 1.5
+payload_scene = ExtResource("3_fireball")
+payload_overrides = Array[ExtResource("2_override")]([SubResource("Resource_damage"), SubResource("Resource_speed")])

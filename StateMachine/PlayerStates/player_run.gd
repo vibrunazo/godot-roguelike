@@ -14,6 +14,8 @@ func physics_update(delta: float) -> void:
 		return
 	if check_attack():
 		return
+	if check_ability():
+		return
 	core_movement(delta, character.attribute_component.get_current(AttributeComponent.STAT_SPEED), character.move_direction)
 	if character.animation_tree != null:
 		if not character.move_direction.is_zero_approx():

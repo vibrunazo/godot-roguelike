@@ -17,6 +17,10 @@ extends State
 @export var ability_tags: Array[StringName] = []
 ## State to transition to when a jump intent is consumed.
 @export var jump_state: CharacterState
+## Whether an ability intent may cast from this state (see check_ability()).
+## Off by default: only states that opt in (running) cast; timed actions open
+## it inside their cancel window instead (CharacterAction).
+@export var allows_abilities: bool = false
 
 
 ## Whether a controller may order the body out of this state (see
@@ -110,6 +114,24 @@ func check_attack() -> bool:
 	return character.state_machine.request_state(attack_state.name, {"direction": character.move_direction})
 
 
+## Consumes a pending ability intent and, when this state allows casting now
+## (_allows_ability()), casts the requested slot through the character's
+## AbilitySystemComponent. Returns true when a cast started. The intent is
+## consumed even when refused, so a press never leaks into a later state.
+func check_ability() -> bool:
+	if character == null:
+		return false
+	var slot: int = character.consume_ability_request()
+	if slot < 0 or not _allows_ability() or character.ability_system_component == null:
+		return false
+	return character.ability_system_component.cast(slot)
+
+
+## Whether an ability may be cast from this state right now.
+func _allows_ability() -> bool:
+	return allows_abilities
+
+
 ## Requests the character's visual mesh toward the target in world space. The
 ## character turns at its rotation speed limit (see Character.look_at_target).
 func look_at_target(target: Vector3, delta: float) -> void:
@@ -140,7 +162,7 @@ func core_movement(delta: float, speed: float, direction: Vector3 = Vector3.ZERO
 
 
 ## Broadcasts one lifecycle point of this state to the character's
-## PassiveAbilityComponent as an AbilityEvent (position = the character's world
+## AbilitySystemComponent as an AbilityEvent (position = the character's world
 ## position, direction = event_direction or the character's movement/forward).
 ## No-op when the state is untagged or no component exists. extra_data's
 ## standard key is "completed" (bool) for states that can be interrupted

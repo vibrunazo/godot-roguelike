@@ -10,7 +10,7 @@
 ## - a combat leap snaps onto the target's bearing, lands jump_landing_gap
 ##   short of it, and its sizing ratio is clamped to the input component's
 ##   limits and restored on landing,
-## - attacks with dash_cancel can be jump-cancelled, others cannot,
+## - attacks with cancelable can be jump-cancelled, others cannot,
 ## - attacking mid-air performs the jump kick: it lunges, strikes with its own
 ##   weapon slot (never the sword), and landing cancels it into running, or
 ##   into the ground attack when an attack was pressed during the kick.
@@ -239,7 +239,7 @@ func test_the_leap_ratio_is_clamped_to_its_limits() -> void:
 func test_a_dash_cancellable_attack_can_be_jump_cancelled() -> void:
 	await _lock_foe(Vector3.BACK * _aim().auto_aim_range * 0.5)
 	var attack: CharacterAttack = _run.attack_state as CharacterAttack
-	attack.dash_cancel = true
+	attack.cancelable = true
 	press_action(&"click")
 	if not await wait_until(func() -> bool: return _state() == attack.name, "setup: the attack should start", 10):
 		return
@@ -250,7 +250,7 @@ func test_a_dash_cancellable_attack_can_be_jump_cancelled() -> void:
 func test_an_attack_without_dash_cancel_ignores_the_jump_button() -> void:
 	await _lock_foe(Vector3.BACK * _aim().auto_aim_range * 0.5)
 	var attack: CharacterAttack = _run.attack_state as CharacterAttack
-	attack.dash_cancel = false
+	attack.cancelable = false
 	press_action(&"click")
 	if not await wait_until(func() -> bool: return _state() == attack.name, "setup: the attack should start", 10):
 		return

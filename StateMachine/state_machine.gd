@@ -67,3 +67,4 @@ func _clear_stale_intents() -> void:
 		body_state.character.attack_requested = false
 		body_state.character.dash_requested = false
 		body_state.character.jump_requested = false
+		body_state.character.ability_requested = -1

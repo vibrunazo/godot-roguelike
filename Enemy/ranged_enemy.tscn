@@ -19,7 +19,7 @@ initial_state = NodePath("EnemyMove")
 
 [node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=539557262 node_paths=PackedStringArray("next_states", "character", "fall_state")]
 script = ExtResource("2_cnthi")
-attack_animation_name = "RangedAttack"
+animation_name = "RangedAttack"
 cooldown = 3.0
 next_states = [NodePath("../EnemyMove")]
 character = NodePath("../..")

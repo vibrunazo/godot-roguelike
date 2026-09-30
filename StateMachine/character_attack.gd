@@ -1,26 +1,20 @@
-## Shared physical attack state for all characters (player combo hits and enemy attacks).
-## Player chains use combo_next (ordered); enemies use next_states random-pick.
-## Queue/cancel run through the same intent-driven checks (default off per node).
+## Melee attack state for all characters (player combo hits and enemy attacks),
+## built on CharacterAction (cooldown, tags, animation, aim, cancel window,
+## gravity, lifecycle events). This adds the melee half: the weapon slot's
+## hitbox and its AttackComponent, the combo queue, the forward lunge and the
+## attacker's hitstop. Player chains use combo_next (ordered); enemies use
+## next_states random-pick.
 class_name CharacterAttack
-extends CharacterState
+extends CharacterAction
 
-## Ratio of speed at which the character can move while executing this attack (0.0 = stationary, 1 = full speed).
-@export var movement_speed: float = 0.0
-## Whether this attack state can be cancelled early by dashing.
-@export var dash_cancel: bool = false
 ## Amount of damage dealt to health components caught in this attack.
 @export var damage: float = 10.0
 ## Knockback impulse applied to entities hit by this attack.
 @export var knockback: float = 15.0
-## States to transition to when the attack animation finishes (random pick;
-## single-element arrays behave deterministically for ordered chains).
-@export var next_states: Array[CharacterState]
 ## Next attack state in the combo chain when an attack intent is queued (null = no chain).
 @export var combo_next: CharacterState
 ## Time window (in seconds) after the attack starts to queue the next attack.
 @export var queued_attack_time: float = 0.5
-## Name of the animation to trigger on the animation tree for this attack.
-@export var attack_animation_name: String = "SlashAttack"
 ## Weapon slot this attack strikes with (sword, feet, fists, ...). Its hitbox's
 ## AttackComponent deals the hits, and the slot's enabled track (keyed by the
 ## attack animation) opens the hit window. Attacks that hit through something
@@ -46,24 +40,9 @@ extends CharacterState
 ## Duration (in seconds, real time) of the self slowmo after landing a hit.
 ## Keep under 0.1 for a snappy hitstop feel. Values <= 0.0 disable the effect.
 @export var self_hitstop_duration: float = 0.1
-## Whether this attack state is uninterruptable (immune to stun interruption while active).
-@export var uninterruptable: bool = false
-## Cooldown time in seconds between attack executions (0.0 = ready immediately).
-@export var cooldown: float = 0.0
-## Initial cooldown in seconds applied when entering the scene (0.0 = ready immediately).
-@export var starting_cooldown: float = 0.0
-## Gameplay tags required on the character for this attack state to activate.
-@export var required_tags: Array[StringName] = []
-## Gameplay tags that block this attack state from activating if present on the character.
-@export var blocked_tags: Array[StringName] = []
-## If true, starts the cooldown timer when tag requirements transition from unmet to met.
-@export var start_cooldown_on_enabled: bool = false
 
-## Remaining cooldown time in seconds before this attack can be executed again.
-var cooldown_timer: float = 0.0
 var queued_attack: bool = false
 var attack_timer: SceneTreeTimer
-var aim_direction: Vector3 = Vector3.ZERO
 var lunging: bool = false
 var lunge_direction: Vector3 = Vector3.ZERO
 var _lunge_base_velocity: Vector3 = Vector3.ZERO
@@ -78,118 +57,44 @@ var hitstop_time_remaining: float = 0.0
 var hitstop_base_timescale: float = 1.0
 ## Whether the current attack animation exposes a TimeScale node for slowdown.
 var hitstop_has_timescale: bool = false
-var _was_tag_enabled: bool = false
-## True once this attack pointed character.aim_direction at its target, so
-## exit() clears exactly that.
-var _wrote_character_aim: bool = false
 
 
-func _ready() -> void:
-	cooldown_timer = starting_cooldown
-	_was_tag_enabled = _check_tags()
-
-
-## Returns true if this attack is currently on cooldown.
-func is_on_cooldown() -> bool:
-	return cooldown_timer > 0.0
-
-
-
-
-## Checks whether all required tags are present and no blocked tags are present.
-func _check_tags() -> bool:
-	if character == null:
-		return true
-	if not required_tags.is_empty():
-		for tag: StringName in required_tags:
-			if not character.has_tag(tag):
-				return false
-	if not blocked_tags.is_empty():
-		for tag: StringName in blocked_tags:
-			if character.has_tag(tag):
-				return false
-	return true
-
-
-## Updates tag enablement and starts cooldown on transition if configured.
-func _update_tag_enablement() -> void:
-	var currently_enabled: bool = _check_tags()
-	if currently_enabled and not _was_tag_enabled:
-		if start_cooldown_on_enabled:
-			cooldown_timer = cooldown
-	_was_tag_enabled = currently_enabled
-
-
-func is_uninterruptable() -> bool:
-	return uninterruptable
-
-
-## Returns true if both cooldown and tag requirements allow activation.
-func can_activate() -> bool:
-	_update_tag_enablement()
-	if is_on_cooldown():
-		return false
-	return _check_tags()
-
-
-## The attack owns its cooldown and ticks it itself, every physics frame,
-## whoever controls the body: controllers only read it (is_on_cooldown(),
-## can_activate()), so nothing can tick it twice.
-func _physics_process(delta: float) -> void:
-	_update_tag_enablement()
-	if cooldown_timer > 0.0:
-		cooldown_timer = maxf(0.0, cooldown_timer - delta)
-
-
-func physics_update(delta: float) -> void:
-	if character == null or not character.is_inside_tree():
-		return
-	# Same shared checks both controllers drive: dash-cancel and jump-cancel
-	# are gated by the dash_cancel export below, attack intents queue the combo follow-up.
-	if check_dash():
-		return
-	if check_jump():
-		return
-	check_attack()
+func _before_motion(delta: float) -> void:
 	_update_hitstop(delta)
+
+
+## The lunge while it runs, the steered movement otherwise; both slowed
+## during hitstop.
+func _planar_velocity() -> Vector3:
 	var motion_scale: float = clampf(self_hitstop_scale, 0.0, 1.0) if is_in_hitstop() else 1.0
 	if lunging:
-		character.velocity = (_lunge_base_velocity + lunge_direction * dash_speed) * motion_scale
-	else:
-		character.velocity = character.move_direction * movement_speed * motion_scale
-	if not is_in_hitstop():
-		character.look_toward_direction(aim_direction, delta)
-	character.move_character()
+		return (_lunge_base_velocity + lunge_direction * dash_speed) * motion_scale
+	return character.move_direction * movement_speed * motion_scale
+
+
+func _can_turn() -> bool:
+	return not is_in_hitstop()
 
 
 func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	_reset_attack_state()
+	if character != null:
+		_arm_attack_component()
+	super.enter(_previous_state_path, _data)
 	if character == null:
 		return
-	if uninterruptable and character.knockback_component != null:
-		character.knockback_component.magnitude = Vector3.ZERO
-	_arm_attack_component()
-	if character.animation_tree != null:
-		character.animation_tree.change_immediate(attack_animation_name)
-		connect_one_shot(character.animation_tree.animation_finished, finish_attack)
-		_cache_hitstop_timescale()
-
+	_cache_hitstop_timescale()
 	# Gameplay windows run on the physics clock (process_in_physics) so their
 	# length in game time never depends on the render frame rate.
 	attack_timer = get_tree().create_timer(queued_attack_time, true, true)
 	attack_timer.timeout.connect(attempt_queue_attack)
-	character.is_attacking = true
-	aim_direction = _resolve_aim(_data)
-	_aim_at_current_target()
 	_arm_lunge()
 	_active_phase_slot = get_weapon_slot()
 	if _active_phase_slot != null:
 		connect_one_shot(_active_phase_slot.slash, _broadcast_active_phase)
-	broadcast_ability_event(AbilityEvent.Phase.STARTED, {}, aim_direction)
 
 
-## Clears everything a previous run of this attack may have left behind and
-## restarts its cooldown.
+## Clears everything a previous run of this attack may have left behind.
 func _reset_attack_state() -> void:
 	queued_attack = false
 	lunging = false
@@ -197,7 +102,6 @@ func _reset_attack_state() -> void:
 	lunge_slot = null
 	hitstop_time_remaining = 0.0
 	hitstop_has_timescale = false
-	cooldown_timer = cooldown
 
 
 ## Loads this attack's damage, knockback, rehit rule and hit effects into the
@@ -214,40 +118,6 @@ func _arm_attack_component() -> void:
 	component.effects_to_apply = effects_to_apply
 	if not component.hit_landed.is_connected(_on_hit_landed):
 		component.hit_landed.connect(_on_hit_landed)
-
-
-## The direction this attack is aimed at, snapshotted on entry: the
-## character's aim (the player's controller keeps it current), else the
-## order's "aim", the movement direction, the facing, in that order.
-func _resolve_aim(data: Dictionary) -> Vector3:
-	if not character.aim_direction.is_zero_approx():
-		return character.aim_direction
-	if data.get("aim") is Vector3:
-		return data["aim"]
-	if not character.move_direction.is_zero_approx():
-		return character.move_direction
-	if character.mesh_mount != null:
-		return character.mesh_mount.global_basis.z.normalized()
-	return Vector3.ZERO
-
-
-## Overrides the snapshotted aim with the direction to the character's
-## current_target when one is valid, so attacks rotate toward the auto-aim
-## target instead of the mouse aim. Writes back to character.aim_direction so
-## snapshot and intent stay consistent for the rest of the attack.
-func _aim_at_current_target() -> void:
-	if character == null:
-		return
-	var target: Node3D = character.current_target
-	if target == null or not is_instance_valid(target):
-		return
-	var to_target: Vector3 = target.global_position - character.global_position
-	to_target.y = 0.0
-	if to_target.is_zero_approx():
-		return
-	aim_direction = to_target.normalized()
-	character.aim_direction = aim_direction
-	_wrote_character_aim = true
 
 
 ## The AttackComponent under the weapon slot's hitbox, or null for attacks
@@ -371,7 +241,7 @@ func _clear_hitstop() -> void:
 ## animation has no TimeScale node keep movement-only slowdown.
 func _cache_hitstop_timescale() -> void:
 	hitstop_has_timescale = false
-	if character == null or character.animation_tree == null or attack_animation_name.is_empty():
+	if character == null or character.animation_tree == null or animation_name.is_empty():
 		return
 	var current: Variant = character.animation_tree.get(_get_timescale_param())
 	if current is float:
@@ -381,34 +251,13 @@ func _cache_hitstop_timescale() -> void:
 
 ## AnimationTree parameter path of this attack's TimeScale node.
 func _get_timescale_param() -> String:
-	return "parameters/" + attack_animation_name + "/TimeScale/scale"
+	return "parameters/" + animation_name + "/TimeScale/scale"
 
 
 ## Hitstop trigger: slows this attacker (not the victim) each time its attack lands.
 ## Victim effects are applied by the AttackComponent itself on the confirmed hit.
 func _on_hit_landed(_target: Node) -> void:
 	apply_self_hitstop()
-
-
-## Dash-cancel gate: only attacks with dash_cancel set can be interrupted.
-## The intent is still consumed when gated off so the press never leaks into a
-## later state. Cancelling runs exit(), which already clears lunge, hitstop, and timers.
-func check_dash() -> bool:
-	if not dash_cancel:
-		if character != null:
-			character.consume_dash_request()
-		return false
-	return super.check_dash()
-
-
-## Jump-cancel gate: only attacks with dash_cancel set can be jump-cancelled.
-## The intent is consumed when gated off so the press never leaks into a later state.
-func check_jump(launch_ratio: float = -1.0) -> bool:
-	if not dash_cancel:
-		if character != null:
-			character.consume_jump_request()
-		return false
-	return super.check_jump(launch_ratio)
 
 
 ## Queues a combo follow-up instead of transitioning (consumes the intent).
@@ -423,19 +272,10 @@ func check_attack() -> bool:
 
 func exit() -> void:
 	queued_attack = false
-	if character != null:
-		character.is_attacking = false
-		# Undo only the aim this attack set (toward its target); a
-		# controller's own aim is its business.
-		if _wrote_character_aim:
-			character.aim_direction = Vector3.ZERO
-	_wrote_character_aim = false
 	_clear_lunge()
 	_clear_hitstop()
 	if attack_timer != null:
 		disconnect_safe(attack_timer.timeout, attempt_queue_attack)
-	if character != null and character.animation_tree != null:
-		disconnect_safe(character.animation_tree.animation_finished, finish_attack)
 	var exit_component: AttackComponent = get_attack_component()
 	if exit_component != null:
 		disconnect_safe(exit_component.hit_landed, _on_hit_landed)
@@ -446,21 +286,12 @@ func exit() -> void:
 	var exit_slot: WeaponSlot = get_weapon_slot()
 	if exit_slot != null and exit_slot.enabled:
 		exit_slot.enabled = false
-	broadcast_ability_event(AbilityEvent.Phase.ENDED, {}, aim_direction)
-
-
-## Transitions to a random pick of next_states when the attack animation finishes.
-## A queued intent does NOT chain here: chaining happens in attempt_queue_attack
-## inside the queue window; late presses are dropped.
-func finish_attack(_animation_name: String) -> void:
-	if character == null or character.state_machine == null or next_states.is_empty():
-		return
-	var next: CharacterState = next_states.pick_random()
-	if next != null:
-		character.state_machine.request_state(next.name)
+	super.exit()
 
 
 ## Chains combo_next when an attack intent was queued inside the queue window.
+## A queued intent does NOT chain when the animation finishes: late presses
+## are dropped.
 func attempt_queue_attack() -> void:
 	if combo_next == null or not queued_attack or character == null or character.state_machine == null:
 		return

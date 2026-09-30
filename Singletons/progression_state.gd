@@ -28,6 +28,9 @@ extends Node
 
 ## Emitted when run gold currency changes.
 signal currency_gold_changed(new_amount: int)
+## Emitted when a level's fresh player becomes the run's player (see
+## bind_player()), for run-wide UI that follows the player (the HUD).
+signal player_bound(player: Character)
 
 ## Current gold currency collected during this run.
 var currency_gold: int = 0
@@ -57,6 +60,15 @@ var player_health: float = INF
 ## Items bought while no player exists (the shop between levels), applied in
 ## order to the next bound player.
 var pending_items: Array[ItemResource] = []
+## The run's learned abilities, by ability slot (null: empty, or held by
+## gear, which brings its own back). Kept current by the bound player; each
+## level's fresh player gets them back in the same slots. Empty until the run's
+## first player is bound: that player's starting abilities start the record.
+var player_abilities: Array[AbilityResource] = []
+## Abilities the bound player's gear grants right now (not learned for good).
+var player_gear_abilities: Array[AbilityResource] = []
+## Free ability slots the bound player has; -1 until a player is bound.
+var free_ability_slots: int = -1
 
 ## Item key -> times purchased this run (see get_purchase_count()).
 var _purchase_counts: Dictionary[StringName, int] = {}
@@ -112,18 +124,28 @@ func reset_run() -> void:
 	player_gear.clear()
 	player_health = INF
 	pending_items.clear()
+	player_abilities.clear()
+	player_gear_abilities.clear()
+	free_ability_slots = -1
 	_purchase_counts.clear()
 
 
 ## Makes player the run's player (each level binds its own fresh one): it gets
-## the run's gear back (only the lasting part: instant effects ran when the
-## gear was first equipped) and the run's health, then the pending items.
+## the run's learned abilities back in their slots, then the run's gear (only
+## the lasting part: instant effects ran when the gear was first equipped; its
+## abilities fill the free slots) and the run's health, then the pending items.
 ## From then on the run state follows the player: every gear it equips or
-## unequips and every health change is recorded here, so nothing has to be
-## copied when it leaves its scene.
+## unequips, every ability it learns or loses and every health change is
+## recorded here, so nothing has to be copied when it leaves its scene.
 func bind_player(player: Character) -> void:
 	var equipment: EquipmentComponent = player.equipment_component
 	var attributes: AttributeComponent = player.attribute_component
+	var abilities: AbilitySystemComponent = player.ability_system_component
+	if free_ability_slots >= 0:
+		abilities.set_learned_abilities(player_abilities)
+	_record_abilities(abilities)
+	abilities.ability_granted.connect(func(_slot: int, _ability: AbilityResource, _source: Object) -> void: _record_abilities(abilities))
+	abilities.ability_revoked.connect(func(_slot: int, _ability: AbilityResource) -> void: _record_abilities(abilities))
 	for gear: GearItemResource in player_gear:
 		equipment.restore_gear(gear)
 	attributes.set_pool_current(AttributeComponent.POOL_HEALTH, player_health)
@@ -134,6 +156,7 @@ func bind_player(player: Character) -> void:
 	for item: ItemResource in pending_items:
 		equipment.apply_item(item)
 	pending_items.clear()
+	player_bound.emit(player)
 
 
 ## Times the item was purchased this run.
@@ -141,14 +164,42 @@ func get_purchase_count(item: ItemResource) -> int:
 	return _purchase_counts.get(_item_key(item), 0) if item != null else 0
 
 
-## Whether the item can be bought now: in stock (under max_purchases, when
-## limited) and affordable.
-func can_purchase(item: ItemResource) -> bool:
+## Whether the run may still offer the item, in the shop or in a level: in
+## stock (under max_purchases, when limited) and, for an item teaching
+## abilities, able to teach one (see can_learn()).
+func is_item_available(item: ItemResource) -> bool:
 	if item == null:
 		return false
 	if item.max_purchases > 0 and get_purchase_count(item) >= item.max_purchases:
 		return false
-	return has_gold(item.cost)
+	if item is GearItemResource:
+		return true
+	return can_learn(item.granted_abilities)
+
+
+## Whether the run's player could learn abilities now: at least one of them
+## is new or only granted by its gear (learning makes it permanent in its
+## slot), and the free slots hold every new one. True for none, and before
+## the run's first player is bound (nothing is known yet).
+func can_learn(abilities: Array[AbilityResource]) -> bool:
+	if abilities.is_empty() or free_ability_slots < 0:
+		return true
+	var new_abilities: int = 0
+	var gear_granted: int = 0
+	for ability: AbilityResource in abilities:
+		if ability == null or player_abilities.has(ability):
+			continue
+		if player_gear_abilities.has(ability):
+			gear_granted += 1
+		else:
+			new_abilities += 1
+	return new_abilities + gear_granted > 0 and new_abilities <= free_ability_slots
+
+
+## Whether the item can be bought now: available (see is_item_available())
+## and affordable.
+func can_purchase(item: ItemResource) -> bool:
+	return is_item_available(item) and has_gold(item.cost)
 
 
 ## Counts one purchase of the item.
@@ -156,6 +207,20 @@ func record_purchase(item: ItemResource) -> void:
 	if item != null:
 		var key: StringName = _item_key(item)
 		_purchase_counts[key] = _purchase_counts.get(key, 0) + 1
+
+
+## Snapshots the bound player's learned abilities, gear abilities and free
+## slots.
+func _record_abilities(abilities: AbilitySystemComponent) -> void:
+	player_abilities = abilities.get_learned_abilities()
+	player_gear_abilities.clear()
+	free_ability_slots = 0
+	for slot: int in abilities.get_slot_count():
+		var ability: AbilityResource = abilities.get_ability(slot)
+		if ability == null:
+			free_ability_slots += 1
+		elif abilities.get_source(slot) != null:
+			player_gear_abilities.append(ability)
 
 
 func _record_gear(gear: GearItemResource) -> void:

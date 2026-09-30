@@ -4,7 +4,9 @@
 ## - attacking again after recovering hits again (hit exceptions reset),
 ## - pressing again inside the attack's queue window chains into combo_next,
 ##   which lands its own hit,
-## - a press after the queue window has passed is dropped (no chain).
+## - a press after the queue window has passed is dropped (no chain),
+## - an attack started in the air falls under gravity, unless its
+##   float_in_air holds the character's height.
 ## Replaces test_attack_dummy, test_attack_cycle and test_queued_attack.
 ## Damage, combo links and queue windows are read from the live attack states.
 extends "res://test/lib/test_suite.gd"
@@ -15,6 +17,8 @@ const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
 const DUMMY_HEALTH: float = 100000.0
 ## Frame budget for one attack animation.
 const ATTACK_FRAMES: int = 600
+## Test-owned height above the floor the player attacks from in the air.
+const AIR_HEIGHT: float = 4.0
 
 var _player: Character
 var _dummy: Character
@@ -86,6 +90,25 @@ func test_a_press_after_the_queue_window_is_dropped() -> void:
 		chained[0] = chained[0] or (next_attack != null and _state() == next_attack.name)
 		return _state() == "PlayerRun", "the first attack should finish", ATTACK_FRAMES)
 	check(not chained[0], "a press after the queue window must not chain the combo")
+
+
+func test_an_attack_in_the_air_falls_unless_it_floats() -> void:
+	for floats: bool in [false, true]:
+		_first_attack.float_in_air = floats
+		_player.global_position += Vector3.UP * AIR_HEIGHT
+		_player.velocity = Vector3.ZERO
+		var start_height: float = _player.global_position.y
+		if not check(_player.state_machine.request_state(_first_attack.name), "setup: the attack should start in the air"):
+			return
+		var lowest: Array[float] = [start_height]
+		await wait_until(func() -> bool:
+			lowest[0] = minf(lowest[0], _player.global_position.y)
+			return _state() != _first_attack.name, "the attack should end", ATTACK_FRAMES)
+		if floats:
+			check_approx(lowest[0], start_height, "a floating attack should keep the character's height", 0.01)
+		else:
+			check(start_height - lowest[0] > 0.5, "an attack in the air should fall (fell %.2f m)" % (start_height - lowest[0]))
+		await wait_until(func() -> bool: return _player.is_on_floor() and _state() == "PlayerRun", "the player should land and run again", ATTACK_FRAMES)
 
 
 func _state() -> String:

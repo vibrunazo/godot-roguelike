@@ -4,8 +4,8 @@
 ##   attack -> combo_next -> ...) and each attack lands at least one hit,
 ## - attacks without a lunge (dash_speed 0) stay in place; lunging attacks
 ##   move along their aim with a unit lunge direction,
-## - out of combat the jump button dash-cancels attacks with dash_cancel and
-##   plays the dash visual; attacks without dash_cancel ignore it,
+## - out of combat the jump button dash-cancels attacks with cancelable and
+##   plays the dash visual; attacks without cancelable ignore it,
 ## - a dash cancel drops a queued combo follow-up,
 ## - a standing dash goes along the facing,
 ## - the slash trail shows only while its weapon slot is in its attack mode
@@ -91,7 +91,7 @@ func test_attacks_without_a_lunge_stay_in_place_and_lunges_move_along_the_aim() 
 
 
 func test_the_jump_button_dash_cancels_a_dash_cancellable_attack() -> void:
-	_first_attack.dash_cancel = true
+	_first_attack.cancelable = true
 	press_action(&"click")
 	if not await wait_until(func() -> bool: return _state() == _first_attack.name, "setup: the attack should start", 10):
 		return
@@ -103,7 +103,7 @@ func test_the_jump_button_dash_cancels_a_dash_cancellable_attack() -> void:
 
 
 func test_an_attack_without_dash_cancel_cannot_be_dashed_out_of() -> void:
-	_first_attack.dash_cancel = false
+	_first_attack.cancelable = false
 	press_action(&"click")
 	if not await wait_until(func() -> bool: return _state() == _first_attack.name, "setup: the attack should start", 10):
 		return
@@ -117,7 +117,7 @@ func test_a_dash_cancel_drops_the_queued_combo_attack() -> void:
 	var next_attack: State = _first_attack.combo_next
 	if not check(next_attack != null, "setup: the first attack should chain into a combo_next"):
 		return
-	_first_attack.dash_cancel = true
+	_first_attack.cancelable = true
 	press_action(&"click")
 	if not await wait_until(func() -> bool: return _state() == _first_attack.name, "setup: the attack should start", 10):
 		return

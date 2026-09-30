@@ -125,7 +125,7 @@ func _attack_and_wait_for_hit(attacker: Character, attack: CharacterAttack, vict
 
 
 func _timescale_param(attack: CharacterAttack) -> String:
-	return "parameters/%s/TimeScale/scale" % attack.attack_animation_name
+	return "parameters/%s/TimeScale/scale" % attack.animation_name
 
 
 func _spawn_dummy(scene: PackedScene, at: Vector3) -> Character:

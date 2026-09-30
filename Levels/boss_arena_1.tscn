@@ -56,3 +56,6 @@ data = ExtResource("4_bossarena1")
 
 [node name="ExitPoint" parent="." index="8" unique_id=71757807]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 18)
+
+[node name="ItemSpawner" parent="." index="9"]
+count = 0

@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Items/Books/book_model.gd" id="1_book"]
+
+[node name="Book" type="Node3D" node_paths=PackedStringArray("cover_anchor", "title_label")]
+script = ExtResource("1_book")
+tilt_toward_camera = 40.0
+size = Vector3(0.66, 0.1, 0.86)
+cover_anchor = NodePath("CoverAnchor")
+title_label = NodePath("CoverAnchor/TitleLabel")
+
+[node name="CoverAnchor" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.051, 0)
+
+[node name="TitleLabel" type="Label3D" parent="CoverAnchor"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.002, 0)
+pixel_size = 0.002
+modulate = Color(0.05, 0.05, 0.05, 1)
+outline_modulate = Color(0.05, 0.05, 0.05, 1)
+text = "Book Title"
+font_size = 60
+outline_size = 6
+autowrap_mode = 3
+width = 320.0

@@ -106,7 +106,10 @@ prints the error and idles forever. `--quit-after` does not help.
 
 - **Characters** (`Character/character.gd`, a `CharacterBody3D`) are driven by
   two state machines. The **body** `StateMachine` runs `CharacterState`s
-  (attacks extend `CharacterAttack`) and owns movement and animation. The
+  and owns movement and animation. Timed actions extend `CharacterAction`
+  (cooldown, tags, animation, aim, cancel window, gravity unless
+  `float_in_air`, lifecycle events): melee attacks are `CharacterAttack`,
+  ability casts are `AbilityCastState`. The
   **mind** is either `PlayerInputComponent` (player) or `AIStateMachine` with
   `AIState`s (enemies). Minds only raise intents (`command_*`) or request body
   states (`order_*`, `StateMachine.request_state()`); body states read only
@@ -114,14 +117,15 @@ prints the error and idles forever. `--quit-after` does not help.
   `finished` signal. States refer to each other by typed exports, never by
   name strings: an AI state's `body_state` is the body state it orders, and
   `Character.can_accept_order()` is the one rule for when the body takes an
-  order.
+  order. Player intents (attack, dash, jump, ability) are checked by the
+  current body state (`check_*`): a state that does not check one drops it.
 - **Components** on each character: `AttributeComponent` (health/mana pools,
   buffable stats, tags, timed effects and DoTs; `defeat` fires once on the
   killing transition), `StatusVisualsComponent` (effect visuals, on bones
   when asked), `Hurtbox` (receives hits), `KnockbackComponent`,
   `AirborneTracker` (airborne tag and landing events), `EquipmentComponent`
-  (gear and consumables), `PassiveAbilityComponent` (passives triggered by
-  ability lifecycle events), `CharacterColorComponent` (palette). Enemies add
+  (gear and consumables), `AbilitySystemComponent` (ASC: every ability the
+  character has; see Abilities), `CharacterColorComponent` (palette). Enemies add
   `LootComponent` (gold on defeat); the player adds `TargetingComponent`
   (auto-aim), `ScreenShakeComponent` and `PlayerDefeatHandler` (game over).
   `Character` itself owns the body: movement, facing, intents, orders and
@@ -133,17 +137,32 @@ prints the error and idles forever. `--quit-after` does not help.
   `damage_pool()`/`restore_pool()` are silent. Lethal hits report `defeat`
   before `struck` reaches handlers, so reaction handlers must ignore the dead.
   `AttackComponent.rehit_interval <= 0` hits a target once per attack;
-  `> 0` lets it hit again after that interval.
-- **Registries:** `GlobalVars` (items, enemies, dungeons, shared scenes),
-  `ProgressionState` (run state: difficulty, dungeon level, gold, purchases,
-  the planned encounter and its wave plan, and the player's gear and health:
-  each level spawns its own fresh player and `bind_player()` gives it the
-  run's gear and health, then records every change), `SceneTransition`
+  `> 0` lets it hit again after that interval. Projectiles, explosions and
+  hazards spawned by anything (enemy ranged attacks, passives, abilities) go
+  through `PayloadSpawner.spawn()`, which credits the instigator and scales
+  damage; the damage itself lives in the payload scene.
+- **Abilities:** an `AbilityResource` (`.tres`) defines an active ability:
+  cost, cooldown, cast animation, release time, and what it releases (a
+  payload scene with `payload_overrides`, and `caster_effects`). The ASC holds
+  them in fixed slots, the `AbilityCastState` nodes wired in the character's
+  scene, and remembers each grant's source (null: learned for good; an item:
+  granted while that gear is equipped). The player casts with the
+  `ability_N` actions; enemies point an `AIConditionalAttack`'s `body_state`
+  at a slot. Passive abilities (`PassiveAbility` scenes) live on the ASC too.
+  Items grant abilities through `ItemResource.granted_abilities`: plain items
+  (spell books) teach them for good, gear only while equipped.
+- **Registries:** `GlobalVars` (shop items, level items, enemies, dungeons,
+  shared scenes), `ProgressionState` (run state: difficulty, dungeon level,
+  gold, purchases, which items the run may still offer, the planned
+  encounter and its wave plan, and the player's learned abilities, gear and
+  health: each level spawns its own fresh player and `bind_player()` gives it
+  the run's abilities, gear and health, then records every change), `SceneTransition`
   (fades and level loading), `UI` (HUD, pause and
   game-over menus, fullscreen), `VfxManager`
   (world VFX, damage numbers, the target reticle). All five are autoloads.
 - **Levels** inherit `Levels/level_template.tscn` (lighting, wave objective,
-  kill plane, exit). `GlobalVars.dungeons` (`DungeonResource`s) is the only
+  kill plane, exit, and an `ItemSpawner` that drops available
+  `GlobalVars.level_items` as `ItemPickup`s near the player's spawn). `GlobalVars.dungeons` (`DungeonResource`s) is the only
   level registry: `ProgressionState` picks a regular dungeon per encounter,
   or the boss arena whose `boss_at_level` matches the dungeon level.
 

@@ -1,7 +1,7 @@
 ## One broadcast point in an ability's lifecycle ("what happened"), carried with
 ## enough context for passives to act without knowing the source state.
 ## Ability states (CharacterState.broadcast_ability_event) mint these and route
-## them through Character.broadcast_ability_event to the PassiveAbilityComponent,
+## them through Character.broadcast_ability_event to the AbilitySystemComponent,
 ## which fans them out to granted PassiveAbility nodes. Tags identify the
 ## ability (&"ability.dash", &"ability.attack"); Phase narrows the lifecycle
 ## point; position/direction/data give payloads their spawn context.

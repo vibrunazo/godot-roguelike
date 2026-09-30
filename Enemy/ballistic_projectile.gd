@@ -5,7 +5,7 @@
 ## landing does (_on_landed()) and what hitting a hurtbox in flight does
 ## (_on_direct_hit()).
 class_name BallisticProjectile
-extends EnemyProjectile
+extends Projectile
 
 ## Standard Earth gravity acceleration in m/s^2.
 const EARTH_GRAVITY: float = 9.8

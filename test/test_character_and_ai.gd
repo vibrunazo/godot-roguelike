@@ -212,10 +212,10 @@ func test_projectiles_outlive_their_shooter() -> void:
 	await wait_physics_frames(1)
 	var spawner: ProjectileSpawnerComponent = shooter.get_node("ProjectileSpawnerComponent") as ProjectileSpawnerComponent
 	spawner.spawn_projectile()
-	var projectile: EnemyProjectile = null
+	var projectile: Projectile = null
 	for child: Node in get_children():
-		if child is EnemyProjectile:
-			projectile = child as EnemyProjectile
+		if child is Projectile:
+			projectile = child as Projectile
 	if not check(projectile != null, "spawn_projectile() should put a projectile in the world"):
 		return
 	check(projectile.shooter == shooter, "the projectile should remember its shooter")

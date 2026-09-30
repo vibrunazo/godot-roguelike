@@ -40,13 +40,12 @@ func _ready() -> void:
 	if pool.is_empty():
 		pool = GlobalVars.items
 
-	# Only deal items that can still be picked: anything already purchased
-	# the maximum allowed times never shows up as an option again.
+	# Only deal items the run may still offer (ProgressionState.is_item_available).
 	# Affordability is not filtered here; unaffordable cards still show up
 	# with a disabled button.
 	var item_options: Array[ItemResource] = []
 	for item: ItemResource in pool:
-		if _has_stock_left(item):
+		if ProgressionState.is_item_available(item):
 			item_options.append(item)
 	item_options.shuffle()
 	for resource: ItemResource in item_options.slice(0, 2):
@@ -54,14 +53,6 @@ func _ready() -> void:
 		upgrade_container.add_child(current_card)
 		current_card.set_item_resource(resource)
 		current_card.upgrade_taken.connect(exit_shop)
-
-
-## Returns true when the shop may still offer the item: items purchased up to
-## their maximum allowed times this run are out of stock.
-func _has_stock_left(item: ItemResource) -> bool:
-	if item == null:
-		return false
-	return item.max_purchases <= 0 or ProgressionState.get_purchase_count(item) < item.max_purchases
 
 
 func _unhandled_input(event: InputEvent) -> void:

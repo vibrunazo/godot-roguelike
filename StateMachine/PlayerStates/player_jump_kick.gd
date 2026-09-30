@@ -66,7 +66,7 @@ func _cancel_on_landing() -> void:
 			character.state_machine.request_state(next.name)
 
 
-func finish_attack(_animation_name: String) -> void:
+func finish_action(_animation_name: String) -> void:
 	if character == null or character.state_machine == null:
 		return
 	if character.is_on_floor():

@@ -24,6 +24,9 @@ extends Node
 @export var damage_tint_alpha: float = 0.5
 ## Seconds the damage vignette takes to fade back out.
 @export var damage_tint_duration: float = 0.2
+## InputMap actions casting the active ability slots, by slot (index 0 casts
+## the character's first slot). Rebinding keys is done on the actions.
+@export var ability_actions: Array[StringName] = [&"ability_1", &"ability_2", &"ability_3", &"ability_4"]
 
 ## Active damage vignette tween, tracked so a scene transition (or any other
 ## cancel source) can kill a mid-flash tween instead of letting it resume later.
@@ -38,6 +41,9 @@ func _ready() -> void:
 	if character != null:
 		character.health_changed.connect(_on_character_health_changed)
 		character.transient_state_cancelled.connect(cancel_damage_tint)
+		var asc: AbilitySystemComponent = character.ability_system_component
+		if asc != null and asc.get_slot_count() > ability_actions.size():
+			push_warning("PlayerInputComponent: %d ability slots but only %d ability actions; the extra slots have no key." % [asc.get_slot_count(), ability_actions.size()])
 
 
 func _physics_process(_delta: float) -> void:
@@ -59,6 +65,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		order_attack()
 	elif event.is_action_pressed("jump"):
 		order_jump()
+	else:
+		for slot: int in ability_actions.size():
+			if event.is_action_pressed(ability_actions[slot]):
+				order_ability(slot)
+				return
 
 
 ## Computes camera-relative movement direction from input axes.
@@ -140,6 +151,31 @@ func order_attack() -> bool:
 		character.attack_requested = false
 		return false
 	return body_state.check_attack()
+
+
+## Raises an edge-triggered ability intent for slot on the character for body
+## states to consume (CharacterState.check_ability()).
+func command_ability(slot: int) -> void:
+	if character != null:
+		character.ability_requested = slot
+
+
+## PlayerController ability order: raises an ability intent for slot and
+## immediately drives the current body state's check, so a press casts
+## synchronously where the state allows casting (running, a cancelable
+## attack) and is dropped where it does not (dashing, jumping, falling).
+func order_ability(slot: int) -> bool:
+	if character == null or character.state_machine == null:
+		return false
+	# The cast snapshots the character's aim on entry: make it current.
+	if is_physics_processing():
+		update_aim_intent()
+	command_ability(slot)
+	var body_state: CharacterState = character.state_machine.state as CharacterState
+	if body_state == null:
+		character.ability_requested = -1
+		return false
+	return body_state.check_ability()
 
 
 ## PlayerController dash order: raises a dash intent and immediately drives the

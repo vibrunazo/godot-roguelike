@@ -63,7 +63,7 @@ tracks on the weapon slot the attack uses (`WeaponSlot`, or `PunchSlot`,
    - The `AnimationTree` must keep `callback_mode_process = PHYSICS`, or the
      hit window depends on the render frame rate.
 3. Point the attack state (`CharacterAttack`) at it with
-   `attack_animation_name`, and set its `weapon_slot` export.
+   `animation_name`, and set its `weapon_slot` export.
 
 ## 4. Verify
 

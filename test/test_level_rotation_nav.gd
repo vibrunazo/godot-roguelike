@@ -13,6 +13,9 @@
 ## The navmesh must be a real bake (erosion detail), not the generator
 ## scaffold, with no walkable islands above the floor (wrong min-region-size
 ## symptom).
+## On a new run's first level, the level's ItemSpawner must place the level
+## items (GlobalVars.level_items) resting on the floor, reachable on foot from
+## the player spawn.
 extends "res://test/lib/test_suite.gd"
 
 ## Freestanding tall (y=0) cover must keep COVER_CLEARANCE of clear floor to
@@ -67,6 +70,8 @@ func _verify_level(level_path: String) -> bool:
 	var ok: bool = await _wait_for_level_navmesh(level, level_path)
 	if ok:
 		ok = _verify_level_contents(level, level_path)
+	if ok:
+		ok = await _verify_level_items(level, level_path)
 	level.queue_free()
 	if ok:
 		print("OK: ", level_path)
@@ -94,6 +99,26 @@ func _load_quiet_level(level_path: String) -> Node3D:
 	for c: Node in wave_obj.get_children():
 		c.queue_free()
 	return level
+
+
+## The level's ItemSpawner drops the run's level items, each resting on the
+## floor and reachable from the player spawn. Each level loads on a fresh
+## run (before_each), so every registered level item is still available.
+func _verify_level_items(level: Node3D, level_path: String) -> bool:
+	var spawner: ItemSpawner = level.find_child("ItemSpawner", true, false) as ItemSpawner
+	if not check(spawner != null, str("ItemSpawner missing in ", level_path)):
+		return false
+	var expected: int = mini(spawner.count, GlobalVars.level_items.size())
+	if not await wait_until(func() -> bool: return spawner.pickups.size() >= expected, str("the level items were not placed in ", level_path), 120):
+		return false
+	var player: Node3D = level.find_child("Player", true, false) as Node3D
+	var ok: bool = true
+	for pickup: ItemPickup in spawner.pickups:
+		var down: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(pickup.global_position + Vector3.UP * 0.5, pickup.global_position + Vector3.DOWN * 0.5, spawner.floor_mask)
+		var hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(down)
+		ok = check(not hit.is_empty() and absf((hit["position"] as Vector3).y - pickup.global_position.y) < 0.05, str("an item should rest on the floor in ", level_path, " at ", pickup.global_position)) and ok
+		ok = _verify_path(player.global_position, pickup.global_position + Vector3.UP * 0.35, level_path) and ok
+	return ok
 
 
 ## The navigation server registers regions asynchronously: waits until the

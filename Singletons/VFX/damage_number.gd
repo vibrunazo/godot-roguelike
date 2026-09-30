@@ -7,9 +7,14 @@ var target_position: Vector3 = Vector3.ZERO
 
 
 func set_damage_text(amount: float) -> void:
+	set_text("%d" % amount)
+
+
+## Shows any short text (pickup messages, ...) with the same float-up animation.
+func set_text(text: String) -> void:
 	if not is_inside_tree():
 		await ready
-	label.text = "%d" % amount
+	label.text = text
 
 
 func _physics_process(_delta: float) -> void:

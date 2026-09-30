@@ -1,6 +1,6 @@
 ## Fast electric bolt projectile cast by the Enemy Thunder Mage.
 class_name LightningBoltProjectile
-extends EnemyProjectile
+extends Projectile
 
 ## Hit impact effect scene spawned when striking targets or obstacles.
 @export var hit_effect_scene: PackedScene

@@ -35,12 +35,13 @@
 [ext_resource type="Script" uid="uid://btugq3clpmbs4" path="res://Player/weapon_slot.gd" id="31_feet"]
 [ext_resource type="AudioStream" uid="uid://berff6qe7j1yi" path="res://Assets/Audio/boing/540790__magnuswaker__boing-2.ogg" id="32_i4o1l"]
 [ext_resource type="Script" uid="uid://bjiia4x3o43sd" path="res://Components/equipment_component.gd" id="33_equip"]
-[ext_resource type="Script" uid="uid://by5fnbuwcy326" path="res://Components/passive_ability_component.gd" id="34_passive"]
+[ext_resource type="Script" uid="uid://by5fnbuwcy326" path="res://Components/ability_system_component.gd" id="34_asc"]
 [ext_resource type="Script" uid="uid://bunhwtdql7otx" path="res://Components/airborne_tracker.gd" id="d11_AirborneTracker"]
 [ext_resource type="Script" uid="uid://bs2v0oq0t5smm" path="res://Components/player_defeat_handler.gd" id="d11_PlayerDefeatHandler"]
 [ext_resource type="Script" uid="uid://cnyfw4fdv86as" path="res://Components/status_visuals_component.gd" id="d11_StatusVisualsComponent"]
 [ext_resource type="Script" uid="uid://25654di2fqje" path="res://Components/targeting_component.gd" id="d11_TargetingComponent"]
 [ext_resource type="Resource" uid="uid://cjinjlj34vc2o" path="res://Player/dash_landing_assist.tres" id="d12_dash_landing_assist"]
+[ext_resource type="Script" path="res://Abilities/ability_cast_state.gd" id="35_ability_slot"]
 
 [sub_resource type="Gradient" id="Gradient_d30e8"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -246,6 +247,20 @@ nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_o28un")
 nodes/TimeScale/position = Vector2(106.666664, 106.666664)
 node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
 
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_cast_spell"]
+animation = &"PlayerAnimations/Ranged_Magic_Shoot"
+
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_cast_spell"]
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_cast_spell"]
+graph_offset = Vector2(199.33333, 78)
+nodes/output/position = Vector2(680, 120)
+nodes/Animation/node = SubResource("AnimationNodeAnimation_cast_spell")
+nodes/Animation/position = Vector2(-40, 133.33333)
+nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_cast_spell")
+nodes/TimeScale/position = Vector2(466.66666, 133.33333)
+node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
+
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_x3vf3"]
 animation = &"PlayerAnimations/Idle_A"
 
@@ -321,9 +336,18 @@ advance_mode = 2
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_jump_to_kick"]
 
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_cast_in"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_cast_out"]
+xfade_time = 0.2
+switch_mode = 2
+advance_mode = 2
+
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_o28un"]
 states/Defeat/node = SubResource("AnimationNodeAnimation_defeat")
 states/Defeat/position = Vector2(900, 184.44444)
+states/CastSpell/node = SubResource("AnimationNodeBlendTree_cast_spell")
+states/CastSpell/position = Vector2(760, -260)
 states/DodgeForward/node = SubResource("AnimationNodeAnimation_vtle1")
 states/DodgeForward/position = Vector2(274.6667, -145.33333)
 states/End/position = Vector2(1132, 184.44444)
@@ -344,7 +368,7 @@ states/StabAttack/position = Vector2(867.3334, -170.33333)
 states/Start/position = Vector2(211.99998, 183.33333)
 states/WalkSpace/node = SubResource("AnimationNodeBlendSpace1D_5htga")
 states/WalkSpace/position = Vector2(606, 37.666668)
-transitions = ["Start", "PlayerAnimations_Spawn_Ground", SubResource("AnimationNodeStateMachineTransition_p5o4e"), "PlayerAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_gu6f8"), "WalkSpace", "DodgeForward", SubResource("AnimationNodeStateMachineTransition_dkpta"), "DodgeForward", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_lfmf2"), "WalkSpace", "PlayerAnimations_Hit_A", SubResource("AnimationNodeStateMachineTransition_pisgm"), "PlayerAnimations_Hit_A", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_b1ygp"), "WalkSpace", "SlashAttack", SubResource("AnimationNodeStateMachineTransition_7emwf"), "SlashAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_hshwv"), "WalkSpace", "StabAttack", SubResource("AnimationNodeStateMachineTransition_gpjlu"), "StabAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8mwp6"), "WalkSpace", "SpinAttack", SubResource("AnimationNodeStateMachineTransition_qemgg"), "SpinAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8viyr"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_defeat"), "WalkSpace", "Jump", SubResource("AnimationNodeStateMachineTransition_jump_in"), "Jump", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_jump_out"), "WalkSpace", "JumpKick", SubResource("AnimationNodeStateMachineTransition_jump_kick_in"), "JumpKick", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_jump_kick_out"), "Jump", "JumpKick", SubResource("AnimationNodeStateMachineTransition_jump_to_kick")]
+transitions = ["Start", "PlayerAnimations_Spawn_Ground", SubResource("AnimationNodeStateMachineTransition_p5o4e"), "PlayerAnimations_Spawn_Ground", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_gu6f8"), "WalkSpace", "DodgeForward", SubResource("AnimationNodeStateMachineTransition_dkpta"), "DodgeForward", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_lfmf2"), "WalkSpace", "PlayerAnimations_Hit_A", SubResource("AnimationNodeStateMachineTransition_pisgm"), "PlayerAnimations_Hit_A", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_b1ygp"), "WalkSpace", "SlashAttack", SubResource("AnimationNodeStateMachineTransition_7emwf"), "SlashAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_hshwv"), "WalkSpace", "StabAttack", SubResource("AnimationNodeStateMachineTransition_gpjlu"), "StabAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8mwp6"), "WalkSpace", "SpinAttack", SubResource("AnimationNodeStateMachineTransition_qemgg"), "SpinAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_8viyr"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_defeat"), "WalkSpace", "Jump", SubResource("AnimationNodeStateMachineTransition_jump_in"), "Jump", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_jump_out"), "WalkSpace", "JumpKick", SubResource("AnimationNodeStateMachineTransition_jump_kick_in"), "JumpKick", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_jump_kick_out"), "Jump", "JumpKick", SubResource("AnimationNodeStateMachineTransition_jump_to_kick"), "WalkSpace", "CastSpell", SubResource("AnimationNodeStateMachineTransition_cast_in"), "CastSpell", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_cast_out")]
 graph_offset = Vector2(41, -108)
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_l8h54"]
@@ -414,7 +438,7 @@ _data = {
 &"dash": SubResource("Animation_7emwf")
 }
 
-[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "hurtbox", "color_component", "defeat_state", "equipment_component", "passive_ability_component", "dash_cooldown") groups=["player"]]
+[node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "hurtbox", "color_component", "defeat_state", "equipment_component", "ability_system_component", "dash_cooldown") groups=["player"]]
 collision_layer = 17
 script = ExtResource("1_l8h54")
 mesh_mount = NodePath("GamedevTV_Mannequin_Medium")
@@ -427,7 +451,7 @@ hurtbox = NodePath("Hurtbox")
 color_component = NodePath("CharacterColorComponent")
 defeat_state = NodePath("StateMachine/PlayerDefeat")
 equipment_component = NodePath("EquipmentComponent")
-passive_ability_component = NodePath("PassiveAbilityComponent")
+ability_system_component = NodePath("AbilitySystemComponent")
 dash_cooldown = NodePath("DashCooldown")
 
 [node name="CharacterColorComponent" type="Node" parent="." unique_id=1982736410]
@@ -614,6 +638,9 @@ parameters/StabAttack/TimeScale/scale = 1.5
 parameters/WalkSpace/blend_position = 0.0
 script = ExtResource("3_vtle1")
 
+[node name="CastOrigin" type="Marker3D" parent="GamedevTV_Mannequin_Medium"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0.6)
+
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=742478028]
 shape = SubResource("CapsuleShape3D_l8h54")
 
@@ -637,6 +664,7 @@ fall_state = NodePath("../PlayerFall")
 dash_state = NodePath("../PlayerDash")
 attack_state = NodePath("../PlayerAttack")
 jump_state = NodePath("../PlayerJump")
+allows_abilities = true
 metadata/_custom_type_script = "uid://b5csf0k51tkb5"
 
 [node name="PlayerFall" type="Node" parent="StateMachine" unique_id=770344299 node_paths=PackedStringArray("run_state", "character", "attack_state")]
@@ -673,7 +701,7 @@ character = NodePath("../..")
 [node name="PlayerAttack" type="Node" parent="StateMachine" unique_id=1551090799 node_paths=PackedStringArray("next_states", "combo_next", "weapon_slot", "character", "dash_state", "jump_state")]
 script = ExtResource("13_gu6f8")
 movement_speed = 1.0
-dash_cancel = true
+cancelable = true
 damage = 8.0
 next_states = [NodePath("../PlayerRun")]
 combo_next = NodePath("../PlayerAttack2")
@@ -685,11 +713,11 @@ jump_state = NodePath("../PlayerJump")
 
 [node name="PlayerAttack2" type="Node" parent="StateMachine" unique_id=210489082 node_paths=PackedStringArray("next_states", "combo_next", "weapon_slot", "character", "dash_state", "jump_state")]
 script = ExtResource("13_gu6f8")
-dash_cancel = true
+cancelable = true
 damage = 14.0
 next_states = [NodePath("../PlayerRun")]
 combo_next = NodePath("../PlayerAttack3")
-attack_animation_name = "StabAttack"
+animation_name = "StabAttack"
 weapon_slot = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
 dash_speed = 12.0
 dash_duration = 0.12
@@ -704,7 +732,7 @@ script = ExtResource("13_gu6f8")
 movement_speed = 4.0
 knockback = 7.5
 next_states = [NodePath("../PlayerRun")]
-attack_animation_name = "SpinAttack"
+animation_name = "SpinAttack"
 weapon_slot = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
 rehit_interval = 0.32
 self_hitstop_duration = 0.17
@@ -716,11 +744,11 @@ jump_state = NodePath("../PlayerJump")
 [node name="PlayerJumpKick" type="Node" parent="StateMachine" unique_id=210489083 node_paths=PackedStringArray("running_state", "next_states", "weapon_slot", "character", "fall_state", "dash_state", "attack_state", "jump_state")]
 script = ExtResource("30_kick")
 running_state = NodePath("../PlayerRun")
-dash_cancel = true
+cancelable = true
 damage = 15.0
 knockback = 20.0
 next_states = [NodePath("../PlayerRun")]
-attack_animation_name = "JumpKick"
+animation_name = "JumpKick"
 weapon_slot = NodePath("../../GamedevTV_Mannequin_Medium/Rig_Medium/Skeleton3D/FeetSlot")
 dash_speed = 5.0
 dash_duration = 0.15
@@ -730,6 +758,42 @@ fall_state = NodePath("../PlayerFall")
 dash_state = NodePath("../PlayerDash")
 attack_state = NodePath("../PlayerAttack")
 ability_tags = Array[StringName]([&"ability.attack"])
+jump_state = NodePath("../PlayerJump")
+
+[node name="AbilitySlot1" type="Node" parent="StateMachine" node_paths=PackedStringArray("cast_origin", "next_states", "character", "fall_state", "dash_state", "jump_state")]
+script = ExtResource("35_ability_slot")
+cast_origin = NodePath("../../GamedevTV_Mannequin_Medium/CastOrigin")
+next_states = [NodePath("../PlayerRun")]
+character = NodePath("../..")
+fall_state = NodePath("../PlayerFall")
+dash_state = NodePath("../PlayerDash")
+jump_state = NodePath("../PlayerJump")
+
+[node name="AbilitySlot2" type="Node" parent="StateMachine" node_paths=PackedStringArray("cast_origin", "next_states", "character", "fall_state", "dash_state", "jump_state")]
+script = ExtResource("35_ability_slot")
+cast_origin = NodePath("../../GamedevTV_Mannequin_Medium/CastOrigin")
+next_states = [NodePath("../PlayerRun")]
+character = NodePath("../..")
+fall_state = NodePath("../PlayerFall")
+dash_state = NodePath("../PlayerDash")
+jump_state = NodePath("../PlayerJump")
+
+[node name="AbilitySlot3" type="Node" parent="StateMachine" node_paths=PackedStringArray("cast_origin", "next_states", "character", "fall_state", "dash_state", "jump_state")]
+script = ExtResource("35_ability_slot")
+cast_origin = NodePath("../../GamedevTV_Mannequin_Medium/CastOrigin")
+next_states = [NodePath("../PlayerRun")]
+character = NodePath("../..")
+fall_state = NodePath("../PlayerFall")
+dash_state = NodePath("../PlayerDash")
+jump_state = NodePath("../PlayerJump")
+
+[node name="AbilitySlot4" type="Node" parent="StateMachine" node_paths=PackedStringArray("cast_origin", "next_states", "character", "fall_state", "dash_state", "jump_state")]
+script = ExtResource("35_ability_slot")
+cast_origin = NodePath("../../GamedevTV_Mannequin_Medium/CastOrigin")
+next_states = [NodePath("../PlayerRun")]
+character = NodePath("../..")
+fall_state = NodePath("../PlayerFall")
+dash_state = NodePath("../PlayerDash")
 jump_state = NodePath("../PlayerJump")
 
 [node name="KnockbackComponent" type="Node" parent="." unique_id=531001606]
@@ -799,8 +863,9 @@ base_rotation_speed = 720.0
 [node name="EquipmentComponent" type="Node" parent="." unique_id=284918274]
 script = ExtResource("33_equip")
 
-[node name="PassiveAbilityComponent" type="Node" parent="." unique_id=1754586876]
-script = ExtResource("34_passive")
+[node name="AbilitySystemComponent" type="Node" parent="." unique_id=1754586876 node_paths=PackedStringArray("slots")]
+script = ExtResource("34_asc")
+slots = [NodePath("../StateMachine/AbilitySlot1"), NodePath("../StateMachine/AbilitySlot2"), NodePath("../StateMachine/AbilitySlot3"), NodePath("../StateMachine/AbilitySlot4")]
 
 [node name="TargetingComponent" type="Node" parent="." unique_id=1350709638 node_paths=PackedStringArray("character")]
 script = ExtResource("d11_TargetingComponent")

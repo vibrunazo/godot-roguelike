@@ -447,7 +447,7 @@ func test_scene_parity() -> bool:
 ## the same burn instead of stacking lookalikes.
 func test_fire_sources_share_one_burn() -> bool:
 	print("\n>>> PART 11a: Fire sources share one burn")
-	var projectile: Area3D = spawn(load("res://Enemy/enemy_projectile.tscn") as PackedScene) as Area3D
+	var projectile: Area3D = spawn(load("res://Enemy/fireball_projectile.tscn") as PackedScene) as Area3D
 	var trap: Node3D = spawn(load("res://Hazards/fire_trap.tscn") as PackedScene, null, Vector3(10.0, 0.0, 0.0)) as Node3D
 	var firebomb: Area3D = spawn(load("res://Enemy/firebomb_projectile.tscn") as PackedScene, null, Vector3(-10.0, 0.0, 0.0)) as Area3D
 	await get_tree().process_frame

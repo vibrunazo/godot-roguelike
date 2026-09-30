@@ -11,7 +11,7 @@ extends ItemResource
 @export_group("Passive Abilities")
 ## Passive scenes (PassiveAbility root nodes) granted while this gear is
 ## equipped: the reusable "upgrade one ability's behavior" mechanism. Each
-## scene is instanced onto the character's PassiveAbilityComponent on equip
+## scene is instanced onto the character's AbilitySystemComponent on equip
 ## and revoked again on unequip (e.g. a passive detonating at dash end).
 @export var granted_passives: Array[PackedScene] = []
 
@@ -38,6 +38,7 @@ func attach(character: Character) -> Dictionary:
 		return result
 	result["effect_ids"] = _apply_persistent_effects(character)
 	result["passives"] = _grant_passives(character)
+	_grant_equipped_abilities(character)
 	result["visual"] = _mount_visual(character)
 	_on_equipped(character)
 	return result
@@ -63,15 +64,45 @@ func _apply_persistent_effects(character: Character) -> Array[StringName]:
 ## returns the granted nodes.
 func _grant_passives(character: Character) -> Array[PassiveAbility]:
 	var granted_nodes: Array[PassiveAbility] = []
-	if character.passive_ability_component == null:
+	if character.ability_system_component == null:
 		return granted_nodes
 	for passive_scene: PackedScene in granted_passives:
 		if passive_scene == null:
 			continue
-		var granted: PassiveAbility = character.passive_ability_component.add_passive(passive_scene)
+		var granted: PassiveAbility = character.ability_system_component.add_passive(passive_scene)
 		if granted != null:
 			granted_nodes.append(granted)
 	return granted_nodes
+
+
+## Grants granted_abilities for as long as this gear stays equipped (the gear
+## is their source, so unequip() revokes exactly them). An ability with no
+## free slot is skipped with a warning: the gear still equips.
+func _grant_equipped_abilities(character: Character) -> void:
+	var asc: AbilitySystemComponent = character.ability_system_component
+	if asc == null:
+		return
+	for ability: AbilityResource in granted_abilities:
+		if ability == null or asc.has_ability(ability):
+			continue
+		if asc.grant_ability(ability, self) < 0:
+			push_warning("%s: no free ability slot for %s; equipped without it." % [resource_path, ability.display_name])
+
+
+## Gear teaches nothing for good: its abilities come from attach() and leave
+## with unequip(), so apply() (the instant part of equipping) grants none.
+func _grant_abilities(_character: Character) -> void:
+	pass
+
+
+## Gear equips whatever the ability slots hold; the abilities it cannot fit
+## are skipped (see _grant_equipped_abilities()).
+func can_grant_abilities(_character: Character) -> bool:
+	return true
+
+
+func _ability_grant_verb() -> String:
+	return "Grants"
 
 
 ## Instances visual_scene onto the character (an ItemVisual attaches itself;
@@ -93,16 +124,17 @@ func _mount_visual(character: Character) -> Node3D:
 	return visual
 
 ## Unequips this gear: removes all active GameplayEffects from AttributeComponent,
-## revokes every passive this gear granted, and frees the visual node.
+## revokes every passive and ability this gear granted, and frees the visual node.
 func unequip(character: Character, active_effect_ids: Array[StringName], visual_node: Node3D, active_passives: Array[PassiveAbility]) -> void:
 	if character != null and is_instance_valid(character) and character.attribute_component != null:
 		var attrs: AttributeComponent = character.attribute_component
 		for eff_id: StringName in active_effect_ids:
 			attrs.remove_effect(eff_id)
 
-	if character != null and is_instance_valid(character) and character.passive_ability_component != null:
+	if character != null and is_instance_valid(character) and character.ability_system_component != null:
 		for passive: PassiveAbility in active_passives:
-			character.passive_ability_component.remove_passive(passive)
+			character.ability_system_component.remove_passive(passive)
+		character.ability_system_component.revoke_abilities_from(self)
 
 	if visual_node != null and is_instance_valid(visual_node):
 		visual_node.queue_free()

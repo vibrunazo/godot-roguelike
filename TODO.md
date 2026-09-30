@@ -30,6 +30,14 @@ Section numbers (§) point into the closed 2026-09-23 code review,
    `passive_landing_blast` fires on all of them. Gate it on a minimum fall:
    height, fall speed, or `airborne_time`, which the event already carries.
 
+6. **Projectiles fly flat at their spawn height.** `PayloadSpawner` turns a
+   payload only on the ground plane, and `Projectile` flies straight along
+   its facing, so a fireball (the player's or an enemy's) can pass over or
+   under a target standing much higher or lower, e.g. on Level 13's stairs.
+   Pitching toward a locked target's center would fix it, but aiming down
+   can clip the floor in front of the target: decide how aimed projectiles
+   should handle height for every shooter at once.
+
 ## Decisions needed
 
 5. **VoxelGI on mobile.** Decided: mobile uses the Mobile renderer. VoxelGI
@@ -47,9 +55,22 @@ Section numbers (§) point into the closed 2026-09-23 code review,
 
 ## Features
 
-8. **Player active abilities.** Four ability slots, bound by default to the
-   keyboard keys 1 to 4 (as `InputMap` actions, so they can be rebound).
-   The first test ability is a fireball.
+8. **Active ability follow-ups** (the system itself is in; see
+   `docs/plans/active_abilities_plan.md`):
+   - Migrate `RangedEnemy` (and the other casters) to an ability slot with
+     the Fireball, dropping its bespoke attack state and spawner signal. It
+     changes their timing, so retune them together.
+   - A pick-up dialog (a close-up of the book, take it or leave it) and a
+     replace-slot choice when every slot is full. Today a book the player
+     cannot take stays on the floor with a message, and gear equipped with
+     full slots skips its ability with only a warning in the log.
+   - Mana regen and a mana bar, so abilities can cost mana (costs already
+     work in `AbilityResource`; the Fireball is cooldown-only).
+   - Item difficulty tiers for level spawns, drops and the shop
+     (`GlobalVars.level_items` and the shop deal from every tier today).
+   - Abilities with their own behavior (a leap, a channel): a slot state can
+     only release a payload and caster effects today.
+   - Secondary bindings for `ability_1`..`ability_4` (gamepad, mouse).
 
 ## Architecture backlog
 

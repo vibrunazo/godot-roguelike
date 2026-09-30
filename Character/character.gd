@@ -76,11 +76,10 @@ const HEAD_SLIDE_FALL_SPEED: float = 0.5
 @export var defeat_state: State
 ## Optional EquipmentComponent for inventory and gear management.
 @export var equipment_component: EquipmentComponent
-## Optional PassiveAbilityComponent hosting granted passive abilities (item
-## behavior upgrades). Ability states broadcast lifecycle events here via
-## broadcast_ability_event; resolved from a "PassiveAbilityComponent" child
-## when unset (same convention as equipment_component).
-@export var passive_ability_component: PassiveAbilityComponent
+## Optional AbilitySystemComponent (ASC) holding every ability this character
+## has: its active ability slots and its granted passives. Ability states
+## broadcast lifecycle events to it via broadcast_ability_event.
+@export var ability_system_component: AbilitySystemComponent
 ## The EnemyResource this enemy was spawned from (gold drop, archetype data).
 ## Waves set it; an enemy spawned any other way is looked up in
 ## GlobalVars.enemies by its scene.
@@ -116,13 +115,18 @@ var attack_requested: bool = false
 var dash_requested: bool = false
 ## Edge-triggered jump request, raised by PlayerInputComponent (or AI) and consumed exactly once by body states.
 var jump_requested: bool = false
+## Edge-triggered ability request: the slot index to cast, -1 for none. Raised
+## by PlayerInputComponent and consumed exactly once by body states
+## (CharacterState.check_ability()).
+var ability_requested: int = -1
 ## Current target for attacks and the player reticle. Null when no valid
 ## target exists. Written through set_current_target() (by the player's
 ## TargetingComponent); read by attack states and projectiles.
 var current_target: Node3D = null
 ## True while the body StateMachine is inside an attack state. Set by
-## CharacterAttack enter/exit; while true the auto-aim target never changes
-## (a plain bool avoids a static CharacterAttack reference cycle here).
+## CharacterAction enter/exit (attacks and ability casts); while true the
+## auto-aim target never changes (a plain bool avoids a static CharacterAction
+## reference cycle here).
 var is_attacking: bool = false
 
 var _is_defeated: bool = false
@@ -142,8 +146,8 @@ func _ready() -> void:
 	_check_wiring()
 	if equipment_component != null:
 		equipment_component.character = self
-	if passive_ability_component != null:
-		passive_ability_component.character = self
+	if ability_system_component != null:
+		ability_system_component.character = self
 	_auto_configure_navigation()
 	_connect_combat_signals()
 
@@ -392,11 +396,11 @@ func remove_tag(tag: StringName) -> void:
 
 
 ## Forwards an ability lifecycle event to this character's
-## PassiveAbilityComponent so granted passives can react to tagged abilities.
+## AbilitySystemComponent so granted passives can react to tagged abilities.
 ## No-op when no component is attached.
 func broadcast_ability_event(event: AbilityEvent) -> void:
-	if passive_ability_component != null and is_instance_valid(passive_ability_component):
-		passive_ability_component.notify_ability_event(event)
+	if ability_system_component != null and is_instance_valid(ability_system_component):
+		ability_system_component.notify_ability_event(event)
 
 
 ## Returns all currently active gameplay tags.
@@ -505,6 +509,14 @@ func consume_dash_request() -> bool:
 		return false
 	dash_requested = false
 	return true
+
+
+## Consumes a pending ability request, returning its slot exactly once per
+## request (-1 when none is pending).
+func consume_ability_request() -> int:
+	var slot: int = ability_requested
+	ability_requested = -1
+	return slot
 
 
 ## Consumes a pending jump request, returning true exactly once per request.
@@ -621,6 +633,7 @@ func _clear_intents_and_motion() -> void:
 	attack_requested = false
 	dash_requested = false
 	jump_requested = false
+	ability_requested = -1
 	is_attacking = false
 	set_current_target(null)
 	velocity = Vector3.ZERO

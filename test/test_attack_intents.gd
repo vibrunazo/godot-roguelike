@@ -77,7 +77,7 @@ func test_request_state_and_order_attack_validate_the_target() -> void:
 
 func test_player_orders_drive_transitions() -> void:
 	var attack: CharacterAttack = _player.state_machine.get_node("PlayerRun").get("attack_state") as CharacterAttack
-	attack.dash_cancel = true
+	attack.cancelable = true
 	check(_input.order_attack() and _state(_player) == attack.name, "ordering an attack from running should start the attack")
 	check(_input.order_dash() and _state(_player) == "PlayerDash", "ordering a dash should cancel a dash-cancellable attack")
 	check(not _input.order_attack(), "an attack cannot be ordered mid-dash")
@@ -94,20 +94,20 @@ func test_an_enemy_body_runs_the_shared_attack_from_ai_intents() -> void:
 	var follow_up: CharacterAttack = autofree(CharacterAttack.new()) as CharacterAttack
 	follow_up.name = "TestFollowUp"
 	follow_up.character = _enemy
-	follow_up.attack_animation_name = attack.attack_animation_name
+	follow_up.animation_name = attack.animation_name
 	var after: Array[CharacterState] = [move]
 	follow_up.next_states = after
 	body.add_child(follow_up)
 	attack.combo_next = follow_up
 	attack.queued_attack_time = TEST_QUEUE_TIME
-	attack.dash_cancel = true
+	attack.cancelable = true
 	attack.dash_state = move
 	if not check(_mind.order_attack(attack) and _state(_enemy) == attack.name, "the AI should order the shared attack onto the enemy body"):
 		return
 	_mind.command_attack()
 	if not await wait_until(func() -> bool: return _state(_enemy) == follow_up.name, "an AI attack intent should chain combo_next through the queue window", ATTACK_FRAMES):
 		return
-	follow_up.finish_attack(follow_up.attack_animation_name)
+	follow_up.finish_action(follow_up.animation_name)
 	check_eq(_state(_enemy), move.name, "the follow-up should end back in its next state")
 	if not check(_mind.order_attack(attack), "the AI should order the attack again"):
 		return

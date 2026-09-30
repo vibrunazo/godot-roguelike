@@ -36,17 +36,61 @@ extends Resource
 @export_range(0.0, 100.0, 0.1, "suffix:%") var heal_percent: float = 0.0
 ## Instant flat damage dealt to the character's health pool on apply.
 @export var instant_damage: float = 0.0
+## Active abilities this item grants. A plain item (a spell book, a scroll)
+## teaches them for good when applied; gear grants them only while equipped
+## (see GearItemResource).
+@export var granted_abilities: Array[AbilityResource] = []
 
 @export_group("Visuals")
 ## Optional 3D visual scene (extending ItemVisual) mounted to character bone slots when equipped.
 @export var visual_scene: PackedScene
+## How the item looks lying in a level (an ItemDisplay scene, shown by
+## ItemPickup). Only items with one can spawn in levels.
+@export var world_visual: PackedScene
 
 
-## Returns true if the character is currently eligible to receive this item.
+## The title without its BBCode tags ("[wave]Boots[/wave]" -> "Boots"), for
+## places that show plain text (book covers, floating messages).
+func get_plain_title() -> String:
+	var tags: RegEx = RegEx.create_from_string("\\[[^\\]]*\\]")
+	return tags.sub(title, "", true)
+
+
+## Returns true if the character is currently eligible to receive this item:
+## an item that teaches abilities needs one the character does not have yet
+## and a free slot for it (see can_grant_abilities()).
 func can_apply(character: Character) -> bool:
 	if character == null or not is_instance_valid(character):
 		return false
-	return true
+	return can_grant_abilities(character)
+
+
+## Whether applying this item would teach something: at least one of its
+## abilities is new to the character or only granted by its gear (learning
+## it makes it permanent, in the slot it holds), and every new one has a free
+## slot. True for items teaching nothing. Gear overrides it: it grants its
+## abilities while equipped instead, and equips whatever the slots hold.
+func can_grant_abilities(character: Character) -> bool:
+	if granted_abilities.is_empty():
+		return true
+	var asc: AbilitySystemComponent = character.ability_system_component
+	if asc == null:
+		return false
+	var free_slots: int = 0
+	for slot: int in asc.get_slot_count():
+		if asc.get_ability(slot) == null:
+			free_slots += 1
+	var new_abilities: int = 0
+	var gear_granted: int = 0
+	for ability: AbilityResource in granted_abilities:
+		if ability == null:
+			continue
+		var slot: int = asc.find_slot(ability)
+		if slot < 0:
+			new_abilities += 1
+		elif asc.get_source(slot) != null:
+			gear_granted += 1
+	return new_abilities + gear_granted > 0 and new_abilities <= free_slots
 
 
 ## Applies base effects (instant healing and damage) to the character.
@@ -64,8 +108,21 @@ func apply(character: Character) -> bool:
 		if instant_damage > 0.0:
 			attrs.damage_pool(AttributeComponent.POOL_HEALTH, instant_damage)
 
+	_grant_abilities(character)
 	_custom_apply(character)
 	return true
+
+
+## Teaches granted_abilities for good (source null: the run keeps them).
+## Gear overrides this to grant nothing here: it grants its abilities from
+## attach() for as long as it stays equipped.
+func _grant_abilities(character: Character) -> void:
+	var asc: AbilitySystemComponent = character.ability_system_component
+	if asc == null:
+		return
+	for ability: AbilityResource in granted_abilities:
+		if ability != null:
+			asc.grant_ability(ability, null)
 
 
 ## Health restored by heal_percent for a character with the given max health.
@@ -113,7 +170,22 @@ func get_stat_summary(character: Character) -> String:
 				lines.append("HP: [color='7fffd4']Heals %s%%[/color] Max HP" % _format_amount(heal_percent))
 			if instant_damage > 0.0:
 				lines.append("HP: [color='ff8888']-%s[/color]" % _format_amount(instant_damage))
+	lines.append_array(_ability_summary_lines())
 	return "\n".join(lines)
+
+
+## One summary line per granted ability: "<verb>: <ability name>".
+func _ability_summary_lines() -> Array[String]:
+	var lines: Array[String] = []
+	for ability: AbilityResource in granted_abilities:
+		if ability != null:
+			lines.append("%s: [color='ffb347']%s[/color]" % [_ability_grant_verb(), ability.display_name])
+	return lines
+
+
+## How summaries describe granted_abilities: taught for good by plain items.
+func _ability_grant_verb() -> String:
+	return "Teaches"
 
 
 ## Formats one GameplayEffect as a human-readable stat change line in the

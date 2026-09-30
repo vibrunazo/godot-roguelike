@@ -3,7 +3,8 @@
 ## `VfxManager.spawn_damage_number(source, 10.0)`.
 ##
 ## Unique responsibilities:
-## - Floating combat text (`spawn_damage_number`, parented to itself as screen-space UI).
+## - Floating combat text (`spawn_damage_number`, `spawn_floating_text`,
+##   parented to itself as screen-space UI).
 ## - Player-only target reticle (`target_reticle`, a persistent TargetReticle
 ##   following the player's `current_target`; enemies never spawn one).
 ## - World-space spawning (`spawn_world_entity`): parents gameplay entities and
@@ -66,6 +67,15 @@ func spawn_damage_number(source: Node3D, damage: float) -> void:
 	add_child(damage_number)
 	damage_number.set_damage_text(damage)
 	damage_number.target_position = source.global_position
+
+
+## Floats a short message up from a world position (pickup messages, ...),
+## with the same animation as damage numbers.
+func spawn_floating_text(at: Vector3, text: String) -> void:
+	var floating: DamageNumber = (GlobalVars.damage_number_scene as PackedScene).instantiate() as DamageNumber
+	add_child(floating)
+	floating.set_text(text)
+	floating.target_position = at
 
 
 ## Clears all transient combat visual effects (floating damage numbers).

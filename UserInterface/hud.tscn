@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://UserInterface/hud.gd" id="1_hud_script"]
+[ext_resource type="PackedScene" path="res://UserInterface/ability_bar.tscn" id="2_ability_bar"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_gold"]
 font_size = 28
@@ -11,9 +12,10 @@ shadow_size = 8
 shadow_color = Color(0, 0, 0, 0.6)
 shadow_offset = Vector2(2, 2)
 
-[node name="HUD" type="CanvasLayer"]
+[node name="HUD" type="CanvasLayer" node_paths=PackedStringArray("ability_bar")]
 layer = 5
 script = ExtResource("1_hud_script")
+ability_bar = NodePath("AbilityBar")
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
 offset_left = 32.0
@@ -31,3 +33,5 @@ layout_mode = 2
 text = "Gold: 0"
 label_settings = SubResource("LabelSettings_gold")
 vertical_alignment = 1
+
+[node name="AbilityBar" parent="." instance=ExtResource("2_ability_bar")]

@@ -3,7 +3,7 @@
 ## hit, a ticking thorns aura). This base owns identity and grant lifecycle only;
 ## ability-event trigger matching lives on AbilityLifecyclePassive and payload
 ## spawning on PayloadPassiveAbility. Passive scenes root at one of these
-## subclasses and are instanced as children of PassiveAbilityComponent.
+## subclasses and are instanced as children of AbilitySystemComponent.
 class_name PassiveAbility
 extends Node
 
@@ -14,7 +14,7 @@ extends Node
 ## Master switch. Disabled passives never react until re-enabled.
 @export var enabled: bool = true
 
-## Character this passive is granted to. Set by PassiveAbilityComponent.setup().
+## Character this passive is granted to. Set by AbilitySystemComponent.setup().
 var character: Character = null
 
 
@@ -30,7 +30,7 @@ func teardown() -> void:
 	character = null
 
 
-## Event entry point called by PassiveAbilityComponent for every ability
+## Event entry point called by AbilitySystemComponent for every ability
 ## lifecycle event. Base passives ignore events; event-driven subclasses
 ## (AbilityLifecyclePassive) override this with trigger matching.
 func handle_ability_event(_event: AbilityEvent) -> void:

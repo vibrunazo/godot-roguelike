@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Items/Books/book.tscn" id="1_book"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ink"]
+albedo_color = Color(0.03, 0.03, 0.03, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_band"]
+material = SubResource("StandardMaterial3D_ink")
+size = Vector2(0.66, 0.16)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_rule"]
+material = SubResource("StandardMaterial3D_ink")
+size = Vector2(0.54, 0.014)
+
+[node name="BookDummies" instance=ExtResource("1_book")]
+cover_color = Color(1, 0.8, 0.05, 1)
+cover_emission = 0.3
+spine_color = Color(0.03, 0.03, 0.03, 1)
+
+[node name="Band" type="MeshInstance3D" parent="CoverAnchor" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.001, -0.35)
+mesh = SubResource("PlaneMesh_band")
+
+[node name="Rule" type="MeshInstance3D" parent="CoverAnchor" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.001, 0.36)
+mesh = SubResource("PlaneMesh_rule")
+
+[node name="TitleLabel" parent="CoverAnchor" index="2"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.002, 0.06)

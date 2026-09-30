@@ -1,5 +1,8 @@
-## Base projectile fired by enemies.
-class_name EnemyProjectile
+## Base projectile: flies straight along its facing, hits the first live
+## Hurtbox that is not its shooter's, then plays its hit effect. Fired by enemies
+## (ProjectileSpawnerComponent) and by active abilities, always spawned through
+## PayloadSpawner.
+class_name Projectile
 extends Area3D
 
 ## Movement speed of the projectile.
