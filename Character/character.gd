@@ -188,34 +188,69 @@ func _connect_combat_signals() -> void:
 ## Offsets waypoints vertically to cancel 3D Euclidean distance inflation for tall agents,
 ## and scales path desired distance to the character's radius for clean corner rounding.
 func _auto_configure_navigation() -> void:
-	if not auto_configure_navigation or navigation_agent_3d == null or collision_shape_3d == null:
+	if not auto_configure_navigation or navigation_agent_3d == null:
 		return
-	var shape: Shape3D = collision_shape_3d.shape
-	if shape == null:
+	var size: Vector2 = get_body_size()
+	if size.is_zero_approx():
 		return
-
-	var height: float
-	var radius: float
-	if shape is CapsuleShape3D:
-		var cap: CapsuleShape3D = shape as CapsuleShape3D
-		height = cap.height
-		radius = cap.radius
-	elif shape is CylinderShape3D:
-		var cyl: CylinderShape3D = shape as CylinderShape3D
-		height = cyl.height
-		radius = cyl.radius
-	elif shape is BoxShape3D:
-		var box: BoxShape3D = shape as BoxShape3D
-		height = box.size.y
-		radius = maxf(box.size.x, box.size.z) * 0.5
-	else:
-		return
-
-	var origin_height: float = height * 0.5 - collision_shape_3d.position.y
+	var radius: float = size.x
+	var origin_height: float = get_origin_height()
 	navigation_agent_3d.radius = radius
 	navigation_agent_3d.path_height_offset = -maxf(0.0, origin_height - NAV_SURFACE_ELEVATION)
 	navigation_agent_3d.path_desired_distance = clampf(radius + PATH_DISTANCE_MARGIN, PATH_DISTANCE_MIN, PATH_DISTANCE_MAX)
 	navigation_agent_3d.target_desired_distance = maxf(TARGET_DISTANCE_MIN, radius + TARGET_DISTANCE_MARGIN)
+
+
+## This body's collision size as (radius, height), read from
+## collision_shape_3d (capsule, cylinder or box). Vector2.ZERO when the shape
+## is missing or of another type.
+func get_body_size() -> Vector2:
+	if collision_shape_3d == null or collision_shape_3d.shape == null:
+		return Vector2.ZERO
+	var shape: Shape3D = collision_shape_3d.shape
+	if shape is CapsuleShape3D:
+		var cap: CapsuleShape3D = shape as CapsuleShape3D
+		return Vector2(cap.radius, cap.height)
+	if shape is CylinderShape3D:
+		var cyl: CylinderShape3D = shape as CylinderShape3D
+		return Vector2(cyl.radius, cyl.height)
+	if shape is BoxShape3D:
+		var box: BoxShape3D = shape as BoxShape3D
+		return Vector2(maxf(box.size.x, box.size.z) * 0.5, box.size.y)
+	return Vector2.ZERO
+
+
+## Height of this body's origin above the bottom of its collision shape (its
+## feet), in meters. 0.0 when get_body_size() does not know the shape.
+func get_origin_height() -> float:
+	var size: Vector2 = get_body_size()
+	if size.is_zero_approx():
+		return 0.0
+	return size.y * 0.5 - collision_shape_3d.position.y
+
+
+## Speed, in m/s, this character sheds per second (on each horizontal axis)
+## while braking with no movement intent at movement speed move_speed: it
+## stops from move_speed in stop_time. INF when stop_time is 0 (instant stop).
+func get_braking_rate(move_speed: float) -> float:
+	return INF if stop_time <= 0.0 else move_speed / stop_time
+
+
+## Horizontal distance, in meters, this character slides while braking from
+## from_velocity to a stop at movement speed move_speed, integrated per
+## physics tick exactly as CharacterState.core_movement() brakes (each axis
+## on its own). 0.0 when the braking is instant or never slows it down.
+func get_braking_distance(from_velocity: Vector3, move_speed: float) -> float:
+	var rate: float = get_braking_rate(move_speed)
+	if is_inf(rate) or rate <= 0.0:
+		return 0.0
+	var delta: float = 1.0 / Engine.physics_ticks_per_second
+	var slide: Vector2 = Vector2(from_velocity.x, from_velocity.z)
+	var distance: float = 0.0
+	while not slide.is_zero_approx():
+		slide = Vector2(move_toward(slide.x, 0.0, rate * delta), move_toward(slide.y, 0.0, rate * delta))
+		distance += slide.length() * delta
+	return distance
 
 
 ## Moves normally, except enemy tops are never usable floors for the player.

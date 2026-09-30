@@ -32,6 +32,9 @@ extends CharacterState
 @export var dash_speed: float = 0.0
 ## Duration (in seconds) of the forward lunge. Leave at 0.0 to disable the lunge.
 @export var dash_duration: float = 0.0
+## Steers the forward lunge away from ending over a pit when that looks like a
+## mistake (see LandingAssist). Null lunges exactly along the aim.
+@export var lunge_landing_assist: LandingAssist
 ## GameplayEffects applied to each victim when a hit lands (slow, burn, ...).
 ## Copied to the AttackComponent on enter, which applies them on every
 ## confirmed hit. Re-hitting a victim refreshes matching effects instead of
@@ -294,6 +297,8 @@ func _begin_lunge() -> void:
 	if lunge_direction.is_zero_approx():
 		lunge_direction = Vector3.FORWARD
 	lunge_direction = lunge_direction.normalized()
+	if lunge_landing_assist != null:
+		lunge_direction = lunge_landing_assist.steer(character, lunge_direction, dash_speed * dash_duration)
 	_lunge_base_velocity = Vector3(character.velocity.x, 0.0, character.velocity.z)
 	lunging = true
 	lunge_timer = get_tree().create_timer(dash_duration, true, true)

@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="LandingAssist" format=3 uid="uid://cjinjlj34vc2o"]
+
+[ext_resource type="Script" uid="uid://bm0o2c1itkys6" path="res://Components/landing_assist.gd" id="1_assist"]
+
+[resource]
+script = ExtResource("1_assist")
+max_correction_angle = 60.0

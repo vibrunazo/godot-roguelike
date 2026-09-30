@@ -6,7 +6,8 @@
 ## fps_matrix below) and checks the mechanics that broke that way:
 ## - an enemy melee attack lands on an adjacent target,
 ## - every player combo attack lands on an adjacent target,
-## - the dash lasts its configured duration,
+## - the dash lasts its configured duration and covers dash_speed *
+##   dash_duration meters,
 ## - braking to a stop takes the same game time at any physics tick rate.
 ##
 ## fps_matrix: 12, 20, 30, 60
@@ -14,9 +15,6 @@ extends "res://test/lib/test_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
-## Physics ticks the state machine may take to notice an expired dash timer
-## and leave the dash state (timer timeout, then the state's next update).
-const STATE_LATENCY_TICKS: int = 2
 ## Test-owned health large enough that no attack in this suite can kill.
 const DUMMY_HEALTH: float = 100000.0
 ## Frame budget for one full attack animation.
@@ -71,15 +69,15 @@ func test_dash_lasts_its_configured_duration() -> void:
 		return
 	var dash: PlayerDash = player.state_machine.get_node("PlayerDash") as PlayerDash
 	var tick: float = 1.0 / Engine.physics_ticks_per_second
-	var min_ticks: int = ceili(dash.dash_duration.wait_time / tick - 0.001)
+	var expected_ticks: int = ceili(dash.dash_duration / tick - 0.001)
 	var start: Vector3 = player.global_position
 	player.state_machine.request_state("PlayerDash", {"direction": Vector3(1.0, 0.0, 0.0)})
 	var ticks: int = 0
 	while player.state_machine.state == dash and ticks < ATTACK_FRAMES:
 		await get_tree().physics_frame
 		ticks += 1
-	check(ticks >= min_ticks and ticks <= min_ticks + STATE_LATENCY_TICKS, "dash should last its duration (%d..%d physics ticks), lasted %d" % [min_ticks, min_ticks + STATE_LATENCY_TICKS, ticks])
-	check(player.global_position.x - start.x > 0.0, "dash should move the player along its direction")
+	check_eq(ticks, expected_ticks, "dash should last its duration in physics ticks")
+	check_approx(player.global_position.x - start.x, dash.get_dash_distance(), "dash should move the player dash_speed * dash_duration along its direction", 0.01)
 
 
 func test_braking_takes_the_same_time_at_any_tick_rate() -> void:

@@ -132,9 +132,9 @@ func core_movement(delta: float, speed: float, direction: Vector3 = Vector3.ZERO
 		character.velocity.z = direction.z * speed
 		character.look_toward_direction(direction, delta)
 	else:
-		# Brake at speed / stop_time per second, per axis: the braking time is
+		# Brake per axis at the character's braking rate: the braking time is
 		# the same at any physics tick rate.
-		var braking: float = INF if character.stop_time <= 0.0 else speed / character.stop_time * delta
+		var braking: float = character.get_braking_rate(speed) * delta
 		character.velocity.x = move_toward(character.velocity.x, 0.0, braking)
 		character.velocity.z = move_toward(character.velocity.z, 0.0, braking)
 
