@@ -25,7 +25,14 @@ refuses to ship on engine errors.
 - **Navigation:** the `NavigationRegion3D` mesh must be a real bake that covers
   the floor, wraps walls and stays clear of pits (enemies must not path off
   ledges). Freestanding tall cover needs 3 m of clear floor to any pit edge,
-  or the bake leaves slivers that wedge enemies.
+  or the bake leaves slivers that wedge enemies. Re-bake after moving
+  anything solid: the `NavmeshRebuilder` rebakes the level at runtime when a
+  destructible breaks, so a stale committed bake silently turns into a fresh
+  one mid-level.
+- **Destructibles** (barrels) go under `NavigationRegion3D` (in `Litter`):
+  only props under the region are carved into the bake and tracked by the
+  `NavmeshRebuilder`. Their bodies use the `Props` layer, which is reserved
+  for them; a static prop that never breaks stays on `World`.
 - **VoxelGI:** bake per level to
   `Levels/GlobalIlluminationData/<level_name>_voxel_gi_data.res`, with a volume
   that encloses the playable floor, the spawn, pits and the exit. Anything

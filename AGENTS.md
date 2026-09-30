@@ -151,7 +151,12 @@ prints the error and idles forever. `--quit-after` does not help.
   neighbouring props. Its solid body is on the `Props` layer (3, value 4),
   which characters mask to collide with it and projectiles do not: on
   `World` it would stop projectiles like a wall before they reach the
-  hurtbox. The explosive barrel is
+  hurtbox. The layer is reserved for destructible bodies. The committed
+  navmesh carves props out; when one breaks, the level's `NavmeshRebuilder`
+  (`Levels/navmesh_rebuilder.gd`) rebuilds it without the prop: the static
+  level and each prop are parsed once, and a rebuild merges the props still
+  standing and bakes on a `WorkerThreadPool` thread, at most once every
+  `min_rebuild_interval` (2 s) of physics time. The explosive barrel is
   `Levels/Decorators/explosive_barrel.tscn` (payload `Hazards/barrel_explosion.tscn`:
   a `hits_all` ground AOE with the shared fire burn); levels place it like
   any other litter (`barrel` in `tools/levels`).
@@ -175,8 +180,9 @@ prints the error and idles forever. `--quit-after` does not help.
   game-over menus, fullscreen), `VfxManager`
   (world VFX, damage numbers, the target reticle). All five are autoloads.
 - **Levels** inherit `Levels/level_template.tscn` (lighting, wave objective,
-  kill plane, exit, and an `ItemSpawner` that drops available
-  `GlobalVars.level_items` as `ItemPickup`s near the player's spawn). `GlobalVars.dungeons` (`DungeonResource`s) is the only
+  kill plane, exit, an `ItemSpawner` that drops available
+  `GlobalVars.level_items` as `ItemPickup`s near the player's spawn, and the
+  `NavmeshRebuilder`). `GlobalVars.dungeons` (`DungeonResource`s) is the only
   level registry: `ProgressionState` picks a regular dungeon per encounter,
   or the boss arena whose `boss_at_level` matches the dungeon level.
 
