@@ -11,9 +11,10 @@
 height = 1.0
 radius = 0.5
 
-[node name="ExplosiveBarrel" type="Node3D" node_paths=PackedStringArray("attribute_component")]
+[node name="ExplosiveBarrel" type="Node3D" node_paths=PackedStringArray("attribute_component", "hurtbox")]
 script = ExtResource("1_destructible")
 attribute_component = NodePath("AttributeComponent")
+hurtbox = NodePath("Hurtbox")
 break_payload = ExtResource("5_blast")
 fuse_time = 0.15
 

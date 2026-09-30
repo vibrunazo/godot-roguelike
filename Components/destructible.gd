@@ -9,7 +9,9 @@
 ## hazards, explosions, burns), so a blast chains into its neighbours with no
 ## special casing. Scenes put the prop's Hurtbox on both team hurtbox layers
 ## (192), so player and enemy attacks alike can hit it, and wire it to the
-## same AttributeComponent this node watches.
+## same AttributeComponent this node watches. A prop may also have a solid
+## collision body (its imported model's): a projectile that touches it hits
+## the prop's Hurtbox (hurtbox_of()) instead of stopping as on a wall.
 class_name Destructible
 extends Node3D
 
@@ -20,6 +22,9 @@ signal broke
 
 ## Health pool of the prop. The scene's Hurtbox damages this same component.
 @export var attribute_component: AttributeComponent
+## The prop's Hurtbox, wired to attribute_component. Projectiles that touch the
+## prop's collision body hit it through hurtbox_of().
+@export var hurtbox: Hurtbox
 ## Scene spawned at the prop's position when it breaks, through
 ## PayloadSpawner (an explosion DamageArea, for instance). Null: the prop
 ## just disappears.
@@ -31,10 +36,22 @@ signal broke
 
 
 func _ready() -> void:
+	if hurtbox == null:
+		push_error("%s: hurtbox is not set." % name)
 	if attribute_component == null:
 		push_error("%s: attribute_component is not set." % name)
 		return
 	attribute_component.defeat.connect(_on_defeat)
+
+
+## Returns the Hurtbox of the Destructible that node is part of (the prop
+## itself, its model, its collision body), or null when it is not part of one.
+static func hurtbox_of(node: Node) -> Hurtbox:
+	while node != null:
+		if node is Destructible:
+			return (node as Destructible).hurtbox
+		node = node.get_parent()
+	return null
 
 
 ## Starts the fuse. The Hurtbox has already switched itself off on the same
