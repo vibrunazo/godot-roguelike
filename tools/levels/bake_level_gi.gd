@@ -93,8 +93,8 @@ func _check_navmesh(level: Node3D) -> bool:
 
 
 ## Match rotation validation: wall-adjacent half-tile inset, tight Y check.
-func _endpoint_close(authored: Vector3, snapped: Vector3) -> bool:
-	return absf(authored.y - snapped.y) <= 1.0 and Vector2(authored.x - snapped.x, authored.z - snapped.z).length() <= 2.0
+func _endpoint_close(authored: Vector3, actual: Vector3) -> bool:
+	return absf(authored.y - actual.y) <= 1.0 and Vector2(authored.x - actual.x, authored.z - actual.z).length() <= 2.0
 
 
 func _bake_gi(level: Node3D) -> void:

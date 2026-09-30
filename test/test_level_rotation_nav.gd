@@ -582,8 +582,8 @@ func _interior_holes(floor: Dictionary) -> Array[Vector2i]:
 
 
 ## Allow the existing half-tile wall inset horizontally, but not wrong floors.
-func _endpoint_close(authored: Vector3, snapped: Vector3) -> bool:
-	return absf(authored.y - snapped.y) <= 1.0 and Vector2(authored.x - snapped.x, authored.z - snapped.z).length() <= 2.0
+func _endpoint_close(authored: Vector3, actual: Vector3) -> bool:
+	return absf(authored.y - actual.y) <= 1.0 and Vector2(authored.x - actual.x, authored.z - actual.z).length() <= 2.0
 
 
 ## Checks a navigation path exists between two points on the level.

@@ -102,13 +102,13 @@ func _find_spots(nav_map: RID, start: Vector3, needed: int) -> Array[Vector3]:
 			break
 		var direction: Vector3 = forward.rotated(Vector3.UP, TAU * float(bearing) / float(maxi(bearing_count, 1)))
 		var wanted: Vector3 = start + direction * offset_distance
-		var snapped: Vector3 = NavigationServer3D.map_get_closest_point(nav_map, wanted)
-		if Vector2(snapped.x - wanted.x, snapped.z - wanted.z).length() > max_snap_distance:
+		var snapped_point: Vector3 = NavigationServer3D.map_get_closest_point(nav_map, wanted)
+		if Vector2(snapped_point.x - wanted.x, snapped_point.z - wanted.z).length() > max_snap_distance:
 			continue
-		var path: PackedVector3Array = NavigationServer3D.map_get_path(nav_map, start, snapped, true)
-		if path.is_empty() or path[path.size() - 1].distance_to(snapped) > max_snap_distance:
+		var path: PackedVector3Array = NavigationServer3D.map_get_path(nav_map, start, snapped_point, true)
+		if path.is_empty() or path[path.size() - 1].distance_to(snapped_point) > max_snap_distance:
 			continue
-		spots.append(snapped)
+		spots.append(snapped_point)
 	if spots.size() < needed:
 		push_warning("ItemSpawner: found %d of %d reachable spots around the player." % [spots.size(), needed])
 	return spots

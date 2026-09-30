@@ -38,6 +38,6 @@ func set_ability(ability: AbilityResource) -> void:
 
 
 ## Updates the cooldown sweep (fraction left, 1.0 just cast) and readiness.
-func set_cooldown(fraction_left: float, ready: bool) -> void:
+func set_cooldown(fraction_left: float, is_ready: bool) -> void:
 	cooldown_bar.value = fraction_left
-	icon_rect.modulate = Color.WHITE if ready else unready_modulate
+	icon_rect.modulate = Color.WHITE if is_ready else unready_modulate
