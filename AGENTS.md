@@ -179,5 +179,6 @@ automatically; other agents follow these paths):
 | Writing, migrating or fixing a test suite (`test/`, harness, arena) | `.claude/skills/write-test/SKILL.md` |
 | A suite timed out or a Godot run hung | `.claude/skills/debug-test-hang/SKILL.md` |
 
-Open work is in `TODO.md`. Past code reviews, closed and kept as the record of
+Open work is in `TODO.md`. Narrative lore, theme and the visual style guide for
+assets are in `LORE.md`. Past code reviews, closed and kept as the record of
 why the code looks the way it does, are in `docs/reviews/`.

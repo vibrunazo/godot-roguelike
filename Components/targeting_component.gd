@@ -10,7 +10,7 @@ extends Node
 @export var character: Character
 ## Maximum distance in meters at which auto-aim acquires opposing characters.
 ## Values <= 0.0 disable acquisition.
-@export var auto_aim_range: float = 10.0
+@export var auto_aim_range: float = 15.0
 ## Minimum interval in seconds between auto-aim target re-evaluations, so the
 ## target does not flicker every tick when candidates sit at similar distances.
 @export var target_retarget_cooldown: float = 0.3

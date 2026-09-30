@@ -50,6 +50,7 @@ python tools/check_runners.py                     # self-test the runners (after
 | `AGENTS.md` | Rules for coding agents (and a good summary of the conventions for people) |
 | `.claude/skills/*/SKILL.md` | Step-by-step procedures: combat animations, levels, captures, tests, hang debugging |
 | `CAPTURE.md` | The capture tool in detail |
+| `LORE.md` | Game lore, background, humor guidelines and visual style guide |
 | `tools/levels/README.md` | The level-building pipeline |
 | `TODO.md` | Open work |
 | `docs/reviews/` | Past code reviews (closed), kept as the record of past design decisions |
