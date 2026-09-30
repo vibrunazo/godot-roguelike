@@ -6,6 +6,10 @@
 ## - Healing raises both bars immediately.
 ## - When the owner is defeated the bar fades out and frees itself within
 ##   fade_out_duration.
+## - A temporary bar (show_duration, the explosive barrel's) is wired to its
+##   owner's attributes and hidden until a hit; it then shows, each new hit
+##   restarts its countdown, and it hides again after show_duration plus
+##   fade_out_duration.
 ## Expected values are fractions of the live max health, and waits derive
 ## from the bar's own durations, so retuning health or animation timing
 ## never breaks the suite.
@@ -14,8 +18,11 @@ extends "res://test/lib/test_suite.gd"
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
 const HEALTH_BAR_SCENE: PackedScene = preload("res://Components/health_bar.tscn")
+const BARREL_SCENE: PackedScene = preload("res://Levels/Decorators/explosive_barrel.tscn")
 ## Test-owned fraction of max health dealt or healed per step.
 const STEP_FRACTION: float = 0.25
+## Test-owned show_duration of the temporary bar.
+const TEST_SHOW_DURATION: float = 1.0
 
 var _arena: Node3D
 
@@ -81,6 +88,28 @@ func test_defeat_fades_the_bar_out_and_frees_it() -> void:
 		check(bar.sprite_3d.transparency > 0.0, "the bar should start fading out on defeat")
 	var bar_ref: WeakRef = weakref(bar)
 	await wait_until(func() -> bool: return bar_ref.get_ref() == null or (bar_ref.get_ref() as Node).is_queued_for_deletion(), "the bar should free itself after fading out", _frames_for(fade_duration))
+
+
+func test_a_temporary_bar_shows_only_for_a_while_after_each_hit() -> void:
+	var barrel: Destructible = BARREL_SCENE.instantiate() as Destructible
+	var bar: HealthBar = barrel.get_node("HealthBar") as HealthBar
+	bar.show_duration = TEST_SHOW_DURATION
+	autofree(barrel)
+	barrel.position = (_arena.get_node("PlayerSpawn") as Node3D).position
+	_arena.add_child(barrel)
+	check(bar.attribute_component == barrel.attribute_component, "the barrel's HealthBar should follow its own AttributeComponent")
+	check(not bar.visible, "a temporary bar should stay hidden until its owner's health changes")
+	var hurtbox: Hurtbox = barrel.get_node("Hurtbox") as Hurtbox
+	var step: float = barrel.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH) * STEP_FRACTION
+	hurtbox.receive_hit(step, Vector3.ZERO)
+	check(bar.visible and is_zero_approx(bar.sprite_3d.transparency), "a hit should show the temporary bar at once")
+	# A second hit before the first countdown ends keeps the bar up past it.
+	var gap_frames: int = ceili(TEST_SHOW_DURATION * 0.65 * Engine.physics_ticks_per_second)
+	await wait_physics_frames(gap_frames)
+	hurtbox.receive_hit(step, Vector3.ZERO)
+	await wait_physics_frames(gap_frames)
+	check(bar.visible and is_zero_approx(bar.sprite_3d.transparency), "a new hit should restart the temporary bar's countdown")
+	await wait_until(func() -> bool: return not bar.visible, "the temporary bar should hide after show_duration plus fade_out_duration", _frames_for(TEST_SHOW_DURATION + bar.fade_out_duration))
 
 
 func _spawn(scene: PackedScene) -> Character:

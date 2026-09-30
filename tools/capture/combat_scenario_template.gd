@@ -176,7 +176,8 @@ func order_player_attack(player: Character, combo_index: int, at_frame: int) -> 
 	order_state(player, state_req, at_frame)
 
 
-## Orders a character to take a specific amount of damage at a given frame.
+## Orders a character to take a hit of the given damage at a given frame,
+## through its Hurtbox (so it flashes, staggers and shows a damage number).
 func order_damage(character: Character, amount: float, at_frame: int) -> void:
 	scheduled_actions.append(ScheduledAction.new(character, "damage", amount, at_frame))
 
@@ -228,9 +229,9 @@ func _execute_action(action: ScheduledAction) -> void:
 				print("[CombatScenario @ frame %d] Requested state '%s' on %s" % [frame_count, s_name, c.name])
 		"damage":
 			var c: Character = action.target as Character
-			if c != null and c.health_component != null:
+			if c != null and c.hurtbox != null:
 				var dmg: float = float(action.param_value)
-				c.health_component.take_damage(dmg)
+				c.hurtbox.receive_hit(dmg, Vector3.ZERO)
 				print("[CombatScenario @ frame %d] Applied %.1f damage to %s" % [frame_count, dmg, c.name])
 		"screenshot":
 			var path_str: String = str(action.param_value)
