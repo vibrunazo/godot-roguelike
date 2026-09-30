@@ -10,7 +10,8 @@
 ## - an explosion breaks the barrels in range, which explode in turn (a chain
 ##   reaction), and leaves barrels out of range alone,
 ## - the player's fireball, fired from where the player casts it, breaks a
-##   barrel: the prop's solid collision body does not stop it like a wall.
+##   barrel: the prop's solid collision body does not stop it like a wall,
+## - a barrel is solid: a character walking into it is stopped.
 ## Health, fuse times and blast sizes come from the scenes or are set by the
 ## test; nothing here asserts tuning.
 extends "res://test/lib/test_suite.gd"
@@ -35,6 +36,8 @@ const DETECT_FRAMES: int = 20
 const SHOT_DISTANCE: float = 5.0
 ## Frame budget for a projectile's flight to the barrel.
 const FLIGHT_FRAMES: int = 300
+## Physics ticks the player spends walking into a barrel.
+const WALK_FRAMES: int = 90
 
 var _arena: Node3D
 var _floor_top: float
@@ -130,6 +133,16 @@ func test_the_players_fireball_breaks_a_barrel() -> void:
 	overrides.append(lethal)
 	PayloadSpawner.spawn(FIREBALL.payload_scene, player, origin, Vector3.BACK, overrides)
 	await wait_signal(barrel.destroyed, "a fireball flying into a barrel should destroy it", FLIGHT_FRAMES)
+
+
+func test_a_character_walking_into_a_barrel_is_stopped() -> void:
+	var player: Character = _spawn_player(Vector3(0.0, _floor_top + 1.0, 0.0))
+	await wait_until(player.is_on_floor, "the player should land", DETECT_FRAMES * 3)
+	var barrel: Destructible = _spawn_barrel(Vector3(0.0, _floor_top, SHOT_DISTANCE))
+	player.move_direction = Vector3.BACK
+	await wait_physics_frames(WALK_FRAMES)
+	player.move_direction = Vector3.ZERO
+	check(player.global_position.z < barrel.global_position.z, "the barrel should block the player (player z %.2f, barrel z %.2f)" % [player.global_position.z, barrel.global_position.z])
 
 
 ## Drops a blast that hits one team's hurtbox layer only onto a fresh barrel

@@ -148,7 +148,10 @@ prints the error and idles forever. `--quit-after` does not help.
   (crate, vase, non-explosive prop) is a scene with different data, not new
   code. Its hurtbox sits on both team layers (192) so every attack that can
   hit either team hits it, which is also why an explosion chains into
-  neighbouring props. The explosive barrel is
+  neighbouring props. Its solid body is on the `Props` layer (3, value 4),
+  which characters mask to collide with it and projectiles do not: on
+  `World` it would stop projectiles like a wall before they reach the
+  hurtbox. The explosive barrel is
   `Levels/Decorators/explosive_barrel.tscn` (payload `Hazards/barrel_explosion.tscn`:
   a `hits_all` ground AOE with the shared fire burn); levels place it like
   any other litter (`barrel` in `tools/levels`).

@@ -36,12 +36,6 @@ func _on_body_entered(body: Node3D) -> void:
 		return
 	if body == self or body is Character:
 		return
-	# A destructible prop's solid body wraps its Hurtbox and is usually
-	# reported first: hit the prop instead of fizzling on it as on a wall.
-	var prop_hurtbox: Hurtbox = Destructible.hurtbox_of(body)
-	if prop_hurtbox != null and prop_hurtbox.is_alive():
-		_hit(prop_hurtbox)
-		return
 	_is_hit = true
 	hit_effect()
 	queue_free()
@@ -53,12 +47,8 @@ func _on_area_entered(area: Area3D) -> void:
 	if area == self or not (area is Hurtbox) or area.get_parent() == shooter:
 		return
 	var hurtbox: Hurtbox = area as Hurtbox
-	if hurtbox.is_alive():
-		_hit(hurtbox)
-
-
-## Damages hurtbox, plays the hit effect and frees the projectile.
-func _hit(hurtbox: Hurtbox) -> void:
+	if not hurtbox.is_alive():
+		return
 	_is_hit = true
 	if attack_component:
 		attack_component.deal_damage_to(hurtbox, damage, global_basis.z * knockback)

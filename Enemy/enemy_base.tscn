@@ -25,6 +25,7 @@ radius = 0.375
 
 [node name="EnemyBase" type="CharacterBody3D" unique_id=2117139762 node_paths=PackedStringArray("hurtbox", "mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "stun_state", "defeat_state", "color_component") groups=["enemy"] editor_description="ABSTRACT BASE TEMPLATE: Defines shared physics, health, knockback, and rig. Concrete enemies (melee_enemy.tscn, ranged_enemy.tscn) must inherit from this scene and configure their own attacks and AI states. Do not instantiate directly in waves."]
 collision_layer = 3
+collision_mask = 5
 script = ExtResource("1_eqilm")
 mesh_mount = NodePath("AnimationAnchor")
 attribute_component = NodePath("AttributeComponent")
