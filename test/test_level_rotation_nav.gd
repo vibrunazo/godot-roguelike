@@ -238,14 +238,14 @@ func _verify_navmesh_is_baked(level: Node3D, level_path: String) -> bool:
 ## that rendered as floor inlay. Cells stacked under a y=0 wall are exempt
 ## (foundations).
 func _verify_low_walls_ring_edges(level: Node3D, level_path: String) -> bool:
-	var floor: Dictionary = {}
+	var floor_tiles: Dictionary = {}
 	var tall: Dictionary = {}
 	var low: Array[Vector2i] = []
 	for gm_node: Node in level.find_children("*", "GridMap", true, false):
 		var gm: GridMap = gm_node as GridMap
 		if gm.name == "Floormap":
 			for cell: Vector3i in gm.get_used_cells():
-				floor[Vector2i(cell.x, cell.z)] = true
+				floor_tiles[Vector2i(cell.x, cell.z)] = true
 		elif gm.name == "Wallmap":
 			for cell: Vector3i in gm.get_used_cells():
 				if cell.y == 0:
@@ -259,7 +259,7 @@ func _verify_low_walls_ring_edges(level: Node3D, level_path: String) -> bool:
 		var buried: bool = true
 		for sx: int in range(w.x * 2 - 2, w.x * 2 + 5):
 			for sz: int in range(w.y * 2 - 2, w.y * 2 + 5):
-				if not _point_on_floor(sx, sz, floor):
+				if not _point_on_floor(sx, sz, floor_tiles):
 					buried = false
 					break
 			if not buried:
@@ -273,8 +273,8 @@ func _verify_low_walls_ring_edges(level: Node3D, level_path: String) -> bool:
 
 
 ## True when the world point (sx, sz) lies on a solid floor tile.
-func _point_on_floor(sx: int, sz: int, floor: Dictionary) -> bool:
-	for key: Vector2i in floor:
+func _point_on_floor(sx: int, sz: int, floor_tiles: Dictionary) -> bool:
+	for key: Vector2i in floor_tiles:
 		if key.x * 4 <= sx and sx <= key.x * 4 + 4 and key.y * 4 <= sz and sz <= key.y * 4 + 4:
 			return true
 	return false
@@ -289,15 +289,15 @@ func _verify_no_stray_islands(level: Node3D, level_path: String) -> bool:
 	if region == null or region.navigation_mesh == null:
 		fail(str("NavigationRegion3D/mesh missing in ", level_path))
 		return false
-	var floor: GridMap = level.find_child("Floormap", true, false) as GridMap
-	if floor == null or floor.mesh_library == null:
+	var floor_map: GridMap = level.find_child("Floormap", true, false) as GridMap
+	if floor_map == null or floor_map.mesh_library == null:
 		fail(str("floor geometry missing in ", level_path))
 		return false
 	var boxes: Array[AABB] = []
 	var stairs: Array[bool] = []
-	for cell: Vector3i in floor.get_used_cells():
-		boxes.append(_floor_cell_box(floor, cell))
-		stairs.append(floor.mesh_library.get_item_name(floor.get_cell_item(cell)) == "Primitive_Stairs")
+	for cell: Vector3i in floor_map.get_used_cells():
+		boxes.append(_floor_cell_box(floor_map, cell))
+		stairs.append(floor_map.mesh_library.get_item_name(floor_map.get_cell_item(cell)) == "Primitive_Stairs")
 	for v: Vector3 in region.navigation_mesh.get_vertices():
 		var world_v: Vector3 = region.to_global(v)
 		var supported: bool = false
@@ -310,9 +310,9 @@ func _verify_no_stray_islands(level: Node3D, level_path: String) -> bool:
 				continue
 			var top: float = box.end.y
 			if stairs[index]:
-				var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(Vector3(world_v.x, box.end.y + 0.1, world_v.z), Vector3(world_v.x, box.position.y - 0.1, world_v.z), floor.collision_layer)
+				var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(Vector3(world_v.x, box.end.y + 0.1, world_v.z), Vector3(world_v.x, box.position.y - 0.1, world_v.z), floor_map.collision_layer)
 				var hit: Dictionary = get_viewport().find_world_3d().direct_space_state.intersect_ray(query)
-				if hit.is_empty() or hit.get("collider") != floor:
+				if hit.is_empty() or hit.get("collider") != floor_map:
 					continue
 				top = (hit["position"] as Vector3).y
 			if world_v.y >= top - 0.1 and world_v.y <= top + 1.0:
@@ -391,9 +391,9 @@ func _verify_pit_lining(level: Node3D, level_path: String) -> bool:
 		layers[cell.y][Vector2i(cell.x, cell.z)] = true
 	var ok: bool = true
 	for layer: int in layers:
-		var floor: Dictionary = layers[layer]
+		var floor_tiles: Dictionary = layers[layer]
 		var lined_below: Dictionary = {}
-		var floor_height: float = _floor_cell_box(floor_gm, Vector3i((floor.keys()[0] as Vector2i).x, layer, (floor.keys()[0] as Vector2i).y)).end.y
+		var floor_height: float = _floor_cell_box(floor_gm, Vector3i((floor_tiles.keys()[0] as Vector2i).x, layer, (floor_tiles.keys()[0] as Vector2i).y)).end.y
 		for wall_node: Node in level.find_children("Wallmap*", "GridMap", true, false):
 			var walls: GridMap = wall_node as GridMap
 			for cell: Vector3i in walls.get_used_cells():
@@ -401,16 +401,16 @@ func _verify_pit_lining(level: Node3D, level_path: String) -> bool:
 				# WallmapUpper too, without mistaking tall walls for lining.
 				if absf(_floor_cell_box(walls, cell).end.y - floor_height) < 0.2:
 					lined_below[Vector2i(cell.x, cell.z)] = true
-		if not _verify_pit_layer(floor, lined_below, level_path + " layer " + str(layer)):
+		if not _verify_pit_layer(floor_tiles, lined_below, level_path + " layer " + str(layer)):
 			ok = false
 	return ok
 
 
 ## Original shaft-wall side gate, applied independently at each elevation.
-func _verify_pit_layer(floor: Dictionary, lined_below: Dictionary, level_path: String) -> bool:
+func _verify_pit_layer(floor_tiles: Dictionary, lined_below: Dictionary, level_path: String) -> bool:
 	var bad_sides: int = 0
 	var checked_sides: int = 0
-	for h: Vector2i in _interior_holes(floor):
+	for h: Vector2i in _interior_holes(floor_tiles):
 		var sides: Array = [
 			[Vector2i(h.x, h.y - 1), Vector2i(2 * h.x, 2 * h.y), Vector2i(2 * h.x + 1, 2 * h.y)],
 			[Vector2i(h.x, h.y + 1), Vector2i(2 * h.x, 2 * h.y + 2), Vector2i(2 * h.x + 1, 2 * h.y + 2)],
@@ -418,7 +418,7 @@ func _verify_pit_layer(floor: Dictionary, lined_below: Dictionary, level_path: S
 			[Vector2i(h.x + 1, h.y), Vector2i(2 * h.x + 2, 2 * h.y), Vector2i(2 * h.x + 2, 2 * h.y + 1)],
 		]
 		for side: Array in sides:
-			if not floor.has(side[0]):
+			if not floor_tiles.has(side[0]):
 				continue
 			checked_sides += 1
 			if not lined_below.has(side[1]) and not lined_below.has(side[2]):
@@ -456,10 +456,10 @@ func _verify_cover_clearances(level: Node3D, level_path: String) -> bool:
 	var wall_gm: GridMap = level.find_child("Wallmap", true, false) as GridMap
 	if floor_gm == null or wall_gm == null:
 		return fail(str("Floormap/Wallmap missing in ", level_path))
-	var floor: Dictionary = {}
+	var floor_tiles: Dictionary = {}
 	for cell: Vector3i in floor_gm.get_used_cells():
-		floor[Vector2i(cell.x, cell.z)] = true
-	var holes: Array[Vector2i] = _interior_holes(floor)
+		floor_tiles[Vector2i(cell.x, cell.z)] = true
+	var holes: Array[Vector2i] = _interior_holes(floor_tiles)
 	var lone: Dictionary[Vector2i, int] = _lone_tall_walls(wall_gm)
 	var ok: bool = true
 	for w: Vector2i in lone:
@@ -538,8 +538,8 @@ func _verify_abyss_plane(level: Node3D, level_path: String) -> bool:
 
 
 ## Floor-grid gaps NOT connected to the outer void (i.e. pits).
-func _interior_holes(floor: Dictionary) -> Array[Vector2i]:
-	var keys: Array = floor.keys()
+func _interior_holes(floor_tiles: Dictionary) -> Array[Vector2i]:
+	var keys: Array = floor_tiles.keys()
 	var x0: int = keys[0].x - 1
 	var x1: int = keys[0].x + 1
 	var z0: int = keys[0].y - 1
@@ -554,13 +554,13 @@ func _interior_holes(floor: Dictionary) -> Array[Vector2i]:
 	for x: int in [x0, x1]:
 		for z: int in range(z0, z1 + 1):
 			var edge := Vector2i(x, z)
-			if not floor.has(edge) and not seen.has(edge):
+			if not floor_tiles.has(edge) and not seen.has(edge):
 				seen[edge] = true
 				queue.append(edge)
 	for z: int in [z0, z1]:
 		for x: int in range(x0, x1 + 1):
 			var edge := Vector2i(x, z)
-			if not floor.has(edge) and not seen.has(edge):
+			if not floor_tiles.has(edge) and not seen.has(edge):
 				seen[edge] = true
 				queue.append(edge)
 	while not queue.is_empty():
@@ -568,7 +568,7 @@ func _interior_holes(floor: Dictionary) -> Array[Vector2i]:
 		for n: Vector2i in [Vector2i(c.x + 1, c.y), Vector2i(c.x - 1, c.y), Vector2i(c.x, c.y + 1), Vector2i(c.x, c.y - 1)]:
 			if n.x < x0 or n.x > x1 or n.y < z0 or n.y > z1:
 				continue
-			if floor.has(n) or seen.has(n):
+			if floor_tiles.has(n) or seen.has(n):
 				continue
 			seen[n] = true
 			queue.append(n)
@@ -576,7 +576,7 @@ func _interior_holes(floor: Dictionary) -> Array[Vector2i]:
 	for x: int in range(x0 + 1, x1):
 		for z: int in range(z0 + 1, z1):
 			var p := Vector2i(x, z)
-			if not floor.has(p) and not seen.has(p):
+			if not floor_tiles.has(p) and not seen.has(p):
 				holes.append(p)
 	return holes
 
