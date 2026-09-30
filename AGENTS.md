@@ -141,6 +141,17 @@ prints the error and idles forever. `--quit-after` does not help.
   hazards spawned by anything (enemy ranged attacks, passives, abilities) go
   through `PayloadSpawner.spawn()`, which credits the instigator and scales
   damage; the damage itself lives in the payload scene.
+- **Destructibles:** a `Destructible` (`Components/destructible.gd`) is the
+  root of any breakable prop: a `Hurtbox` plus an `AttributeComponent`, and on
+  `defeat` a physics-clock fuse (`fuse_time`), then it releases its
+  `break_payload` through `PayloadSpawner` and frees itself. A new kind
+  (crate, vase, non-explosive prop) is a scene with different data, not new
+  code. Its hurtbox sits on both team layers (192) so every attack that can
+  hit either team hits it, which is also why an explosion chains into
+  neighbouring props. The explosive barrel is
+  `Levels/Decorators/explosive_barrel.tscn` (payload `Hazards/barrel_explosion.tscn`:
+  a `hits_all` ground AOE with the shared fire burn); levels place it like
+  any other litter (`barrel` in `tools/levels`).
 - **Abilities:** an `AbilityResource` (`.tres`) defines an active ability:
   cost, cooldown, cast animation, release time, and what it releases (a
   payload scene with `payload_overrides`, and `caster_effects`). The ASC holds

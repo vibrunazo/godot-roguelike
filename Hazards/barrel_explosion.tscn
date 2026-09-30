@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Hazards/ground_damage_aoe.tscn" id="1_base"]
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="2_effect_script"]
+[ext_resource type="Resource" uid="uid://cygg3rno4258g" path="res://Components/effect_fire_burn.tres" id="3_burn"]
+
+[node name="BarrelExplosion" instance=ExtResource("1_base")]
+radius = 3.5
+height = 2.0
+damage = 40.0
+knockback_force = 16.0
+effects_to_apply = Array[ExtResource("2_effect_script")]([ExtResource("3_burn")])
+hits_all = true
+active_duration = 0.15
+visual_duration = 0.6
+aoe_color = Color(1, 0.4, 0.1, 1)

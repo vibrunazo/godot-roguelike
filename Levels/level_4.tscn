@@ -2,7 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/level_template.tscn" id="1_ll1bl"]
 [ext_resource type="PackedScene" uid="uid://t4a6aocg2p7h" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Couch.gltf" id="2_dgq3b"]
-[ext_resource type="PackedScene" uid="uid://b8by0o2p8jju0" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Barrel_A.gltf" id="3_bcgyv"]
+[ext_resource type="PackedScene" path="res://Levels/Decorators/explosive_barrel.tscn" id="3_bcgyv"]
 [ext_resource type="VoxelGIData" path="res://Levels/GlobalIlluminationData/level_4_voxel_gi_data.res" id="4_level4"]
 [ext_resource type="PackedScene" uid="uid://c6v2j7y4p1mna" path="res://Hazards/spikes_hazard.tscn" id="5_spikes"]
 

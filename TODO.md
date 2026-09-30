@@ -72,6 +72,17 @@ Section numbers (§) point into the closed 2026-09-23 code review,
      only release a payload and caster effects today.
    - Secondary bindings for `ability_1`..`ability_4` (gamepad, mouse).
 
+16. **Destructibles follow-ups** (the system is in: `Destructible`, the
+    explosive barrel; see AGENTS.md §5):
+    - Movement collision: barrels (and future solid destructibles) do not
+      block the player or enemies. Adding it means deciding how it interacts
+      with the baked navmeshes.
+    - A real explosion look: the barrel blast reuses the ground-AOE visuals
+      (rings, scorch disc, sparks). Add a fire burst at the barrel.
+    - Radial knockback: `DamageArea` only knocks up (`knockback_force`);
+      give it an outward-from-center option, so explosions push characters
+      away.
+
 ## Architecture backlog
 
 9. **Data-driven attacks (`AttackData` resources).** Every attack and combo

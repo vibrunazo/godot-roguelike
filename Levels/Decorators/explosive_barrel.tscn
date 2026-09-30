@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Components/destructible.gd" id="1_destructible"]
+[ext_resource type="Script" uid="uid://d1jynuos72fph" path="res://Components/attribute_component.gd" id="2_attributes"]
+[ext_resource type="Script" uid="uid://c2y6regew58y" path="res://Components/hurtbox.gd" id="3_hurtbox"]
+[ext_resource type="PackedScene" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Barrel_A.gltf" id="4_model"]
+[ext_resource type="PackedScene" path="res://Hazards/barrel_explosion.tscn" id="5_blast"]
+
+[sub_resource type="CylinderShape3D" id="Shape"]
+height = 1.0
+radius = 0.5
+
+[node name="ExplosiveBarrel" type="Node3D" node_paths=PackedStringArray("attribute_component")]
+script = ExtResource("1_destructible")
+attribute_component = NodePath("AttributeComponent")
+break_payload = ExtResource("5_blast")
+fuse_time = 0.15
+
+[node name="Model" parent="." instance=ExtResource("4_model")]
+
+[node name="AttributeComponent" type="Node" parent="."]
+script = ExtResource("2_attributes")
+base_max_health = 10.0
+
+[node name="Hurtbox" type="Area3D" parent="." node_paths=PackedStringArray("attribute_component")]
+collision_layer = 192
+collision_mask = 0
+script = ExtResource("3_hurtbox")
+attribute_component = NodePath("../AttributeComponent")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("Shape")
