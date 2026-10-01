@@ -76,7 +76,7 @@ func after_each() -> void:
 
 
 func test_an_aimed_fireball_flies_through_the_cursor_on_screen() -> void:
-	var ability: AbilityResource = _ability(AbilityResource.AimMode.AIMED, FIREBALL_SCENE)
+	var ability: AbilityResource = _ability(CharacterAction.AimMode.AIMED, FIREBALL_SCENE)
 	_player.ability_system_component.grant_ability(ability, null, 0)
 	for degrees: int in range(0, 360, 45):
 		var center: Vector2 = _camera().unproject_position(_player.global_position)
@@ -103,7 +103,7 @@ func test_the_cursor_aims_at_the_floor_under_an_enemys_body() -> void:
 
 func test_an_aimed_fireball_hits_a_foe_on_a_raised_floor_by_cursor_and_auto_aim() -> void:
 	_add_platform()
-	var ability: AbilityResource = _ability(AbilityResource.AimMode.AIMED, FIREBALL_SCENE)
+	var ability: AbilityResource = _ability(CharacterAction.AimMode.AIMED, FIREBALL_SCENE)
 	_player.ability_system_component.grant_ability(ability, null, 0)
 	var foe: Character = _spawn_foe(_ahead(FOE_DISTANCE), _floor_top + PLATFORM_HEIGHT)
 	for auto_aim: bool in [false, true]:
@@ -119,7 +119,7 @@ func test_an_aimed_fireball_hits_a_foe_on_a_raised_floor_by_cursor_and_auto_aim(
 
 func test_a_flat_fireball_stays_at_its_cast_height() -> void:
 	_add_platform()
-	var ability: AbilityResource = _ability(AbilityResource.AimMode.FLAT, FIREBALL_SCENE)
+	var ability: AbilityResource = _ability(CharacterAction.AimMode.FLAT, FIREBALL_SCENE)
 	_player.ability_system_component.grant_ability(ability, null, 0)
 	var shot: Projectile = await _cast_at_screen(_camera().unproject_position(_ahead(FOE_DISTANCE) + Vector3.UP * (_floor_top + PLATFORM_HEIGHT)))
 	if shot == null:
@@ -128,7 +128,7 @@ func test_a_flat_fireball_stays_at_its_cast_height() -> void:
 
 
 func test_a_fireball_cast_at_the_top_of_a_jump_hits_a_foe_under_the_cursor() -> void:
-	var ability: AbilityResource = _ability(AbilityResource.AimMode.AIMED, FIREBALL_SCENE)
+	var ability: AbilityResource = _ability(CharacterAction.AimMode.AIMED, FIREBALL_SCENE)
 	_player.ability_system_component.grant_ability(ability, null, 0)
 	var foe: Character = _spawn_foe(_ahead(FOE_DISTANCE), _floor_top)
 	var health: float = _health(foe)
@@ -142,7 +142,7 @@ func test_a_fireball_cast_at_the_top_of_a_jump_hits_a_foe_under_the_cursor() -> 
 
 func test_a_ground_aimed_lob_lands_on_the_floor_under_the_cursor() -> void:
 	_add_platform()
-	var ability: AbilityResource = _ability(AbilityResource.AimMode.GROUND, LOB_SCENE)
+	var ability: AbilityResource = _ability(CharacterAction.AimMode.GROUND, LOB_SCENE)
 	_player.ability_system_component.grant_ability(ability, null, 0)
 	var on_ground: Vector3 = _ahead(PLATFORM_NEAR_EDGE * 0.5) + Vector3.UP * _floor_top
 	var on_platform: Vector3 = _ahead(FOE_DISTANCE) + Vector3.UP * (_floor_top + PLATFORM_HEIGHT)
@@ -172,7 +172,7 @@ func _wait_ready() -> void:
 
 ## A test-owned ability releasing scene, aimed by aim_mode, castable again at
 ## once.
-func _ability(aim_mode: AbilityResource.AimMode, scene: PackedScene) -> AbilityResource:
+func _ability(aim_mode: CharacterAction.AimMode, scene: PackedScene) -> AbilityResource:
 	var ability: AbilityResource = AbilityResource.new()
 	ability.id = StringName("test_aim_%d" % randi())
 	ability.cooldown = 0.0

@@ -11,9 +11,6 @@
 class_name AbilityResource
 extends Resource
 
-## How a release is aimed (see aim_mode).
-enum AimMode { AIMED, FLAT, GROUND }
-
 @export_group("Identity")
 ## Unique identifier for this ability.
 @export var id: StringName = &""
@@ -59,14 +56,10 @@ enum AimMode { AIMED, FLAT, GROUND }
 @export var float_in_air: bool = false
 
 @export_group("Release")
-## How the release is aimed at the caster's aim target (AimTarget):
-## AIMED: straight at the point the caster sees at its own cast height above
-##   the aimed floor: level on flat ground, up or down to another floor, down
-##   from a jump.
-## FLAT: level at the cast height, turned toward what the caster sees at that
-##   height.
-## GROUND: at the aimed floor point itself; a lobbed payload lands there.
-@export var aim_mode: AimMode = AimMode.AIMED
+## How the release is aimed at the cast's aim (CharacterAction.aim_mode:
+## AIMED at what the caster sees at its cast height above the aimed floor,
+## FLAT level at cast height, GROUND at the floor point, where a lob lands).
+@export var aim_mode: CharacterAction.AimMode = CharacterAction.AimMode.AIMED
 ## Scene spawned at release through PayloadSpawner: a projectile, a damage
 ## area, a visual... Null releases no payload.
 @export var payload_scene: PackedScene

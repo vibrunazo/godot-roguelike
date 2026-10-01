@@ -508,6 +508,7 @@ projectile_spawner = NodePath("../../ProjectileSpawnerComponent")
 next_states = [NodePath("../EnemyMove")]
 animation_name = "PunchAttack"
 uninterruptable = true
+aim_mode = 2
 cooldown = 4.0
 starting_cooldown = 1.5
 character = NodePath("../..")
