@@ -9,7 +9,10 @@
 ## hazards, explosions, burns), so a blast chains into its neighbours with no
 ## special casing. Scenes put the prop's Hurtbox on both team hurtbox layers
 ## (192), so player and enemy attacks alike can hit it, and wire it to the
-## same AttributeComponent this node watches.
+## same AttributeComponent this node watches. A solid prop's collision body
+## goes on the Props layer (3), never World (1): characters collide with it,
+## while projectiles, which mask World to stop on walls, fly through the body
+## and hit the Hurtbox.
 class_name Destructible
 extends Node3D
 

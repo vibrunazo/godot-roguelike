@@ -8,7 +8,10 @@
 ## - its explosion hurts and sets fire to every character in range (enemies and
 ##   the player), and spares those out of range,
 ## - an explosion breaks the barrels in range, which explode in turn (a chain
-##   reaction), and leaves barrels out of range alone.
+##   reaction), and leaves barrels out of range alone,
+## - the player's fireball, fired from where the player casts it, breaks a
+##   barrel: the prop's solid collision body does not stop it like a wall,
+## - a barrel is solid: a character walking into it is stopped.
 ## Health, fuse times and blast sizes come from the scenes or are set by the
 ## test; nothing here asserts tuning.
 extends "res://test/lib/test_suite.gd"
@@ -18,6 +21,7 @@ const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
 const AOE_SCENE: PackedScene = preload("res://Hazards/ground_damage_aoe.tscn")
 const BURN_EFFECT: GameplayEffect = preload("res://Components/effect_fire_burn.tres")
+const FIREBALL: AbilityResource = preload("res://Abilities/AbilityResources/ability_fireball.tres")
 ## Test-owned fuse, long enough to observe between the hit and the break.
 const TEST_FUSE: float = 0.3
 ## Test-owned health for characters, so the blast can never defeat them.
@@ -28,6 +32,12 @@ const NEIGHBOUR_GAP: float = 1.5
 const SAFE_MARGIN: float = 4.0
 ## Physics ticks allowed for an area to register a fresh overlap.
 const DETECT_FRAMES: int = 20
+## Distance from the player at which the test barrel stands.
+const SHOT_DISTANCE: float = 5.0
+## Frame budget for a projectile's flight to the barrel.
+const FLIGHT_FRAMES: int = 300
+## Physics ticks the player spends walking into a barrel.
+const WALK_FRAMES: int = 90
 
 var _arena: Node3D
 var _floor_top: float
@@ -108,6 +118,31 @@ func test_an_explosion_sets_off_the_barrels_in_range_but_not_those_out_of_range(
 	check(exploded.has("neighbour") and exploded.has("second neighbour"), "the barrels beside the first should explode too (exploded: %s)" % [exploded])
 	await wait_physics_frames(fuse_frames)
 	check(not exploded.has("isolated") and is_instance_valid(isolated) and _barrel_health(isolated) > 0.0, "a barrel out of range should be untouched")
+
+
+func test_the_players_fireball_breaks_a_barrel() -> void:
+	var player: Character = _spawn_player(Vector3(0.0, _floor_top + 1.0, 0.0))
+	await wait_until(player.is_on_floor, "the player should land", DETECT_FRAMES * 3)
+	var origin: Vector3 = (player.ability_system_component.slots[0] as AbilityCastState).cast_origin.global_position
+	var barrel: Destructible = _spawn_barrel(Vector3(origin.x, _floor_top, origin.z + SHOT_DISTANCE))
+	barrel.break_payload = null
+	var lethal: PayloadPropertyOverride = PayloadPropertyOverride.new()
+	lethal.property = &"damage"
+	lethal.float_value = _barrel_health(barrel)
+	var overrides: Array[PayloadPropertyOverride] = FIREBALL.payload_overrides.duplicate()
+	overrides.append(lethal)
+	PayloadSpawner.spawn(FIREBALL.payload_scene, player, origin, Vector3.BACK, overrides)
+	await wait_signal(barrel.destroyed, "a fireball flying into a barrel should destroy it", FLIGHT_FRAMES)
+
+
+func test_a_character_walking_into_a_barrel_is_stopped() -> void:
+	var player: Character = _spawn_player(Vector3(0.0, _floor_top + 1.0, 0.0))
+	await wait_until(player.is_on_floor, "the player should land", DETECT_FRAMES * 3)
+	var barrel: Destructible = _spawn_barrel(Vector3(0.0, _floor_top, SHOT_DISTANCE))
+	player.move_direction = Vector3.BACK
+	await wait_physics_frames(WALK_FRAMES)
+	player.move_direction = Vector3.ZERO
+	check(player.global_position.z < barrel.global_position.z, "the barrel should block the player (player z %.2f, barrel z %.2f)" % [player.global_position.z, barrel.global_position.z])
 
 
 ## Drops a blast that hits one team's hurtbox layer only onto a fresh barrel

@@ -267,6 +267,25 @@ func wait_until(predicate: Callable, message: String, max_physics_frames: int = 
 	return false
 
 
+## Like wait_until(), for work that runs on other threads (a navmesh bake on
+## the WorkerThreadPool, the navigation map's async sync). Fast-forwarded
+## physics frames take microseconds, far less than such work needs, so this
+## waits up to max_msec of wall-clock time instead of a frame budget, sleeping
+## a millisecond on every frame the predicate is still false.
+func wait_until_threaded(predicate: Callable, message: String, max_msec: int = 3000) -> bool:
+	var location: String = _caller_location()
+	var deadline: int = Time.get_ticks_msec() + max_msec
+	while Time.get_ticks_msec() < deadline:
+		if predicate.call():
+			return true
+		OS.delay_msec(1)
+		await get_tree().physics_frame
+	if predicate.call():
+		return true
+	_record_failure("%s (timed out after %d ms)" % [message, max_msec], location)
+	return false
+
+
 ## Waits until sig emits. Returns true on emission; on timeout records a
 ## failure with message and returns false.
 func wait_signal(sig: Signal, message: String, max_physics_frames: int = DEFAULT_WAIT_FRAMES) -> bool:
@@ -351,6 +370,9 @@ func wait_for_navigation(arena: Node3D) -> bool:
 	var probe: Vector3 = region.global_position + Vector3(0.0, 5.0, 0.0)
 	var queryable: Callable = func() -> bool:
 		if not NavigationServer3D.map_get_regions(nav_map).has(region.get_rid()):
+			return false
+		# Queried before the map's first sync, the server reports an error.
+		if NavigationServer3D.map_get_iteration_id(nav_map) == 0:
 			return false
 		return not NavigationServer3D.map_get_closest_point(nav_map, probe).is_zero_approx()
 	return await wait_until(queryable, "the arena navmesh should be queryable on the navigation map", 60)

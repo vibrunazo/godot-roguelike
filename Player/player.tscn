@@ -440,6 +440,7 @@ _data = {
 
 [node name="Player" type="CharacterBody3D" unique_id=602303743 node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "collision_shape_3d", "hurtbox", "color_component", "defeat_state", "equipment_component", "ability_system_component", "dash_cooldown") groups=["player"]]
 collision_layer = 17
+collision_mask = 5
 script = ExtResource("1_l8h54")
 mesh_mount = NodePath("GamedevTV_Mannequin_Medium")
 attribute_component = NodePath("AttributeComponent")

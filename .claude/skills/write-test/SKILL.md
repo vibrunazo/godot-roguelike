@@ -48,7 +48,8 @@ check, a script error, or leaked orphan nodes.
   `if not check(...): return` stops a test whose later steps depend on it.
 - Waiting: `wait_until(predicate, msg, max_physics_frames)`,
   `wait_signal(signal, msg, max)`, `wait_physics_frames(n)` (only when the
-  frame count itself is what you test).
+  frame count itself is what you test), `wait_until_threaded(predicate, msg,
+  max_msec)` (for work on other threads, see Pitfalls).
 - Nodes: `spawn(scene, parent, position)`, `autofree(node)`,
   `load_arena()`, `arena_floor_top(arena)`, `wait_for_navigation(arena)`,
   `disable_ai(character)`.
@@ -105,3 +106,8 @@ case observable) or delete it.
 - Code that deliberately uses wall-clock time (`Time.get_ticks_msec()`,
   `ignore_time_scale` timers) does not follow game time under `--fixed-fps`;
   keep such tests small and separate.
+- Work on other threads (a `WorkerThreadPool` navmesh bake, the navigation
+  map's async sync) takes real milliseconds, while fast-forwarded frames take
+  microseconds: a `wait_until` frame budget can run out before the thread
+  finishes. Wait on it with `wait_until_threaded()`, which budgets wall-clock
+  time.
