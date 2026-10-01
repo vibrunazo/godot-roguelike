@@ -133,6 +133,7 @@ script = ExtResource("2_cnthi")
 next_states = [NodePath("../EnemyMove")]
 animation_name = "RangedAttack"
 cooldown = 3.0
+aim_mode = 2
 character = NodePath("../..")
 fall_state = NodePath("../EnemyFall")
 

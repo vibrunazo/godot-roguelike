@@ -2,10 +2,19 @@
 ## and ability casts (AbilityCastState). It owns what they have in common: the
 ## cooldown and tag gates, the animation and the return to next_states when it
 ## finishes, the aim snapshot (toward the auto-aim target when one is locked),
-## the cancel window for dash, jump and ability intents, gravity, and the
-## STARTED/ENDED lifecycle events. Subclasses add what they do while running.
+## the aimed release of payloads (release_payload(), by aim_mode), the cancel
+## window for dash, jump and ability intents, gravity, and the STARTED/ENDED
+## lifecycle events. Subclasses add what they do while running.
 class_name CharacterAction
 extends CharacterState
+
+## How a release is aimed at the action's aim (see aim_mode).
+enum AimMode { AIMED, FLAT, GROUND }
+
+## Below this horizontal distance, in meters, between the release origin and
+## the aimed point (aiming at the caster itself) the point gives no reliable
+## heading: the release goes along aim_direction instead.
+const MIN_AIM_DISTANCE: float = 0.3
 
 ## Speed in m/s the character can steer at while this action runs (0.0 = stationary).
 @export var movement_speed: float = 0.0
@@ -32,6 +41,14 @@ extends CharacterState
 @export var blocked_tags: Array[StringName] = []
 ## If true, starts the cooldown timer when tag requirements transition from unmet to met.
 @export var start_cooldown_on_enabled: bool = false
+## How payloads this action releases (release_payload()) are aimed at its aim:
+## AIMED: straight at the point the caster sees at its release height above
+##   the aimed floor: level on flat ground, up or down to another floor, down
+##   from a jump.
+## FLAT: level at the release height, turned toward what the caster sees at
+##   that height.
+## GROUND: at the aimed floor point itself; a lobbed payload lands there.
+@export var aim_mode: AimMode = AimMode.AIMED
 
 ## Remaining cooldown time in seconds before this action can be executed again.
 var cooldown_timer: float = 0.0
@@ -201,6 +218,54 @@ func _aim_at_current_target() -> void:
 	aim_direction = to_target.normalized()
 	character.aim_direction = aim_direction
 	_wrote_character_aim = true
+
+
+## Spawns scene from origin through PayloadSpawner, aimed by aim_mode at
+## release_aim() (release_direction(); a GROUND release gives a lob the aimed
+## floor point to land on). Every payload an action releases goes through
+## here: an ability's cast, a ranged attack's shot. Returns the payload, or
+## null when it could not spawn.
+func release_payload(scene: PackedScene, origin: Vector3, overrides: Array[PayloadPropertyOverride] = [], damage_multiplier: float = 1.0, scale_with_attack: bool = false) -> Node3D:
+	var aim: AimTarget = release_aim()
+	var landing: Vector3 = PayloadSpawner.NO_LANDING_POINT
+	if aim_mode == AimMode.GROUND and aim.has_point:
+		landing = aim.floor_point
+	return PayloadSpawner.spawn(scene, character, origin, release_direction(origin), overrides, damage_multiplier, scale_with_attack, landing)
+
+
+## What a release now aims at: the current auto-aim target when one is valid
+## (it may have moved since the action started), else the aim snapshotted on
+## entry.
+func release_aim() -> AimTarget:
+	var target: Node3D = character.current_target
+	if target != null and is_instance_valid(target):
+		return AimTarget.at_node(target)
+	return aim_target
+
+
+## The direction to release along from origin at release_aim(), by aim_mode:
+## AIMED straight at what the caster sees at origin's height above its feet,
+## measured above the aimed floor; FLAT level toward what it sees at origin's
+## height; GROUND level toward the aimed floor point.
+func release_direction(origin: Vector3) -> Vector3:
+	var aim: AimTarget = release_aim()
+	var point: Vector3
+	match aim_mode:
+		AimMode.FLAT:
+			point = aim.point_at_y(origin.y)
+		AimMode.GROUND:
+			point = aim.floor_point
+		_:
+			point = aim.point_at_height(origin.y - character.get_feet_position().y)
+	var to_point: Vector3 = point - origin
+	var flat: Vector3 = Vector3(to_point.x, 0.0, to_point.z)
+	if flat.length() < MIN_AIM_DISTANCE:
+		if not aim_direction.is_zero_approx():
+			return aim_direction
+		return character.mesh_mount.global_basis.z.normalized() if character.mesh_mount != null else Vector3.BACK
+	if aim_mode == AimMode.AIMED:
+		return to_point.normalized()
+	return flat.normalized()
 
 
 ## Dash-cancel gate: only cancelable actions can be interrupted.

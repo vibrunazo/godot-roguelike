@@ -171,14 +171,18 @@ prints the error and idles forever. `--quit-after` does not help.
   **Aiming:** a controller aims at an `AimTarget`, a floor point seen along a
   line of sight: the player's is the camera ray through the mouse cursor and
   where it hits the level (any floor height; characters are seen through),
-  AI orders and auto-aim aim at a character's feet seen from above. Actions
-  snapshot it (`CharacterAction.aim_target`) and turn along its horizontal
-  `aim_direction`; a cast resolves its release at release time from where
-  `cast_origin` is then, by `aim_mode`: `AIMED` (straight at the point the
-  caster sees at its cast height above the aimed floor: level on flat ground,
-  up or down to another floor or from a jump), `FLAT` (level at cast height)
-  or `GROUND` (the floor point; a lob lands there). Passive abilities
-  (`PassiveAbility` scenes) live on the ASC too.
+  AI orders and auto-aim aim at a character's feet seen from above. Every
+  action (cast, melee or ranged attack) snapshots it
+  (`CharacterAction.aim_target`) and turns along its horizontal
+  `aim_direction`. Every payload an action releases goes through
+  `CharacterAction.release_payload()`: a cast's at release time, a ranged
+  attack's when its animation fires `ProjectileSpawnerComponent`. It is aimed
+  from the release point at that moment by the action's `aim_mode` (an
+  ability's comes from its `AbilityResource`): `AIMED` (straight at the point
+  the caster sees at its release height above the aimed floor: level on flat
+  ground, up or down to another floor or from a jump), `FLAT` (level at
+  release height) or `GROUND` (the floor point; a lob lands there). Passive
+  abilities (`PassiveAbility` scenes) live on the ASC too.
   Items grant abilities through `ItemResource.granted_abilities`: plain items
   (spell books) teach them for good, gear only while equipped.
 - **Registries:** `GlobalVars` (shop items, level items, enemies, dungeons,

@@ -1,7 +1,10 @@
 ## The ranged enemy and its projectile (split from the old test_enemy_base):
 ## - its AI attacks a player within its attack range,
-## - a shot leaves from the spawn point, facing the way the shooter faces,
-##   into the world (not the shooter), and remembers its shooter,
+## - its attack aims at the player in 3D: a shot rises to hit a player
+##   standing on a raised floor (a level shot would hit the floor's side),
+## - a shot fired outside an attack leaves from the spawn point, facing the
+##   way the shooter faces, into the world (not the shooter), and remembers
+##   its shooter,
 ## - a projectile flies forward and frees itself when its lifetime runs out,
 ## - a projectile hitting a player deals its damage, leaves an impact effect
 ##   where it hit and is gone,
@@ -23,6 +26,9 @@ const ACTION_FRAMES: int = 600
 const CONTACT_FRAMES: int = 3
 ## Test-owned facing (radians) the shooter turns to before firing.
 const TEST_FACING: float = 1.0
+## Test-owned raised floor under the player: height and square width.
+const PLATFORM_HEIGHT: float = 1.5
+const PLATFORM_SIZE: float = 2.0
 
 var _arena: Node3D
 var _shooter: Character
@@ -52,6 +58,28 @@ func test_the_ai_attacks_a_player_in_range() -> void:
 		return
 	_shooter.ai_state_machine.process_mode = Node.PROCESS_MODE_INHERIT
 	await wait_until(func() -> bool: return _shooter.state_machine.state.name == ai_attack.body_state.name, "the AI should attack a player in range", ACTION_FRAMES)
+
+
+func test_the_ais_shot_rises_to_hit_a_player_on_a_raised_floor() -> void:
+	var meander: AIMeander = _shooter.ai_state_machine.get_node("AIMeander") as AIMeander
+	var floor_top: float = arena_floor_top(_arena)
+	var stand: Vector3 = _shooter.global_position + Vector3(meander.attack_range * 0.75, 0.0, 0.0)
+	var platform: StaticBody3D = StaticBody3D.new()
+	var shape: CollisionShape3D = CollisionShape3D.new()
+	var box: BoxShape3D = BoxShape3D.new()
+	box.size = Vector3(PLATFORM_SIZE, PLATFORM_HEIGHT, PLATFORM_SIZE)
+	shape.shape = box
+	platform.add_child(shape)
+	platform.position = Vector3(stand.x, floor_top + PLATFORM_HEIGHT * 0.5, stand.z)
+	_arena.add_child(platform)
+	var player: Character = await _spawn_player(Vector3(stand.x, floor_top + PLATFORM_HEIGHT + 1.0, stand.z))
+	if not check(player.global_position.y > floor_top + PLATFORM_HEIGHT, "setup: the player should stand on the raised floor"):
+		return
+	if not await wait_until(func() -> bool: return _shooter.state_machine.state.name == "EnemyMove", "setup: the shooter should be ready to act"):
+		return
+	var health: float = _health(player)
+	_shooter.ai_state_machine.process_mode = Node.PROCESS_MODE_INHERIT
+	await wait_until(func() -> bool: return _health(player) < health, "the shooter's attack should rise and hit the player on the raised floor", ACTION_FRAMES)
 
 
 func test_a_shot_leaves_the_spawn_point_facing_the_shooters_way() -> void:
