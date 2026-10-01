@@ -103,8 +103,12 @@ const HEAD_SLIDE_FALL_SPEED: float = 0.5
 
 ## Desired movement direction vector (normalized), provided by PlayerInputComponent or AIStateMachine.
 var move_direction: Vector3 = Vector3.ZERO
-## Aim direction vector in 3D world space.
+## Horizontal aim direction (unit length, or zero when not aiming), toward
+## aim_target when there is one. Actions turn the character along it.
 var aim_direction: Vector3 = Vector3.ZERO
+## Where the character's controller aims (the player's mouse cursor), or null.
+## Actions snapshot it and resolve their own direction from it.
+var aim_target: AimTarget = null
 ## Target position in 3D world space for facing orientation (used when idle).
 var face_target: Vector3 = Vector3.ZERO
 ## Edge-triggered attack request, raised by either controller (PlayerInputComponent
@@ -231,6 +235,12 @@ func get_origin_height() -> float:
 	if size.is_zero_approx():
 		return 0.0
 	return size.y * 0.5 - collision_shape_3d.position.y
+
+
+## World position of this character's feet: the bottom of its collision
+## shape, under its origin.
+func get_feet_position() -> Vector3:
+	return global_position - Vector3.UP * get_origin_height()
 
 
 ## Speed, in m/s, this character sheds per second (on each horizontal axis)
@@ -629,6 +639,7 @@ func cancel_movement_and_abilities() -> void:
 func _clear_intents_and_motion() -> void:
 	move_direction = Vector3.ZERO
 	aim_direction = Vector3.ZERO
+	aim_target = null
 	face_target = Vector3.ZERO
 	attack_requested = false
 	dash_requested = false

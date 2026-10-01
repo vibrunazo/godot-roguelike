@@ -30,13 +30,13 @@ Section numbers (§) point into the closed 2026-09-23 code review,
    `passive_landing_blast` fires on all of them. Gate it on a minimum fall:
    height, fall speed, or `airborne_time`, which the event already carries.
 
-6. **Projectiles fly flat at their spawn height.** `PayloadSpawner` turns a
-   payload only on the ground plane, and `Projectile` flies straight along
-   its facing, so a fireball (the player's or an enemy's) can pass over or
-   under a target standing much higher or lower, e.g. on Level 13's stairs.
-   Pitching toward a locked target's center would fix it, but aiming down
-   can clip the floor in front of the target: decide how aimed projectiles
-   should handle height for every shooter at once.
+6. **Enemy ranged attacks fly flat at their spawn height.** Abilities aim in
+   3D now (`AimTarget`, `AbilityResource.aim_mode`), for the player and for
+   enemies casting from a slot. The enemies' plain ranged attacks do not:
+   `ProjectileSpawnerComponent` fires along the facing, so a shot can pass
+   over or under a player standing much higher or lower, e.g. on Level 13's
+   stairs. Give it the attack's aim target (`CharacterAction.aim_target`)
+   and the same aimed release as `AbilityCastState`.
 
 ## Decisions needed
 

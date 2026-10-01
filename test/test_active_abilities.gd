@@ -6,8 +6,8 @@
 ##   from the cast origin, flies at the aim and hits a foe, never the caster,
 ## - a slot on cooldown, an empty slot, or a cost the pool cannot pay casts
 ##   nothing; a paid cast takes its cost from the pool,
-## - casting is refused while dashing or jumping; a melee attack is cancelled
-##   into a cast only when it is cancelable,
+## - casting is refused while dashing and allowed in mid-air while jumping; a
+##   melee attack is cancelled into a cast only when it is cancelable,
 ## - a cast is committed until release (another ability cannot cut in), but a
 ##   cancelable one can still be dashed out of,
 ## - a cast reports STARTED, ACTIVE (at release) and ENDED (once, with
@@ -154,18 +154,29 @@ func test_a_cast_pays_its_cost_and_is_refused_when_the_pool_is_short() -> void:
 
 # --- When casting is allowed ---------------------------------------------------
 
-func test_casting_is_refused_while_dashing_or_jumping() -> void:
+func test_casting_is_refused_while_dashing() -> void:
 	_asc.grant_ability(_ability(), null, 0)
-	for blocker: CharacterState in [_run.dash_state, _run.jump_state]:
-		await _wait_running("the player should be running before the %s" % blocker.name)
-		_player.state_machine.request_state(blocker.name, {"direction": Vector3.BACK})
-		press_action(&"ability_1")
-		var cast: Array[bool] = [false]
-		await wait_until(func() -> bool:
-			cast[0] = cast[0] or _state() == _asc.slots[0].name
-			return _state() == _run.name, "the %s should end in running" % blocker.name, ACTION_FRAMES)
-		check(not cast[0], "a press during %s should not cast" % blocker.name)
-		check(_asc.get_cooldown_fraction(0) == 0.0, "a refused press should not start the cooldown")
+	_player.state_machine.request_state(_run.dash_state.name, {"direction": Vector3.BACK})
+	press_action(&"ability_1")
+	var cast: Array[bool] = [false]
+	await wait_until(func() -> bool:
+		cast[0] = cast[0] or _state() == _asc.slots[0].name
+		return _state() == _run.name, "the dash should end in running", ACTION_FRAMES)
+	check(not cast[0], "a press during the dash should not cast")
+	check(_asc.get_cooldown_fraction(0) == 0.0, "a refused press should not start the cooldown")
+
+
+func test_a_press_while_jumping_casts_in_mid_air() -> void:
+	_asc.grant_ability(_ability(), null, 0)
+	_player.state_machine.request_state(_run.jump_state.name)
+	if not await wait_until(func() -> bool: return not _player.is_on_floor(), "the jump should leave the floor", ACTION_FRAMES):
+		return
+	press_action(&"ability_1")
+	if not await wait_until(func() -> bool: return _state() == _asc.slots[0].name, "a press during the jump should cast", 10):
+		return
+	check(not _player.is_on_floor(), "the cast should start in mid-air")
+	await wait_until(func() -> bool: return not _spawned.is_empty(), "the mid-air cast should release its payload", ACTION_FRAMES)
+	await _wait_running("the player should land and run after the cast")
 
 
 func test_a_melee_attack_is_cancelled_into_a_cast_only_when_cancelable() -> void:

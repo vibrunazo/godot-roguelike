@@ -673,6 +673,7 @@ script = ExtResource("4_gwnis")
 run_state = NodePath("../PlayerRun")
 character = NodePath("../..")
 attack_state = NodePath("../PlayerJumpKick")
+allows_abilities = true
 metadata/_custom_type_script = "uid://c2fahn2m2se57"
 
 [node name="PlayerDash" type="Node" parent="StateMachine" unique_id=1966261831 node_paths=PackedStringArray("running_state", "dash_audio", "character")]
@@ -694,6 +695,7 @@ jump_audio = NodePath("../../JumpAudio")
 character = NodePath("../..")
 attack_state = NodePath("../PlayerJumpKick")
 ability_tags = Array[StringName]([&"ability.jump"])
+allows_abilities = true
 
 [node name="PlayerDefeat" type="Node" parent="StateMachine" unique_id=1340022835 node_paths=PackedStringArray("character")]
 script = ExtResource("27_defeat")

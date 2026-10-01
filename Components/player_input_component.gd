@@ -2,6 +2,9 @@
 class_name PlayerInputComponent
 extends Node
 
+## Most characters the mouse aim ray looks through before it gives up.
+const AIM_RAY_MAX_CHARACTERS: int = 8
+
 ## The Character controlled by this input component.
 @export var character: Character
 ## Fullscreen damage vignette/tint ColorRect.
@@ -24,6 +27,9 @@ extends Node
 @export var damage_tint_alpha: float = 0.5
 ## Seconds the damage vignette takes to fade back out.
 @export var damage_tint_duration: float = 0.2
+## Collision layers the mouse aim ray lands on: the level's floors and walls
+## (World). Characters share the layer and are looked through.
+@export_flags_3d_physics var aim_floor_mask: int = 1
 ## InputMap actions casting the active ability slots, by slot (index 0 casts
 ## the character's first slot). Rebinding keys is done on the actions.
 @export var ability_actions: Array[StringName] = [&"ability_1", &"ability_2", &"ability_3", &"ability_4"]
@@ -82,38 +88,56 @@ func update_movement_intent() -> void:
 	character.move_direction = input_3d.normalized()
 
 
-## Returns the 2D viewport coordinates of the character's 3D global position.
-func get_character_position_2d() -> Vector2:
+## Where the mouse cursor points: the camera ray through the cursor and the
+## point where it first hits the level (aim_floor_mask), on whichever floor
+## that is. Characters on those layers are looked through. When the ray hits
+## nothing (over a pit), the point is where it crosses the height of the
+## character's feet. Null without a camera, or when the ray never comes down
+## to that height.
+func get_aim_target() -> AimTarget:
 	if character == null:
-		return Vector2.ZERO
-	var camera: Camera3D = character.get_viewport().get_camera_3d()
+		return null
+	var viewport: Viewport = character.get_viewport()
+	var camera: Camera3D = viewport.get_camera_3d() if viewport != null else null
 	if camera == null:
-		return Vector2.ZERO
-	return camera.unproject_position(character.global_position)
+		return null
+	var mouse: Vector2 = viewport.get_mouse_position()
+	var origin: Vector3 = camera.project_ray_origin(mouse)
+	var direction: Vector3 = camera.project_ray_normal(mouse)
+	var hit: Variant = _cast_floor_ray(origin, origin + direction * camera.far)
+	if hit == null:
+		hit = Plane(Vector3.UP, character.get_feet_position().y).intersects_ray(origin, direction)
+	if hit == null:
+		return null
+	return AimTarget.from_sight(origin, direction, hit as Vector3)
 
 
-## Returns the 2D screen vector pointing from the character to the mouse cursor.
-func get_mouse_direction() -> Vector2:
-	if character == null:
-		return Vector2.ZERO
-	return character.get_viewport().get_mouse_position() - get_character_position_2d()
+## The first point of the level (aim_floor_mask) between from and to, seeing
+## through characters; null when there is none.
+func _cast_floor_ray(from: Vector3, to: Vector3) -> Variant:
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, to, aim_floor_mask)
+	var space: PhysicsDirectSpaceState3D = character.get_world_3d().direct_space_state
+	var seen_through: Array[RID] = []
+	for attempt: int in AIM_RAY_MAX_CHARACTERS + 1:
+		query.exclude = seen_through
+		var result: Dictionary = space.intersect_ray(query)
+		if result.is_empty():
+			return null
+		if not (result["collider"] is Character):
+			return result["position"] as Vector3
+		seen_through.append(result["rid"] as RID)
+	return null
 
 
-## Returns the 3D ground direction vector pointing towards the mouse cursor, aligned with camera rotation.
-func get_aim_direction() -> Vector3:
-	if character == null:
-		return Vector3.ZERO
-	var direction: Vector2 = get_mouse_direction()
-	var direction_3d: Vector3 = Vector3(direction.x, 0.0, direction.y)
-	var camera: Camera3D = character.get_viewport().get_camera_3d()
-	if camera == null:
-		return Vector3.ZERO
-	return direction_3d.rotated(Vector3.UP, camera.global_rotation.y)
-
-
-## Computes camera-relative aim direction towards mouse cursor and assigns it to the character.
+## Points the character's aim at the mouse cursor (aim_target, and the
+## horizontal aim_direction toward it). Keeps the last aim when the cursor
+## points at nothing.
 func update_aim_intent() -> void:
-	character.aim_direction = get_aim_direction()
+	var aim: AimTarget = get_aim_target()
+	if aim == null:
+		return
+	character.aim_target = aim
+	character.aim_direction = aim.flat_direction_from(character.global_position)
 
 
 ## Returns true if the dash ability is currently off cooldown (delegates to Character).
@@ -162,8 +186,8 @@ func command_ability(slot: int) -> void:
 
 ## PlayerController ability order: raises an ability intent for slot and
 ## immediately drives the current body state's check, so a press casts
-## synchronously where the state allows casting (running, a cancelable
-## attack) and is dropped where it does not (dashing, jumping, falling).
+## synchronously where the state allows casting (running, jumping, falling,
+## a cancelable attack) and is dropped where it does not (dashing).
 func order_ability(slot: int) -> bool:
 	if character == null or character.state_machine == null:
 		return false

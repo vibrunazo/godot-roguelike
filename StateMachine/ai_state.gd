@@ -64,15 +64,13 @@ func follow_nav_path(nav_agent: NavigationAgent3D) -> void:
 	ai_state_machine.command_move(local_destination.normalized(), destination)
 
 
-## Builds the {"aim": ...} facing intent payload for order_attack so the body
-## snapshots the order-time facing and turns toward it at its rotation speed
-## limit during the attack. Empty when the target stacks on the body.
+## Builds the {"aim_target": ...} payload for order_attack: the action aims
+## at the target's order-time position (it turns toward it at its rotation
+## speed limit, and a cast resolves its release from it). Empty without a
+## target.
 func build_aim_order_data(target: Character) -> Dictionary:
 	var order_data: Dictionary = {}
 	if character == null or target == null:
 		return order_data
-	var to_target: Vector3 = target.global_position - character.global_position
-	to_target.y = 0.0
-	if not to_target.is_zero_approx():
-		order_data["aim"] = to_target.normalized()
+	order_data["aim_target"] = AimTarget.at_node(target)
 	return order_data

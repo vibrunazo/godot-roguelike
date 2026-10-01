@@ -74,6 +74,8 @@ func physics_update(delta: float) -> void:
 
 	if check_attack():
 		return
+	if check_ability():
+		return
 
 	character.velocity += character.get_gravity() * delta
 

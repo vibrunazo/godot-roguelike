@@ -167,7 +167,18 @@ prints the error and idles forever. `--quit-after` does not help.
   scene, and remembers each grant's source (null: learned for good; an item:
   granted while that gear is equipped). The player casts with the
   `ability_N` actions; enemies point an `AIConditionalAttack`'s `body_state`
-  at a slot. Passive abilities (`PassiveAbility` scenes) live on the ASC too.
+  at a slot. Casting is allowed while running, jumping and falling.
+  **Aiming:** a controller aims at an `AimTarget`, a floor point seen along a
+  line of sight: the player's is the camera ray through the mouse cursor and
+  where it hits the level (any floor height; characters are seen through),
+  AI orders and auto-aim aim at a character's feet seen from above. Actions
+  snapshot it (`CharacterAction.aim_target`) and turn along its horizontal
+  `aim_direction`; a cast resolves its release at release time from where
+  `cast_origin` is then, by `aim_mode`: `AIMED` (straight at the point the
+  caster sees at its cast height above the aimed floor: level on flat ground,
+  up or down to another floor or from a jump), `FLAT` (level at cast height)
+  or `GROUND` (the floor point; a lob lands there). Passive abilities
+  (`PassiveAbility` scenes) live on the ASC too.
   Items grant abilities through `ItemResource.granted_abilities`: plain items
   (spell books) teach them for good, gear only while equipped.
 - **Registries:** `GlobalVars` (shop items, level items, enemies, dungeons,
