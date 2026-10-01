@@ -4,10 +4,18 @@
 ## (set_ability()) or clears it. Casting runs the shared CharacterAction flow
 ## (animation, aim toward the auto-aim target, cooldown, tags, events), pays
 ## the ability's cost, and at release_time spawns its payload from
-## cast_origin through PayloadSpawner and applies its caster effects.
+## cast_origin through PayloadSpawner and applies its caster effects. The
+## release is aimed then, from where cast_origin is at that moment, at the
+## cast's aim target, as the ability's aim_mode says. A slot may cast from the
+## air (a jump): an aimed release then angles down to the aimed point.
 ## An empty slot can never be activated.
 class_name AbilityCastState
 extends CharacterAction
+
+## Below this horizontal distance, in meters, between the cast origin and the
+## aimed point (the cursor on the caster itself) the point gives no reliable
+## heading: the release goes along the cast's aim_direction instead.
+const MIN_AIM_DISTANCE: float = 0.3
 
 ## Emitted when the payload is released (the cast did its job).
 signal released(ability: AbilityResource)
@@ -106,9 +114,14 @@ func _release() -> void:
 	if character.state_machine == null or character.state_machine.state != self:
 		return
 	_released = true
-	var direction: Vector3 = _release_direction()
+	var origin: Vector3 = cast_origin.global_position if cast_origin != null else character.global_position
+	var aim: AimTarget = _release_aim()
+	var direction: Vector3 = _release_direction(origin, aim)
+	var landing: Vector3 = PayloadSpawner.NO_LANDING_POINT
+	if ability.aim_mode == AbilityResource.AimMode.GROUND and aim.has_point:
+		landing = aim.floor_point
 	if ability.payload_scene != null and cast_origin != null:
-		PayloadSpawner.spawn(ability.payload_scene, character, cast_origin.global_position, direction, ability.payload_overrides, ability.damage_multiplier, ability.scale_with_attack)
+		PayloadSpawner.spawn(ability.payload_scene, character, origin, direction, ability.payload_overrides, ability.damage_multiplier, ability.scale_with_attack, landing)
 	if character.attribute_component != null:
 		for effect: GameplayEffect in ability.caster_effects:
 			if effect != null:
@@ -117,21 +130,38 @@ func _release() -> void:
 	released.emit(ability)
 
 
-## Toward the current target when one is valid (it may have moved since the
-## cast started), else along the snapshotted aim, else the facing.
-func _release_direction() -> Vector3:
+## The current target when one is valid (it may have moved since the cast
+## started), else the aim snapshotted when the cast started.
+func _release_aim() -> AimTarget:
 	var target: Node3D = character.current_target
 	if target != null and is_instance_valid(target):
-		var to_target: Vector3 = target.global_position - character.global_position
-		to_target.y = 0.0
-		if not to_target.is_zero_approx():
-			return to_target.normalized()
-	var flat: Vector3 = Vector3(aim_direction.x, 0.0, aim_direction.z)
-	if not flat.is_zero_approx():
-		return flat.normalized()
-	if character.mesh_mount != null:
-		return character.mesh_mount.global_basis.z
-	return Vector3.FORWARD
+		return AimTarget.at_node(target)
+	return aim_target
+
+
+## The direction to release along from origin at aim, by the ability's
+## aim_mode: AIMED straight at what the caster sees at its cast height above
+## the aimed floor (origin's height above the caster's feet), FLAT level
+## toward what it sees at origin's height, GROUND level toward the aimed floor
+## point (a lobbed payload is given that point to land on).
+func _release_direction(origin: Vector3, aim: AimTarget) -> Vector3:
+	var point: Vector3
+	match ability.aim_mode:
+		AbilityResource.AimMode.FLAT:
+			point = aim.point_at_y(origin.y)
+		AbilityResource.AimMode.GROUND:
+			point = aim.floor_point
+		_:
+			point = aim.point_at_height(origin.y - character.get_feet_position().y)
+	var to_point: Vector3 = point - origin
+	var flat: Vector3 = Vector3(to_point.x, 0.0, to_point.z)
+	if flat.length() < MIN_AIM_DISTANCE:
+		if not aim_direction.is_zero_approx():
+			return aim_direction
+		return character.mesh_mount.global_basis.z.normalized() if character.mesh_mount != null else Vector3.BACK
+	if ability.aim_mode == AbilityResource.AimMode.AIMED:
+		return to_point.normalized()
+	return flat.normalized()
 
 
 ## Committed until release: no order may interrupt the cast before its

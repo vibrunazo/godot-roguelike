@@ -35,8 +35,10 @@ extends CharacterState
 
 ## Remaining cooldown time in seconds before this action can be executed again.
 var cooldown_timer: float = 0.0
-## Direction this action is aimed at, snapshotted on entry.
+## Horizontal direction this action is aimed at, snapshotted on entry.
 var aim_direction: Vector3 = Vector3.ZERO
+## What this action is aimed at, snapshotted on entry (see _resolve_aim()).
+var aim_target: AimTarget = null
 var _was_tag_enabled: bool = false
 ## True once this action pointed character.aim_direction at its target, so
 ## exit() clears exactly that.
@@ -152,30 +154,41 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 		character.animation_tree.change_immediate(animation_name)
 		connect_one_shot(character.animation_tree.animation_finished, finish_action)
 	character.is_attacking = true
-	aim_direction = _resolve_aim(_data)
+	aim_target = _resolve_aim(_data)
+	aim_direction = aim_target.flat_direction_from(character.global_position)
+	if aim_direction.is_zero_approx() and character.mesh_mount != null:
+		# Aimed right at the character's own spot: keep the facing.
+		aim_direction = Vector3(character.mesh_mount.global_basis.z.x, 0.0, character.mesh_mount.global_basis.z.z).normalized()
 	_aim_at_current_target()
 	broadcast_ability_event(AbilityEvent.Phase.STARTED, {}, aim_direction)
 
 
-## The direction this action is aimed at, snapshotted on entry: the
-## character's aim (the player's controller keeps it current), else the
-## order's "aim", the movement direction, the facing, in that order.
-func _resolve_aim(data: Dictionary) -> Vector3:
+## What this action is aimed at, snapshotted on entry: the character's aim
+## target (the player's controller keeps it on the mouse cursor), else the
+## order's "aim_target" (AI orders aim at their target). Without either, it
+## aims along a direction: the character's aim_direction, the order's "aim",
+## the movement direction or the facing, in that order.
+func _resolve_aim(data: Dictionary) -> AimTarget:
+	if character.aim_target != null:
+		return character.aim_target
+	if data.get("aim_target") is AimTarget:
+		return data["aim_target"]
+	var feet: Vector3 = character.get_feet_position()
 	if not character.aim_direction.is_zero_approx():
-		return character.aim_direction
+		return AimTarget.toward(feet, character.aim_direction)
 	if data.get("aim") is Vector3:
-		return data["aim"]
+		return AimTarget.toward(feet, data["aim"])
 	if not character.move_direction.is_zero_approx():
-		return character.move_direction
+		return AimTarget.toward(feet, character.move_direction)
 	if character.mesh_mount != null:
-		return character.mesh_mount.global_basis.z.normalized()
-	return Vector3.ZERO
+		return AimTarget.toward(feet, character.mesh_mount.global_basis.z)
+	return AimTarget.toward(feet, Vector3.BACK)
 
 
-## Overrides the snapshotted aim with the direction to the character's
-## current_target when one is valid, so actions rotate toward the auto-aim
-## target instead of the mouse aim. Writes back to character.aim_direction so
-## snapshot and intent stay consistent for the rest of the action.
+## Overrides the snapshotted aim with the character's current_target when one
+## is valid, so actions aim at the auto-aim target instead of the mouse aim.
+## Writes the direction back to character.aim_direction so snapshot and
+## intent stay consistent for the rest of the action.
 func _aim_at_current_target() -> void:
 	var target: Node3D = character.current_target
 	if target == null or not is_instance_valid(target):
@@ -184,6 +197,7 @@ func _aim_at_current_target() -> void:
 	to_target.y = 0.0
 	if to_target.is_zero_approx():
 		return
+	aim_target = AimTarget.at_node(target)
 	aim_direction = to_target.normalized()
 	character.aim_direction = aim_direction
 	_wrote_character_aim = true

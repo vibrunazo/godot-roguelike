@@ -11,6 +11,8 @@ func physics_update(delta: float) -> void:
 		return
 	if check_attack():
 		return
+	if check_ability():
+		return
 	core_movement(delta, character.attribute_component.get_current(AttributeComponent.STAT_SPEED), character.move_direction)
 	if character.is_on_floor() and run_state != null:
 		finished.emit(run_state.name)

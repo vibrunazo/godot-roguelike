@@ -33,7 +33,7 @@ func before_each() -> void:
 	var last: Vector2 = Vector2.INF
 	for frame: int in range(10):
 		await get_tree().process_frame
-		var now: Vector2 = _input.get_character_position_2d()
+		var now: Vector2 = _player_on_screen()
 		if now.is_equal_approx(last):
 			return
 		last = now
@@ -42,11 +42,11 @@ func before_each() -> void:
 
 
 func test_aim_direction_follows_the_mouse() -> void:
-	var on_screen: Vector2 = _input.get_character_position_2d()
+	var on_screen: Vector2 = _player_on_screen()
 	await _move_mouse(on_screen + Vector2(MOUSE_OFFSET, 0.0))
-	var aim_right: Vector3 = _input.get_aim_direction()
+	var aim_right: Vector3 = _aim()
 	await _move_mouse(on_screen - Vector2(MOUSE_OFFSET, 0.0))
-	var aim_left: Vector3 = _input.get_aim_direction()
+	var aim_left: Vector3 = _aim()
 	if not check(not aim_right.is_zero_approx() and not aim_left.is_zero_approx(), "the aim direction should not be zero"):
 		return
 	check(is_zero_approx(aim_right.y) and is_zero_approx(aim_left.y), "the aim direction should be horizontal")
@@ -60,7 +60,7 @@ func test_attack_turns_toward_the_mouse_aim_without_a_target() -> void:
 	var side: Vector3 = Vector3(-facing.z, 0.0, facing.x)
 	var camera: Camera3D = _player.get_viewport().get_camera_3d()
 	await _move_mouse(camera.unproject_position(_player.global_position + side * 3.0))
-	var aim: Vector3 = _flat(_input.get_aim_direction())
+	var aim: Vector3 = _aim()
 	if not check(aim.dot(facing) < TURNED, "setup: the mouse aim should point away from the current facing"):
 		return
 	press_action(&"click")
@@ -78,6 +78,16 @@ func _move_mouse(screen_position: Vector2) -> void:
 	Input.parse_input_event(motion)
 	_player.get_viewport().warp_mouse(screen_position)
 	await wait_until(func() -> bool: return _player.get_viewport().get_mouse_position().distance_to(screen_position) < 1.0, "the mouse should move to %s" % screen_position, 30)
+
+
+## The horizontal aim direction toward the mouse cursor.
+func _aim() -> Vector3:
+	return _input.get_aim_target().flat_direction_from(_player.global_position)
+
+
+## Where the player's origin is drawn on screen.
+func _player_on_screen() -> Vector2:
+	return _player.get_viewport().get_camera_3d().unproject_position(_player.global_position)
 
 
 func _flat(vector: Vector3) -> Vector3:

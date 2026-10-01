@@ -9,7 +9,8 @@ extends Area3D
 @export var speed: float = 8.0
 ## Damage dealt to entities hit by this projectile.
 @export var damage: float = 5.0
-## Knockback impulse applied to entities hit by this projectile.
+## Knockback impulse applied to entities hit by this projectile, along its
+## heading on the ground plane.
 @export var knockback: float = 15.0
 ## Character that fired this projectile. Used to ignore self-collision now that
 ## projectiles parent to the world instead of their shooter.
@@ -51,7 +52,9 @@ func _on_area_entered(area: Area3D) -> void:
 		return
 	_is_hit = true
 	if attack_component:
-		attack_component.deal_damage_to(hurtbox, damage, global_basis.z * knockback)
+		# Pushed along the flight's ground heading, even when it flew up or down.
+		var heading: Vector3 = Vector3(global_basis.z.x, 0.0, global_basis.z.z).normalized()
+		attack_component.deal_damage_to(hurtbox, damage, heading * knockback)
 	hit_effect()
 	queue_free()
 
