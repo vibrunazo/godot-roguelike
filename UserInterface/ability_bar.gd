@@ -1,7 +1,10 @@
 ## HUD row of the player's active ability slots (one AbilitySlotWidget per
 ## slot), bound to each level's fresh player by the HUD. Shows each slot's
 ## ability, its cooldown and the key that casts it, read from the InputMap so
-## rebinding updates the bar by itself. Purely visual (render clock).
+## rebinding updates the bar by itself. When the bound player leaves the tree
+## (its level unloads, e.g. for the shop) the bar keeps showing the run's slots,
+## all ready: each level's fresh player starts with every ability off cooldown.
+## Purely visual (render clock).
 class_name AbilityBar
 extends HBoxContainer
 
@@ -13,6 +16,7 @@ var _widgets: Array[AbilitySlotWidget] = []
 ## The slot-change listeners, kept so a re-bind disconnects exactly them.
 var _on_granted: Callable = _on_slot_granted
 var _on_revoked: Callable = _on_slot_revoked
+var _on_exiting: Callable = _on_abilities_exiting
 
 
 func _ready() -> void:
@@ -41,6 +45,7 @@ func bind(player: Character) -> void:
 		_widgets.append(widget)
 	_abilities.ability_granted.connect(_on_granted)
 	_abilities.ability_revoked.connect(_on_revoked)
+	_abilities.tree_exiting.connect(_on_exiting)
 	visible = not _widgets.is_empty()
 
 
@@ -51,6 +56,8 @@ func _unbind() -> void:
 			_abilities.ability_granted.disconnect(_on_granted)
 		if _abilities.ability_revoked.is_connected(_on_revoked):
 			_abilities.ability_revoked.disconnect(_on_revoked)
+		if _abilities.tree_exiting.is_connected(_on_exiting):
+			_abilities.tree_exiting.disconnect(_on_exiting)
 	_abilities = null
 
 
@@ -77,6 +84,14 @@ func _on_slot_granted(slot: int, _ability: AbilityResource, _source: Object) -> 
 
 func _on_slot_revoked(slot: int, _ability: AbilityResource) -> void:
 	_refresh_slot(slot)
+
+
+## The bound player is leaving with its level: stop following it and show
+## every slot ready, as the next level's player will have them.
+func _on_abilities_exiting() -> void:
+	_unbind()
+	for widget: AbilitySlotWidget in _widgets:
+		widget.set_cooldown(0.0, true)
 
 
 func _refresh_slot(slot: int) -> void:
