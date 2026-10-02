@@ -65,7 +65,7 @@ shape = SubResource("CapsuleShape3D_enemy_hurtbox")
 [node name="HealthBar" parent="." unique_id=1961835903 node_paths=PackedStringArray("attribute_component") instance=ExtResource("2_am0pq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
 attribute_component = NodePath("../AttributeComponent")
-health_color = Color(0.8901961, 0.2901961, 0.25882354, 1)
+fill_color = Color(0.8901961, 0.2901961, 0.25882354, 1)
 
 [node name="HitAudio" type="AudioStreamPlayer3D" parent="." unique_id=1636824264]
 stream = ExtResource("3_am0pq")

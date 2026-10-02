@@ -6,15 +6,17 @@
 ##   at full health tops the pool up). Timed max-stat gains grant capacity
 ##   only, so expiry can never delete earned health. Pools carry no modifier
 ##   stack, so expiring a max-stat buff re-clamps but never phantom-deletes
-##   earned pool value.
-## - Stat attributes (max_health, max_mana, attack, defense, speed,
+##   earned pool value. A pool with a regen stat (mana) refills by that many
+##   points per second on the physics clock while its owner is alive.
+## - Stat attributes (max_health, max_mana, mana_regen, attack, defense, speed,
 ##   attack_speed, fire_resistance, rotation_speed): base value plus a stack of active
 ##   modifiers, recomputed as
 ##   (base + sum(ADD)) * (1 + sum(MULT_ADD)) * product(1 + MULT_COMP).
 ## The base_* exports seed each stat once when entering the tree (init-only);
 ## all runtime reads and writes go through the typed API below, which is the
 ## single source of truth. Processing stays disabled unless a timed modifier
-## is active, so buffless characters cost nothing per tick.
+## is active, and physics processing unless a regen stat is above zero, so
+## buffless characters cost nothing per tick.
 class_name AttributeComponent
 extends Node
 
@@ -40,6 +42,8 @@ const POOL_MANA: StringName = &"mana"
 ## Stat names (read via get_current/get_base, written via set_base/apply_modifier).
 const STAT_MAX_HEALTH: StringName = &"max_health"
 const STAT_MAX_MANA: StringName = &"max_mana"
+## Mana regained per second (see POOL_REGEN_LINK).
+const STAT_MANA_REGEN: StringName = &"mana_regen"
 const STAT_ATTACK: StringName = &"attack"
 const STAT_DEFENSE: StringName = &"defense"
 const STAT_SPEED: StringName = &"speed"
@@ -52,10 +56,12 @@ const STAT_FIRE_RESISTANCE: StringName = &"fire_resistance"
 ## Character.get_rotation_speed(), never directly.
 const STAT_ROTATION_SPEED: StringName = &"rotation_speed"
 
-const STAT_NAMES: Array[StringName] = [STAT_MAX_HEALTH, STAT_MAX_MANA, STAT_ATTACK, STAT_DEFENSE, STAT_SPEED, STAT_ATTACK_SPEED, STAT_FIRE_RESISTANCE, STAT_ROTATION_SPEED]
+const STAT_NAMES: Array[StringName] = [STAT_MAX_HEALTH, STAT_MAX_MANA, STAT_MANA_REGEN, STAT_ATTACK, STAT_DEFENSE, STAT_SPEED, STAT_ATTACK_SPEED, STAT_FIRE_RESISTANCE, STAT_ROTATION_SPEED]
 const POOL_NAMES: Array[StringName] = [POOL_HEALTH, POOL_MANA]
 ## Maps each pool to the stat that caps it.
 const POOL_MAX_LINK: Dictionary = {POOL_HEALTH: STAT_MAX_HEALTH, POOL_MANA: STAT_MAX_MANA}
+## Maps each regenerating pool to the stat holding its points per second.
+const POOL_REGEN_LINK: Dictionary[StringName, StringName] = {POOL_MANA: STAT_MANA_REGEN}
 ## The stat that scales each resisted damage type (see DamageType); types not
 ## listed are unresisted.
 const RESISTANCE_STATS: Dictionary[StringName, StringName] = {DamageType.FIRE: STAT_FIRE_RESISTANCE}
@@ -64,6 +70,8 @@ const RESISTANCE_STATS: Dictionary[StringName, StringName] = {DamageType.FIRE: S
 @export var base_max_health: float = 100.0
 ## Base maximum mana. Seeds the max_mana stat once on tree entry.
 @export var base_max_mana: float = 0.0
+## Base mana regained per second. Seeds the mana_regen stat once on tree entry.
+@export var base_mana_regen: float = 0.0
 ## Base attack in percent (100.0 = 100%, read via Character.get_damage_modifier()).
 @export var base_attack: float = 100.0
 ## Base defense (flat data for now; no damage formula reads it yet).
@@ -111,6 +119,8 @@ func _init() -> void:
 	for stat_name: StringName in STAT_NAMES:
 		_stats[stat_name] = Attribute.new()
 	set_process(false)
+	set_physics_process(false)
+	attribute_changed.connect(_on_attribute_changed)
 
 
 func _enter_tree() -> void:
@@ -587,6 +597,32 @@ func _process(delta: float) -> void:
 		effects_ended.emit()
 
 
+## Refills every regenerating pool by its regen stat while the owner is alive.
+func _physics_process(delta: float) -> void:
+	if not is_alive():
+		return
+	for pool_name: StringName in POOL_REGEN_LINK:
+		var rate: float = get_current(POOL_REGEN_LINK[pool_name])
+		var cap: float = get_current(POOL_MAX_LINK[pool_name] as StringName)
+		if rate > 0.0 and float(_pools[pool_name]) < cap:
+			restore_pool(pool_name, rate * delta)
+
+
+## A regen stat that changed turns regeneration ticking on or off.
+func _on_attribute_changed(attribute_name: StringName, _value: float) -> void:
+	if POOL_REGEN_LINK.values().has(attribute_name):
+		_update_regen_processing()
+
+
+## Physics-ticks only while some regen stat is above zero.
+func _update_regen_processing() -> void:
+	for pool_name: StringName in POOL_REGEN_LINK:
+		if get_current(POOL_REGEN_LINK[pool_name]) > 0.0:
+			set_physics_process(true)
+			return
+	set_physics_process(false)
+
+
 ## Advances damage-over-time entries, applying each entry's share of pool
 ## damage (or healing for negative rates) and dropping expired entries.
 ## Returns true when an entry expired.
@@ -647,6 +683,7 @@ func _seed_from_exports() -> void:
 	_seeded_from_exports = true
 	_apply_export_base(STAT_MAX_HEALTH, base_max_health)
 	_apply_export_base(STAT_MAX_MANA, base_max_mana)
+	_apply_export_base(STAT_MANA_REGEN, base_mana_regen)
 	_apply_export_base(STAT_ATTACK, base_attack)
 	_apply_export_base(STAT_DEFENSE, base_defense)
 	_apply_export_base(STAT_SPEED, base_speed)
@@ -656,6 +693,7 @@ func _seed_from_exports() -> void:
 	for pool_name: StringName in POOL_NAMES:
 		var max_stat: StringName = POOL_MAX_LINK[pool_name] as StringName
 		_pools[pool_name] = get_current(max_stat)
+	_update_regen_processing()
 
 
 ## Enables ticking only while a timed modifier, damage-over-time, or timed tag entry exists.

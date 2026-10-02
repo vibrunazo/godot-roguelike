@@ -1,6 +1,8 @@
 ## HealthBar: a character's floating health bar follows its AttributeComponent.
 ## - The player and enemies wire their bar to their own AttributeComponent.
 ## - The bar starts at the owner's current health fraction.
+## - The player's mana bar follows its mana pool, and each bar ignores the
+##   other's pool.
 ## - Damage snaps the front bar to the new fraction at once while the back
 ##   bar lags, then catches up within damage_lag_duration.
 ## - Healing raises both bars immediately.
@@ -21,6 +23,8 @@ const HEALTH_BAR_SCENE: PackedScene = preload("res://Components/health_bar.tscn"
 const BARREL_SCENE: PackedScene = preload("res://Levels/Decorators/explosive_barrel.tscn")
 ## Test-owned fraction of max health dealt or healed per step.
 const STEP_FRACTION: float = 0.25
+## Test-owned max mana.
+const TEST_MAX_MANA: float = 40.0
 ## Test-owned show_duration of the temporary bar.
 const TEST_SHOW_DURATION: float = 1.0
 
@@ -52,6 +56,25 @@ func test_bar_starts_at_the_current_health_fraction() -> void:
 	add_child(bar)
 	check_approx(bar.front_progress_bar.value, _percentage(attributes), "the bar should start at the owner's current health, not at full")
 	check_approx(bar.health_progress_bar.value, _percentage(attributes), "the back bar should start at the owner's current health too")
+
+
+func test_the_players_mana_bar_follows_its_mana_pool() -> void:
+	var player: Character = _spawn(PLAYER_SCENE)
+	var attributes: AttributeComponent = player.attribute_component
+	var health_bar: HealthBar = player.get_node("HealthBar") as HealthBar
+	var mana_bar: HealthBar = player.get_node_or_null("ManaBar") as HealthBar
+	if not check(mana_bar != null, "the player should carry a ManaBar"):
+		return
+	check(mana_bar.attribute_component == attributes and mana_bar.pool == AttributeComponent.POOL_MANA, "the ManaBar should follow the player's own mana pool")
+	# Test-owned mana, held still.
+	attributes.set_base(AttributeComponent.STAT_MANA_REGEN, 0.0)
+	attributes.set_base(AttributeComponent.STAT_MAX_MANA, TEST_MAX_MANA)
+	attributes.set_pool_current(AttributeComponent.POOL_MANA, TEST_MAX_MANA)
+	attributes.damage_pool(AttributeComponent.POOL_MANA, TEST_MAX_MANA * STEP_FRACTION)
+	check_approx(mana_bar.front_progress_bar.value, (1.0 - STEP_FRACTION) * 100.0, "spending mana should move the mana bar")
+	check_approx(health_bar.front_progress_bar.value, health_bar.front_progress_bar.max_value, "spending mana should not move the health bar")
+	attributes.damage_pool(AttributeComponent.POOL_HEALTH, attributes.get_current(AttributeComponent.STAT_MAX_HEALTH) * STEP_FRACTION)
+	check_approx(mana_bar.front_progress_bar.value, (1.0 - STEP_FRACTION) * 100.0, "losing health should not move the mana bar")
 
 
 func test_damage_snaps_the_front_bar_and_the_back_bar_catches_up() -> void:

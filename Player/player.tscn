@@ -826,6 +826,12 @@ color = Color(1, 0, 0, 0)
 transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 0, 2.25, 0)
 attribute_component = NodePath("../AttributeComponent")
 
+[node name="ManaBar" parent="." node_paths=PackedStringArray("attribute_component") instance=ExtResource("14_healthbar")]
+transform = Transform3D(1.5, 0, 0, 0, 0.75, 0, 0, 0, 1.5, 0, 2.05, 0)
+attribute_component = NodePath("../AttributeComponent")
+pool = &"mana"
+fill_color = Color(0.25, 0.55, 1, 1)
+
 [node name="DamageAudio" type="AudioStreamPlayer3D" parent="." unique_id=959939338]
 stream = ExtResource("16_metalhit")
 bus = &"SFX"
@@ -860,6 +866,8 @@ autoplay = &"RESET"
 
 [node name="AttributeComponent" type="Node" parent="." unique_id=271828459]
 script = ExtResource("26_attr")
+base_max_mana = 100.0
+base_mana_regen = 1.5
 base_speed = 7.0
 base_rotation_speed = 720.0
 

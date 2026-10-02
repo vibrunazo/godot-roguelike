@@ -34,6 +34,7 @@ description = "Step 1: point your hand at the problem. Step 2: set the problem o
 icon = SubResource("GradientTexture2D_icon")
 ability_tags = Array[StringName]([&"ability.spell.fire"])
 cooldown = 2.0
+cost_amount = 25.0
 release_time = 0.35
 movement_speed = 1.5
 payload_scene = ExtResource("3_fireball")

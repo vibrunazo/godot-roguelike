@@ -233,6 +233,8 @@ func _stat_display_name(stat: StringName) -> String:
 			return "Max HP"
 		AttributeComponent.STAT_MAX_MANA:
 			return "Max MP"
+		AttributeComponent.STAT_MANA_REGEN:
+			return "MP Regen"
 		AttributeComponent.STAT_ATTACK:
 			return "Attack"
 		AttributeComponent.STAT_DEFENSE:

@@ -10,6 +10,12 @@ var _last_change_value: float = 0.0
 var _defeat_count: int = 0
 var _struck_reactions: int = 0
 
+## Test-owned mana pool and regen (points per second), and the physics ticks
+## a regen sample spans.
+const TEST_MAX_MANA: float = 10.0
+const TEST_MANA_REGEN: float = 20.0
+const REGEN_FRAMES: int = 6
+
 ## Where test-owned status visuals sit relative to their host.
 const VFX_OFFSET: Vector3 = Vector3(0.0, 0.6, 0.0)
 
@@ -181,6 +187,31 @@ func test_pool_deltas_and_clamp() -> bool:
 		return fail("Non-lethal pool changes must not emit defeat.")
 	print("Pool deltas and overheal clamp verified.")
 	return true
+
+
+## Mana regains its regen stat per second of physics time, stops at its max,
+## and never regenerates without a regen stat or while its owner is dead.
+func test_mana_regen() -> void:
+	var comp: AttributeComponent = _make_component()
+	comp.set_base(AttributeComponent.STAT_MAX_MANA, TEST_MAX_MANA)
+	comp.set_base(AttributeComponent.STAT_MANA_REGEN, 0.0)
+	comp.damage_pool(AttributeComponent.POOL_MANA, TEST_MAX_MANA)
+	await wait_physics_frames(REGEN_FRAMES)
+	check_approx(comp.get_current(AttributeComponent.POOL_MANA), 0.0, "without a regen stat mana should not come back")
+
+	comp.set_base(AttributeComponent.STAT_MANA_REGEN, TEST_MANA_REGEN)
+	await wait_physics_frames(REGEN_FRAMES)
+	var per_tick: float = TEST_MANA_REGEN / Engine.physics_ticks_per_second
+	check_approx(comp.get_current(AttributeComponent.POOL_MANA), per_tick * REGEN_FRAMES, "mana should regain the regen stat per second of physics time", per_tick * 1.5)
+	if not await wait_until(func() -> bool: return is_equal_approx(comp.get_current(AttributeComponent.POOL_MANA), TEST_MAX_MANA), "mana should refill to its max", ceili(TEST_MAX_MANA / per_tick) + 10):
+		return
+	await wait_physics_frames(REGEN_FRAMES)
+	check_approx(comp.get_current(AttributeComponent.POOL_MANA), TEST_MAX_MANA, "regen should never take mana past its max")
+
+	comp.damage_pool(AttributeComponent.POOL_MANA, TEST_MAX_MANA)
+	comp.damage_pool(AttributeComponent.POOL_HEALTH, comp.get_current(AttributeComponent.POOL_HEALTH))
+	await wait_physics_frames(REGEN_FRAMES)
+	check_approx(comp.get_current(AttributeComponent.POOL_MANA), 0.0, "the dead should not regenerate mana")
 
 
 ## PART 3: buffing max health then letting it expire never deletes earned HP.

@@ -16,7 +16,7 @@ viewport_path = NodePath("SubViewport")
 
 [node name="HealthBar" type="Node3D" unique_id=1961835903]
 script = ExtResource("1_wixop")
-health_color = Color(0, 1, 1, 1)
+fill_color = Color(0, 1, 1, 1)
 
 [node name="SubViewport" type="SubViewport" parent="." unique_id=1950931444]
 size = Vector2i(128, 16)

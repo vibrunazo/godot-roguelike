@@ -5,6 +5,7 @@
 ##   and unequips),
 ## - the next level's player is a new node that keeps the outgoing player's
 ##   health and stands on the new level's spawn point, running,
+## - mana does not cross: the next level's player starts at full mana,
 ## - gear crosses once per equip (stacks included) without re-running its
 ##   instant effects, and an item bought with no player around (the shop) is
 ##   applied to the next player,
@@ -55,6 +56,17 @@ func test_the_next_levels_player_is_new_keeps_its_health_and_stands_on_the_spawn
 	check_approx(next.player.attribute_component.get_current(AttributeComponent.POOL_HEALTH), health, "the next player should keep the outgoing player's health")
 	check(next.player == next.get_node("Player"), "the next player should be the level's own authored Player, on its spawn point")
 	check_eq(next.player.process_mode, Node.PROCESS_MODE_INHERIT, "the next player should be running")
+
+
+func test_the_next_levels_player_starts_at_full_mana() -> void:
+	var attributes: AttributeComponent = _player.attribute_component
+	if not check(attributes.get_current(AttributeComponent.STAT_MAX_MANA) > 0.0, "setup: the player should have mana"):
+		return
+	attributes.set_base(AttributeComponent.STAT_MANA_REGEN, 0.0)
+	attributes.damage_pool(AttributeComponent.POOL_MANA, attributes.get_current(AttributeComponent.POOL_MANA))
+	var next: Character = _leave_level().player
+	var next_attributes: AttributeComponent = next.attribute_component
+	check_approx(next_attributes.get_current(AttributeComponent.POOL_MANA), next_attributes.get_current(AttributeComponent.STAT_MAX_MANA), "the next level's player should start at full mana")
 
 
 func test_gear_crosses_once_per_equip_without_rerunning_its_instant_effects() -> void:
