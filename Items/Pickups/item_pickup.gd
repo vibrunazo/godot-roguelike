@@ -1,9 +1,10 @@
 ## An item lying in a level, for the player to walk over and take. Generic for
 ## every item: it shows the item's world_visual (an ItemDisplay) bobbing over
 ## a floor marker, and on contact applies the item through the player's
-## EquipmentComponent (a book teaches its ability, gear equips, ...). An item
-## the player cannot take yet (an ability already known, no free slot) stays
-## on the floor with a short message. Every pickup in the tree is in GROUP,
+## EquipmentComponent (gear and books equip, consumables are used). The
+## messages come from the item (get_pickup_message(),
+## get_refusal_message()). An item the player cannot take yet (a book whose
+## abilities it holds, no free slot) stays on the floor. Every pickup in the tree is in GROUP,
 ## so droppers can tell whether an item already lies somewhere in the level
 ## (is_lying_in()).
 class_name ItemPickup
@@ -83,7 +84,7 @@ func try_pick_up(character: Character) -> bool:
 		_show_refusal(character)
 		return false
 	_taken = true
-	VfxManager.spawn_floating_text(global_position + Vector3.UP * message_height, _pickup_message())
+	VfxManager.spawn_floating_text(global_position + Vector3.UP * message_height, item.get_pickup_message())
 	picked_up.emit(item, character)
 	_play_detached_sound()
 	queue_free()
@@ -134,23 +135,10 @@ func _on_body_entered(body: Node3D) -> void:
 		try_pick_up(character)
 
 
-## "Learned: Fireball" for an item teaching abilities or passives, else the
-## item's name.
-func _pickup_message() -> String:
-	var names: Array[String] = item.get_taught_names()
-	if not names.is_empty():
-		return "Learned: %s" % ", ".join(names)
-	return item.get_plain_title()
-
-
 ## Why character cannot take the item right now, shown at most once per
 ## refusal_message_interval.
 func _show_refusal(character: Character) -> void:
 	if _bob_time - _last_refusal_time < refusal_message_interval:
 		return
 	_last_refusal_time = _bob_time
-	var message: String = "Can't take this now"
-	var asc: AbilitySystemComponent = character.ability_system_component
-	if item.teaches_anything() and asc != null:
-		message = "Already learned" if asc.has_free_slot() or item.granted_abilities.is_empty() else "No free ability slot"
-	VfxManager.spawn_floating_text(global_position + Vector3.UP * message_height, message)
+	VfxManager.spawn_floating_text(global_position + Vector3.UP * message_height, item.get_refusal_message(character))

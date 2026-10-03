@@ -188,22 +188,28 @@ prints the error and idles forever. `--quit-after` does not help.
   abilities (`PassiveAbility` scenes) live on the ASC too and react to
   `AbilityEvent`s (STARTED, ACTIVE, ENDED, and HIT, which melee attacks send
   with the struck hurtbox; `HitEffectPassive` applies effects on it).
-  Items grant abilities through `ItemResource.granted_abilities` and passives
-  through `granted_passives`: plain items (spell books) teach them for good,
-  gear only while equipped. **Drops:** every enemy archetype drops a book
+  Only gear grants abilities and passives (`GearItemResource.granted_abilities`
+  and `granted_passives`), for as long as it is equipped. A spell book is
+  gear (`BookItemResource`): the inventory lists it, unequipping takes its
+  abilities away, and replacing an ability means replacing its book; unlike
+  plain gear it equips only when it teaches something new that fits. Each
+  ability remembers its slot (`AbilitySystemComponent` slot layout, which the
+  run keeps), so re-granted abilities return to their slots. The HUD
+  `AbilityBar` shows only filled slots unless `show_empty_slots` is on.
+  **Drops:** every enemy archetype drops a book
   teaching something it uses itself (`EnemyResource.item_drops`, `LootDrop`:
   item and chance); `LootComponent` drops a won item where the enemy fell,
   only when the run's player holds none of what it teaches
   (`ProgressionState.can_drop()`) and no pickup of it lies in the level
   (`ItemPickup.is_lying_in()`). A new ability for a new enemy is data: an
-  `AbilityResource` (or a passive scene), a book `ItemResource`, a `LootDrop`.
+  `AbilityResource` (or a passive scene), a `BookItemResource`, a `LootDrop`.
 - **Registries:** `GlobalVars` (shop items, level items, enemies, dungeons,
   shared scenes), `ProgressionState` (run state: difficulty, dungeon level,
   gold, purchases, which items the run may still offer or drop, the planned
-  encounter and its wave plan, and the player's learned abilities and
-  passives, gear and health: each level spawns its own fresh player and
-  `bind_player()` gives it the run's abilities, passives, gear and health,
-  then records every change), `SceneTransition`
+  encounter and its wave plan, and the player's gear (books included), ability
+  slot layout and health: each level spawns its own fresh player and
+  `bind_player()` gives it the run's gear back, each ability in its slot, and
+  its health, then records every change), `SceneTransition`
   (fades and level loading), `UI` (HUD, pause and
   game-over menus, fullscreen), `VfxManager`
   (world VFX, damage numbers, the target reticle). All five are autoloads.

@@ -1,16 +1,14 @@
 ## Abilities granted by items, and the run keeping them:
-## - a plain item (a spell book) teaches its abilities for good through
-##   apply_item(), including as a pending item reaching the next player, and
-##   cannot be applied when it would teach nothing or has no free slot,
-## - gear grants its abilities only while equipped: unequipping revokes them,
-##   equipping never teaches them for good, and a learned ability survives,
-## - a book teaching an ability the player's gear grants is still worth
-##   taking (and offered): it makes the ability learned for good in its slot,
-##   so it stays when the gear comes off,
-## - a fresh player bound to the run gets the run's learned abilities back in
-##   their slots, and gear abilities fill the free slots,
-## - an item whose abilities the run has all learned is no longer available
-##   (the shop and level spawns deal only available items),
+## - a spell book is gear: applying it equips it (the inventory's list) and
+##   grants its abilities with the book as their source; it cannot be applied
+##   when it would teach nothing new or has no free slot, and unequipping it
+##   takes its abilities away,
+## - plain gear grants its abilities only while equipped,
+## - a fresh player bound to the run gets the run's books back, each ability
+##   in the slot it held, and an ability granted again returns to its slot,
+## - a book bought between levels (pending) teaches the next player,
+## - a book whose abilities the run holds is no longer available (the shop and
+##   level spawns deal only available items),
 ## - walking over an item pickup takes the item (a book teaches its ability)
 ##   and removes the pickup; a pickup the player cannot take stays.
 ## Every ability and item here is built by the test.
@@ -42,76 +40,74 @@ func after_each() -> void:
 	ProgressionState.reset_run()
 
 
-func test_a_book_teaches_its_abilities_for_good() -> void:
+func test_a_book_is_equipped_like_gear_and_grants_its_abilities() -> void:
 	var ability: AbilityResource = _ability()
-	var book: ItemResource = _book(ability)
+	var book: BookItemResource = _book(ability)
 	check(book.can_apply(_player), "a book teaching something new should apply")
 	check(_player.equipment_component.apply_item(book), "applying the book should succeed")
+	check(_player.equipment_component.is_equipped(book), "a book should be equipped like gear")
 	var slot: int = _asc.find_slot(ability)
-	if not check(slot >= 0, "the book should teach its ability"):
+	if not check(slot >= 0, "the book should grant its ability"):
 		return
-	check(_asc.get_source(slot) == null, "a book's ability should be learned for good (no source)")
-	check(not book.can_apply(_player), "a book whose abilities are all known should not apply again")
+	check(_asc.get_source(slot) == book, "the book should be its ability's source")
+	check(not book.can_apply(_player), "a book whose abilities are all held should not apply again")
+	check(not _player.equipment_component.apply_item(book), "applying it again should fail")
+	_player.equipment_component.unequip_gear(book)
+	check(not _asc.has_ability(ability), "unequipping the book should take its ability away")
 
 
 func test_a_book_needs_a_free_slot() -> void:
 	for slot: int in _asc.get_slot_count():
 		_asc.grant_ability(_ability())
-	var book: ItemResource = _book(_ability())
+	var book: BookItemResource = _book(_ability())
 	check(not book.can_apply(_player), "a book should not apply when every slot is full")
 	check(not _player.equipment_component.apply_item(book), "applying it should fail")
+	check(not _player.equipment_component.is_equipped(book), "a book that cannot teach should not be equipped")
 
 
 func test_gear_grants_its_ability_only_while_equipped() -> void:
 	var ability: AbilityResource = _ability()
 	var gear: GearItemResource = _gear(ability)
-	var learned: AbilityResource = _ability()
-	_asc.grant_ability(learned)
+	var own: AbilityResource = _ability()
+	_asc.grant_ability(own)
 	_player.equipment_component.equip_gear(gear)
 	var slot: int = _asc.find_slot(ability)
 	if not check(slot >= 0, "equipping the gear should grant its ability"):
 		return
 	check(_asc.get_source(slot) == gear, "the gear should be the ability's source")
-	check(not ProgressionState.player_abilities.has(ability), "the run should not learn a gear ability for good")
 	_player.equipment_component.unequip_gear(gear)
 	check(not _asc.has_ability(ability), "unequipping the gear should revoke its ability")
-	check(_asc.has_ability(learned), "an ability learned for good should survive the unequip")
+	check(_asc.has_ability(own), "an ability from another source should survive the unequip")
 
 
-func test_a_book_makes_an_ability_granted_by_gear_permanent() -> void:
-	var ability: AbilityResource = _ability()
-	var gear: GearItemResource = _gear(ability)
-	var book: ItemResource = _book(ability)
+func test_a_fresh_player_gets_the_runs_books_back_in_their_slots() -> void:
+	var first: BookItemResource = _book(_ability())
+	var kept: AbilityResource = _ability()
+	var second: BookItemResource = _book(kept)
 	ProgressionState.bind_player(_player)
-	_player.equipment_component.equip_gear(gear)
-	var slot: int = _asc.find_slot(ability)
-	# Every other slot taken: the book can only teach by making the gear's
-	# ability permanent, never by needing a slot of its own.
-	while _asc.has_free_slot():
-		_asc.grant_ability(_ability())
-	check(ProgressionState.is_item_available(book), "a book for an ability only the gear grants should be offered")
-	check(book.can_apply(_player), "a book for an ability only the gear grants should apply")
-	if not check(_player.equipment_component.apply_item(book), "applying the book should succeed"):
-		return
-	check_eq(_asc.find_slot(ability), slot, "the ability should stay in its slot")
-	check(_asc.get_source(slot) == null, "the book should make the ability learned for good")
-	_player.equipment_component.unequip_gear(gear)
-	check(_asc.has_ability(ability), "a learned ability should stay when the gear comes off")
-	check(not ProgressionState.is_item_available(book), "the book should no longer be offered once the ability is learned")
-
-
-func test_a_fresh_player_gets_the_runs_abilities_back() -> void:
-	var learned: AbilityResource = _ability()
-	var gear_ability: AbilityResource = _ability()
-	ProgressionState.bind_player(_player)
-	_asc.grant_ability(learned, null, 2)
-	_player.equipment_component.equip_gear(_gear(gear_ability))
+	_player.equipment_component.apply_item(first)
+	_player.equipment_component.apply_item(second)
+	var kept_slot: int = _asc.find_slot(kept)
+	# Freeing the first slot: a plain refill would move the kept ability into it.
+	_player.equipment_component.unequip_gear(first)
 	var next: Character = _spawn_player()
 	ProgressionState.bind_player(next)
 	var next_asc: AbilitySystemComponent = next.ability_system_component
-	check(next_asc.get_ability(2) == learned, "a learned ability should come back in the same slot")
-	var gear_slot: int = next_asc.find_slot(gear_ability)
-	check(gear_slot >= 0 and gear_slot != 2, "a gear ability should come back in a free slot")
+	check(next.equipment_component.is_equipped(second), "the run's book should be equipped on the fresh player")
+	check_eq(next_asc.find_slot(kept), kept_slot, "its ability should come back in the slot it held")
+	check(not next.equipment_component.is_equipped(first), "an unequipped book should stay unequipped")
+
+
+func test_an_ability_granted_again_returns_to_its_slot() -> void:
+	var ability: AbilityResource = _ability()
+	var book: BookItemResource = _book(ability)
+	_asc.grant_ability(_ability())
+	_player.equipment_component.apply_item(book)
+	var slot: int = _asc.find_slot(ability)
+	_player.equipment_component.unequip_gear(book)
+	_asc.revoke_ability(0)
+	_player.equipment_component.equip_gear(book)
+	check_eq(_asc.find_slot(ability), slot, "a re-equipped book's ability should return to its slot while it is free")
 
 
 func test_a_book_bought_between_levels_teaches_the_next_player() -> void:
@@ -123,13 +119,13 @@ func test_a_book_bought_between_levels_teaches_the_next_player() -> void:
 	check(next.ability_system_component.has_ability(ability), "a pending book should teach the next player")
 
 
-func test_an_item_teaching_only_learned_abilities_is_no_longer_available() -> void:
+func test_a_book_whose_abilities_are_held_is_no_longer_available() -> void:
 	var ability: AbilityResource = _ability()
-	var book: ItemResource = _book(ability)
+	var book: BookItemResource = _book(ability)
 	ProgressionState.bind_player(_player)
 	check(ProgressionState.is_item_available(book), "a book teaching something new should be available")
 	_player.equipment_component.apply_item(book)
-	check(not ProgressionState.is_item_available(book), "a book whose ability the run knows should not be offered")
+	check(not ProgressionState.is_item_available(book), "a book whose ability the run holds should not be offered")
 
 
 func test_walking_over_a_book_pickup_teaches_it_and_removes_the_pickup() -> void:
@@ -184,8 +180,8 @@ func _ability() -> AbilityResource:
 	return ability
 
 
-func _book(ability: AbilityResource) -> ItemResource:
-	var book: ItemResource = ItemResource.new()
+func _book(ability: AbilityResource) -> BookItemResource:
+	var book: BookItemResource = BookItemResource.new()
 	book.id = StringName("test_book_%d" % randi())
 	book.max_purchases = 1
 	book.granted_abilities = [ability]

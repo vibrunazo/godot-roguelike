@@ -23,7 +23,7 @@ func refresh() -> void:
 	gear_list.clear()
 	var equipment: EquipmentComponent = _read_player_equipment()
 	for gear: GearItemResource in _read_equipped_gear(equipment):
-		var idx: int = gear_list.add_item(_display_name(gear, equipment), gear.icon)
+		var idx: int = gear_list.add_item(_display_name(gear, equipment), gear.get_icon())
 		gear_list.set_item_metadata(idx, gear)
 	if gear_list.item_count == 0:
 		var empty_idx: int = gear_list.add_item("No gear equipped")

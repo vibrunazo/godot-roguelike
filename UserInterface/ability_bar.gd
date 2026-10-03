@@ -1,7 +1,10 @@
 ## HUD row of the player's active ability slots (one AbilitySlotWidget per
-## slot), bound to each level's fresh player by the HUD. Shows each slot's
-## ability, its cooldown and the key that casts it, read from the InputMap so
-## rebinding updates the bar by itself. When the bound player leaves the tree
+## slot, always built for every slot), bound to each level's fresh player by
+## the HUD. Shows each slot's ability, its cooldown and the key that casts it,
+## read from the InputMap so rebinding updates the bar by itself. Only slots
+## holding an ability show (the bar hides while none does) unless
+## show_empty_slots is on, so a screen that arranges abilities can show the
+## empty ones too. When the bound player leaves the tree
 ## (its level unloads, e.g. for the shop) the bar keeps showing the run's slots,
 ## all ready: each level's fresh player starts with every ability off cooldown.
 ## Purely visual (render clock).
@@ -10,6 +13,12 @@ extends HBoxContainer
 
 ## Widget scene instanced once per ability slot.
 @export var slot_widget_scene: PackedScene
+## Whether empty slots show (as empty frames with their key). Off: only
+## filled slots show, and the bar hides itself while every slot is empty.
+@export var show_empty_slots: bool = false:
+	set(value):
+		show_empty_slots = value
+		_update_visibility()
 
 var _abilities: AbilitySystemComponent = null
 var _widgets: Array[AbilitySlotWidget] = []
@@ -25,7 +34,7 @@ func _ready() -> void:
 	visible = false
 
 
-## Shows player's ability slots (hidden when it has none). Binding again
+## Shows player's ability slots (see show_empty_slots). Binding again
 ## (the same player or a new one) replaces the previous binding.
 func bind(player: Character) -> void:
 	_unbind()
@@ -46,7 +55,7 @@ func bind(player: Character) -> void:
 	_abilities.ability_granted.connect(_on_granted)
 	_abilities.ability_revoked.connect(_on_revoked)
 	_abilities.tree_exiting.connect(_on_exiting)
-	visible = not _widgets.is_empty()
+	_update_visibility()
 
 
 ## Stops listening to the previously bound slots.
@@ -61,7 +70,7 @@ func _unbind() -> void:
 	_abilities = null
 
 
-## Number of slot widgets shown.
+## Number of slot widgets (one per slot, shown or not).
 func get_slot_count() -> int:
 	return _widgets.size()
 
@@ -97,6 +106,17 @@ func _on_abilities_exiting() -> void:
 func _refresh_slot(slot: int) -> void:
 	if slot < _widgets.size():
 		_widgets[slot].set_ability(_abilities.get_ability(slot))
+	_update_visibility()
+
+
+## Shows the widgets of filled slots (every one with show_empty_slots), and
+## the bar while any widget shows.
+func _update_visibility() -> void:
+	var any_shown: bool = false
+	for widget: AbilitySlotWidget in _widgets:
+		widget.visible = show_empty_slots or widget.is_filled()
+		any_shown = any_shown or widget.visible
+	visible = any_shown
 
 
 ## The InputMap actions the player's controller casts slots with.

@@ -9,6 +9,17 @@ extends ItemResource
 ## Optional slot category or equipment tag (e.g. &"weapon", &"feet", &"chest", &"relic").
 @export var slot_tag: StringName = &"gear"
 
+@export_group("Granted Abilities")
+## Active abilities granted while this gear is equipped (the gear is their
+## source in the AbilitySystemComponent, so unequipping revokes them). Each
+## goes to the slot it last held when free, else the first free slot.
+@export var granted_abilities: Array[AbilityResource] = []
+## Passive scenes (PassiveAbility root nodes) granted while this gear is
+## equipped: the reusable "upgrade one ability's behavior" mechanism. Each is
+## instanced onto the character's AbilitySystemComponent on equip and revoked
+## on unequip (e.g. a passive detonating at dash end).
+@export var granted_passives: Array[PackedScene] = []
+
 
 func _init() -> void:
 	max_purchases = 3
@@ -63,7 +74,7 @@ func _grant_passives(character: Character) -> Array[PassiveAbility]:
 	for passive_scene: PackedScene in granted_passives:
 		if passive_scene == null:
 			continue
-		var granted: PassiveAbility = character.ability_system_component.add_passive(passive_scene, self)
+		var granted: PassiveAbility = character.ability_system_component.add_passive(passive_scene)
 		if granted != null:
 			granted_nodes.append(granted)
 	return granted_nodes
@@ -83,21 +94,62 @@ func _grant_equipped_abilities(character: Character) -> void:
 			push_warning("%s: no free ability slot for %s; equipped without it." % [resource_path, ability.display_name])
 
 
-## Gear teaches nothing for good: its abilities and passives come from
-## attach() and leave with unequip(), so apply() (the instant part of
-## equipping) grants none.
-func _grant_abilities(_character: Character) -> void:
-	pass
+## Icon shown in lists: the gear's own, else its first granted ability's.
+func get_icon() -> Texture2D:
+	if icon != null:
+		return icon
+	for ability: AbilityResource in granted_abilities:
+		if ability != null and ability.icon != null:
+			return ability.icon
+	return null
 
 
-## Gear equips whatever the ability slots hold; the abilities it cannot fit
-## are skipped (see _grant_equipped_abilities()).
-func can_teach(_character: Character) -> bool:
-	return true
+## The names of everything this gear grants (abilities, then passives).
+func get_granted_names() -> Array[String]:
+	var names: Array[String] = []
+	for ability: AbilityResource in granted_abilities:
+		if ability != null:
+			names.append(ability.display_name)
+	for scene: PackedScene in granted_passives:
+		if scene != null:
+			names.append(passive_display_name(scene))
+	return names
 
 
-func _ability_grant_verb() -> String:
+## Extends the base stat summary with what this gear grants, so shop cards
+## and the inventory list abilities and passives without hand-written text:
+## one "<verb>: <name>" line each.
+func get_stat_summary(character: Character) -> String:
+	var lines: Array[String] = []
+	var base: String = super.get_stat_summary(character)
+	if not base.is_empty():
+		lines.append(base)
+	for ability: AbilityResource in granted_abilities:
+		if ability != null:
+			lines.append("%s: [color='ffb347']%s[/color]" % [_grant_verb(), ability.display_name])
+	for scene: PackedScene in granted_passives:
+		if scene != null:
+			lines.append("%s: [color='c9a6ff']%s[/color]" % [_grant_verb(), passive_display_name(scene)])
+	return "\n".join(lines)
+
+
+## How summaries describe what the gear grants.
+func _grant_verb() -> String:
 	return "Grants"
+
+
+## Best-effort UI label for a passive scene: the root PassiveAbility's
+## display_name when set, otherwise the scene filename made readable.
+static func passive_display_name(scene: PackedScene) -> String:
+	var instance: Node = scene.instantiate()
+	var label: String = ""
+	if instance is PassiveAbility:
+		label = (instance as PassiveAbility).display_name
+	if instance != null:
+		instance.free()
+	if label.is_empty():
+		label = scene.resource_path.get_file().get_basename().replace("_", " ").capitalize()
+	return label
 
 
 ## Instances visual_scene onto the character (an ItemVisual attaches itself;

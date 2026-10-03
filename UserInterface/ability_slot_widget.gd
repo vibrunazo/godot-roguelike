@@ -14,6 +14,9 @@ extends Control
 ## missing cost, blocked tags).
 @export var unready_modulate: Color = Color(0.55, 0.55, 0.55, 1.0)
 
+## The ability shown (null: an empty slot).
+var ability: AbilityResource = null
+
 
 func _ready() -> void:
 	var required: Dictionary[String, Object] = {"icon_rect": icon_rect, "cooldown_bar": cooldown_bar, "key_label": key_label}
@@ -28,13 +31,19 @@ func set_key_text(text: String) -> void:
 	key_label.visible = not text.is_empty()
 
 
-## Shows ability in this slot (null: an empty slot).
-func set_ability(ability: AbilityResource) -> void:
+## Shows new_ability in this slot (null: an empty slot).
+func set_ability(new_ability: AbilityResource) -> void:
+	ability = new_ability
 	icon_rect.texture = ability.icon if ability != null else null
 	icon_rect.visible = ability != null
 	tooltip_text = ability.display_name if ability != null else ""
 	if ability == null:
 		cooldown_bar.value = 0.0
+
+
+## Whether the slot holds an ability.
+func is_filled() -> bool:
+	return ability != null
 
 
 ## Updates the cooldown sweep (fraction left, 1.0 just cast) and readiness.

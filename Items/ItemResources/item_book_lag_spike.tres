@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="ItemResource" format=3]
+[gd_resource type="Resource" script_class="BookItemResource" format=3]
 
-[ext_resource type="Script" path="res://Items/item_resource.gd" id="1_item"]
+[ext_resource type="Script" path="res://Items/book_item_resource.gd" id="1_item"]
 [ext_resource type="PackedScene" path="res://Passives/passive_lag_spike.tscn" id="3_taught"]
 [ext_resource type="PackedScene" path="res://Items/Books/book_dummies.tscn" id="4_book"]
 

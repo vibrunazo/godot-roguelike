@@ -1,4 +1,6 @@
 ## The HUD ability bar:
+## - only slots holding an ability show, so the bar is hidden until the first
+##   ability arrives; with show_empty_slots on, every slot shows,
 ## - a slot's widget follows its cooldown while the bound player is alive,
 ## - once that player leaves the tree (its level unloads for the shop), the
 ##   bar keeps showing the run's slots, every one ready, and stops following
@@ -50,6 +52,24 @@ func test_a_freed_players_slots_stay_shown_and_ready() -> void:
 	check_eq(_bar.get_slot_count(), slot_count, "the bar should keep every slot")
 	check(widget.icon_rect.texture == ability.icon, "the slot should keep showing its ability")
 	check_eq(widget.cooldown_bar.value, 0.0, "the slot should show ready, not a frozen cooldown")
+
+
+func test_only_filled_slots_show_and_the_bar_hides_while_none_is() -> void:
+	var asc: AbilitySystemComponent = _player.ability_system_component
+	_bar.bind(_player)
+	if not check(_bar.get_slot_count() >= 2, "setup: the player should have at least two slots"):
+		return
+	check(not _bar.visible, "the bar should hide while no slot holds an ability")
+	asc.grant_ability(_ability(), null, 1)
+	check(_bar.visible, "the bar should show once a slot holds an ability")
+	check(_bar.get_widget(1).visible, "a filled slot should show")
+	check(not _bar.get_widget(0).visible, "an empty slot should not show")
+	_bar.show_empty_slots = true
+	for slot: int in _bar.get_slot_count():
+		check(_bar.get_widget(slot).visible, "with show_empty_slots, slot %d should show" % slot)
+	_bar.show_empty_slots = false
+	asc.revoke_ability(1)
+	check(not _bar.visible, "the bar should hide again once its last ability leaves")
 
 
 func _ability() -> AbilityResource:

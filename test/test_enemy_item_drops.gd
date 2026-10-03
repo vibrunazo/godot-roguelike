@@ -5,7 +5,7 @@
 ## - an item never drops while the player holds what it teaches (learned or
 ##   from gear), while a pickup of it already lies in the level, or before a
 ##   player is bound to the run,
-## - a book teaching a passive teaches it for good: the run remembers it, a
+## - a book teaching a passive is equipped like gear: the run remembers it, a
 ##   fresh player gets it back, and the book is no longer offered,
 ## - a HitEffectPassive applies its effects to what the owner's melee attacks
 ##   hit.
@@ -49,7 +49,7 @@ func after_each() -> void:
 
 func test_a_defeated_enemy_drops_its_item_where_it_fell() -> void:
 	ProgressionState.bind_player(_player)
-	var book: ItemResource = _book(_ability())
+	var book: BookItemResource = _book(_ability())
 	var enemy: Character = await _spawn_enemy(_archetype(book, 1.0))
 	var fell_at: Vector3 = enemy.global_position
 	_kill(enemy)
@@ -63,7 +63,7 @@ func test_a_defeated_enemy_drops_its_item_where_it_fell() -> void:
 
 func test_a_drop_with_no_chance_never_drops() -> void:
 	ProgressionState.bind_player(_player)
-	var book: ItemResource = _book(_ability())
+	var book: BookItemResource = _book(_ability())
 	_kill(await _spawn_enemy(_archetype(book, 0.0)))
 	check(_pickups_of(book).is_empty(), "a drop with no chance should never drop")
 
@@ -72,29 +72,29 @@ func test_no_drop_while_the_player_holds_the_ability() -> void:
 	ProgressionState.bind_player(_player)
 	var learned: AbilityResource = _ability()
 	_asc.grant_ability(learned)
-	var learned_book: ItemResource = _book(learned)
+	var learned_book: BookItemResource = _book(learned)
 	_kill(await _spawn_enemy(_archetype(learned_book, 1.0)))
 	check(_pickups_of(learned_book).is_empty(), "a book for a learned ability should not drop")
 	var from_gear: AbilityResource = _ability()
 	var gear: GearItemResource = GearItemResource.new()
 	gear.granted_abilities = [from_gear]
 	_player.equipment_component.equip_gear(gear)
-	var gear_book: ItemResource = _book(from_gear)
+	var gear_book: BookItemResource = _book(from_gear)
 	_kill(await _spawn_enemy(_archetype(gear_book, 1.0)))
 	check(_pickups_of(gear_book).is_empty(), "a book for an ability the player's gear grants should not drop")
 
 
 func test_no_drop_while_the_player_holds_the_passive() -> void:
 	ProgressionState.bind_player(_player)
-	_asc.learn_passive(PASSIVE_SCENE)
-	var book: ItemResource = _passive_book()
+	_asc.add_passive(PASSIVE_SCENE)
+	var book: BookItemResource = _passive_book()
 	_kill(await _spawn_enemy(_archetype(book, 1.0)))
 	check(_pickups_of(book).is_empty(), "a book for a learned passive should not drop")
 
 
 func test_no_drop_while_the_item_lies_in_the_level() -> void:
 	ProgressionState.bind_player(_player)
-	var book: ItemResource = _book(_ability())
+	var book: BookItemResource = _book(_ability())
 	var archetype: EnemyResource = _archetype(book, 1.0)
 	_kill(await _spawn_enemy(archetype))
 	if not check_eq(_pickups_of(book).size(), 1, "setup: the first enemy should drop the book"):
@@ -104,20 +104,21 @@ func test_no_drop_while_the_item_lies_in_the_level() -> void:
 
 
 func test_no_drop_before_a_player_is_bound() -> void:
-	var book: ItemResource = _book(_ability())
+	var book: BookItemResource = _book(_ability())
 	_kill(await _spawn_enemy(_archetype(book, 1.0)))
 	check(_pickups_of(book).is_empty(), "nothing should drop before the run knows its player")
 
 
-func test_a_passive_book_teaches_its_passive_for_good() -> void:
+func test_a_passive_book_is_equipped_and_kept_by_the_run() -> void:
 	ProgressionState.bind_player(_player)
-	var book: ItemResource = _passive_book()
+	var book: BookItemResource = _passive_book()
 	check(ProgressionState.is_item_available(book), "a passive book teaching something new should be offered")
 	if not check(_player.equipment_component.apply_item(book), "applying the passive book should succeed"):
 		return
+	check(_player.equipment_component.is_equipped(book), "a passive book should be equipped like gear")
 	check(_asc.has_passive_scene(PASSIVE_SCENE), "the book should grant its passive")
 	check(not book.can_apply(_player), "a passive book whose passive is held should not apply again")
-	check(not ProgressionState.is_item_available(book), "a passive book whose passive the run knows should not be offered")
+	check(not ProgressionState.is_item_available(book), "a passive book whose passive the run holds should not be offered")
 	var next: Character = _spawn_player()
 	ProgressionState.bind_player(next)
 	check(next.ability_system_component.has_passive_scene(PASSIVE_SCENE), "a fresh player should get the run's learned passive back")
@@ -200,8 +201,8 @@ func _ability() -> AbilityResource:
 	return ability
 
 
-func _book(ability: AbilityResource) -> ItemResource:
-	var book: ItemResource = ItemResource.new()
+func _book(ability: AbilityResource) -> BookItemResource:
+	var book: BookItemResource = BookItemResource.new()
 	book.id = StringName("test_book_%d" % randi())
 	book.max_purchases = 1
 	book.granted_abilities = [ability]
@@ -210,8 +211,8 @@ func _book(ability: AbilityResource) -> ItemResource:
 	return book
 
 
-func _passive_book() -> ItemResource:
-	var book: ItemResource = ItemResource.new()
+func _passive_book() -> BookItemResource:
+	var book: BookItemResource = BookItemResource.new()
 	book.id = StringName("test_passive_book_%d" % randi())
 	book.max_purchases = 1
 	book.granted_passives = [PASSIVE_SCENE]

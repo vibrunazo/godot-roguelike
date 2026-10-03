@@ -49,10 +49,11 @@ Section numbers (§) point into the closed 2026-09-23 code review,
 
 8. **Active ability follow-ups** (the system itself is in; see
    `docs/plans/active_abilities_plan.md`):
-   - **Enemies use the abilities their books teach**, as if they had read
-     the book themselves: each enemy gets what its `EnemyResource.item_drops`
-     book grants (its `granted_abilities` and `granted_passives`) through its
-     own `AbilitySystemComponent`, so the enemy and the player run the same
+   - **Enemies use the abilities their books teach**, as if they had picked
+     the book up themselves: each enemy equips its `EnemyResource.item_drops`
+     book (a `BookItemResource`, gear granting `granted_abilities` and
+     `granted_passives`) through its own `EquipmentComponent` and
+     `AbilitySystemComponent`, so the enemy and the player run the same
      `AbilityResource` or passive scene, and retuning one retunes both.
      Today the books reuse the enemies' payloads but not their attacks:
      - Ranged enemy, firebomber, thunder mage: cast Fireball, Firebomb and
@@ -67,18 +68,25 @@ Section numbers (§) point into the closed 2026-09-23 code review,
        `HitEffectPassive` on melee HITs) and drop the `effect_lag.tres` entry
        from its `EnemyAttack.effects_to_apply`, so the slow comes from the
        passive, not the attack.
-     Enemies have no ASC today: add one to `enemy_base.tscn` (with the slots
-     the casters need, and a starting-passives list next to
-     `starting_abilities`), and decide whether the ASC reads the book from
-     the enemy's resource or the scene lists the abilities itself. Enemy cast
+     Enemies have no ASC or EquipmentComponent today: add them to
+     `enemy_base.tscn` (with the slots the casters need), and decide whether
+     the enemy equips the book from its resource or the scene lists the
+     books itself. Enemy cast
      animations must exist in each enemy's `AnimationTree`. It changes their
      timing, so retune them together.
-   - Learned passives (the Lag Spike book) show nowhere in the HUD or the
-     inventory; only the pickup message tells the player.
-   - A pick-up dialog (a close-up of the book, take it or leave it) and a
-     replace-slot choice when every slot is full. Today a book the player
-     cannot take stays on the floor with a message, and gear equipped with
-     full slots skips its ability with only a warning in the log.
+   - Replacing abilities: a pick-up dialog (a close-up of the book, take it
+     or leave it) and, when every slot is full, a choice of which book to
+     unequip for it (books are gear, so this is unequip + equip). Today a
+     book the player cannot take stays on the floor with a message, and plain
+     gear equipped with full slots skips its ability with only a warning in
+     the log. Unequipped books are simply gone; decide whether they drop back
+     on the floor.
+   - Rearranging ability slots (move an ability to another slot): the
+     `AbilityBar` already has `show_empty_slots` for such a screen, and
+     `AbilitySystemComponent` remembers each ability's slot
+     (`set_slot_layout()`), so a move updates the layout the run keeps.
+   - Passive books have no icon in the inventory (`GearItemResource.get_icon()`
+     falls back to an ability's icon only): give `PassiveAbility` an icon.
    - Mana regen and a mana bar, so abilities can cost mana (costs already
      work in `AbilityResource`; the Fireball is cooldown-only).
    - Item difficulty tiers for level spawns, drops and the shop

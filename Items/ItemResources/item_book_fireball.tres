@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="ItemResource" format=3]
+[gd_resource type="Resource" script_class="BookItemResource" format=3]
 
-[ext_resource type="Script" path="res://Items/item_resource.gd" id="1_item"]
+[ext_resource type="Script" path="res://Items/book_item_resource.gd" id="1_item"]
 [ext_resource type="Script" path="res://Abilities/ability_resource.gd" id="2_ability_script"]
 [ext_resource type="Resource" path="res://Abilities/AbilityResources/ability_fireball.tres" id="3_fireball"]
 [ext_resource type="PackedScene" path="res://Items/Books/book_dummies.tscn" id="4_book"]

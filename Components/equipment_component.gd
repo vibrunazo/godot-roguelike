@@ -50,12 +50,15 @@ func apply_item(item: ItemResource) -> bool:
 	return success
 
 
-## Equips a gear item onto the character: its instant effects (healing, ...)
-## once, then its lasting part (see restore_gear()).
+## Equips a gear item onto the character when it can take it
+## (GearItemResource.can_apply(): a book needs something new to teach): its
+## instant effects (healing, ...) once, then its lasting part (see
+## restore_gear()). Returns whether it equipped.
 func equip_gear(gear: GearItemResource) -> bool:
 	if gear == null or character == null:
 		return false
-	gear.apply(character)
+	if not gear.apply(character):
+		return false
 	return restore_gear(gear)
 
 

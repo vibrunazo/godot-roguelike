@@ -6,6 +6,8 @@
 ## - the inventory list mirrors equipped gear with plain titles and an owned
 ##   count on stacked gear; selecting a row shows that gear in an INSPECT
 ##   details card; unequipping shrinks the list and keeps a valid selection,
+## - a spell book taken by the player is listed like gear, with its
+##   ability's icon,
 ## - the pause menu hosts the four reusable panels (inventory list, item
 ##   details, character stats, menu buttons) and the list drives the details,
 ## - with an item selected, the stats panel previews without -> with that
@@ -94,6 +96,25 @@ func test_the_inventory_lists_equipped_gear_and_shows_the_selection() -> void:
 	_player.equipment_component.unequip_gear(alpha)
 	inventory.refresh()
 	check(inventory.gear_list.item_count == 1 and inventory.get_selected_gear() == beta, "unequipping should shrink the list and keep a valid selection")
+
+
+func test_a_book_is_listed_like_gear() -> void:
+	var ability: AbilityResource = AbilityResource.new()
+	ability.id = &"test_inventory_ability"
+	ability.display_name = "Test Spell"
+	ability.icon = PlaceholderTexture2D.new()
+	var book: BookItemResource = BookItemResource.new()
+	book.id = &"test_inventory_book"
+	book.title = "Test Spell for Dummies"
+	book.granted_abilities = [ability]
+	check(_player.equipment_component.apply_item(book), "setup: the book should be taken")
+	var inventory: InventoryMenu = spawn(INVENTORY_SCENE) as InventoryMenu
+	await get_tree().process_frame
+	if not check_eq(inventory.gear_list.item_count, 1, "the list should show the book"):
+		return
+	check_eq(inventory.gear_list.get_item_text(0), "Test Spell for Dummies", "the book's row should show its title")
+	check(inventory.gear_list.get_item_icon(0) == ability.icon, "the book's row should show its ability's icon")
+	check(inventory.details_card.item_resource == book, "the details card should show the book")
 
 
 func test_the_pause_menu_hosts_the_four_panels_and_the_list_drives_the_details() -> void:
