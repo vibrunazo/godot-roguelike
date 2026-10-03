@@ -49,14 +49,30 @@ Section numbers (§) point into the closed 2026-09-23 code review,
 
 8. **Active ability follow-ups** (the system itself is in; see
    `docs/plans/active_abilities_plan.md`):
-   - Migrate `RangedEnemy` (and the other casters) to an ability slot with
-     the Fireball, dropping its bespoke attack state and spawner signal. It
-     changes their timing, so retune them together. The firebomber, brute and
-     thunder mage drop books for the player's Firebomb, Earthquake and Spark
-     (`ability_*.tres`), which reuse their payloads but not their attack
-     states; migrating them makes the enemy and the book share one ability.
-     The brute's slam lands ahead of it, the player's Earthquake around the
-     caster.
+   - **Enemies use the abilities their books teach**, as if they had read
+     the book themselves: each enemy gets what its `EnemyResource.item_drops`
+     book grants (its `granted_abilities` and `granted_passives`) through its
+     own `AbilitySystemComponent`, so the enemy and the player run the same
+     `AbilityResource` or passive scene, and retuning one retunes both.
+     Today the books reuse the enemies' payloads but not their attacks:
+     - Ranged enemy, firebomber, thunder mage: cast Fireball, Firebomb and
+       Spark from an ability slot (`AbilityCastState`, AI `body_state` at the
+       slot), dropping their bespoke `EnemyAttack` states and the
+       `ranged_attack` -> `ProjectileSpawnerComponent` wiring.
+     - Brute: cast Earthquake instead of its `GroundSlamAttack`. They differ
+       today: the slam lands ahead of the brute (`aoe_forward_offset`), the
+       Earthquake around the caster; decide which shape both use (e.g. a
+       `release_point` ahead of the caster).
+     - Melee enemy: learn the Lag Spike passive (`passive_lag_spike.tscn`, a
+       `HitEffectPassive` on melee HITs) and drop the `effect_lag.tres` entry
+       from its `EnemyAttack.effects_to_apply`, so the slow comes from the
+       passive, not the attack.
+     Enemies have no ASC today: add one to `enemy_base.tscn` (with the slots
+     the casters need, and a starting-passives list next to
+     `starting_abilities`), and decide whether the ASC reads the book from
+     the enemy's resource or the scene lists the abilities itself. Enemy cast
+     animations must exist in each enemy's `AnimationTree`. It changes their
+     timing, so retune them together.
    - Learned passives (the Lag Spike book) show nowhere in the HUD or the
      inventory; only the pickup message tells the player.
    - A pick-up dialog (a close-up of the book, take it or leave it) and a

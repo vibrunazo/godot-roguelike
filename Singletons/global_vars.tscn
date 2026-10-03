@@ -43,14 +43,12 @@
 [ext_resource type="Resource" path="res://Items/ItemResources/item_landing_blast.tres" id="42_landblast"]
 [ext_resource type="Resource" path="res://Levels/DungeonResources/boss_arena_1.tres" id="43_boss_arena_1"]
 [ext_resource type="PackedScene" path="res://Levels/menu_level.tscn" id="cleanup_menu_scene"]
-[ext_resource type="Resource" path="res://Items/ItemResources/item_book_fireball.tres" id="44_book_fireball"]
 [ext_resource type="PackedScene" path="res://Items/Pickups/item_pickup.tscn" id="45_item_pickup"]
 
 [node name="GlobalVars" type="Node" unique_id=1670957482]
 script = ExtResource("1_vars")
 upgrade_icon_scene = ExtResource("2_icon")
 items = Array[ExtResource("4_6kt6d")]([ExtResource("3_dmg"), ExtResource("4_hp"), ExtResource("5_spd"), ExtResource("12_pot"), ExtResource("40_wb"), ExtResource("41_dashblast"), ExtResource("42_landblast")])
-level_items = Array[ExtResource("4_6kt6d")]([ExtResource("44_book_fireball")])
 item_pickup_scene = ExtResource("45_item_pickup")
 enemies = Array[ExtResource("10_1bkuy")]([ExtResource("5_melee_res"), ExtResource("6_ranged_res"), ExtResource("14_firebomber_res"), ExtResource("13_brute_res"), ExtResource("16_thunder_mage_res"), ExtResource("20_akira_res")])
 dungeons = Array[ExtResource("17_na113")]([ExtResource("21_d1"), ExtResource("22_d2"), ExtResource("23_d3"), ExtResource("24_d4"), ExtResource("25_d5"), ExtResource("26_d6"), ExtResource("27_d7"), ExtResource("28_d8"), ExtResource("29_d9"), ExtResource("30_d10"), ExtResource("31_d11"), ExtResource("32_d12"), ExtResource("33_d13"), ExtResource("43_boss_arena_1")])

@@ -14,9 +14,11 @@
 ## scaffold, with no walkable islands above the floor (wrong min-region-size
 ## symptom).
 ## On a new run's first level, the level's ItemSpawner must place the level
-## items (GlobalVars.level_items) resting on the floor, reachable on foot from
-## the player spawn.
+## items (GlobalVars.level_items, a test-owned pool here) resting on the
+## floor, reachable on foot from the player spawn.
 extends "res://test/lib/test_suite.gd"
+
+const BOOK_VISUAL: PackedScene = preload("res://Items/Books/book_dummies.tscn")
 
 ## Freestanding tall (y=0) cover must keep COVER_CLEARANCE of clear floor to
 ## every interior pit edge, measured rect-to-rect between the wall mesh and
@@ -29,9 +31,22 @@ extends "res://test/lib/test_suite.gd"
 ## (Level 8's arena pillar) passes.
 const COVER_CLEARANCE: float = 3.0
 
+## The registered level item pool, restored after each test.
+var _registered_level_items: Array[ItemResource] = []
+
 
 func before_each() -> void:
 	ProgressionState.reset_run()
+	_registered_level_items = GlobalVars.level_items
+	var item: ItemResource = ItemResource.new()
+	item.id = &"test_level_item"
+	item.title = "Test Level Item"
+	item.world_visual = BOOK_VISUAL
+	GlobalVars.level_items = [item]
+
+
+func after_each() -> void:
+	GlobalVars.level_items = _registered_level_items
 
 
 func test_every_level_the_run_can_load_is_sound() -> void:
