@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AbilityResource" format=3]
+
+[ext_resource type="Script" path="res://Abilities/ability_resource.gd" id="1_ability"]
+[ext_resource type="PackedScene" path="res://Abilities/Payloads/run_headless_burst.tscn" id="2_burst"]
+
+[sub_resource type="Gradient" id="Gradient_icon"]
+offsets = PackedFloat32Array(0, 0.35, 0.7, 0.92, 1)
+colors = PackedColorArray(0.85, 1, 0.85, 1, 0.3, 1, 0.45, 1, 0.05, 0.6, 0.2, 1, 0.02, 0.2, 0.06, 1, 0.02, 0.2, 0.06, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_icon"]
+gradient = SubResource("Gradient_icon")
+width = 128
+height = 128
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[resource]
+script = ExtResource("1_ability")
+id = &"run_headless"
+display_name = "Run Headless"
+description = "Detach from the terminal and stop rendering a head. Everyone nearby on your side hits harder for a while, with nothing left to think with."
+icon = SubResource("GradientTexture2D_icon")
+ability_tags = Array[StringName]([&"ability.spell.buff"])
+cooldown = 15.0
+cost_amount = 40.0
+cast_animation = "Rally"
+release_time = 0.6
+release_point = 1
+payload_scene = ExtResource("2_burst")
+scale_with_attack = false

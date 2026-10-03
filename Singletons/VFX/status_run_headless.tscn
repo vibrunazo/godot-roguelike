@@ -8,7 +8,7 @@ vertex_color_use_as_albedo = true
 
 [sub_resource type="Gradient" id="Gradient_hype"]
 offsets = PackedFloat32Array(0, 0.3, 1)
-colors = PackedColorArray(1, 1, 0.6, 1, 1, 0.55, 0.1, 1, 0.9, 0.1, 0.1, 0)
+colors = PackedColorArray(0.85, 1, 0.85, 1, 0.25, 1, 0.4, 1, 0.02, 0.45, 0.12, 0)
 
 [sub_resource type="GradientTexture1D" id="GradientTexture1D_hype"]
 gradient = SubResource("Gradient_hype")
@@ -39,7 +39,7 @@ color_ramp = SubResource("GradientTexture1D_hype")
 [sub_resource type="BoxMesh" id="BoxMesh_chevron"]
 size = Vector3(0.09, 0.24, 0.09)
 
-[node name="StatusCrunchTime" type="Node3D"]
+[node name="StatusRunHeadless" type="Node3D"]
 script = ExtResource("1_upright")
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="."]

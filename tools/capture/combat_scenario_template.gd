@@ -18,7 +18,7 @@ const ENEMY_REGISTRY: Dictionary = {
 	"ranged": "res://Enemy/ranged_enemy.tscn",
 	"firebomber": "res://Enemy/firebomber_enemy.tscn",
 	"thunder_mage": "res://Enemy/enemy_thunder_mage.tscn",
-	"producer": "res://Enemy/enemy_producer.tscn",
+	"headless_daemon": "res://Enemy/enemy_headless_daemon.tscn",
 }
 
 class ScheduledAction:

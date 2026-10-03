@@ -212,8 +212,8 @@ prints the error and idles forever. `--quit-after` does not help.
   (`ProgressionState.can_drop()`) and no pickup of it lies in the level
   (`ItemPickup.is_lying_in()`). A new ability for a new enemy is data: an
   `AbilityResource` (or a passive scene), a `BookItemResource`, a `LootDrop`.
-  The Producer (`Enemy/enemy_producer.tscn`) is the model for an enemy that
-  casts its own book's ability: an `AbilitySystemComponent` whose
+  The Headless Daemon (`Enemy/enemy_headless_daemon.tscn`) is the model for
+  an enemy that casts its own book's ability: an `AbilitySystemComponent` whose
   `starting_abilities` hold the same `AbilityResource` its book grants, an
   `AbilityCastState` slot, and an AI state ordering that slot
   (`AISupportAllies` for support casts). Every ability's `cast_animation`

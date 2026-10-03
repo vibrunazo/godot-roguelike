@@ -759,12 +759,15 @@ func on_defeat() -> void:
 	_switch_corpse_off()
 
 
-## Shuts off the body shape, so the corpse never blocks movement (the hurtbox
-## switches itself off on defeat, see Hurtbox). It still rests where it fell:
-## the defeat states pin velocity to zero every frame.
+## Shuts off the body shape and leaves crowd avoidance, so the corpse never
+## blocks movement or steers walkers around it (the hurtbox switches itself
+## off on defeat, see Hurtbox). It still rests where it fell: the defeat
+## states pin velocity to zero every frame.
 func _switch_corpse_off() -> void:
 	if collision_shape_3d != null:
 		collision_shape_3d.set_deferred("disabled", true)
+	if navigation_agent_3d != null:
+		navigation_agent_3d.avoidance_enabled = false
 
 
 func _on_attribute_defeat() -> void:

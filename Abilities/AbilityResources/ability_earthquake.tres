@@ -1,6 +1,8 @@
-[gd_resource type="Resource" script_class="AbilityResource" format=3]
+[gd_resource type="Resource" script_class="AbilityResource" format=3 uid="uid://buuc2q8x8n44g"]
 
-[ext_resource type="Script" path="res://Abilities/ability_resource.gd" id="1_ability"]
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="1_42vao"]
+[ext_resource type="Script" uid="uid://clauo4aqtg4dp" path="res://Abilities/ability_resource.gd" id="1_ability"]
+[ext_resource type="Script" uid="uid://b5xhfgum5k35x" path="res://Passives/payload_property_override.gd" id="2_n2h5p"]
 [ext_resource type="PackedScene" path="res://Hazards/earthquake.tscn" id="2_quake"]
 
 [sub_resource type="Gradient" id="Gradient_icon"]

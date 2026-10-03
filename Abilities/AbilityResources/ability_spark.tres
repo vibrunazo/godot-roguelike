@@ -1,6 +1,8 @@
-[gd_resource type="Resource" script_class="AbilityResource" format=3]
+[gd_resource type="Resource" script_class="AbilityResource" format=3 uid="uid://dbykgmkydnw2h"]
 
-[ext_resource type="Script" path="res://Abilities/ability_resource.gd" id="1_ability"]
+[ext_resource type="Script" uid="uid://clauo4aqtg4dp" path="res://Abilities/ability_resource.gd" id="1_ability"]
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="1_p8n3i"]
+[ext_resource type="Script" uid="uid://b5xhfgum5k35x" path="res://Passives/payload_property_override.gd" id="2_44j2l"]
 [ext_resource type="PackedScene" path="res://Enemy/lightning_bolt_projectile.tscn" id="2_bolt"]
 
 [sub_resource type="Gradient" id="Gradient_icon"]
@@ -22,7 +24,6 @@ display_name = "Spark"
 description = "A fast bolt of lightning. Works best on things that are not grounded."
 icon = SubResource("GradientTexture2D_icon")
 ability_tags = Array[StringName]([&"ability.spell.lightning"])
-cooldown = 1.0
 cost_amount = 15.0
 release_time = 0.25
 movement_speed = 2.0

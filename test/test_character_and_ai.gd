@@ -14,7 +14,8 @@
 ##   walk that keeps moving is never cut short.
 ## - Crowd avoidance: an enemy pursuing the player behind another enemy that
 ##   already stands at the player steers around it and reaches the player
-##   instead of pushing into its back.
+##   instead of pushing into its back; dead enemies across its path do not
+##   stop it.
 ## - Projectiles are parented to the world, so they outlive their shooter.
 ## - Ranged AI attacks a player in range and then moves on to one of its
 ##   configured next states; enemies never use auto-aim.
@@ -56,6 +57,8 @@ const WALK_DISTANCE: float = 6.0
 const CAGE_GAP: float = 0.15
 ## Test-owned distance between the player and the pursuer's start.
 const BLOCKER_GAP: float = 4.0
+## Test-owned number of corpses lying shoulder to shoulder across a path.
+const CORPSE_ROW: int = 3
 
 var _arena: Node3D
 
@@ -253,6 +256,39 @@ func test_a_pursuer_steers_around_an_enemy_standing_at_the_player() -> void:
 	var reach: float = pursue.attack_range + 0.5
 	var walk_frames: int = _frames_for(BLOCKER_GAP * 3.0 / maxf(pursuer.attribute_component.get_current(AttributeComponent.STAT_SPEED), 0.1) * 3.0)
 	await wait_until(func() -> bool: return pursuer.global_position.distance_to(player.global_position) <= reach, "the pursuer should get around the standing enemy and reach the player", walk_frames)
+
+
+func test_a_pursuer_walks_through_a_row_of_corpses() -> void:
+	await wait_for_navigation(_arena)
+	var player: Character = _spawn_quiet_player(Vector3(0.0, 1.0, BLOCKER_GAP * 1.5))
+	player.attribute_component.set_base(AttributeComponent.STAT_MAX_HEALTH, 1.0e9)
+	player.attribute_component.set_pool_current(AttributeComponent.POOL_HEALTH, 1.0e9)
+	var pursuer: Character = _spawn(MELEE_SCENE, Vector3(0.0, 1.0, -BLOCKER_GAP * 1.5))
+	disable_ai(pursuer)
+	# A row of enemies shoulder to shoulder across the path, then killed.
+	var spacing: float = float(pursuer.collision_shape_3d.shape.get("radius")) * 2.0 + 0.05
+	var row: Array[Character] = []
+	for index: int in CORPSE_ROW:
+		var enemy: Character = _spawn(MELEE_SCENE, Vector3((index - (CORPSE_ROW - 1) * 0.5) * spacing, 1.0, 0.0))
+		disable_ai(enemy)
+		row.append(enemy)
+	await wait_until(func() -> bool: return player.is_on_floor() and pursuer.is_on_floor(), "setup: everyone should land")
+	for enemy: Character in row:
+		enemy.hurtbox.receive_hit(enemy.attribute_component.get_current(AttributeComponent.POOL_HEALTH), Vector3.ZERO)
+	var pursue: AIPursue = pursuer.ai_state_machine.get_node("AIPursue") as AIPursue
+	pursue.attack_cooldown = LONG_COOLDOWN
+	pursuer.ai_state_machine.process_mode = Node.PROCESS_MODE_INHERIT
+	pursuer.ai_state_machine.request_state(pursue.name)
+	# Straight through, in about the time walking the distance takes: no
+	# stall in front of the row and no detour around it.
+	var start_x: float = pursuer.global_position.x
+	var widest: Array[float] = [0.0]
+	var straight_time: float = (1.0 - pursuer.global_position.z) / maxf(pursuer.attribute_component.get_current(AttributeComponent.STAT_SPEED), 0.1)
+	if not await wait_until(func() -> bool:
+		widest[0] = maxf(widest[0], absf(pursuer.global_position.x - start_x))
+		return pursuer.global_position.z > 1.0, "the pursuer should walk straight through the row of corpses", _frames_for(straight_time * 1.5)):
+		return
+	check(widest[0] < spacing, "the pursuer should not detour around the corpses (swerved %.2f m)" % widest[0])
 
 
 func test_defeated_characters_stop_acting() -> void:

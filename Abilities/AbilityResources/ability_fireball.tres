@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="AbilityResource" format=3]
+[gd_resource type="Resource" script_class="AbilityResource" format=3 uid="uid://dgpqqc4bxrdyl"]
 
-[ext_resource type="Script" path="res://Abilities/ability_resource.gd" id="1_ability"]
-[ext_resource type="Script" path="res://Passives/payload_property_override.gd" id="2_override"]
-[ext_resource type="PackedScene" path="res://Enemy/fireball_projectile.tscn" id="3_fireball"]
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="1_6my6a"]
+[ext_resource type="Script" uid="uid://clauo4aqtg4dp" path="res://Abilities/ability_resource.gd" id="1_ability"]
+[ext_resource type="Script" uid="uid://b5xhfgum5k35x" path="res://Passives/payload_property_override.gd" id="2_override"]
+[ext_resource type="PackedScene" uid="uid://0qtans3shtxh" path="res://Enemy/fireball_projectile.tscn" id="3_fireball"]
 
 [sub_resource type="Gradient" id="Gradient_icon"]
 offsets = PackedFloat32Array(0, 0.35, 0.7, 0.92, 1)

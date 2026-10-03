@@ -7,13 +7,14 @@
 [ext_resource type="Script" path="res://Abilities/ability_cast_state.gd" id="5_slot"]
 [ext_resource type="Script" path="res://Components/ability_system_component.gd" id="6_asc"]
 [ext_resource type="Script" path="res://Abilities/ability_resource.gd" id="7_ability_script"]
-[ext_resource type="Resource" path="res://Abilities/AbilityResources/ability_crunch_time.tres" id="8_crunch_time"]
+[ext_resource type="Resource" path="res://Abilities/AbilityResources/ability_run_headless.tres" id="8_run_headless"]
 [ext_resource type="Script" path="res://Components/attack_component.gd" id="9_attack_comp"]
 [ext_resource type="Script" path="res://StateMachine/AIStates/ai_meander.gd" id="10_meander"]
 [ext_resource type="Script" path="res://StateMachine/AIStates/ai_wait.gd" id="11_wait"]
 [ext_resource type="Script" path="res://StateMachine/AIStates/ai_support_allies.gd" id="12_support"]
 [ext_resource type="Script" path="res://StateMachine/AIStates/ai_conditional_attack.gd" id="13_conditional"]
 [ext_resource type="AudioStream" uid="uid://mgv1fbcndh5a" path="res://Assets/Audio/weapon-swing.ogg" id="14_swing"]
+[ext_resource type="Script" path="res://Singletons/VFX/upright_status_visual.gd" id="15_upright"]
 
 [sub_resource type="Gradient" id="Gradient_ed31s"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -64,11 +65,11 @@ colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 gradient = SubResource("Gradient_3q8ax")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_gold"]
-colors = PackedColorArray(1, 0.78, 0.25, 1, 0.55, 0.25, 0.05, 1)
+[sub_resource type="Gradient" id="Gradient_terminal"]
+colors = PackedColorArray(0.3, 0.85, 0.42, 1, 0.03, 0.28, 0.12, 1)
 
 [sub_resource type="GradientTexture1D" id="GradientTexture1D_w0q4i"]
-gradient = SubResource("Gradient_gold")
+gradient = SubResource("Gradient_terminal")
 width = 64
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_auuu1"]
@@ -83,34 +84,74 @@ shader_parameter/global_tint = Color(1, 1, 1, 1)
 shader_parameter/roughness = 0.3
 shader_parameter/metallic = 0.0
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_board"]
-albedo_color = Color(0.45, 0.28, 0.14, 1)
-roughness = 0.6
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_shaft"]
+albedo_color = Color(0.1, 0.11, 0.12, 1)
+metallic = 0.6
+roughness = 0.35
 
-[sub_resource type="BoxMesh" id="BoxMesh_board"]
-material = SubResource("StandardMaterial3D_board")
-size = Vector3(0.24, 0.32, 0.02)
+[sub_resource type="CylinderMesh" id="CylinderMesh_shaft"]
+material = SubResource("StandardMaterial3D_shaft")
+top_radius = 0.018
+bottom_radius = 0.022
+height = 0.95
+radial_segments = 10
+rings = 1
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_paper"]
-albedo_color = Color(0.96, 0.95, 0.9, 1)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_prong"]
+albedo_color = Color(0.25, 1, 0.4, 1)
+emission_enabled = true
+emission = Color(0.25, 1, 0.4, 1)
+emission_energy_multiplier = 1.5
 
-[sub_resource type="BoxMesh" id="BoxMesh_paper"]
-material = SubResource("StandardMaterial3D_paper")
-size = Vector3(0.2, 0.25, 0.006)
+[sub_resource type="BoxMesh" id="BoxMesh_crossbar"]
+material = SubResource("StandardMaterial3D_prong")
+size = Vector3(0.24, 0.035, 0.035)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_clip"]
-albedo_color = Color(0.75, 0.75, 0.78, 1)
-metallic = 0.8
-roughness = 0.25
+[sub_resource type="BoxMesh" id="BoxMesh_prong"]
+material = SubResource("StandardMaterial3D_prong")
+size = Vector3(0.03, 0.2, 0.03)
 
-[sub_resource type="BoxMesh" id="BoxMesh_clip"]
-material = SubResource("StandardMaterial3D_clip")
-size = Vector3(0.09, 0.03, 0.03)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_flame"]
+shading_mode = 0
+vertex_color_use_as_albedo = true
+
+[sub_resource type="Gradient" id="Gradient_flame"]
+offsets = PackedFloat32Array(0, 0.3, 1)
+colors = PackedColorArray(0.85, 1, 0.85, 1, 0.2, 1, 0.35, 0.95, 0.02, 0.4, 0.1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_flame"]
+gradient = SubResource("Gradient_flame")
+
+[sub_resource type="Curve" id="Curve_flame"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.15), -1.2, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_flame"]
+curve = SubResource("Curve_flame")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_flame"]
+emission_shape = 3
+emission_box_extents = Vector3(0.12, 0.02, 0.12)
+direction = Vector3(0, 1, 0)
+spread = 12.0
+initial_velocity_min = 0.6
+initial_velocity_max = 1.1
+gravity = Vector3(0, 1.5, 0)
+scale_min = 0.7
+scale_max = 1.1
+scale_curve = SubResource("CurveTexture_flame")
+color_ramp = SubResource("GradientTexture1D_flame")
+
+[sub_resource type="SphereMesh" id="SphereMesh_flame"]
+radius = 0.06
+height = 0.12
+radial_segments = 8
+rings = 4
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_hitbox"]
 size = Vector3(0.8, 1.1, 0.8)
 
-[node name="EnemyProducer" unique_id=2117139762 node_paths=PackedStringArray("weapon_hitbox", "ability_system_component") instance=ExtResource("1_base")]
+[node name="EnemyHeadlessDaemon" unique_id=2117139762 node_paths=PackedStringArray("weapon_hitbox", "ability_system_component") instance=ExtResource("1_base")]
 weapon_hitbox = NodePath("AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea")
 ability_system_component = NodePath("AbilitySystemComponent")
 
@@ -124,6 +165,7 @@ material_override = SubResource("ShaderMaterial_auuu1")
 material_override = SubResource("ShaderMaterial_auuu1")
 
 [node name="Enemy_Medium_Head" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="3" unique_id=1681711066]
+visible = false
 material_override = SubResource("ShaderMaterial_auuu1")
 
 [node name="Enemy_Medium_LegLeft" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="4" unique_id=1428134451]
@@ -138,22 +180,32 @@ bone_name = "handslot.r"
 bone_idx = 14
 hitbox = NodePath("HitboxArea")
 
-[node name="Clipboard" type="Node3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+[node name="Trident" type="Node3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0"]
 
-[node name="Board" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Clipboard"]
+[node name="Shaft" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Trident"]
 gi_mode = 0
-mesh = SubResource("BoxMesh_board")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+mesh = SubResource("CylinderMesh_shaft")
 
-[node name="Paper" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Clipboard"]
+[node name="Crossbar" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Trident"]
 gi_mode = 0
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.015, 0.013)
-mesh = SubResource("BoxMesh_paper")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.72, 0)
+mesh = SubResource("BoxMesh_crossbar")
 
-[node name="Clip" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Clipboard"]
+[node name="ProngLeft" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Trident"]
 gi_mode = 0
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0.02)
-mesh = SubResource("BoxMesh_clip")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.105, 0.82, 0)
+mesh = SubResource("BoxMesh_prong")
+
+[node name="ProngMiddle" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Trident"]
+gi_mode = 0
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+mesh = SubResource("BoxMesh_prong")
+
+[node name="ProngRight" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Trident"]
+gi_mode = 0
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.105, 0.82, 0)
+mesh = SubResource("BoxMesh_prong")
 
 [node name="HitboxArea" type="Area3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1"]
 collision_layer = 0
@@ -172,6 +224,27 @@ script = ExtResource("9_attack_comp")
 stream = ExtResource("14_swing")
 bus = &"SFX"
 
+[node name="NeckSlot" type="BoneAttachment3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D"]
+bone_name = "head"
+
+[node name="NeckFlame" type="Node3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/NeckSlot"]
+script = ExtResource("15_upright")
+
+[node name="GPUParticles3D" type="GPUParticles3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/NeckSlot/NeckFlame"]
+gi_mode = 0
+material_override = SubResource("StandardMaterial3D_flame")
+amount = 36
+lifetime = 0.5
+local_coords = false
+process_material = SubResource("ParticleProcessMaterial_flame")
+draw_pass_1 = SubResource("SphereMesh_flame")
+
+[node name="NeckLight" type="OmniLight3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/NeckSlot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+light_color = Color(0.3, 1, 0.45, 1)
+light_energy = 1.2
+omni_range = 2.0
+
 [node name="AnimationTree" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium" parent_id_path=PackedInt32Array(1495277970, 1921158861) index="2" unique_id=1365896023]
 parameters/MeleeAttack/TimeScale/scale = 1.0
 parameters/RangedAttack/TimeScale/scale = 1.0
@@ -185,7 +258,7 @@ base_max_mana = 40.0
 base_mana_regen = 4.0
 
 [node name="CharacterColorComponent" parent="." index="7" unique_id=1409284102]
-gradients = Array[Gradient]([null, null, null, null, null, null, null, SubResource("Gradient_gold")])
+gradients = Array[Gradient]([null, null, null, null, null, null, null, SubResource("Gradient_terminal")])
 
 [node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" node_paths=PackedStringArray("next_states", "weapon_slot", "character", "fall_state")]
 script = ExtResource("4_attack")
@@ -208,7 +281,7 @@ fall_state = NodePath("../EnemyFall")
 [node name="AbilitySystemComponent" type="Node" parent="." node_paths=PackedStringArray("slots")]
 script = ExtResource("6_asc")
 slots = [NodePath("../StateMachine/AbilitySlot1")]
-starting_abilities = Array[ExtResource("7_ability_script")]([ExtResource("8_crunch_time")])
+starting_abilities = Array[ExtResource("7_ability_script")]([ExtResource("8_run_headless")])
 
 [node name="AIStateMachine" parent="." index="9" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
 initial_state = NodePath("AIMeander")
@@ -225,7 +298,7 @@ attack_range = 0.0
 wait_state = NodePath("../AIWait")
 ai_state_machine = NodePath("..")
 
-[node name="AICrunchTime" type="Node" parent="AIStateMachine" index="2" node_paths=PackedStringArray("next_state", "body_state", "ai_state_machine")]
+[node name="AIRunHeadless" type="Node" parent="AIStateMachine" index="2" node_paths=PackedStringArray("next_state", "body_state", "ai_state_machine")]
 script = ExtResource("12_support")
 ally_range = 6.0
 min_allies = 1
