@@ -8,12 +8,6 @@ extends ItemResource
 @export_group("Gear Configuration")
 ## Optional slot category or equipment tag (e.g. &"weapon", &"feet", &"chest", &"relic").
 @export var slot_tag: StringName = &"gear"
-@export_group("Passive Abilities")
-## Passive scenes (PassiveAbility root nodes) granted while this gear is
-## equipped: the reusable "upgrade one ability's behavior" mechanism. Each
-## scene is instanced onto the character's AbilitySystemComponent on equip
-## and revoked again on unequip (e.g. a passive detonating at dash end).
-@export var granted_passives: Array[PackedScene] = []
 
 
 func _init() -> void:
@@ -60,8 +54,8 @@ func _apply_persistent_effects(character: Character) -> Array[StringName]:
 	return ids
 
 
-## Grants the passive ability scenes to the character's passive component and
-## returns the granted nodes.
+## Grants granted_passives for as long as this gear stays equipped (the gear is
+## their source) and returns the granted nodes, which unequip() revokes.
 func _grant_passives(character: Character) -> Array[PassiveAbility]:
 	var granted_nodes: Array[PassiveAbility] = []
 	if character.ability_system_component == null:
@@ -69,7 +63,7 @@ func _grant_passives(character: Character) -> Array[PassiveAbility]:
 	for passive_scene: PackedScene in granted_passives:
 		if passive_scene == null:
 			continue
-		var granted: PassiveAbility = character.ability_system_component.add_passive(passive_scene)
+		var granted: PassiveAbility = character.ability_system_component.add_passive(passive_scene, self)
 		if granted != null:
 			granted_nodes.append(granted)
 	return granted_nodes
@@ -89,15 +83,16 @@ func _grant_equipped_abilities(character: Character) -> void:
 			push_warning("%s: no free ability slot for %s; equipped without it." % [resource_path, ability.display_name])
 
 
-## Gear teaches nothing for good: its abilities come from attach() and leave
-## with unequip(), so apply() (the instant part of equipping) grants none.
+## Gear teaches nothing for good: its abilities and passives come from
+## attach() and leave with unequip(), so apply() (the instant part of
+## equipping) grants none.
 func _grant_abilities(_character: Character) -> void:
 	pass
 
 
 ## Gear equips whatever the ability slots hold; the abilities it cannot fit
 ## are skipped (see _grant_equipped_abilities()).
-func can_grant_abilities(_character: Character) -> bool:
+func can_teach(_character: Character) -> bool:
 	return true
 
 
@@ -140,37 +135,6 @@ func unequip(character: Character, active_effect_ids: Array[StringName], visual_
 		visual_node.queue_free()
 
 	_on_unequipped(character)
-
-
-## Extends the base stat summary with the passives this gear grants, so shop
-## cards and the inventory list behavior upgrades without hand-written text.
-func get_stat_summary(character: Character) -> String:
-	var base: String = super.get_stat_summary(character)
-	var lines: Array[String] = []
-	for passive_scene: PackedScene in granted_passives:
-		if passive_scene == null:
-			continue
-		lines.append("Grants: [color='c9a6ff']%s[/color]" % _passive_display_name(passive_scene))
-	if lines.is_empty():
-		return base
-	if base.is_empty():
-		return "\n".join(lines)
-	return base + "\n" + "\n".join(lines)
-
-
-## Best-effort UI label for a granted passive scene: the root PassiveAbility's
-## display_name when set, otherwise the scene filename made readable.
-func _passive_display_name(scene: PackedScene) -> String:
-	var instance: Node = scene.instantiate()
-	if instance == null:
-		return scene.resource_path.get_file().get_basename().replace("_", " ").capitalize()
-	var label: String = ""
-	if instance is PassiveAbility:
-		label = (instance as PassiveAbility).display_name
-	instance.free()
-	if label.is_empty():
-		label = scene.resource_path.get_file().get_basename().replace("_", " ").capitalize()
-	return label
 
 
 ## Optional virtual hook called when gear is equipped.

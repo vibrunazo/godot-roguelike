@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemResource" format=3]
+
+[ext_resource type="Script" path="res://Items/item_resource.gd" id="1_item"]
+[ext_resource type="Script" path="res://Abilities/ability_resource.gd" id="2_ability_script"]
+[ext_resource type="Resource" path="res://Abilities/AbilityResources/ability_earthquake.tres" id="3_taught"]
+[ext_resource type="PackedScene" path="res://Items/Books/book_dummies.tscn" id="4_book"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"item_book_earthquake"
+title = "Earthquake for Dummies"
+description = "Ground-breaking techniques. The author is not responsible for collision bugs or falling through the floor."
+max_purchases = 1
+granted_abilities = Array[ExtResource("2_ability_script")]([ExtResource("3_taught")])
+world_visual = ExtResource("4_book")

@@ -16,3 +16,8 @@ extends Resource
 
 ## Gold currency awarded to the player when an enemy of this archetype is defeated.
 @export var gold_drop: int = 5
+
+## Items an enemy of this archetype may drop when defeated, each rolled on its
+## own (see LootDrop and LootComponent). Each enemy drops a book teaching an
+## ability it uses itself.
+@export var item_drops: Array[LootDrop] = []

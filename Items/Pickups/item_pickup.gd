@@ -3,9 +3,14 @@
 ## a floor marker, and on contact applies the item through the player's
 ## EquipmentComponent (a book teaches its ability, gear equips, ...). An item
 ## the player cannot take yet (an ability already known, no free slot) stays
-## on the floor with a short message.
+## on the floor with a short message. Every pickup in the tree is in GROUP,
+## so droppers can tell whether an item already lies somewhere in the level
+## (is_lying_in()).
 class_name ItemPickup
 extends Area3D
+
+## Group of every ItemPickup in the tree.
+const GROUP: StringName = &"item_pickups"
 
 ## Emitted when a character took the item.
 signal picked_up(item: ItemResource, character: Character)
@@ -33,6 +38,27 @@ var _taken: bool = false
 var _visual_base_height: float = 0.0
 var _bob_time: float = 0.0
 var _last_refusal_time: float = -INF
+
+
+## Whether a pickup of lying_item, not taken yet, lies anywhere in tree.
+static func is_lying_in(tree: SceneTree, lying_item: ItemResource) -> bool:
+	for node: Node in tree.get_nodes_in_group(GROUP):
+		var pickup: ItemPickup = node as ItemPickup
+		if pickup != null and not pickup._taken and not pickup.is_queued_for_deletion() and pickup.item == lying_item:
+			return true
+	return false
+
+
+## The floor surface under point (navmesh points lie a little above the
+## floor), or point itself when no floor on floor_mask is hit within 2 m.
+static func floor_below(world: World3D, point: Vector3, floor_mask: int) -> Vector3:
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(point + Vector3.UP, point + Vector3.DOWN * 2.0, floor_mask)
+	var hit: Dictionary = world.direct_space_state.intersect_ray(query)
+	return hit["position"] as Vector3 if not hit.is_empty() else point
+
+
+func _enter_tree() -> void:
+	add_to_group(GROUP)
 
 
 func _ready() -> void:
@@ -108,12 +134,10 @@ func _on_body_entered(body: Node3D) -> void:
 		try_pick_up(character)
 
 
-## "Learned: Fireball" for an item teaching abilities, else the item's name.
+## "Learned: Fireball" for an item teaching abilities or passives, else the
+## item's name.
 func _pickup_message() -> String:
-	var names: Array[String] = []
-	for ability: AbilityResource in item.granted_abilities:
-		if ability != null:
-			names.append(ability.display_name)
+	var names: Array[String] = item.get_taught_names()
 	if not names.is_empty():
 		return "Learned: %s" % ", ".join(names)
 	return item.get_plain_title()
@@ -127,6 +151,6 @@ func _show_refusal(character: Character) -> void:
 	_last_refusal_time = _bob_time
 	var message: String = "Can't take this now"
 	var asc: AbilitySystemComponent = character.ability_system_component
-	if not item.granted_abilities.is_empty() and asc != null:
-		message = "No free ability slot" if not asc.has_free_slot() else "Already learned"
+	if item.teaches_anything() and asc != null:
+		message = "Already learned" if asc.has_free_slot() or item.granted_abilities.is_empty() else "No free ability slot"
 	VfxManager.spawn_floating_text(global_position + Vector3.UP * message_height, message)

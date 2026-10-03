@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Passives/hit_effect_passive.gd" id="1_script"]
+[ext_resource type="Script" path="res://Components/gameplay_effect.gd" id="2_effect_script"]
+[ext_resource type="Resource" path="res://Components/effect_lag.tres" id="3_lag"]
+
+[node name="PassiveLagSpike" type="Node"]
+script = ExtResource("1_script")
+effects_to_apply = Array[ExtResource("2_effect_script")]([ExtResource("3_lag")])
+trigger_tags = Array[StringName]([&"ability.attack"])
+trigger_phase = 3
+id = &"lag_spike"
+display_name = "Lag Spike"

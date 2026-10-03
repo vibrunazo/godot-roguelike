@@ -51,7 +51,14 @@ Section numbers (§) point into the closed 2026-09-23 code review,
    `docs/plans/active_abilities_plan.md`):
    - Migrate `RangedEnemy` (and the other casters) to an ability slot with
      the Fireball, dropping its bespoke attack state and spawner signal. It
-     changes their timing, so retune them together.
+     changes their timing, so retune them together. The firebomber, brute and
+     thunder mage drop books for the player's Firebomb, Earthquake and Spark
+     (`ability_*.tres`), which reuse their payloads but not their attack
+     states; migrating them makes the enemy and the book share one ability.
+     The brute's slam lands ahead of it, the player's Earthquake around the
+     caster.
+   - Learned passives (the Lag Spike book) show nowhere in the HUD or the
+     inventory; only the pickup message tells the player.
    - A pick-up dialog (a close-up of the book, take it or leave it) and a
      replace-slot choice when every slot is full. Today a book the player
      cannot take stays on the floor with a message, and gear equipped with

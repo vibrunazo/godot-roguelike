@@ -73,6 +73,16 @@ extends Node3D
 		if is_inside_tree():
 			_update_collision_mask()
 
+## When set and a wielder is known (set_wielder()), hits the wielder's foes:
+## a player's area hits enemies, an enemy's hits the player, whatever
+## can_hit_player and can_hit_enemies say. Lets one payload scene serve
+## whichever side casts it (an ability any character may learn).
+@export var hit_wielder_foes: bool = false:
+	set(value):
+		hit_wielder_foes = value
+		if is_inside_tree():
+			_update_collision_mask()
+
 ## Status effects applied to each victim when damaged.
 @export var effects_to_apply: Array[GameplayEffect] = []:
 	set(value):
@@ -147,6 +157,8 @@ func _update_collision_mask() -> void:
 	var mask: int = 0
 	if hits_all:
 		mask = 64 | 128
+	elif hit_wielder_foes and wielder != null:
+		mask = 64 if wielder.is_enemy() else 128
 	else:
 		if can_hit_player:
 			mask |= 64

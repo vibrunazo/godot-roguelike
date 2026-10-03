@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="AbilityResource" format=3]
+
+[ext_resource type="Script" path="res://Abilities/ability_resource.gd" id="1_ability"]
+[ext_resource type="PackedScene" path="res://Hazards/earthquake.tscn" id="2_quake"]
+
+[sub_resource type="Gradient" id="Gradient_icon"]
+offsets = PackedFloat32Array(0, 0.35, 0.7, 0.92, 1)
+colors = PackedColorArray(1, 0.9, 0.6, 1, 0.85, 0.6, 0.3, 1, 0.5, 0.32, 0.15, 1, 0.25, 0.16, 0.08, 1, 0.25, 0.16, 0.08, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_icon"]
+gradient = SubResource("Gradient_icon")
+width = 128
+height = 128
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[resource]
+script = ExtResource("1_ability")
+id = &"earthquake"
+display_name = "Earthquake"
+description = "Shake the ground around you. Enemies close by get knocked off their feet."
+icon = SubResource("GradientTexture2D_icon")
+ability_tags = Array[StringName]([&"ability.spell.earth"])
+cooldown = 6.0
+cost_amount = 40.0
+blocked_tags = Array[StringName]([&"movement.airborne"])
+release_time = 0.45
+release_point = 1
+payload_scene = ExtResource("2_quake")

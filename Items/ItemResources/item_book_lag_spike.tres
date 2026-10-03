@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemResource" format=3]
+
+[ext_resource type="Script" path="res://Items/item_resource.gd" id="1_item"]
+[ext_resource type="PackedScene" path="res://Passives/passive_lag_spike.tscn" id="3_taught"]
+[ext_resource type="PackedScene" path="res://Items/Books/book_dummies.tscn" id="4_book"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"item_book_lag_spike"
+title = "Lag Spike for Dummies"
+description = "A beginner's guide to netcode. You won't fix your own lag, but you'll learn to share it."
+max_purchases = 1
+granted_passives = Array[PackedScene]([ExtResource("3_taught")])
+world_visual = ExtResource("4_book")

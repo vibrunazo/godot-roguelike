@@ -126,7 +126,7 @@ prints the error and idles forever. `--quit-after` does not help.
   `AirborneTracker` (airborne tag and landing events), `EquipmentComponent`
   (gear and consumables), `AbilitySystemComponent` (ASC: every ability the
   character has; see Abilities), `CharacterColorComponent` (palette). Enemies add
-  `LootComponent` (gold on defeat); the player adds `TargetingComponent`
+  `LootComponent` (gold and item drops on defeat; see Abilities); the player adds `TargetingComponent`
   (auto-aim), `ScreenShakeComponent` and `PlayerDefeatHandler` (game over).
   `Character` itself owns the body: movement, facing, intents, orders and
   defeat. Damage types are `DamageType` constants.
@@ -181,16 +181,29 @@ prints the error and idles forever. `--quit-after` does not help.
   ability's comes from its `AbilityResource`): `AIMED` (straight at the point
   the caster sees at its release height above the aimed floor: level on flat
   ground, up or down to another floor or from a jump), `FLAT` (level at
-  release height) or `GROUND` (the floor point; a lob lands there). Passive
-  abilities (`PassiveAbility` scenes) live on the ASC too.
-  Items grant abilities through `ItemResource.granted_abilities`: plain items
-  (spell books) teach them for good, gear only while equipped.
+  release height) or `GROUND` (the floor point; a lob lands there). The
+  payload spawns at the slot's `cast_origin` or, by the ability's
+  `release_point`, at the caster's feet (ground areas). A `DamageArea` with
+  `hit_wielder_foes` hits whichever side its caster is not on. Passive
+  abilities (`PassiveAbility` scenes) live on the ASC too and react to
+  `AbilityEvent`s (STARTED, ACTIVE, ENDED, and HIT, which melee attacks send
+  with the struck hurtbox; `HitEffectPassive` applies effects on it).
+  Items grant abilities through `ItemResource.granted_abilities` and passives
+  through `granted_passives`: plain items (spell books) teach them for good,
+  gear only while equipped. **Drops:** every enemy archetype drops a book
+  teaching something it uses itself (`EnemyResource.item_drops`, `LootDrop`:
+  item and chance); `LootComponent` drops a won item where the enemy fell,
+  only when the run's player holds none of what it teaches
+  (`ProgressionState.can_drop()`) and no pickup of it lies in the level
+  (`ItemPickup.is_lying_in()`). A new ability for a new enemy is data: an
+  `AbilityResource` (or a passive scene), a book `ItemResource`, a `LootDrop`.
 - **Registries:** `GlobalVars` (shop items, level items, enemies, dungeons,
   shared scenes), `ProgressionState` (run state: difficulty, dungeon level,
-  gold, purchases, which items the run may still offer, the planned
-  encounter and its wave plan, and the player's learned abilities, gear and
-  health: each level spawns its own fresh player and `bind_player()` gives it
-  the run's abilities, gear and health, then records every change), `SceneTransition`
+  gold, purchases, which items the run may still offer or drop, the planned
+  encounter and its wave plan, and the player's learned abilities and
+  passives, gear and health: each level spawns its own fresh player and
+  `bind_player()` gives it the run's abilities, passives, gear and health,
+  then records every change), `SceneTransition`
   (fades and level loading), `UI` (HUD, pause and
   game-over menus, fullscreen), `VfxManager`
   (world VFX, damage numbers, the target reticle). All five are autoloads.

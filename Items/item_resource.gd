@@ -40,6 +40,11 @@ extends Resource
 ## teaches them for good when applied; gear grants them only while equipped
 ## (see GearItemResource).
 @export var granted_abilities: Array[AbilityResource] = []
+## Passive scenes (PassiveAbility root nodes) this item grants: the reusable
+## "upgrade one ability's behavior" mechanism. A plain item (a spell book)
+## teaches them for good when applied; gear grants them only while equipped
+## (see GearItemResource).
+@export var granted_passives: Array[PackedScene] = []
 
 @export_group("Visuals")
 ## Optional 3D visual scene (extending ItemVisual) mounted to character bone slots when equipped.
@@ -57,25 +62,35 @@ func get_plain_title() -> String:
 
 
 ## Returns true if the character is currently eligible to receive this item:
-## an item that teaches abilities needs one the character does not have yet
-## and a free slot for it (see can_grant_abilities()).
+## an item that teaches abilities or passives needs one the character does
+## not have yet, and a free slot for each new ability (see can_teach()).
 func can_apply(character: Character) -> bool:
 	if character == null or not is_instance_valid(character):
 		return false
-	return can_grant_abilities(character)
+	return can_teach(character)
+
+
+## Whether this item teaches anything (abilities or passives).
+func teaches_anything() -> bool:
+	return not granted_abilities.is_empty() or not granted_passives.is_empty()
 
 
 ## Whether applying this item would teach something: at least one of its
 ## abilities is new to the character or only granted by its gear (learning
-## it makes it permanent, in the slot it holds), and every new one has a free
-## slot. True for items teaching nothing. Gear overrides it: it grants its
-## abilities while equipped instead, and equips whatever the slots hold.
-func can_grant_abilities(character: Character) -> bool:
-	if granted_abilities.is_empty():
+## it makes it permanent, in the slot it holds), or one of its passives is new
+## to it; and every new ability has a free slot. True for items teaching
+## nothing. Gear overrides it: it grants its abilities and passives while
+## equipped instead, and equips whatever the slots hold.
+func can_teach(character: Character) -> bool:
+	if not teaches_anything():
 		return true
 	var asc: AbilitySystemComponent = character.ability_system_component
 	if asc == null:
 		return false
+	var new_passives: int = 0
+	for scene: PackedScene in granted_passives:
+		if scene != null and not asc.has_passive_scene(scene):
+			new_passives += 1
 	var free_slots: int = 0
 	for slot: int in asc.get_slot_count():
 		if asc.get_ability(slot) == null:
@@ -90,7 +105,7 @@ func can_grant_abilities(character: Character) -> bool:
 			new_abilities += 1
 		elif asc.get_source(slot) != null:
 			gear_granted += 1
-	return new_abilities + gear_granted > 0 and new_abilities <= free_slots
+	return new_abilities + gear_granted + new_passives > 0 and new_abilities <= free_slots
 
 
 ## Applies base effects (instant healing and damage) to the character.
@@ -113,9 +128,9 @@ func apply(character: Character) -> bool:
 	return true
 
 
-## Teaches granted_abilities for good (source null: the run keeps them).
-## Gear overrides this to grant nothing here: it grants its abilities from
-## attach() for as long as it stays equipped.
+## Teaches granted_abilities and granted_passives for good (source null: the
+## run keeps them). Gear overrides this to grant nothing here: it grants them
+## from attach() for as long as it stays equipped.
 func _grant_abilities(character: Character) -> void:
 	var asc: AbilitySystemComponent = character.ability_system_component
 	if asc == null:
@@ -123,6 +138,8 @@ func _grant_abilities(character: Character) -> void:
 	for ability: AbilityResource in granted_abilities:
 		if ability != null:
 			asc.grant_ability(ability, null)
+	for scene: PackedScene in granted_passives:
+		asc.learn_passive(scene)
 
 
 ## Health restored by heal_percent for a character with the given max health.
@@ -174,18 +191,48 @@ func get_stat_summary(character: Character) -> String:
 	return "\n".join(lines)
 
 
-## One summary line per granted ability: "<verb>: <ability name>".
+## One summary line per granted ability and passive: "<verb>: <name>".
 func _ability_summary_lines() -> Array[String]:
 	var lines: Array[String] = []
 	for ability: AbilityResource in granted_abilities:
 		if ability != null:
 			lines.append("%s: [color='ffb347']%s[/color]" % [_ability_grant_verb(), ability.display_name])
+	for scene: PackedScene in granted_passives:
+		if scene != null:
+			lines.append("%s: [color='c9a6ff']%s[/color]" % [_ability_grant_verb(), passive_display_name(scene)])
 	return lines
 
 
-## How summaries describe granted_abilities: taught for good by plain items.
+## The names of everything this item teaches (abilities, then passives), for
+## pickup messages.
+func get_taught_names() -> Array[String]:
+	var names: Array[String] = []
+	for ability: AbilityResource in granted_abilities:
+		if ability != null:
+			names.append(ability.display_name)
+	for scene: PackedScene in granted_passives:
+		if scene != null:
+			names.append(passive_display_name(scene))
+	return names
+
+
+## How summaries describe what the item grants: taught for good by plain items.
 func _ability_grant_verb() -> String:
 	return "Teaches"
+
+
+## Best-effort UI label for a passive scene: the root PassiveAbility's
+## display_name when set, otherwise the scene filename made readable.
+static func passive_display_name(scene: PackedScene) -> String:
+	var instance: Node = scene.instantiate()
+	var label: String = ""
+	if instance is PassiveAbility:
+		label = (instance as PassiveAbility).display_name
+	if instance != null:
+		instance.free()
+	if label.is_empty():
+		label = scene.resource_path.get_file().get_basename().replace("_", " ").capitalize()
+	return label
 
 
 ## Formats one GameplayEffect as a human-readable stat change line in the

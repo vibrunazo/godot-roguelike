@@ -11,6 +11,12 @@
 class_name AbilityResource
 extends Resource
 
+## Where a cast releases its payload (see release_point).
+enum ReleasePoint {
+	CAST_ORIGIN, ## The slot's cast_origin (a hand, a chest-height marker): projectiles.
+	CASTER_FEET, ## The floor under the caster: ground areas centered on it (a quake).
+}
+
 @export_group("Identity")
 ## Unique identifier for this ability.
 @export var id: StringName = &""
@@ -56,6 +62,9 @@ extends Resource
 @export var float_in_air: bool = false
 
 @export_group("Release")
+## Where the payload spawns: at the slot's cast_origin, or on the floor at
+## the caster's feet.
+@export var release_point: ReleasePoint = ReleasePoint.CAST_ORIGIN
 ## How the release is aimed at the cast's aim (CharacterAction.aim_mode:
 ## AIMED at what the caster sees at its cast height above the aimed floor,
 ## FLAT level at cast height, GROUND at the floor point, where a lob lands).

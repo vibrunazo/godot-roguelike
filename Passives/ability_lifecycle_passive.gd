@@ -10,7 +10,7 @@ extends PassiveAbility
 ## exactly or by hierarchy prefix: trigger &"ability" answers every ability.
 @export var trigger_tags: Array[StringName] = []
 ## Ability lifecycle point this passive fires on (AbilityEvent.Phase index).
-@export_enum("STARTED", "ACTIVE", "ENDED") var trigger_phase: int = AbilityEvent.Phase.ENDED
+@export_enum("STARTED", "ACTIVE", "ENDED", "HIT") var trigger_phase: int = AbilityEvent.Phase.ENDED
 ## When true, only events reporting data {"completed": true} trigger this
 ## passive, so interrupted abilities (a stun-cancelled dash) stay silent. Events
 ## that do not report completion at all count as completed, so only states that

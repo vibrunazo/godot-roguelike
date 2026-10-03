@@ -254,10 +254,13 @@ func _get_timescale_param() -> String:
 	return "parameters/" + animation_name + "/TimeScale/scale"
 
 
-## Hitstop trigger: slows this attacker (not the victim) each time its attack lands.
-## Victim effects are applied by the AttackComponent itself on the confirmed hit.
-func _on_hit_landed(_target: Node) -> void:
+## Each time the attack lands: slows this attacker (hitstop, not the victim)
+## and reports the HIT lifecycle point with the struck hurtbox, so on-hit
+## passives (HitEffectPassive) can act on it. Victim effects of the attack
+## itself are applied by the AttackComponent on the confirmed hit.
+func _on_hit_landed(target: Node) -> void:
 	apply_self_hitstop()
+	broadcast_ability_event(AbilityEvent.Phase.HIT, {"target": target})
 
 
 ## Queues a combo follow-up instead of transitioning (consumes the intent).

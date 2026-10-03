@@ -3,9 +3,10 @@
 ## plain exports); the AbilitySystemComponent puts an AbilityResource in it
 ## (set_ability()) or clears it. Casting runs the shared CharacterAction flow
 ## (animation, aim toward the auto-aim target, cooldown, tags, events), pays
-## the ability's cost, and at release_time spawns its payload from
-## cast_origin (release_payload(), aimed then by the ability's aim_mode from
-## where cast_origin is at that moment) and applies its caster effects. A slot
+## the ability's cost, and at release_time spawns its payload from the
+## ability's release_point (cast_origin, or the caster's feet;
+## release_payload(), aimed then by the ability's aim_mode from where that
+## point is at that moment) and applies its caster effects. A slot
 ## may cast from the air (a jump): an aimed release then angles down to the
 ## aimed point. An empty slot can never be activated.
 class_name AbilityCastState
@@ -109,9 +110,9 @@ func _release() -> void:
 	if character.state_machine == null or character.state_machine.state != self:
 		return
 	_released = true
-	var origin: Vector3 = cast_origin.global_position if cast_origin != null else character.global_position
+	var origin: Vector3 = _release_origin()
 	var direction: Vector3 = release_direction(origin)
-	if ability.payload_scene != null and cast_origin != null:
+	if ability.payload_scene != null:
 		release_payload(ability.payload_scene, origin, ability.payload_overrides, ability.damage_multiplier, ability.scale_with_attack)
 	if character.attribute_component != null:
 		for effect: GameplayEffect in ability.caster_effects:
@@ -119,6 +120,13 @@ func _release() -> void:
 				character.attribute_component.apply_effect(effect)
 	broadcast_ability_event(AbilityEvent.Phase.ACTIVE, {}, direction)
 	released.emit(ability)
+
+
+## Where the payload spawns now, by the ability's release_point.
+func _release_origin() -> Vector3:
+	if ability.release_point == AbilityResource.ReleasePoint.CASTER_FEET or cast_origin == null:
+		return character.get_feet_position()
+	return cast_origin.global_position
 
 
 ## Committed until release: no order may interrupt the cast before its

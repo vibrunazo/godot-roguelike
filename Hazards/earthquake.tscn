@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Hazards/ground_damage_aoe.tscn" id="1_base"]
+
+[node name="Earthquake" instance=ExtResource("1_base")]
+radius = 3.5
+height = 0.5
+damage = 25.0
+knockback_force = 18.0
+active_duration = 0.2
+visual_duration = 0.7
+aoe_color = Color(0.85, 0.6, 0.3, 1)
+hit_wielder_foes = true

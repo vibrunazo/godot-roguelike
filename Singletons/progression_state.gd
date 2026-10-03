@@ -67,6 +67,11 @@ var pending_items: Array[ItemResource] = []
 var player_abilities: Array[AbilityResource] = []
 ## Abilities the bound player's gear grants right now (not learned for good).
 var player_gear_abilities: Array[AbilityResource] = []
+## The run's learned passives (scenes, in learning order), kept current by the
+## bound player; each level's fresh player learns them again.
+var player_passives: Array[PackedScene] = []
+## Passives the bound player's gear grants right now (not learned for good).
+var player_gear_passives: Array[PackedScene] = []
 ## Free ability slots the bound player has; -1 until a player is bound.
 var free_ability_slots: int = -1
 
@@ -126,12 +131,15 @@ func reset_run() -> void:
 	pending_items.clear()
 	player_abilities.clear()
 	player_gear_abilities.clear()
+	player_passives.clear()
+	player_gear_passives.clear()
 	free_ability_slots = -1
 	_purchase_counts.clear()
 
 
 ## Makes player the run's player (each level binds its own fresh one): it gets
-## the run's learned abilities back in their slots, then the run's gear (only
+## the run's learned abilities back in their slots and its learned passives,
+## then the run's gear (only
 ## the lasting part: instant effects ran when the gear was first equipped; its
 ## abilities fill the free slots) and the run's health, then the pending items.
 ## From then on the run state follows the player: every gear it equips or
@@ -141,11 +149,14 @@ func bind_player(player: Character) -> void:
 	var equipment: EquipmentComponent = player.equipment_component
 	var attributes: AttributeComponent = player.attribute_component
 	var abilities: AbilitySystemComponent = player.ability_system_component
-	if free_ability_slots >= 0:
+	if is_player_bound():
 		abilities.set_learned_abilities(player_abilities)
+		abilities.set_learned_passives(player_passives)
 	_record_abilities(abilities)
 	abilities.ability_granted.connect(func(_slot: int, _ability: AbilityResource, _source: Object) -> void: _record_abilities(abilities))
 	abilities.ability_revoked.connect(func(_slot: int, _ability: AbilityResource) -> void: _record_abilities(abilities))
+	abilities.passive_granted.connect(func(_passive: PassiveAbility, _source: Object) -> void: _record_abilities(abilities))
+	abilities.passive_revoked.connect(func(_passive: PassiveAbility) -> void: _record_abilities(abilities))
 	for gear: GearItemResource in player_gear:
 		equipment.restore_gear(gear)
 	attributes.set_pool_current(AttributeComponent.POOL_HEALTH, player_health)
@@ -164,9 +175,15 @@ func get_purchase_count(item: ItemResource) -> int:
 	return _purchase_counts.get(_item_key(item), 0) if item != null else 0
 
 
+## Whether a level's player has been bound this run (see bind_player()):
+## until then the run knows nothing about the player's abilities.
+func is_player_bound() -> bool:
+	return free_ability_slots >= 0
+
+
 ## Whether the run may still offer the item, in the shop or in a level: in
 ## stock (under max_purchases, when limited) and, for an item teaching
-## abilities, able to teach one (see can_learn()).
+## abilities or passives, able to teach one (see can_learn()).
 func is_item_available(item: ItemResource) -> bool:
 	if item == null:
 		return false
@@ -174,26 +191,60 @@ func is_item_available(item: ItemResource) -> bool:
 		return false
 	if item is GearItemResource:
 		return true
-	return can_learn(item.granted_abilities)
+	return can_learn(item)
 
 
-## Whether the run's player could learn abilities now: at least one of them
-## is new or only granted by its gear (learning makes it permanent in its
-## slot), and the free slots hold every new one. True for none, and before
-## the run's first player is bound (nothing is known yet).
-func can_learn(abilities: Array[AbilityResource]) -> bool:
-	if abilities.is_empty() or free_ability_slots < 0:
+## Whether the run's player could learn from the item now: at least one of its
+## abilities is new or only granted by its gear (learning makes it permanent
+## in its slot), or one of its passives is new; and the free slots hold every
+## new ability. True for an item teaching nothing, and before the run's first
+## player is bound (nothing is known yet).
+func can_learn(item: ItemResource) -> bool:
+	if not item.teaches_anything() or not is_player_bound():
 		return true
 	var new_abilities: int = 0
 	var gear_granted: int = 0
-	for ability: AbilityResource in abilities:
+	for ability: AbilityResource in item.granted_abilities:
 		if ability == null or player_abilities.has(ability):
 			continue
 		if player_gear_abilities.has(ability):
 			gear_granted += 1
 		else:
 			new_abilities += 1
-	return new_abilities + gear_granted > 0 and new_abilities <= free_ability_slots
+	var new_passives: int = 0
+	for scene: PackedScene in item.granted_passives:
+		if scene != null and not holds_passive(scene):
+			new_passives += 1
+	return new_abilities + gear_granted + new_passives > 0 and new_abilities <= free_ability_slots
+
+
+## Whether the bound player holds the ability, learned or from its gear.
+func holds_ability(ability: AbilityResource) -> bool:
+	return player_abilities.has(ability) or player_gear_abilities.has(ability)
+
+
+## Whether the bound player holds a passive from scene, learned or from gear.
+func holds_passive(scene: PackedScene) -> bool:
+	for held: PackedScene in player_passives + player_gear_passives:
+		if held == scene or (not scene.resource_path.is_empty() and held.resource_path == scene.resource_path):
+			return true
+	return false
+
+
+## Whether an enemy may drop the item now (see LootComponent): a player is
+## bound, the run may offer the item (is_item_available()), and the player
+## holds none of what it teaches, not even through gear. Whether the item
+## already lies in the level is the dropper's check (ItemPickup.is_lying_in()).
+func can_drop(item: ItemResource) -> bool:
+	if item == null or not is_player_bound() or not is_item_available(item):
+		return false
+	for ability: AbilityResource in item.granted_abilities:
+		if ability != null and holds_ability(ability):
+			return false
+	for scene: PackedScene in item.granted_passives:
+		if scene != null and holds_passive(scene):
+			return false
+	return true
 
 
 ## Whether the item can be bought now: available (see is_item_available())
@@ -209,10 +260,12 @@ func record_purchase(item: ItemResource) -> void:
 		_purchase_counts[key] = _purchase_counts.get(key, 0) + 1
 
 
-## Snapshots the bound player's learned abilities, gear abilities and free
-## slots.
+## Snapshots the bound player's learned abilities, gear abilities, free
+## slots, learned passives and gear passives.
 func _record_abilities(abilities: AbilitySystemComponent) -> void:
 	player_abilities = abilities.get_learned_abilities()
+	player_passives = abilities.get_learned_passives()
+	player_gear_passives = abilities.get_gear_passives()
 	player_gear_abilities.clear()
 	free_ability_slots = 0
 	for slot: int in abilities.get_slot_count():

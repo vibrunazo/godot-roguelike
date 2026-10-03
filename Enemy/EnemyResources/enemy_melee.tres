@@ -1,9 +1,17 @@
-[gd_resource type="Resource" script_class="EnemyResource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="EnemyResource" format=3]
 
 [ext_resource type="Script" path="res://Enemy/enemy_resource.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://cttwgr00qkjox" path="res://Enemy/melee_enemy.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://Items/loot_drop.gd" id="3_drop_script"]
+[ext_resource type="Resource" path="res://Items/ItemResources/item_book_lag_spike.tres" id="4_book"]
+
+[sub_resource type="Resource" id="Resource_book_drop"]
+script = ExtResource("3_drop_script")
+item = ExtResource("4_book")
+chance = 0.2
 
 [resource]
 script = ExtResource("1_script")
 scene = ExtResource("2_scene")
 difficulty_level = 1
+item_drops = Array[ExtResource("3_drop_script")]([SubResource("Resource_book_drop")])

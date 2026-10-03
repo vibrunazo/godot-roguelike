@@ -13,6 +13,7 @@ enum Phase {
 	STARTED, ## The ability just began (state enter).
 	ACTIVE, ## The ability's meaningful active window opened (e.g. weapon hit window).
 	ENDED, ## The ability finished for any reason (state exit, including interruptions).
+	HIT, ## One of the ability's hits landed; data "target" is the struck Hurtbox (melee attacks report it).
 }
 
 ## Ability identity tags of the source (e.g. &"ability.dash", &"ability.attack").
@@ -27,9 +28,10 @@ var source: Node
 var position: Vector3 = Vector3.ZERO
 ## Facing/motion direction at broadcast time.
 var direction: Vector3 = Vector3.ZERO
-## Free-form payload. The standard key is "completed" (bool): states that can be
+## Free-form payload. Standard keys: "completed" (bool): states that can be
 ## interrupted report whether they ran to completion; events without the key
 ## count as completed (see AbilityLifecyclePassive.require_completion).
+## "target" (Hurtbox): the hurtbox a HIT event struck.
 var data: Dictionary = {}
 
 

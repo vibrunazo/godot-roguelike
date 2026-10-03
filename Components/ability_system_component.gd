@@ -7,7 +7,9 @@
 ##   ability learned for good (a book, starting_abilities), the item for one
 ##   granted while that gear is equipped.
 ## - Passive abilities (item behavior upgrades) are PassiveAbility scenes
-##   instanced as children; ability lifecycle events fan out to them.
+##   instanced as children; ability lifecycle events fan out to them. Each
+##   remembers its source too: null when learned for good (a book), the item
+##   for one granted while that gear is equipped.
 ## Passives are plain Nodes: world payloads they spawn go through
 ## PayloadSpawner so they never inherit this component's lack of transform (a
 ## Node3D under a plain Node renders in world space).
@@ -21,6 +23,11 @@ signal ability_granted(slot: int, ability: AbilityResource, source: Object)
 signal ability_revoked(slot: int, ability: AbilityResource)
 ## Emitted when the ability in a slot releases its payload.
 signal ability_cast(slot: int, ability: AbilityResource)
+## Emitted when a passive is granted (source: null when learned for good,
+## else the granting item).
+signal passive_granted(passive: PassiveAbility, source: Object)
+## Emitted when a passive is revoked.
+signal passive_revoked(passive: PassiveAbility)
 
 ## The character's active ability slots, in order (slot 0 is the first key).
 @export var slots: Array[AbilityCastState] = []
@@ -35,6 +42,10 @@ var passives: Array[PassiveAbility] = []
 
 ## Grant source of each slot's ability (null: learned for good or empty).
 var _sources: Array[Object] = []
+## Grant source of each passive (null: learned for good).
+var _passive_sources: Dictionary[PassiveAbility, Object] = {}
+## The scene each passive was instanced from (passives built in code have none).
+var _passive_scenes: Dictionary[PassiveAbility, PackedScene] = {}
 
 
 func _ready() -> void:
@@ -183,9 +194,11 @@ func cast(slot: int) -> bool:
 	return character.state_machine.request_state(slots[slot].name)
 
 
-## Instances a passive scene and arms it. Returns the instance, or null when the
-## scene is missing or its root does not extend PassiveAbility.
-func add_passive(scene: PackedScene) -> PassiveAbility:
+## Instances a passive scene and arms it. source is null for a passive learned
+## for good, else the item granting it while equipped. Returns the instance,
+## or null when the scene is missing or its root does not extend
+## PassiveAbility.
+func add_passive(scene: PackedScene, source: Object = null) -> PassiveAbility:
 	if scene == null:
 		push_warning("AbilitySystemComponent: cannot add a null passive scene.")
 		return null
@@ -197,18 +210,71 @@ func add_passive(scene: PackedScene) -> PassiveAbility:
 		push_warning("AbilitySystemComponent: passive scene root must extend PassiveAbility, got '%s'." % instance.get_class())
 		instance.free()
 		return null
-	return add_passive_instance(instance as PassiveAbility)
+	var passive: PassiveAbility = instance as PassiveAbility
+	_passive_scenes[passive] = scene
+	return add_passive_instance(passive, source)
 
 
 ## Arms an already-built passive node (the shared grant path used by add_passive
 ## and by tests constructing configured passives directly). Returns the passive.
-func add_passive_instance(passive: PassiveAbility) -> PassiveAbility:
+func add_passive_instance(passive: PassiveAbility, source: Object = null) -> PassiveAbility:
 	if passive == null:
 		return null
 	passives.append(passive)
+	_passive_sources[passive] = source
 	add_child(passive)
 	passive.setup(_resolve_character())
+	passive_granted.emit(passive, source)
 	return passive
+
+
+## Learns the passive scene for good (source null), unless the character
+## already holds a passive from that scene. Returns the new passive, or null.
+func learn_passive(scene: PackedScene) -> PassiveAbility:
+	if scene == null or has_passive_scene(scene):
+		return null
+	return add_passive(scene, null)
+
+
+## Whether any granted passive (learned or from gear) was instanced from scene.
+func has_passive_scene(scene: PackedScene) -> bool:
+	if scene == null:
+		return false
+	for passive: PassiveAbility in passives:
+		var from: PackedScene = _passive_scenes.get(passive) as PackedScene
+		if from != null and (from == scene or (not scene.resource_path.is_empty() and from.resource_path == scene.resource_path)):
+			return true
+	return false
+
+
+## The scenes of the passives learned for good (source null), in grant order:
+## what the run remembers between levels. Passives built in code are skipped.
+func get_learned_passives() -> Array[PackedScene]:
+	var learned: Array[PackedScene] = []
+	for passive: PassiveAbility in passives:
+		var from: PackedScene = _passive_scenes.get(passive) as PackedScene
+		if from != null and _passive_sources.get(passive) == null:
+			learned.append(from)
+	return learned
+
+
+## The scenes of the passives granted by gear right now.
+func get_gear_passives() -> Array[PackedScene]:
+	var granted: Array[PackedScene] = []
+	for passive: PassiveAbility in passives:
+		var from: PackedScene = _passive_scenes.get(passive) as PackedScene
+		if from != null and _passive_sources.get(passive) != null:
+			granted.append(from)
+	return granted
+
+
+## Replaces every passive learned for good with learned. Gear passives stay.
+func set_learned_passives(learned: Array[PackedScene]) -> void:
+	for index: int in range(passives.size() - 1, -1, -1):
+		if _passive_sources.get(passives[index]) == null:
+			remove_passive(passives[index])
+	for scene: PackedScene in learned:
+		learn_passive(scene)
 
 
 ## Revokes one granted passive instance. Returns true when it was found.
@@ -216,8 +282,11 @@ func remove_passive(passive: PassiveAbility) -> bool:
 	if passive == null or not passives.has(passive):
 		return false
 	passives.erase(passive)
+	_passive_sources.erase(passive)
+	_passive_scenes.erase(passive)
 	passive.teardown()
 	passive.queue_free()
+	passive_revoked.emit(passive)
 	return true
 
 

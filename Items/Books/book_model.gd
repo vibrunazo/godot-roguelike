@@ -5,8 +5,9 @@
 ## scenes decorate the cover by adding nodes under cover_anchor (bands,
 ## labels, art); the anchor sits on the front cover's surface, so a flat
 ## PlaneMesh child lies on it and a Label3D child needs a -90° X turn.
-## show_item() writes the item's title on title_label and optional art on
-## art_sprite. Tool-enabled: changes preview in the editor.
+## show_item() writes the item's title on title_label (shrinking its font
+## until the longest word fits the label's width, so no word breaks) and
+## optional art on art_sprite. Tool-enabled: changes preview in the editor.
 @tool
 class_name BookModel
 extends ItemDisplay
@@ -58,6 +59,8 @@ extends ItemDisplay
 		_rebuild()
 ## Label showing the item's title (the style scene places and styles it).
 @export var title_label: Label3D
+## Smallest font size the title shrinks to so its longest word fits.
+@export var min_title_font_size: int = 30
 ## Optional sprite showing cover art (e.g. an enemy on an O'Reilly style cover).
 @export var art_sprite: Sprite3D
 ## Cover art shown on art_sprite.
@@ -68,6 +71,8 @@ extends ItemDisplay
 			art_sprite.texture = art
 
 var _parts: Array[MeshInstance3D] = []
+## The title's font size as styled, before any shrinking (-1 until read).
+var _styled_font_size: int = -1
 
 
 func _ready() -> void:
@@ -80,6 +85,27 @@ func _ready() -> void:
 func show_item(item: ItemResource) -> void:
 	if title_label != null and item != null:
 		title_label.text = item.get_plain_title()
+		_fit_title()
+
+
+## Shrinks the title's font (from its styled size, down to
+## min_title_font_size) until its longest word fits the label's width.
+func _fit_title() -> void:
+	if _styled_font_size < 0:
+		_styled_font_size = title_label.font_size
+	var font: Font = title_label.font if title_label.font != null else ThemeDB.fallback_font
+	var font_size: int = _styled_font_size
+	while font_size > min_title_font_size and _widest_word(font, font_size) + title_label.outline_size * 2.0 > title_label.width:
+		font_size -= 1
+	title_label.font_size = font_size
+
+
+## Width in pixels of the title's widest word at font_size.
+func _widest_word(font: Font, font_size: int) -> float:
+	var widest: float = 0.0
+	for word: String in title_label.text.split(" ", false):
+		widest = maxf(widest, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+	return widest
 
 
 ## Rebuilds the primitive boxes from the shape and color exports.

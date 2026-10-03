@@ -67,17 +67,9 @@ func _spawn_items() -> void:
 		pickup.item = items[index]
 		# Under the spawner, so the pickups leave with their level.
 		add_child(pickup)
-		pickup.global_position = _floor_below(spots[index])
+		pickup.global_position = ItemPickup.floor_below(get_world_3d(), spots[index], floor_mask)
 		pickups.append(pickup)
 	items_spawned.emit(pickups)
-
-
-## The floor surface under a navmesh point (the navmesh is baked a little
-## above the floor), or the point itself when no floor is hit.
-func _floor_below(point: Vector3) -> Vector3:
-	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(point + Vector3.UP, point + Vector3.DOWN * 2.0, floor_mask)
-	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
-	return hit["position"] as Vector3 if not hit.is_empty() else point
 
 
 ## Up to count distinct random items the run may still offer.
