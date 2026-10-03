@@ -48,7 +48,7 @@ func test_the_body_is_set_up_for_fair_hits_and_pathing() -> void:
 	check_approx(attributes.get_current(AttributeComponent.POOL_HEALTH), attributes.get_current(AttributeComponent.STAT_MAX_HEALTH), "the brute should spawn at full health")
 	var body_radius: float = _radius(_brute.collision_shape_3d)
 	check(_radius(_brute.hurtbox.get_node("CollisionShape3D") as CollisionShape3D) >= body_radius, "the hurtbox should be at least as wide as the body, so hits on it always register")
-	check_approx(_brute.navigation_agent_3d.radius, body_radius, "the navigation agent should be as wide as the body")
+	check_approx(_brute.navigation_agent_3d.radius, body_radius + _brute.crowd_avoidance_margin, "the navigation agent should be as wide as the body plus its crowd avoidance margin")
 
 
 func test_the_wave_pool_offers_it_at_its_difficulty() -> void:

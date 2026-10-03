@@ -62,6 +62,14 @@ const HEAD_SLIDE_FALL_SPEED: float = 0.5
 ## Automatically configures NavigationAgent3D height offset and waypoint distances
 ## based on the character's collision shape dimensions.
 @export var auto_configure_navigation: bool = true
+## Extra radius, in meters, the character's crowd avoidance keeps beyond its
+## collision radius (NavigationAgent3D.radius, set by auto_configure_navigation),
+## so walkers steer clear of each other before their bodies touch.
+@export var crowd_avoidance_margin: float = 0.1
+## Degrees a walk turns aside while crowd avoidance has frozen it (exactly in
+## line behind a standing character, where avoidance finds no side to take),
+## always to the same side for a given character, until it moves again.
+@export var crowd_sidestep_angle: float = 45.0
 ## Primary collision shape of this character body.
 @export var collision_shape_3d: CollisionShape3D
 ## Optional Area3D weapon hitbox for melee attacks.
@@ -145,6 +153,18 @@ var home_spawn_area: RoomSpawnArea = null
 ## Home world position where this character spawned.
 var home_position: Vector3 = Vector3.ZERO
 
+## Last crowd-safe horizontal velocity the navigation server computed for this
+## character's agent (see steer_around_crowd()).
+var _safe_velocity: Vector3 = Vector3.ZERO
+## Whether a state steered through steer_around_crowd() since the last
+## physics tick; when none did, the tick reports the body's real velocity.
+var _steered: bool = false
+## Whether the previous tick steered: only then is _safe_velocity the
+## server's answer for this walk.
+var _steered_last_tick: bool = false
+## True while crowd avoidance has frozen this walker and it sidesteps.
+var _sidestepping: bool = false
+
 
 func _ready() -> void:
 	_check_wiring()
@@ -154,6 +174,59 @@ func _ready() -> void:
 		ability_system_component.character = self
 	_auto_configure_navigation()
 	_connect_combat_signals()
+	if navigation_agent_3d != null:
+		navigation_agent_3d.velocity_computed.connect(_on_safe_velocity_computed)
+	set_physics_process(navigation_agent_3d != null)
+
+
+## With crowd avoidance on, tells the navigation server how this body really
+## moves on the ticks no state steered it (attacking, stunned, knocked back),
+## so walking neighbors avoid it as it is.
+func _physics_process(_delta: float) -> void:
+	if not _steered and _avoids_crowds():
+		navigation_agent_3d.velocity = Vector3(velocity.x, 0.0, velocity.z)
+	_steered_last_tick = _steered
+	_steered = false
+
+
+## Turns a walk's desired horizontal velocity into one that steers around
+## nearby characters (RVO crowd avoidance), when this character's
+## NavigationAgent3D has avoidance_enabled: submits desired to the navigation
+## server and returns the last safe velocity it computed (one physics tick
+## behind; a walk that just started gets desired until the server has
+## answered for it). Without avoidance it returns desired unchanged. A walker
+## avoidance freezes (safe speed near zero) asks for a direction turned
+## crowd_sidestep_angle aside until it moves again, which breaks the
+## symmetric dead end of following exactly behind a standing character.
+func steer_around_crowd(desired: Vector3) -> Vector3:
+	if not _avoids_crowds():
+		return desired
+	_steered = true
+	var flat: Vector3 = Vector3(desired.x, 0.0, desired.z)
+	if not _steered_last_tick:
+		_sidestepping = false
+	else:
+		var safe_ratio: float = _safe_velocity.length() / maxf(flat.length(), 0.001)
+		if safe_ratio < 0.1:
+			_sidestepping = true
+		elif safe_ratio > 0.5:
+			_sidestepping = false
+	if _sidestepping:
+		var side: float = 1.0 if get_instance_id() % 2 == 0 else -1.0
+		flat = flat.rotated(Vector3.UP, deg_to_rad(crowd_sidestep_angle) * side)
+	# Avoidance may speed a walker up to dodge; never past its walking speed.
+	if not is_equal_approx(navigation_agent_3d.max_speed, flat.length()):
+		navigation_agent_3d.max_speed = flat.length()
+	navigation_agent_3d.velocity = flat
+	return _safe_velocity if _steered_last_tick else flat
+
+
+func _avoids_crowds() -> bool:
+	return navigation_agent_3d != null and navigation_agent_3d.avoidance_enabled and is_inside_tree()
+
+
+func _on_safe_velocity_computed(safe_velocity: Vector3) -> void:
+	_safe_velocity = Vector3(safe_velocity.x, 0.0, safe_velocity.z)
 
 
 ## Reports every required reference the scene left unwired, so a
@@ -193,6 +266,9 @@ func _connect_combat_signals() -> void:
 
 
 ## Calibrates NavigationAgent3D parameters to match this character's collision shape.
+## The agent's radius only drives crowd avoidance (paths keep their distance
+## from walls through the baked navmesh), so it is the body's plus
+## crowd_avoidance_margin.
 ## Offsets waypoints vertically to cancel 3D Euclidean distance inflation for tall agents,
 ## and scales path desired distance to the character's radius for clean corner rounding.
 func _auto_configure_navigation() -> void:
@@ -203,7 +279,7 @@ func _auto_configure_navigation() -> void:
 		return
 	var radius: float = size.x
 	var origin_height: float = get_origin_height()
-	navigation_agent_3d.radius = radius
+	navigation_agent_3d.radius = radius + crowd_avoidance_margin
 	navigation_agent_3d.path_height_offset = -maxf(0.0, origin_height - NAV_SURFACE_ELEVATION)
 	navigation_agent_3d.path_desired_distance = clampf(radius + PATH_DISTANCE_MARGIN, PATH_DISTANCE_MIN, PATH_DISTANCE_MAX)
 	navigation_agent_3d.target_desired_distance = maxf(TARGET_DISTANCE_MIN, radius + TARGET_DISTANCE_MARGIN)

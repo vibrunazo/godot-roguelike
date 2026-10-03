@@ -599,6 +599,10 @@ ai_state_machine = NodePath("..")
 body_state = NodePath("../../StateMachine/EnemyFirebomb")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=1492277192]
+avoidance_enabled = true
+neighbor_distance = 4.0
+max_neighbors = 8
+time_horizon_agents = 0.5
 path_desired_distance = 0.9
 target_desired_distance = 1.5
 path_height_offset = -1.5

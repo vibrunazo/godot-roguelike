@@ -150,8 +150,9 @@ func core_movement(delta: float, speed: float, direction: Vector3 = Vector3.ZERO
 	if character.knockback_component != null and character.knockback_component.is_active():
 		character.velocity = character.knockback_component.magnitude
 	elif not direction.is_zero_approx():
-		character.velocity.x = direction.x * speed
-		character.velocity.z = direction.z * speed
+		var steered: Vector3 = character.steer_around_crowd(direction * speed)
+		character.velocity.x = steered.x
+		character.velocity.z = steered.z
 		character.look_toward_direction(direction, delta)
 	else:
 		# Brake per axis at the character's braking rate: the braking time is

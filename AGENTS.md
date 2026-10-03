@@ -129,7 +129,12 @@ prints the error and idles forever. `--quit-after` does not help.
   `LootComponent` (gold and item drops on defeat; see Abilities); the player adds `TargetingComponent`
   (auto-aim), `ScreenShakeComponent` and `PlayerDefeatHandler` (game over).
   `Character` itself owns the body: movement, facing, intents, orders and
-  defeat. Damage types are `DamageType` constants.
+  defeat. Enemies walk with crowd avoidance (RVO): their `NavigationAgent3D`
+  has `avoidance_enabled`, and walking (`CharacterState.core_movement()`)
+  goes through `Character.steer_around_crowd()`, which also sidesteps the
+  dead end of following exactly behind a standing character. Walls are not
+  avoidance obstacles (they made doorways jam); the navmesh and collisions
+  keep walkers off them. Damage types are `DamageType` constants.
 - **Damage pipeline:** a `WeaponSlot` (bone attachment) switches its
   `Area3D` hitbox with its `enabled` property, which animations key. The
   hitbox's `AttackComponent` hits `Hurtbox.receive_hit()`, which damages the

@@ -15,12 +15,6 @@ Section numbers (§) point into the closed 2026-09-23 code review,
    `WeaponSlot:enabled` keys 0.790–0.820 s), about 2 physics ticks. It works on
    the physics clock at 60 Hz, but would become hit-or-miss if the physics tick
    rate were lowered. Consider a window of at least 0.05 s. (§3.9)
-3. **Enemies get stuck in each other's paths.** Fix the stuck crowds, and
-   measure whether enemies avoiding each other (`NavigationAgent3D`
-   avoidance) is worth its CPU cost on the target devices. A blocked
-   `AIMeander` walk already gives up (`BlockedWalkDetector`), so stuck
-   wanderers no longer wait forever; pursuing enemies still jam.
-
 ## Decisions needed
 
 5. **VoxelGI on mobile.** Decided: mobile uses the Mobile renderer. VoxelGI
@@ -119,6 +113,9 @@ defect.
     anyone lowers the rate to save battery), count-based budgets per level
     (nodes, bodies, particles, lights, draw calls), a worst-case benchmark
     scenario logged as a trend, and profiling on a real target phone. (§3.9)
+    Include enemy crowd avoidance (RVO, on every enemy's `NavigationAgent3D`)
+    in the phone profile: on a desktop it costs nothing measurable (12 to 48
+    walking enemies, frame time within noise of avoidance off).
 12. **Tooling:** run the suites in parallel (`run_tests.py -j N`: about 0.7 s
     of each suite is engine startup); resolve UIDs inside binary `.res` files
     in the lint (a headless GDScript step); a pre-commit hook that runs the

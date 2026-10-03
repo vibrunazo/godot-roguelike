@@ -12,6 +12,9 @@
 ## - A meandering walk that stalls (blocked by a wall the navmesh does not
 ##   know) gives up after blocked_time and moves on to the wait state, while a
 ##   walk that keeps moving is never cut short.
+## - Crowd avoidance: an enemy pursuing the player behind another enemy that
+##   already stands at the player steers around it and reaches the player
+##   instead of pushing into its back.
 ## - Projectiles are parented to the world, so they outlive their shooter.
 ## - Ranged AI attacks a player in range and then moves on to one of its
 ##   configured next states; enemies never use auto-aim.
@@ -51,6 +54,8 @@ const TEST_BLOCKED_DISTANCE: float = 0.5
 const WALK_DISTANCE: float = 6.0
 ## Test-owned gap between a caged enemy's body and the cage walls.
 const CAGE_GAP: float = 0.15
+## Test-owned distance between the player and the pursuer's start.
+const BLOCKER_GAP: float = 4.0
 
 var _arena: Node3D
 
@@ -224,6 +229,30 @@ func test_a_meander_walk_that_keeps_moving_is_never_cut_short() -> void:
 		return
 	var reach: float = enemy.navigation_agent_3d.target_desired_distance + TEST_BLOCKED_DISTANCE
 	check(Vector2(enemy.global_position.x - destination.x, enemy.global_position.z - destination.z).length() <= reach, "a walk that keeps moving should only end at its destination")
+
+
+func test_a_pursuer_steers_around_an_enemy_standing_at_the_player() -> void:
+	await wait_for_navigation(_arena)
+	var player: Character = _spawn_quiet_player(Vector3(0.0, 1.0, BLOCKER_GAP))
+	player.attribute_component.set_base(AttributeComponent.STAT_MAX_HEALTH, 1.0e9)
+	player.attribute_component.set_pool_current(AttributeComponent.POOL_HEALTH, 1.0e9)
+	player.knockback_component.max_knockback = 0.0
+	var pursuer: Character = _spawn(MELEE_SCENE, Vector3(0.0, 1.0, -BLOCKER_GAP))
+	disable_ai(pursuer)
+	var pursue: AIPursue = pursuer.ai_state_machine.get_node("AIPursue") as AIPursue
+	# Standing where an attacker stands: at attack range, straight between.
+	var blocker: Character = _spawn(MELEE_SCENE, player.global_position + Vector3(0.0, 0.0, -pursue.attack_range))
+	disable_ai(blocker)
+	await wait_until(func() -> bool: return player.is_on_floor() and blocker.is_on_floor() and pursuer.is_on_floor(), "setup: everyone should land")
+	if not check(pursuer.navigation_agent_3d.avoidance_enabled, "setup: enemies should use crowd avoidance"):
+		return
+	# Test-owned: the pursuer only walks (no attacks to stall it).
+	pursue.attack_cooldown = LONG_COOLDOWN
+	pursuer.ai_state_machine.process_mode = Node.PROCESS_MODE_INHERIT
+	pursuer.ai_state_machine.request_state(pursue.name)
+	var reach: float = pursue.attack_range + 0.5
+	var walk_frames: int = _frames_for(BLOCKER_GAP * 3.0 / maxf(pursuer.attribute_component.get_current(AttributeComponent.STAT_SPEED), 0.1) * 3.0)
+	await wait_until(func() -> bool: return pursuer.global_position.distance_to(player.global_position) <= reach, "the pursuer should get around the standing enemy and reach the player", walk_frames)
 
 
 func test_defeated_characters_stop_acting() -> void:

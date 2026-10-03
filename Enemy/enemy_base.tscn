@@ -105,6 +105,10 @@ script = ExtResource("11_aism")
 character = NodePath("..")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=2019475689]
+avoidance_enabled = true
+neighbor_distance = 4.0
+max_neighbors = 8
+time_horizon_agents = 0.5
 
 [node name="AttributeComponent" type="Node" parent="." unique_id=271828460]
 script = ExtResource("14_attr")
