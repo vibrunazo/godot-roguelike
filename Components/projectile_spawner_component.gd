@@ -9,6 +9,9 @@ extends Node
 @export var spawn_point: Node3D
 ## Character executing the ranged attack.
 @export var character: Character
+## Scale the projectile's damage by the character's attack stat (the formula
+## melee attacks and abilities use), so attack buffs reach ranged attacks.
+@export var scale_with_attack: bool = true
 
 
 func _ready() -> void:
@@ -31,7 +34,7 @@ func spawn_projectile() -> void:
 		origin = character.mesh_mount.global_position
 	var action: CharacterAction = character.state_machine.state as CharacterAction if character.state_machine != null else null
 	if action != null:
-		action.release_payload(scene, origin)
+		action.release_payload(scene, origin, [], 1.0, scale_with_attack)
 		return
 	var facing: Vector3 = character.mesh_mount.global_basis.z if character.mesh_mount != null else Vector3.ZERO
-	PayloadSpawner.spawn(scene, character, origin, facing)
+	PayloadSpawner.spawn(scene, character, origin, facing, [], 1.0, scale_with_attack)

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="GameplayEffect" format=3]
+
+[ext_resource type="Script" path="res://Components/gameplay_effect.gd" id="1_effect"]
+[ext_resource type="PackedScene" path="res://Singletons/VFX/status_crunch_time.tscn" id="2_vfx"]
+
+[resource]
+script = ExtResource("1_effect")
+effect_name = "crunch_time"
+target_attribute = &"attack"
+operation = 1
+magnitude = 0.5
+duration = 8.0
+vfx_scene = ExtResource("2_vfx")
+vfx_bone = &"spine"
+description = "Crunch Time: +50% attack (all damage the character deals) for 8 seconds, with orange sparks rising around the body. Granted by the Crunch Time ability to the caster and its allies; re-application refreshes the single instance."

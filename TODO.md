@@ -34,8 +34,9 @@ Section numbers (§) point into the closed 2026-09-23 code review,
 
 8. **Active ability follow-ups** (the system itself is in; see
    `docs/plans/active_abilities_plan.md`):
-   - **Enemies use the abilities their books teach**, as if they had picked
-     the book up themselves: each enemy equips its `EnemyResource.item_drops`
+   - **Enemies use the abilities their books teach** (the Producer already
+     casts its book's Crunch Time from its own slot; follow its scene), as if
+     they had picked the book up themselves: each enemy equips its `EnemyResource.item_drops`
      book (a `BookItemResource`, gear granting `granted_abilities` and
      `granted_passives`) through its own `EquipmentComponent` and
      `AbilitySystemComponent`, so the enemy and the player run the same

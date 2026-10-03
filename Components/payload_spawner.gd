@@ -11,7 +11,7 @@ const NO_LANDING_POINT: Vector3 = Vector3(INF, INF, INF)
 
 
 ## Instantiates scene, applies overrides, credits instigator (a projectile's
-## shooter, a damage area's wielder), scales its damage by damage_multiplier
+## shooter, a damage area's or effect burst's wielder), scales its damage by damage_multiplier
 ## and, when scale_with_attack is set, by the instigator's attack modifier
 ## (Character.get_damage_modifier(), the formula melee attacks use), places
 ## it at position facing direction and adds it to the world. A straight
@@ -45,6 +45,8 @@ static func spawn(scene: PackedScene, instigator: Character, position: Vector3, 
 		if instigator != null and is_instance_valid(instigator):
 			area.set_wielder(instigator)
 		area.damage *= scale
+	elif payload is EffectBurst:
+		(payload as EffectBurst).wielder = instigator
 	_place(payload, position, direction)
 	if payload is BallisticProjectile:
 		(payload as BallisticProjectile).initialize_trajectory(landing_point)

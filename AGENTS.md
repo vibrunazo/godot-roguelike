@@ -145,7 +145,11 @@ prints the error and idles forever. `--quit-after` does not help.
   `> 0` lets it hit again after that interval. Projectiles, explosions and
   hazards spawned by anything (enemy ranged attacks, passives, abilities) go
   through `PayloadSpawner.spawn()`, which credits the instigator and scales
-  damage; the damage itself lives in the payload scene.
+  damage by its attack stat (enemy ranged attacks included); the damage
+  itself lives in the payload scene. Buffs, heals and debuffs use an
+  `EffectBurst` payload instead (`Abilities/effect_burst.gd`): it applies
+  GameplayEffects once to the caster's allies, foes or everyone within a
+  radius, with no hit (no stun or flash).
 - **Destructibles:** a `Destructible` (`Components/destructible.gd`) is the
   root of any breakable prop: a `Hurtbox` plus an `AttributeComponent`, and on
   `defeat` a physics-clock fuse (`fuse_time`), then it releases its
@@ -208,6 +212,13 @@ prints the error and idles forever. `--quit-after` does not help.
   (`ProgressionState.can_drop()`) and no pickup of it lies in the level
   (`ItemPickup.is_lying_in()`). A new ability for a new enemy is data: an
   `AbilityResource` (or a passive scene), a `BookItemResource`, a `LootDrop`.
+  The Producer (`Enemy/enemy_producer.tscn`) is the model for an enemy that
+  casts its own book's ability: an `AbilitySystemComponent` whose
+  `starting_abilities` hold the same `AbilityResource` its book grants, an
+  `AbilityCastState` slot, and an AI state ordering that slot
+  (`AISupportAllies` for support casts). Every ability's `cast_animation`
+  must exist in every caster's AnimationTree (`Rally` is in the player's and
+  the medium enemies' trees; `CastSpell` only in the player's).
 - **Registries:** `GlobalVars` (shop items, level items, enemies, dungeons,
   shared scenes), `ProgressionState` (run state: difficulty, dungeon level,
   gold, purchases, which items the run may still offer or drop, the planned

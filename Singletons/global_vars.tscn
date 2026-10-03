@@ -23,6 +23,7 @@
 [ext_resource type="Script" uid="uid://ddn61phmec3x5" path="res://Levels/dungeon_resource.gd" id="17_na113"]
 [ext_resource type="PackedScene" uid="uid://dfpausemenu01" path="res://UserInterface/pause_menu.tscn" id="19_pause_menu"]
 [ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_akira_boss.tres" id="20_akira_res"]
+[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_producer.tres" id="46_producer_res"]
 [ext_resource type="Resource" uid="uid://b35vkxr3hnt2e" path="res://Levels/DungeonResources/dungeon_level_1.tres" id="21_d1"]
 [ext_resource type="Resource" uid="uid://d3s03awl3374h" path="res://Levels/DungeonResources/dungeon_level_2.tres" id="22_d2"]
 [ext_resource type="Resource" uid="uid://dgj8q5qnc7icn" path="res://Levels/DungeonResources/dungeon_level_3.tres" id="23_d3"]
@@ -50,7 +51,7 @@ script = ExtResource("1_vars")
 upgrade_icon_scene = ExtResource("2_icon")
 items = Array[ExtResource("4_6kt6d")]([ExtResource("3_dmg"), ExtResource("4_hp"), ExtResource("5_spd"), ExtResource("12_pot"), ExtResource("40_wb"), ExtResource("41_dashblast"), ExtResource("42_landblast")])
 item_pickup_scene = ExtResource("45_item_pickup")
-enemies = Array[ExtResource("10_1bkuy")]([ExtResource("5_melee_res"), ExtResource("6_ranged_res"), ExtResource("14_firebomber_res"), ExtResource("13_brute_res"), ExtResource("16_thunder_mage_res"), ExtResource("20_akira_res")])
+enemies = Array[ExtResource("10_1bkuy")]([ExtResource("5_melee_res"), ExtResource("6_ranged_res"), ExtResource("14_firebomber_res"), ExtResource("13_brute_res"), ExtResource("16_thunder_mage_res"), ExtResource("46_producer_res"), ExtResource("20_akira_res")])
 dungeons = Array[ExtResource("17_na113")]([ExtResource("21_d1"), ExtResource("22_d2"), ExtResource("23_d3"), ExtResource("24_d4"), ExtResource("25_d5"), ExtResource("26_d6"), ExtResource("27_d7"), ExtResource("28_d8"), ExtResource("29_d9"), ExtResource("30_d10"), ExtResource("31_d11"), ExtResource("32_d12"), ExtResource("33_d13"), ExtResource("43_boss_arena_1")])
 default_projectile_scene = ExtResource("7_proj")
 firebomb_projectile_scene = ExtResource("15_firebomb_proj")

@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Abilities/effect_burst.gd" id="1_burst"]
+[ext_resource type="Script" path="res://Components/gameplay_effect.gd" id="2_effect_script"]
+[ext_resource type="Resource" path="res://Components/effect_crunch_time.tres" id="3_crunch"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ring"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(1, 0.6, 0.15, 0.85)
+
+[sub_resource type="TorusMesh" id="TorusMesh_ring"]
+material = SubResource("StandardMaterial3D_ring")
+inner_radius = 0.9
+outer_radius = 1.0
+rings = 48
+ring_segments = 4
+
+[node name="CrunchTimeBurst" type="Node3D" node_paths=PackedStringArray("ring")]
+script = ExtResource("1_burst")
+effects = Array[ExtResource("2_effect_script")]([ExtResource("3_crunch")])
+ring = NodePath("Ring")
+
+[node name="Ring" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+cast_shadow = 0
+mesh = SubResource("TorusMesh_ring")

@@ -426,7 +426,9 @@ func _get_enemy_head_support() -> Character:
 
 ## Sets current_target, emitting target_changed only on a real change.
 func set_current_target(new_target: Node3D) -> void:
-	if new_target == current_target:
+	# Identity, not ==: a freed node compares equal to null, and clearing a
+	# freed target must still go through.
+	if is_same(new_target, current_target):
 		return
 	current_target = new_target
 	target_changed.emit(new_target)

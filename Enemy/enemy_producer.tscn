@@ -1,0 +1,250 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy_base.tscn" id="1_base"]
+[ext_resource type="Shader" uid="uid://b81ujloplemnj" path="res://Shaders/character_palette.gdshader" id="2_l781q"]
+[ext_resource type="Texture2D" uid="uid://cg3sv8wggq46e" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/Enemy_Medium_enemy_texture.png" id="3_wglca"]
+[ext_resource type="Script" path="res://StateMachine/character_attack.gd" id="4_attack"]
+[ext_resource type="Script" path="res://Abilities/ability_cast_state.gd" id="5_slot"]
+[ext_resource type="Script" path="res://Components/ability_system_component.gd" id="6_asc"]
+[ext_resource type="Script" path="res://Abilities/ability_resource.gd" id="7_ability_script"]
+[ext_resource type="Resource" path="res://Abilities/AbilityResources/ability_crunch_time.tres" id="8_crunch_time"]
+[ext_resource type="Script" path="res://Components/attack_component.gd" id="9_attack_comp"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_meander.gd" id="10_meander"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_wait.gd" id="11_wait"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_support_allies.gd" id="12_support"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_conditional_attack.gd" id="13_conditional"]
+[ext_resource type="AudioStream" uid="uid://mgv1fbcndh5a" path="res://Assets/Audio/weapon-swing.ogg" id="14_swing"]
+
+[sub_resource type="Gradient" id="Gradient_ed31s"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_gycq2"]
+gradient = SubResource("Gradient_ed31s")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_fipnf"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_5hrhf"]
+gradient = SubResource("Gradient_fipnf")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_u66qt"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_rpeew"]
+gradient = SubResource("Gradient_u66qt")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_nkpcb"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_3yk4j"]
+gradient = SubResource("Gradient_nkpcb")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_6vtsl"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_mtd5y"]
+gradient = SubResource("Gradient_6vtsl")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_ecufn"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_h2nq3"]
+gradient = SubResource("Gradient_ecufn")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_3q8ax"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_f8811"]
+gradient = SubResource("Gradient_3q8ax")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_gold"]
+colors = PackedColorArray(1, 0.78, 0.25, 1, 0.55, 0.25, 0.05, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_w0q4i"]
+gradient = SubResource("Gradient_gold")
+width = 64
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_auuu1"]
+render_priority = 0
+shader = ExtResource("2_l781q")
+shader_parameter/albedo_texture = ExtResource("3_wglca")
+shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_gycq2"), SubResource("GradientTexture1D_5hrhf"), SubResource("GradientTexture1D_rpeew"), SubResource("GradientTexture1D_3yk4j"), SubResource("GradientTexture1D_mtd5y"), SubResource("GradientTexture1D_h2nq3"), SubResource("GradientTexture1D_f8811"), SubResource("GradientTexture1D_w0q4i")])
+shader_parameter/palette_mode = 0
+shader_parameter/enable_palette = true
+shader_parameter/gradient_mask = 128
+shader_parameter/global_tint = Color(1, 1, 1, 1)
+shader_parameter/roughness = 0.3
+shader_parameter/metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_board"]
+albedo_color = Color(0.45, 0.28, 0.14, 1)
+roughness = 0.6
+
+[sub_resource type="BoxMesh" id="BoxMesh_board"]
+material = SubResource("StandardMaterial3D_board")
+size = Vector3(0.24, 0.32, 0.02)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_paper"]
+albedo_color = Color(0.96, 0.95, 0.9, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_paper"]
+material = SubResource("StandardMaterial3D_paper")
+size = Vector3(0.2, 0.25, 0.006)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_clip"]
+albedo_color = Color(0.75, 0.75, 0.78, 1)
+metallic = 0.8
+roughness = 0.25
+
+[sub_resource type="BoxMesh" id="BoxMesh_clip"]
+material = SubResource("StandardMaterial3D_clip")
+size = Vector3(0.09, 0.03, 0.03)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hitbox"]
+size = Vector3(0.8, 1.1, 0.8)
+
+[node name="EnemyProducer" unique_id=2117139762 node_paths=PackedStringArray("weapon_hitbox", "ability_system_component") instance=ExtResource("1_base")]
+weapon_hitbox = NodePath("AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea")
+ability_system_component = NodePath("AbilitySystemComponent")
+
+[node name="Enemy_Medium_ArmLeft" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="0" unique_id=117100866]
+material_override = SubResource("ShaderMaterial_auuu1")
+
+[node name="Enemy_Medium_ArmRight" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="1" unique_id=258279752]
+material_override = SubResource("ShaderMaterial_auuu1")
+
+[node name="Enemy_Medium_Body" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="2" unique_id=1362487821]
+material_override = SubResource("ShaderMaterial_auuu1")
+
+[node name="Enemy_Medium_Head" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="3" unique_id=1681711066]
+material_override = SubResource("ShaderMaterial_auuu1")
+
+[node name="Enemy_Medium_LegLeft" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="4" unique_id=1428134451]
+material_override = SubResource("ShaderMaterial_auuu1")
+
+[node name="Enemy_Medium_LegRight" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="5" unique_id=491739949]
+material_override = SubResource("ShaderMaterial_auuu1")
+
+[node name="WeaponSlot" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1960628849) index="6" unique_id=211580224 node_paths=PackedStringArray("hitbox")]
+transform = Transform3D(-0.999999, 4.6839318e-07, 4.5751068e-07, 3.9800034e-07, -5.8875344e-07, 0.99999946, 3.9761645e-07, 0.99999946, 5.358822e-07, -0.8831323, 1.0492611, -7.2884757e-07)
+bone_name = "handslot.r"
+bone_idx = 14
+hitbox = NodePath("HitboxArea")
+
+[node name="Clipboard" type="Node3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+
+[node name="Board" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Clipboard"]
+gi_mode = 0
+mesh = SubResource("BoxMesh_board")
+
+[node name="Paper" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Clipboard"]
+gi_mode = 0
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.015, 0.013)
+mesh = SubResource("BoxMesh_paper")
+
+[node name="Clip" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/Clipboard"]
+gi_mode = 0
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0.02)
+mesh = SubResource("BoxMesh_clip")
+
+[node name="HitboxArea" type="Area3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1"]
+collision_layer = 0
+collision_mask = 64
+monitoring = false
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+shape = SubResource("BoxShape3D_hitbox")
+
+[node name="AttackComponent" type="Node" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea"]
+script = ExtResource("9_attack_comp")
+
+[node name="AttackAudio" type="AudioStreamPlayer3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="2"]
+stream = ExtResource("14_swing")
+bus = &"SFX"
+
+[node name="AnimationTree" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium" parent_id_path=PackedInt32Array(1495277970, 1921158861) index="2" unique_id=1365896023]
+parameters/MeleeAttack/TimeScale/scale = 1.0
+parameters/RangedAttack/TimeScale/scale = 1.0
+
+[node name="CastOrigin" type="Marker3D" parent="AnimationAnchor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0.4)
+
+[node name="AttributeComponent" parent="." index="11" unique_id=271828460]
+base_max_health = 50.0
+base_max_mana = 40.0
+base_mana_regen = 4.0
+
+[node name="CharacterColorComponent" parent="." index="7" unique_id=1409284102]
+gradients = Array[Gradient]([null, null, null, null, null, null, null, SubResource("Gradient_gold")])
+
+[node name="EnemyAttack" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" node_paths=PackedStringArray("next_states", "weapon_slot", "character", "fall_state")]
+script = ExtResource("4_attack")
+damage = 4.0
+knockback = 10.0
+next_states = [NodePath("../EnemyMove")]
+animation_name = "SideSlash"
+weapon_slot = NodePath("../../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
+cooldown = 2.0
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="AbilitySlot1" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="5" node_paths=PackedStringArray("cast_origin", "next_states", "character", "fall_state")]
+script = ExtResource("5_slot")
+cast_origin = NodePath("../../AnimationAnchor/CastOrigin")
+next_states = [NodePath("../EnemyMove")]
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="AbilitySystemComponent" type="Node" parent="." node_paths=PackedStringArray("slots")]
+script = ExtResource("6_asc")
+slots = [NodePath("../StateMachine/AbilitySlot1")]
+starting_abilities = Array[ExtResource("7_ability_script")]([ExtResource("8_crunch_time")])
+
+[node name="AIStateMachine" parent="." index="9" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
+initial_state = NodePath("AIMeander")
+
+[node name="AIWait" type="Node" parent="AIStateMachine" index="0" node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("11_wait")
+wait_duration = 2.0
+next_state = NodePath("../AIMeander")
+ai_state_machine = NodePath("..")
+
+[node name="AIMeander" type="Node" parent="AIStateMachine" index="1" node_paths=PackedStringArray("wait_state", "ai_state_machine")]
+script = ExtResource("10_meander")
+attack_range = 0.0
+wait_state = NodePath("../AIWait")
+ai_state_machine = NodePath("..")
+
+[node name="AICrunchTime" type="Node" parent="AIStateMachine" index="2" node_paths=PackedStringArray("next_state", "body_state", "ai_state_machine")]
+script = ExtResource("12_support")
+ally_range = 6.0
+min_allies = 1
+next_state = NodePath("../AIMeander")
+body_state = NodePath("../../StateMachine/AbilitySlot1")
+desired_angle = 360.0
+priority = 1
+ai_state_machine = NodePath("..")
+
+[node name="AIEmergencyStrike" type="Node" parent="AIStateMachine" index="3" node_paths=PackedStringArray("next_state", "body_state", "ai_state_machine")]
+script = ExtResource("13_conditional")
+trigger_range = 2.2
+can_break_stun = false
+next_state = NodePath("../AIMeander")
+body_state = NodePath("../../StateMachine/EnemyAttack")
+priority = 2
+ai_state_machine = NodePath("..")
+
+[connection signal="slash" from="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
+
+[editable path="AnimationAnchor/AnimatedEnemy"]
+[editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]

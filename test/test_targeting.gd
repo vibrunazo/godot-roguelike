@@ -12,7 +12,9 @@
 ##   at once and nothing replaces it until the attack ends,
 ## - killing the target clears it synchronously and switches to the nearest
 ##   living enemy without waiting out the cooldown; the corpse is never
-##   targeted again.
+##   targeted again,
+## - a target freed from the tree (not killed) is dropped without errors and
+##   the nearest living enemy is targeted instead.
 ## Distances are fractions of the player's own auto_aim_range.
 extends "res://test/lib/test_suite.gd"
 
@@ -144,6 +146,15 @@ func test_killing_the_target_switches_to_the_nearest_living_enemy_at_once() -> v
 		return
 	_aim().force_retarget()
 	await _check_target_held(next, "the corpse must never be targeted again")
+
+
+func test_a_freed_target_is_dropped_and_replaced() -> void:
+	var nearest: Character = await _spawn_enemy(_at(0.2, Vector3.RIGHT))
+	var next: Character = await _spawn_enemy(_at(0.4, Vector3.LEFT))
+	if not await wait_until(func() -> bool: return _player.current_target == nearest, "setup: the player should target the nearest enemy"):
+		return
+	nearest.free()
+	await wait_until(func() -> bool: return is_same(_player.current_target, next), "a freed target should be replaced by the nearest living enemy", REACT_FRAMES)
 
 
 ## Fails if the player's target is ever anything but expected during

@@ -44,10 +44,12 @@ func force_retarget() -> void:
 func _physics_process(delta: float) -> void:
 	if character == null or auto_aim_range <= 0.0 or not character.is_inside_tree() or not character.is_alive():
 		return
+	# A freed target is cleared first: passing a freed node on is an error
+	# (and a freed node compares equal to null, so test validity only).
+	if not is_instance_valid(character.current_target):
+		character.set_current_target(null)
 	var target: Node3D = character.current_target
 	if character.is_attacking:
-		if target != null and not is_instance_valid(target):
-			character.set_current_target(null)
 		return
 	if not _is_valid(target):
 		character.set_current_target(null)
