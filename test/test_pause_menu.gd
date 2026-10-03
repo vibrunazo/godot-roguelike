@@ -10,6 +10,9 @@
 ##   locks the pause toggle until resume_game() clears it.
 ## - Player defeat shows the game-over screen only after
 ##   PlayerDefeatHandler.menu_delay, and dying never resets run progression.
+## - Restart starts a new run at its first level in a regular dungeon, never
+##   in the level (e.g. the boss arena) the run ended in. It changes the
+##   scene, so it runs last.
 ## - Regression guards: the pause menu never renders its own gold counter (the
 ##   HUD owns it), and without a selected item the stats panel shows no
 ##   comparison arrows.
@@ -139,6 +142,32 @@ func test_stats_panel_shows_no_comparison_arrows_without_a_selected_item() -> vo
 	var menu: PauseMenu = autofree(GlobalVars.pause_menu_scene.instantiate()) as PauseMenu
 	add_child(menu)
 	check(not menu.inventory_menu.stats_panel.attack_row.text.contains("->"), "stat comparison arrows need a selected item")
+
+
+## Regression: restart reloaded the level the run ended in, so dying to a
+## boss restarted a fresh run inside its arena. Restart must start the new
+## run like the main menu's Start: level 1, in a dungeon picked for it.
+## Changes the scene: keep it the last test.
+func test_restarting_from_a_boss_fight_starts_a_new_run_in_a_regular_dungeon() -> void:
+	var boss_arena: DungeonResource = null
+	for dungeon: DungeonResource in GlobalVars.dungeons:
+		if dungeon != null and dungeon.is_boss_arena():
+			boss_arena = dungeon
+	if boss_arena != null:
+		ProgressionState.dungeon_level = boss_arena.boss_at_level
+		ProgressionState.current_dungeon = boss_arena
+	else:
+		ProgressionState.dungeon_level = TEST_DUNGEON_LEVEL
+	UI.show_game_over()
+	var menu: PauseMenu = _open_menu()
+	if not check(menu != null, "the game-over screen should open a menu"):
+		return
+	menu.buttons_panel.restart_button.pressed.emit()
+	check(not UI.is_paused(), "restarting should unpause the game")
+	check_eq(ProgressionState.dungeon_level, ProgressionState.base_dungeon_level, "restarting should start the new run at its first dungeon level")
+	var next: DungeonResource = ProgressionState.current_dungeon
+	if check(next != null, "restarting should pick the new run's first dungeon"):
+		check(not next.is_boss_arena(), "the new run's first dungeon should be a regular one, not the boss arena the run ended in")
 
 
 ## The pause/game-over menu UI currently shows, or null.

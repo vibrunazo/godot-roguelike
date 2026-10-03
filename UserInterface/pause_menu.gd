@@ -99,12 +99,15 @@ func resume() -> void:
 	UI.resume_game()
 
 
-## Unpauses, resets the run progression, and reloads the current scene.
+## Unpauses, resets the run progression and loads the new run's first level,
+## as the main menu's Start does: a dungeon picked for the first encounter,
+## never the level the run ended in (dying to a boss restarts at level 1, not
+## in its arena).
 func restart_run() -> void:
 	restart_requested.emit()
 	UI.resume_game()
 	ProgressionState.reset_run()
-	get_tree().reload_current_scene()
+	SceneTransition.load_next_level()
 
 
 ## Toggles window fullscreen mode via the buttons column.
