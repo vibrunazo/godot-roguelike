@@ -9,6 +9,9 @@ id = &"landing_blast"
 display_name = "Groundfall"
 trigger_tags = Array[StringName]([&"movement.landed"])
 trigger_phase = 2
+min_event_data = Dictionary[String, float]({
+"fall_height": 0.5
+})
 payload_scene = ExtResource("2_payload")
 spawn_at = 0
 damage_multiplier = 1.0

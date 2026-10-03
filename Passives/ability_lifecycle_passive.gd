@@ -1,6 +1,7 @@
 ## Passive triggered by ability lifecycle events. Matching is a sequence of
 ## cheap gates: trigger tags on the event (exact or hierarchy prefix), trigger
-## phase, the optional completion filter, optional character tag gates, and a
+## phase, the optional completion filter, optional minimum event data values,
+## optional character tag gates, and a
 ## cooldown. Matched events call _activate(event), which subclasses override with
 ## the actual behavior (see PayloadPassiveAbility for the data-driven one).
 class_name AbilityLifecyclePassive
@@ -16,6 +17,10 @@ extends PassiveAbility
 ## that do not report completion at all count as completed, so only states that
 ## explicitly flag interruptions can suppress the trigger.
 @export var require_completion: bool = false
+## Minimum numeric values the event's data must carry to trigger, by data key
+## (e.g. {"fall_height": 0.5} ignores landings from drops under half a meter).
+## An event missing one of the keys does not trigger.
+@export var min_event_data: Dictionary[String, float] = {}
 ## Character tags required on the owner for triggering (e.g. only while airborne).
 @export var required_tags: Array[StringName] = []
 ## Character tags that suppress triggering while present on the owner.
@@ -52,6 +57,8 @@ func handle_ability_event(event: AbilityEvent) -> void:
 		return
 	if require_completion and not bool(event.data.get("completed", true)):
 		return
+	if not _meets_min_event_data(event):
+		return
 	if character != null and is_instance_valid(character):
 		if not required_tags.is_empty() and not character.has_all_tags(required_tags):
 			return
@@ -70,6 +77,15 @@ func _matches_any_trigger_tag(event: AbilityEvent) -> bool:
 		if event.matches_tag(trigger):
 			return true
 	return false
+
+
+## True when the event's data carries every min_event_data key at or above
+## its minimum.
+func _meets_min_event_data(event: AbilityEvent) -> bool:
+	for key: String in min_event_data:
+		if not event.data.has(key) or float(event.data[key]) < min_event_data[key]:
+			return false
+	return true
 
 
 ## Virtual: the behavior executed once matching and cooldown gates passed.

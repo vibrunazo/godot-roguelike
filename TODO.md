@@ -23,12 +23,6 @@ Section numbers (§) point into the closed 2026-09-23 code review,
    - Give the AI's walk-to states (`AIMeander` and any other state that walks
      to a point) a timeout, so a blocked walk gives up instead of waiting
      forever.
-4. **The landing blast item fires on tiny bumps.** It is meant to deal damage
-   when the player lands from a fall, but a dash that bumps over a 1 cm step
-   and drops back down triggers it too. Every airborne-to-grounded edge
-   broadcasts `movement.landed` (`AirborneTracker`), and
-   `passive_landing_blast` fires on all of them. Gate it on a minimum fall:
-   height, fall speed, or `airborne_time`, which the event already carries.
 
 ## Decisions needed
 

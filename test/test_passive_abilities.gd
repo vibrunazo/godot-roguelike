@@ -1,9 +1,11 @@
 ## Behavioral contract suite for the passive ability system: item granting and
 ## revoking, ability lifecycle event matching (tags, phases, prefix triggers,
-## character tag gates), cooldown and completion gates, payload spawning with
+## character tag gates), cooldown, completion and minimum event data gates,
+## payload spawning with
 ## property overrides, end-to-end dash detonation through the real state
 ## machine, payloads spawned from inside a physics callback, and the landing
-## blast. No balance values are asserted; damage checks compare against the
+## blast (once per airborne episode, silent on drops under its minimum fall).
+## No balance values are asserted; damage checks compare against the
 ## payload's own configuration.
 extends "res://test/lib/test_suite.gd"
 
@@ -250,7 +252,9 @@ func test_a_payload_spawned_during_a_physics_callback_still_lands_its_hit() -> v
 ## character lands in: a jump turned into a jump kick mid-flight still gives
 ## exactly one blast, at the landing point.
 func test_a_jump_turned_into_a_kick_lands_exactly_one_blast() -> void:
-	_player.ability_system_component.add_passive(LANDING_BLAST_SCENE)
+	var blast: AbilityLifecyclePassive = _player.ability_system_component.add_passive(LANDING_BLAST_SCENE) as AbilityLifecyclePassive
+	# Once-per-episode is under test, not the tuned minimum fall.
+	blast.min_event_data = {}
 	_player.state_machine.request_state("PlayerJump", {"direction": Vector3.ZERO})
 	if not await wait_until(func() -> bool: return _player.has_tag(AirborneTracker.TAG_AIRBORNE), "the jump should mark the player airborne", ACTION_FRAMES):
 		return
@@ -261,6 +265,31 @@ func test_a_jump_turned_into_a_kick_lands_exactly_one_blast() -> void:
 	check_eq(_payload_spawns, 1, "one airborne episode should give exactly one landing blast")
 	var explosion: GroundDamageArea = _newest()
 	check(explosion != null and _horizontal(explosion.global_position - _player.global_position).length() < 1.0, "the blast should detonate at the landing point")
+
+
+func test_minimum_event_data_gates_the_trigger() -> void:
+	var counter: TriggerCounter = _add_counter([DASH_TAG])
+	counter.min_event_data = {"fall_height": 1.0}
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED)
+	check_eq(counter.activations, 0, "an event missing a gated data key should not trigger")
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED, {"fall_height": 0.5})
+	check_eq(counter.activations, 0, "a data value under its minimum should not trigger")
+	_broadcast([DASH_TAG], AbilityEvent.Phase.ENDED, {"fall_height": 1.0})
+	check_eq(counter.activations, 1, "a data value at its minimum should trigger")
+
+
+## Regression: the landing blast fired on every grounded edge, even a dash
+## bumping over a 1 cm step. Landings report their fall height, and a drop
+## under the blast's minimum stays silent while a real fall detonates.
+func test_the_landing_blast_ignores_small_drops_and_fires_on_real_falls() -> void:
+	var blast: AbilityLifecyclePassive = _player.ability_system_component.add_passive(LANDING_BLAST_SCENE) as AbilityLifecyclePassive
+	blast.min_event_data = {"fall_height": 1.0}
+	await _drop_player(0.3)
+	await wait_physics_frames(PAYLOAD_FRAMES)
+	check_eq(_payload_spawns, 0, "a drop under the minimum fall height should not blast")
+	await _drop_player(2.0)
+	await wait_physics_frames(PAYLOAD_FRAMES)
+	check_eq(_payload_spawns, 1, "a fall over the minimum fall height should blast once")
 
 
 # --- Helpers ------------------------------------------------------------------
@@ -329,6 +358,14 @@ func _sphere_shape(radius: float) -> CollisionShape3D:
 
 func _wait_running(message: String) -> bool:
 	return await wait_until(func() -> bool: return _player.is_on_floor() and _state() == "PlayerRun", message, ACTION_FRAMES)
+
+
+## Lifts the player by height and waits until it has fallen and landed.
+func _drop_player(height: float) -> void:
+	_player.global_position += Vector3.UP * height
+	if not await wait_until(func() -> bool: return _player.has_tag(AirborneTracker.TAG_AIRBORNE), "the %.2f m drop should mark the player airborne" % height, ACTION_FRAMES):
+		return
+	await wait_until(func() -> bool: return not _player.has_tag(AirborneTracker.TAG_AIRBORNE), "the player should land from the %.2f m drop" % height, ACTION_FRAMES)
 
 
 func _health(character: Character) -> float:
