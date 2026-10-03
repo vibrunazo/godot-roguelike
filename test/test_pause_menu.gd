@@ -3,6 +3,9 @@
 ##   emit pause_state_changed; pausing opens a menu that keeps processing while
 ##   the tree is paused, and resuming frees it.
 ## - The menu's resume button and the ui_pause action (by name) resume/toggle.
+## - The pause menu's Inventory button swaps the pause screen for the
+##   inventory screen (never both); its Back button, or the pause action,
+##   returns to the pause screen without resuming.
 ## - The game-over screen (show_game_over) hides resume, keeps restart, and
 ##   locks the pause toggle until resume_game() clears it.
 ## - Player defeat shows the game-over screen only after
@@ -65,6 +68,24 @@ func test_resume_button_resumes_the_game() -> void:
 	check(not UI.is_paused(), "pressing resume should unpause the game")
 
 
+func test_the_inventory_replaces_the_pause_screen_and_back_returns() -> void:
+	UI.pause_game()
+	var menu: PauseMenu = _open_menu()
+	if not check(menu != null, "pausing should open a pause menu"):
+		return
+	check(menu.pause_screen.visible and not menu.inventory_menu.visible, "the pause screen should show first, without the inventory")
+	menu.buttons_panel.inventory_button.pressed.emit()
+	check(menu.inventory_menu.visible and not menu.pause_screen.visible, "the inventory button should show the inventory in place of the pause screen")
+	menu.inventory_menu.back_button.pressed.emit()
+	check(menu.pause_screen.visible and not menu.inventory_menu.visible, "back should return to the pause screen")
+	check(UI.is_paused(), "going back should keep the game paused")
+	menu.buttons_panel.inventory_button.pressed.emit()
+	press_action(&"ui_pause")
+	if not await wait_until(func() -> bool: return menu.pause_screen.visible, "the pause action in the inventory should return to the pause screen", 10):
+		return
+	check(UI.is_paused(), "the pause action in the inventory should not resume the game")
+
+
 func test_pressing_the_pause_action_toggles_pause() -> void:
 	press_action(&"ui_pause")
 	if not await wait_until(func() -> bool: return UI.is_paused(), "pressing ui_pause should pause the game", 10):
@@ -117,7 +138,7 @@ func test_pause_menu_does_not_duplicate_the_hud_gold_counter() -> void:
 func test_stats_panel_shows_no_comparison_arrows_without_a_selected_item() -> void:
 	var menu: PauseMenu = autofree(GlobalVars.pause_menu_scene.instantiate()) as PauseMenu
 	add_child(menu)
-	check(not menu.stats_panel.attack_row.text.contains("->"), "stat comparison arrows need a selected item")
+	check(not menu.inventory_menu.stats_panel.attack_row.text.contains("->"), "stat comparison arrows need a selected item")
 
 
 ## The pause/game-over menu UI currently shows, or null.

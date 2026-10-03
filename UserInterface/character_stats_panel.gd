@@ -1,4 +1,4 @@
-## Reusable character stats column for the pause menu concept layout.
+## Reusable character stats column (the InventoryMenu screen).
 ## Reads the live player AttributeComponent plus run progression and renders
 ## eight stat rows (level, pools, attack, defense, speed, attack speed, fire
 ## resistance). Refresh on ready, on show, and whenever the player's

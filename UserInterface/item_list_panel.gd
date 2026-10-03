@@ -1,6 +1,6 @@
-## Reusable inventory list column for the pause menu concept layout.
+## Reusable inventory list column (the InventoryMenu screen).
 ## Shows equipped gear as a selectable list with stack counts (e.g. "Laser sword x2").
-## Used by PauseMenu (column 1) and InventoryMenu; selection is forwarded via
+## Used by InventoryMenu (column 1); selection is forwarded via
 ## gear_selected so hosts can drive a details panel.
 class_name ItemListPanel
 extends VBoxContainer

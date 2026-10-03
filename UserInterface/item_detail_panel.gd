@@ -1,6 +1,6 @@
-## Reusable item detail column for the pause menu concept layout.
+## Reusable item detail column (the InventoryMenu screen).
 ## Wraps an INSPECT-mode UpgradeIcon card under an "ITEM DETAILS" header.
-## Used by PauseMenu (column 2); card_mode stays configurable so shops can
+## Used by InventoryMenu (column 2); card_mode stays configurable so shops can
 ## reuse this panel for purchasable cards in the future.
 class_name ItemDetailPanel
 extends VBoxContainer

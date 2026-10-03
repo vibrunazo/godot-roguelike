@@ -1,11 +1,11 @@
 ## Pause menu overlay presented when pausing gameplay. Doubles as the game-over
 ## screen: UI.show_game_over() reuses this scene with a red backdrop, a
 ## "GAME OVER" title, and the resume button hidden.
-## Concept layout: gold PAUSED title and one outer panel with four reusable
-## columns - ItemListPanel (inventory), ItemDetailPanel (item details),
-## CharacterStatsPanel (character stats), MenuButtonsPanel (menu options).
-## Each column is a standalone scene reusable elsewhere. The run gold counter
-## lives only in the HUD scene, which stays visible under this menu.
+## Two screens share the overlay: the pause screen (title and the
+## MenuButtonsPanel) and the InventoryMenu, opened by the Inventory button.
+## Only one shows at a time; the inventory's Back button, or the pause or
+## cancel action, returns to the pause screen. The run gold counter lives only
+## in the HUD scene, which stays visible under this menu.
 class_name PauseMenu
 extends CanvasLayer
 
@@ -28,14 +28,12 @@ signal restart_requested
 
 @onready var title_label: RichTextLabel = %Title
 @onready var backdrop_rect: ColorRect = %Backdrop
-## Inventory list column (concept column 1).
-@onready var list_panel: ItemListPanel = %InventoryPanel
-## Item details column (concept column 2).
-@onready var detail_panel: ItemDetailPanel = %ItemDetailPanel
-## Character stats column (concept column 3).
-@onready var stats_panel: CharacterStatsPanel = %CharacterStatsPanel
-## Menu buttons column (concept column 4).
+## The pause screen: title and menu buttons.
+@onready var pause_screen: Control = %PauseScreen
+## Menu buttons of the pause screen.
 @onready var buttons_panel: MenuButtonsPanel = %MenuButtonsPanel
+## The inventory screen, hidden until the Inventory button opens it.
+@onready var inventory_menu: InventoryMenu = %InventoryMenu
 
 
 func _ready() -> void:
@@ -44,31 +42,55 @@ func _ready() -> void:
 
 	_apply_configuration()
 
-	if list_panel != null:
-		if not list_panel.gear_selected.is_connected(_on_list_gear_selected):
-			list_panel.gear_selected.connect(_on_list_gear_selected)
-		list_panel.refresh()
-		_show_selected_gear()
-	if stats_panel != null:
-		stats_panel.refresh()
-	if buttons_panel != null:
-		if not buttons_panel.resume_requested.is_connected(_on_panel_resume):
-			buttons_panel.resume_requested.connect(_on_panel_resume)
-		if not buttons_panel.restart_requested.is_connected(_on_panel_restart):
-			buttons_panel.restart_requested.connect(_on_panel_restart)
-		buttons_panel.focus_default()
+	buttons_panel.resume_requested.connect(_on_panel_resume)
+	buttons_panel.restart_requested.connect(_on_panel_restart)
+	buttons_panel.inventory_requested.connect(open_inventory)
+	inventory_menu.back_requested.connect(close_inventory)
+	_show_pause_screen()
+	buttons_panel.focus_default()
+
+
+## While the inventory shows, the pause and cancel actions go back to the
+## pause screen instead of resuming (this menu sees input before the UI
+## autoload, its parent).
+func _unhandled_input(event: InputEvent) -> void:
+	if is_inventory_open() and (event.is_action_pressed(&"ui_pause") or event.is_action_pressed(&"ui_cancel")):
+		close_inventory()
+		get_viewport().set_input_as_handled()
 
 
 ## Applies the exported title, backdrop, and resume-button configuration to
 ## the scene nodes. Runs on entry so UI can set the exports per use-case
 ## (pause vs game over) between instantiate and add_child.
 func _apply_configuration() -> void:
-	if title_label != null:
-		title_label.text = "[center][wave amp=25.0 freq=3.0][color=#%s]%s[/color][/wave][/center]" % [title_color.to_html(false), title_text]
-	if backdrop_rect != null:
-		backdrop_rect.color = backdrop_color
-	if buttons_panel != null:
-		buttons_panel.show_resume_button = show_resume_button
+	title_label.text = "[center][wave amp=25.0 freq=3.0][color=#%s]%s[/color][/wave][/center]" % [title_color.to_html(false), title_text]
+	backdrop_rect.color = backdrop_color
+	buttons_panel.show_resume_button = show_resume_button
+
+
+## Shows the inventory screen in place of the pause screen.
+func open_inventory() -> void:
+	pause_screen.visible = false
+	inventory_menu.visible = true
+	inventory_menu.refresh()
+	inventory_menu.focus_default()
+
+
+## Returns from the inventory screen to the pause screen, focusing the
+## Inventory button it was opened from.
+func close_inventory() -> void:
+	_show_pause_screen()
+	buttons_panel.inventory_button.grab_focus()
+
+
+func _show_pause_screen() -> void:
+	inventory_menu.visible = false
+	pause_screen.visible = true
+
+
+## Whether the inventory screen is showing.
+func is_inventory_open() -> bool:
+	return inventory_menu.visible
 
 
 ## Closes the pause menu and resumes the game.
@@ -87,8 +109,7 @@ func restart_run() -> void:
 
 ## Toggles window fullscreen mode via the buttons column.
 func toggle_fullscreen() -> void:
-	if buttons_panel != null:
-		buttons_panel.toggle_fullscreen()
+	buttons_panel.toggle_fullscreen()
 
 
 ## Quits the application cleanly.
@@ -102,19 +123,3 @@ func _on_panel_resume() -> void:
 
 func _on_panel_restart() -> void:
 	restart_run()
-
-
-func _on_list_gear_selected(_index: int) -> void:
-	_show_selected_gear()
-
-
-## Shows the list column's selected gear in the details column and previews
-## its stat contribution as arrows in the stats column.
-func _show_selected_gear() -> void:
-	if list_panel == null:
-		return
-	var gear: GearItemResource = list_panel.get_selected_gear()
-	if detail_panel != null:
-		detail_panel.set_item(gear)
-	if stats_panel != null:
-		stats_panel.set_selected_item(gear)

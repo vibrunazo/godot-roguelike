@@ -1,5 +1,4 @@
-## The inventory menu, the inspect-mode card and the pause menu's four
-## columns:
+## The inventory screen (InventoryMenu) and the inspect-mode card:
 ## - a card shows what an item gives (flat stats), never a projected preview,
 ## - an INSPECT card never charges gold, never emits a purchase, and hides
 ##   the cost,
@@ -8,8 +7,8 @@
 ##   details card; unequipping shrinks the list and keeps a valid selection,
 ## - a spell book taken by the player is listed like gear, with its
 ##   ability's icon,
-## - the pause menu hosts the four reusable panels (inventory list, item
-##   details, character stats, menu buttons) and the list drives the details,
+## - the inventory screen hosts the list, details and stats panels, and the
+##   list drives the details,
 ## - with an item selected, the stats panel previews without -> with that
 ##   item on the stats it changes (HP clamped to each side's max) and keeps
 ##   the other rows plain; clearing the selection clears the arrows.
@@ -19,7 +18,6 @@ extends "res://test/lib/test_suite.gd"
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const CARD_SCENE: PackedScene = preload("res://UserInterface/upgrade_icon.tscn")
 const INVENTORY_SCENE: PackedScene = preload("res://UserInterface/inventory_menu.tscn")
-const PAUSE_SCENE: PackedScene = preload("res://UserInterface/pause_menu.tscn")
 ## GameplayEffect.operation value for a flat addition ("ADD").
 const OPERATION_ADD: int = 0
 ## Test-owned magnitudes and gold.
@@ -84,18 +82,17 @@ func test_the_inventory_lists_equipped_gear_and_shows_the_selection() -> void:
 	ProgressionState.record_purchase(alpha)
 	var inventory: InventoryMenu = spawn(INVENTORY_SCENE) as InventoryMenu
 	await get_tree().process_frame
-	if not check_eq(inventory.gear_list.item_count, 2, "the list should show both equipped items"):
+	if not check_eq(inventory.list_panel.gear_list.item_count, 2, "the list should show both equipped items"):
 		return
-	var stacked: String = inventory.gear_list.get_item_text(0)
+	var stacked: String = inventory.list_panel.gear_list.get_item_text(0)
 	check(stacked.begins_with("Alpha Gear") and not stacked.contains("[") and stacked.contains("2"), "a stacked row should show the plain title and its count (got %s)" % stacked)
-	check_eq(inventory.gear_list.get_item_text(1), "Beta Gear", "a single row should show just the plain title")
-	inventory.gear_list.select(1)
-	inventory.gear_list.item_selected.emit(1)
-	check(inventory.get_selected_gear() == beta and inventory.details_card.item_resource == beta, "selecting a row should show that gear in the details card")
-	check_eq(inventory.details_card.card_mode, UpgradeIcon.CardMode.INSPECT, "the details card should be display-only")
+	check_eq(inventory.list_panel.gear_list.get_item_text(1), "Beta Gear", "a single row should show just the plain title")
+	inventory.list_panel.select_row(1)
+	check(inventory.get_selected_gear() == beta and inventory.detail_panel.details_card.item_resource == beta, "selecting a row should show that gear in the details card")
+	check_eq(inventory.detail_panel.details_card.card_mode, UpgradeIcon.CardMode.INSPECT, "the details card should be display-only")
 	_player.equipment_component.unequip_gear(alpha)
 	inventory.refresh()
-	check(inventory.gear_list.item_count == 1 and inventory.get_selected_gear() == beta, "unequipping should shrink the list and keep a valid selection")
+	check(inventory.list_panel.gear_list.item_count == 1 and inventory.get_selected_gear() == beta, "unequipping should shrink the list and keep a valid selection")
 
 
 func test_a_book_is_listed_like_gear() -> void:
@@ -110,30 +107,28 @@ func test_a_book_is_listed_like_gear() -> void:
 	check(_player.equipment_component.apply_item(book), "setup: the book should be taken")
 	var inventory: InventoryMenu = spawn(INVENTORY_SCENE) as InventoryMenu
 	await get_tree().process_frame
-	if not check_eq(inventory.gear_list.item_count, 1, "the list should show the book"):
+	if not check_eq(inventory.list_panel.gear_list.item_count, 1, "the list should show the book"):
 		return
-	check_eq(inventory.gear_list.get_item_text(0), "Test Spell for Dummies", "the book's row should show its title")
-	check(inventory.gear_list.get_item_icon(0) == ability.icon, "the book's row should show its ability's icon")
-	check(inventory.details_card.item_resource == book, "the details card should show the book")
+	check_eq(inventory.list_panel.gear_list.get_item_text(0), "Test Spell for Dummies", "the book's row should show its title")
+	check(inventory.list_panel.gear_list.get_item_icon(0) == ability.icon, "the book's row should show its ability's icon")
+	check(inventory.detail_panel.details_card.item_resource == book, "the details card should show the book")
 
 
-func test_the_pause_menu_hosts_the_four_panels_and_the_list_drives_the_details() -> void:
+func test_the_inventory_hosts_its_panels_and_the_list_drives_the_details() -> void:
 	var alpha: GearItemResource = _gear(&"test_alpha", "Alpha Gear", AttributeComponent.STAT_ATTACK, 0.0)
 	var beta: GearItemResource = _gear(&"test_beta", "Beta Gear", AttributeComponent.STAT_ATTACK, 0.0)
 	_equip(alpha)
 	_equip(beta)
-	var pause: PauseMenu = await _pause_menu()
-	check(pause.list_panel != null and pause.detail_panel != null and pause.stats_panel != null and pause.buttons_panel != null, "the pause menu should host the inventory, details, stats and buttons panels")
-	var buttons: MenuButtonsPanel = pause.buttons_panel
-	check(buttons.resume_button != null and buttons.restart_button != null and buttons.controls_button != null and buttons.fullscreen_button != null and buttons.exit_menu_button != null and buttons.quit_button != null, "the buttons panel should offer every menu option")
-	if not check_eq(pause.list_panel.gear_list.item_count, 2, "the pause inventory should list the equipped gear"):
+	var inventory: InventoryMenu = await _inventory()
+	check(inventory.list_panel != null and inventory.detail_panel != null and inventory.stats_panel != null and inventory.back_button != null, "the inventory should host the list, details and stats panels and a back button")
+	if not check_eq(inventory.list_panel.gear_list.item_count, 2, "the inventory should list the equipped gear"):
 		return
-	pause.list_panel.select_row(1)
-	var selected: GearItemResource = pause.list_panel.get_selected_gear()
-	check(selected != null and pause.detail_panel.details_card.item_resource == selected, "selecting a pause row should show that gear in the details")
-	for row: int in range(pause.list_panel.gear_list.item_count):
-		var text: String = pause.list_panel.gear_list.get_item_text(row)
-		check(text == "Alpha Gear" or text == "Beta Gear", "pause rows should read plain, selected or not (got %s)" % text)
+	inventory.list_panel.select_row(1)
+	var selected: GearItemResource = inventory.get_selected_gear()
+	check(selected != null and inventory.detail_panel.details_card.item_resource == selected, "selecting a row should show that gear in the details")
+	for row: int in range(inventory.list_panel.gear_list.item_count):
+		var text: String = inventory.list_panel.gear_list.get_item_text(row)
+		check(text == "Alpha Gear" or text == "Beta Gear", "rows should read plain, selected or not (got %s)" % text)
 
 
 func test_the_stats_panel_previews_the_selected_item() -> void:
@@ -141,14 +136,14 @@ func test_the_stats_panel_previews_the_selected_item() -> void:
 	var sigil: GearItemResource = _gear(&"test_sigil", "Sigil", AttributeComponent.STAT_MAX_HEALTH, TEST_MAX_HEALTH)
 	_equip(blade)
 	_equip(sigil)
-	var pause: PauseMenu = await _pause_menu()
-	var stats: CharacterStatsPanel = pause.stats_panel
-	_select(pause, blade)
+	var inventory: InventoryMenu = await _inventory()
+	var stats: CharacterStatsPanel = inventory.stats_panel
+	await _select(inventory, blade)
 	var attack: float = _player.attribute_component.get_current(AttributeComponent.STAT_ATTACK)
 	var attack_row: String = stats.attack_row.text
 	check(attack_row.contains(ARROW) and attack_row.contains(str(roundi(attack - TEST_ATTACK))) and attack_row.contains(str(roundi(attack))), "the attack row should preview without -> with the blade (got %s)" % attack_row)
 	check(not stats.defense_row.text.contains(ARROW) and not stats.speed_row.text.contains(ARROW) and not stats.hp_row.text.contains(ARROW), "rows the blade does not change should stay plain")
-	_select(pause, sigil)
+	await _select(inventory, sigil)
 	check(not stats.attack_row.text.contains(ARROW), "the attack row should be plain with the sigil selected")
 	var health: float = _player.attribute_component.get_current(AttributeComponent.POOL_HEALTH)
 	var max_health: float = _player.attribute_component.get_current(AttributeComponent.STAT_MAX_HEALTH)
@@ -161,17 +156,17 @@ func test_the_stats_panel_previews_the_selected_item() -> void:
 	check(not stats.attack_row.text.contains(ARROW) and not stats.hp_row.text.contains(ARROW), "clearing the selection should clear the arrows")
 
 
-func _pause_menu() -> PauseMenu:
-	var pause: PauseMenu = spawn(PAUSE_SCENE) as PauseMenu
+func _inventory() -> InventoryMenu:
+	var inventory: InventoryMenu = spawn(INVENTORY_SCENE) as InventoryMenu
 	await get_tree().process_frame
-	return pause
+	return inventory
 
 
-## Selects the gear's row in the pause list and lets the stats panel redraw.
-func _select(pause: PauseMenu, gear: GearItemResource) -> void:
-	for row: int in range(pause.list_panel.gear_list.item_count):
-		pause.list_panel.select_row(row)
-		if pause.list_panel.get_selected_gear() == gear:
+## Selects the gear's row in the inventory list and lets the stats panel redraw.
+func _select(inventory: InventoryMenu, gear: GearItemResource) -> void:
+	for row: int in range(inventory.list_panel.gear_list.item_count):
+		inventory.list_panel.select_row(row)
+		if inventory.get_selected_gear() == gear:
 			break
 	await get_tree().process_frame
 

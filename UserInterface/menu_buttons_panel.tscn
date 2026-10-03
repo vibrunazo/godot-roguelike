@@ -97,6 +97,12 @@ custom_minimum_size = Vector2(180, 42)
 layout_mode = 2
 text = "Resume"
 
+[node name="InventoryButton" type="Button" parent="ButtonsBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 42)
+layout_mode = 2
+text = "Inventory"
+
 [node name="RestartButton" type="Button" parent="ButtonsBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(180, 42)

@@ -1,14 +1,16 @@
-## Reusable menu options column for the pause menu concept layout.
-## Hosts the six concept buttons (Resume, Restart Run, Controls, Fullscreen,
-## Exit to Main Menu, Quit Game) and owns their behaviors except resume and
-## restart, which are forwarded so PauseMenu (and its tests) stay the authority
-## on pausing and run resets. Other panels and future menus can instance this
+## Reusable menu options column (the pause screen of PauseMenu).
+## Hosts the menu buttons (Resume, Inventory, Restart Run, Controls,
+## Fullscreen, Exit to Main Menu, Quit Game) and owns their behaviors except
+## resume, inventory and restart, which are forwarded so PauseMenu (and its
+## tests) stays the authority on pausing, its screens and run resets. Other panels and future menus can instance this
 ## column directly.
 class_name MenuButtonsPanel
 extends VBoxContainer
 
 ## Emitted when resume is requested (button or host forwarding).
 signal resume_requested
+## Emitted when the inventory screen is requested.
+signal inventory_requested
 ## Emitted when a run restart is requested.
 signal restart_requested
 ## Emitted when the controls dialog is opened.
@@ -27,6 +29,7 @@ signal quit_requested
 		_apply_resume_visibility()
 
 @onready var resume_button: Button = %ResumeButton
+@onready var inventory_button: Button = %InventoryButton
 @onready var restart_button: Button = %RestartButton
 @onready var controls_button: Button = %ControlsButton
 @onready var fullscreen_button: Button = %FullscreenButton
@@ -39,6 +42,8 @@ func _ready() -> void:
 	_apply_resume_visibility()
 	if resume_button != null:
 		resume_button.pressed.connect(_on_resume_pressed)
+	if inventory_button != null:
+		inventory_button.pressed.connect(inventory_requested.emit)
 	if restart_button != null:
 		restart_button.pressed.connect(_on_restart_pressed)
 	if controls_button != null:

@@ -1,108 +1,58 @@
-## Inventory panel listing the player's equipped gear. Selecting an entry
-## shows its details in the embedded INSPECT-mode UpgradeIcon card.
+## The inventory screen, opened from the pause menu's Inventory button: the
+## player's equipped gear (spell books included) in an ItemListPanel, the
+## selected item in an ItemDetailPanel, and a CharacterStatsPanel previewing
+## what the selected item changes. A small Back button (or the pause/cancel
+## action, handled by the host) returns to the pause menu. Purely UI; it
+## keeps processing while the tree is paused with its host.
 class_name InventoryMenu
-extends PanelContainer
+extends Control
 
-## Unique-name references so the panel survives scene reparenting.
-@onready var gear_list: ItemList = %GearList
-@onready var details_card: UpgradeIcon = %DetailsCard
+## Emitted when the Back button is pressed.
+signal back_requested
 
-## Matches BBCode tags so gear titles render as plain text in the list.
-var _tag_regex: RegEx = RegEx.create_from_string("\\[[^\\]]*\\]")
+## Gear list column.
+@onready var list_panel: ItemListPanel = %InventoryPanel
+## Selected item details column.
+@onready var detail_panel: ItemDetailPanel = %ItemDetailPanel
+## Character stats column, previewing the selected item.
+@onready var stats_panel: CharacterStatsPanel = %CharacterStatsPanel
+## Returns to the pause menu.
+@onready var back_button: Button = %BackButton
 
 
 func _ready() -> void:
-	gear_list.item_selected.connect(_on_gear_selected)
+	list_panel.gear_selected.connect(_on_gear_selected)
+	back_button.pressed.connect(back_requested.emit)
 	refresh()
 
 
-## Rebuilds the gear list from the player in the tree. Keeps the previous
-## selection when that gear is still equipped, otherwise shows the first entry.
+## Rebuilds every column from the player in the tree.
 func refresh() -> void:
-	var selected_gear: GearItemResource = get_selected_gear()
-	gear_list.clear()
-	var equipment: EquipmentComponent = _read_player_equipment()
-	for gear: GearItemResource in _read_equipped_gear(equipment):
-		var idx: int = gear_list.add_item(_display_name(gear, equipment), gear.get_icon())
-		gear_list.set_item_metadata(idx, gear)
-	if gear_list.item_count == 0:
-		var empty_idx: int = gear_list.add_item("No gear equipped")
-		gear_list.set_item_disabled(empty_idx, true)
-		gear_list.set_item_metadata(empty_idx, null)
-		details_card.visible = false
-		return
-	details_card.visible = true
-	var restore_idx: int = _find_gear_index(selected_gear)
-	var show_idx: int = restore_idx if restore_idx >= 0 else 0
-	gear_list.select(show_idx)
-	_show_details(show_idx)
+	list_panel.refresh()
+	stats_panel.refresh()
+	_show_selected_gear()
 
 
-## Returns the currently selected gear resource, or null when the selection
-## is empty or points at the "no gear" placeholder row.
+## The gear selected in the list, or null.
 func get_selected_gear() -> GearItemResource:
-	var selected: PackedInt32Array = gear_list.get_selected_items()
-	if selected.is_empty():
-		return null
-	return gear_list.get_item_metadata(selected[0]) as GearItemResource
+	return list_panel.get_selected_gear()
 
 
-## Returns the player-facing equipment tracker, or null when no run with
-## equipment is active (e.g. menus shown without a player in the tree).
-func _read_player_equipment() -> EquipmentComponent:
-	var player: Character = get_tree().get_first_node_in_group("player") as Character
-	if player == null:
-		return null
-	return player.equipment_component
+## Gives keyboard focus to the list (Back when it is empty).
+func focus_default() -> void:
+	if list_panel.get_selected_gear() != null:
+		list_panel.gear_list.grab_focus()
+	else:
+		back_button.grab_focus()
 
 
-## Reads the equipped gear from a tracker. Empty when no tracker is present.
-func _read_equipped_gear(equipment: EquipmentComponent) -> Array[GearItemResource]:
-	var result: Array[GearItemResource] = []
-	if equipment == null:
-		return result
-	for gear: GearItemResource in equipment.equipped_gear:
-		if gear != null:
-			result.append(gear)
-	return result
+func _on_gear_selected(_index: int) -> void:
+	_show_selected_gear()
 
 
-## Shows the selected list entry's gear in the details card.
-func _on_gear_selected(index: int) -> void:
-	_show_details(index)
-
-
-## Shows one list row's gear in the details card. Ignores placeholder rows.
-func _show_details(index: int) -> void:
-	if index < 0 or index >= gear_list.item_count:
-		return
-	var gear: GearItemResource = gear_list.get_item_metadata(index) as GearItemResource
-	if gear == null:
-		return
-	details_card.visible = true
-	details_card.set_item_resource(gear)
-
-
-## Finds a gear resource in the current list, or -1 when absent.
-func _find_gear_index(gear: GearItemResource) -> int:
-	if gear == null:
-		return -1
-	for idx: int in gear_list.item_count:
-		if gear_list.get_item_metadata(idx) as GearItemResource == gear:
-			return idx
-	return -1
-
-
-## Renders a gear row as plain list text (titles carry BBCode effects),
-## suffixed with the owned stack count, e.g. "Laser sword x2". Single items
-## show no suffix.
-func _display_name(gear: GearItemResource, equipment: EquipmentComponent) -> String:
-	var plain: String = _tag_regex.sub(gear.title.strip_edges(), "", true).strip_edges()
-	if plain.is_empty():
-		if not gear.id.is_empty():
-			plain = String(gear.id)
-		else:
-			plain = "Unnamed gear"
-	if ProgressionState.get_purchase_count(gear) > 1:
-		plain += " x%d" % ProgressionState.get_purchase_count(gear)
-	return plain
+## Shows the selected gear in the details column and previews its stat
+## contribution as arrows in the stats column.
+func _show_selected_gear() -> void:
+	var gear: GearItemResource = list_panel.get_selected_gear()
+	detail_panel.set_item(gear)
+	stats_panel.set_selected_item(gear)

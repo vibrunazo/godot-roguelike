@@ -1,54 +1,87 @@
 [gd_scene format=3 uid="uid://dinventory01"]
 
 [ext_resource type="Script" path="res://UserInterface/inventory_menu.gd" id="1_inv"]
-[ext_resource type="PackedScene" path="res://UserInterface/upgrade_icon.tscn" id="2_card"]
+[ext_resource type="PackedScene" path="res://UserInterface/item_list_panel.tscn" id="2_list"]
+[ext_resource type="PackedScene" path="res://UserInterface/item_detail_panel.tscn" id="3_detail"]
+[ext_resource type="PackedScene" path="res://UserInterface/character_stats_panel.tscn" id="4_stats"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-content_margin_left = 32.0
-content_margin_top = 28.0
-content_margin_right = 32.0
-content_margin_bottom = 28.0
-bg_color = Color(0.101961, 0.101961, 0.121569, 0.960784)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_outer"]
+content_margin_left = 28.0
+content_margin_top = 24.0
+content_margin_right = 28.0
+content_margin_bottom = 24.0
+bg_color = Color(0.0705882, 0.101961, 0.160784, 0.972549)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.309804, 0.658824, 0.803922, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+shadow_color = Color(0.309804, 0.658824, 0.803922, 0.4)
+shadow_size = 14
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 
-[node name="InventoryMenu" type="PanelContainer"]
-custom_minimum_size = Vector2(620, 0)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_back"]
+content_margin_left = 10.0
+content_margin_top = 4.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+bg_color = Color(0.141176, 0.172549, 0.219608, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.309804, 0.658824, 0.803922, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="InventoryMenu" type="MarginContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 24
 script = ExtResource("1_inv")
 
 [node name="VBox" type="VBoxContainer" parent="."]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="InventoryTitle" type="RichTextLabel" parent="VBox"]
+[node name="BackButton" type="Button" parent="VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/normal_font_size = 28
-bbcode_enabled = true
-text = "[center]EQUIPMENT[/center]"
-fit_content = true
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_back")
+theme_override_styles/hover = SubResource("StyleBoxFlat_back")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_back")
+text = "< Back"
 
-[node name="Content" type="HBoxContainer" parent="VBox"]
+[node name="OuterPanel" type="PanelContainer" parent="VBox"]
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_outer")
+
+[node name="Columns" type="HBoxContainer" parent="VBox/OuterPanel"]
+layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="GearList" type="ItemList" parent="VBox/Content"]
+[node name="InventoryPanel" parent="VBox/OuterPanel/Columns" instance=ExtResource("2_list")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(200, 260)
 layout_mode = 2
-size_flags_vertical = 3
 
-[node name="DetailsCard" parent="VBox/Content" instance=ExtResource("2_card")]
+[node name="ItemDetailPanel" parent="VBox/OuterPanel/Columns" instance=ExtResource("3_detail")]
 unique_name_in_owner = true
 layout_mode = 2
-card_mode = 1
+
+[node name="CharacterStatsPanel" parent="VBox/OuterPanel/Columns" instance=ExtResource("4_stats")]
+unique_name_in_owner = true
+layout_mode = 2

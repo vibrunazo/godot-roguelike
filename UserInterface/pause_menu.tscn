@@ -1,10 +1,8 @@
 [gd_scene format=3 uid="uid://dfpausemenu01"]
 
 [ext_resource type="Script" path="res://UserInterface/pause_menu.gd" id="1_pause"]
-[ext_resource type="PackedScene" path="res://UserInterface/item_list_panel.tscn" id="2_list"]
-[ext_resource type="PackedScene" path="res://UserInterface/item_detail_panel.tscn" id="3_detail"]
-[ext_resource type="PackedScene" path="res://UserInterface/character_stats_panel.tscn" id="4_stats"]
 [ext_resource type="PackedScene" path="res://UserInterface/menu_buttons_panel.tscn" id="5_btns"]
+[ext_resource type="PackedScene" path="res://UserInterface/inventory_menu.tscn" id="6_inventory"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_outer"]
 content_margin_left = 28.0
@@ -38,23 +36,20 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.0392157, 0.0470588, 0.0784314, 0.745098)
 
-[node name="MainMargin" type="MarginContainer" parent="." unique_id=412000011]
-layout_mode = 1
+[node name="PauseScreen" type="CenterContainer" parent="."]
+unique_name_in_owner = true
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 32
-theme_override_constants/margin_top = 64
-theme_override_constants/margin_right = 32
-theme_override_constants/margin_bottom = 24
 
-[node name="MainVBox" type="VBoxContainer" parent="MainMargin" unique_id=412000012]
+[node name="MainVBox" type="VBoxContainer" parent="PauseScreen"]
+custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Title" type="RichTextLabel" parent="MainMargin/MainVBox" unique_id=258489376]
+[node name="Title" type="RichTextLabel" parent="PauseScreen/MainVBox" unique_id=258489376]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/normal_font_size = 48
@@ -62,26 +57,14 @@ bbcode_enabled = true
 text = "[center][wave amp=25.0 freq=3.0][color=#d4af5e]PAUSED[/color][/wave][/center]"
 fit_content = true
 
-[node name="OuterPanel" type="PanelContainer" parent="MainMargin/MainVBox" unique_id=1481113343]
+[node name="OuterPanel" type="PanelContainer" parent="PauseScreen/MainVBox" unique_id=1481113343]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_outer")
 
-[node name="Columns" type="HBoxContainer" parent="MainMargin/MainVBox/OuterPanel" unique_id=1005503090]
-layout_mode = 2
-theme_override_constants/separation = 16
-
-[node name="InventoryPanel" parent="MainMargin/MainVBox/OuterPanel/Columns" instance=ExtResource("2_list")]
+[node name="MenuButtonsPanel" parent="PauseScreen/MainVBox/OuterPanel" instance=ExtResource("5_btns")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="ItemDetailPanel" parent="MainMargin/MainVBox/OuterPanel/Columns" instance=ExtResource("3_detail")]
+[node name="InventoryMenu" parent="." instance=ExtResource("6_inventory")]
 unique_name_in_owner = true
-layout_mode = 2
-
-[node name="CharacterStatsPanel" parent="MainMargin/MainVBox/OuterPanel/Columns" instance=ExtResource("4_stats")]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="MenuButtonsPanel" parent="MainMargin/MainVBox/OuterPanel/Columns" instance=ExtResource("5_btns")]
-unique_name_in_owner = true
-layout_mode = 2
+visible = false
