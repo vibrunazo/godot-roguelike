@@ -1,4 +1,7 @@
 ## AI state where the mind randomly wanders between points on the navigation mesh.
+## A walk that stalls (blocked by a wall the navmesh does not know, a crowd)
+## gives up after blocked_time like an arrival, so the mind never waits on an
+## unreachable point forever.
 class_name AIMeander
 extends AIState
 
@@ -12,11 +15,25 @@ extends AIState
 @export var pursue_state: AIState
 ## Optional detection radius to trigger pursuit of targets (0.0 to disable).
 @export var detection_range: float = 0.0
+## Seconds a walk may go without moving blocked_distance before it gives up,
+## counted only while the body can walk (not stunned or busy); <= 0 never
+## gives up.
+@export var blocked_time: float = 2.0
+## Distance in meters (on the ground plane) the walker must move to count as
+## progress.
+@export var blocked_distance: float = 0.5
+
+var _blocked_walk: BlockedWalkDetector = BlockedWalkDetector.new()
 
 
 func enter(_previous_state_path: String, _data := {}) -> void:
 	if character == null or not character.is_inside_tree() or character.navigation_agent_3d == null:
 		return
+	_start_walk()
+
+
+## Picks a new point to wander to and starts walking there.
+func _start_walk() -> void:
 	var target_pt: Vector3 = Vector3.ZERO
 	if character.home_spawn_area != null:
 		target_pt = character.home_spawn_area.get_random_spawn_point()
@@ -31,6 +48,7 @@ func enter(_previous_state_path: String, _data := {}) -> void:
 			true
 		)
 	character.navigation_agent_3d.target_position = target_pt
+	_blocked_walk.reset(character.global_position)
 
 
 ## Alerted, a meandering mind engages: pursuit when it has a pursue state,
@@ -59,7 +77,26 @@ func physics_update(delta: float) -> void:
 		if wait_state != null:
 			finished.emit(wait_state.name)
 			return
+	if _is_walk_blocked(delta):
+		_stop_and_face(target, delta)
+		if wait_state != null:
+			finished.emit(wait_state.name)
+		else:
+			_start_walk()
+		return
 	follow_nav_path(nav_agent)
+
+
+## Whether the walk has stalled for blocked_time while the body could walk.
+## A body that cannot walk now (stunned, attacking, falling) pauses the count.
+func _is_walk_blocked(delta: float) -> bool:
+	if blocked_time <= 0.0:
+		return false
+	var body_state: State = character.state_machine.state if character.state_machine != null else null
+	if body_state == character.stun_state or (body_state is CharacterState and not (body_state as CharacterState).accepts_orders()):
+		_blocked_walk.reset(character.global_position)
+		return false
+	return _blocked_walk.update(character.global_position, delta, blocked_distance) >= blocked_time
 
 
 ## True when there is a target within range (a range <= 0 never matches).

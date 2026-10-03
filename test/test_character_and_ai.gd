@@ -9,6 +9,9 @@
 ##   costs no cooldown, so the enemy attacks once the stun ends.
 ## - alert() wakes an idle mind (waiting or meandering) into combat and leaves
 ##   an engaged mind alone.
+## - A meandering walk that stalls (blocked by a wall the navmesh does not
+##   know) gives up after blocked_time and moves on to the wait state, while a
+##   walk that keeps moving is never cut short.
 ## - Projectiles are parented to the world, so they outlive their shooter.
 ## - Ranged AI attacks a player in range and then moves on to one of its
 ##   configured next states; enemies never use auto-aim.
@@ -41,6 +44,13 @@ const DROP_HEIGHT: float = 8.0
 ## Test-owned attack cooldown, far longer than DECISION_FRAMES covers, so an
 ## attack that wrongly started its cooldown cannot fire within a decision.
 const LONG_COOLDOWN: float = 60.0
+## Test-owned stall limit and progress distance for blocked meander walks.
+const TEST_BLOCKED_TIME: float = 0.5
+const TEST_BLOCKED_DISTANCE: float = 0.5
+## Test-owned meander walk length, many blocked_times long at walking speed.
+const WALK_DISTANCE: float = 6.0
+## Test-owned gap between a caged enemy's body and the cage walls.
+const CAGE_GAP: float = 0.15
 
 var _arena: Node3D
 
@@ -186,6 +196,34 @@ func test_alert_engages_a_meandering_mind() -> void:
 	enemy.is_alerted = false
 	enemy.alert()
 	check_eq(mind.state, meander.attack_state, "an alerted meandering mind should engage its attack state")
+
+
+func test_a_blocked_meander_walk_gives_up_and_waits() -> void:
+	var enemy: Character = await _grounded_enemy(RANGED_SCENE)
+	var mind: AIStateMachine = enemy.ai_state_machine
+	var meander: AIMeander = mind.get_node("AIMeander") as AIMeander
+	meander.blocked_time = TEST_BLOCKED_TIME
+	meander.blocked_distance = TEST_BLOCKED_DISTANCE
+	_cage(enemy)
+	var destination: Vector3 = await _start_meander_walk(enemy, meander)
+	if not await wait_until(func() -> bool: return mind.state != meander, "a blocked walk should give up", _frames_for(TEST_BLOCKED_TIME * 4.0)):
+		return
+	check_eq(mind.state, meander.wait_state, "a blocked walk should move on to the wait state")
+	check(enemy.global_position.distance_to(destination) > WALK_DISTANCE * 0.5, "setup: the caged enemy should not have reached its destination")
+
+
+func test_a_meander_walk_that_keeps_moving_is_never_cut_short() -> void:
+	var enemy: Character = await _grounded_enemy(RANGED_SCENE)
+	var mind: AIStateMachine = enemy.ai_state_machine
+	var meander: AIMeander = mind.get_node("AIMeander") as AIMeander
+	meander.blocked_time = TEST_BLOCKED_TIME
+	meander.blocked_distance = TEST_BLOCKED_DISTANCE
+	var destination: Vector3 = await _start_meander_walk(enemy, meander)
+	var walk_frames: int = _frames_for(WALK_DISTANCE / maxf(enemy.attribute_component.get_current(AttributeComponent.STAT_SPEED), 0.1) * 3.0)
+	if not await wait_until(func() -> bool: return mind.state != meander, "the walk should end", walk_frames):
+		return
+	var reach: float = enemy.navigation_agent_3d.target_desired_distance + TEST_BLOCKED_DISTANCE
+	check(Vector2(enemy.global_position.x - destination.x, enemy.global_position.z - destination.z).length() <= reach, "a walk that keeps moving should only end at its destination")
 
 
 func test_defeated_characters_stop_acting() -> void:
@@ -374,6 +412,40 @@ func test_level_title_shows_the_level_number() -> void:
 
 func _spawn(scene: PackedScene, at: Vector3) -> Character:
 	return spawn(scene, _arena, at) as Character
+
+
+## Restarts enemy's meander walk toward a navmesh point WALK_DISTANCE away
+## and returns that point.
+func _start_meander_walk(enemy: Character, meander: AIMeander) -> Vector3:
+	var mind: AIStateMachine = enemy.ai_state_machine
+	mind.request_state(meander.wait_state.name)
+	mind.request_state(meander.name)
+	var nav_map: RID = enemy.get_world_3d().navigation_map
+	var destination: Vector3 = NavigationServer3D.map_get_closest_point(nav_map, enemy.global_position + Vector3(WALK_DISTANCE, 0.0, 0.0))
+	check(destination.distance_to(enemy.global_position) > WALK_DISTANCE * 0.75, "setup: the destination should lie on the navmesh far from the enemy")
+	enemy.navigation_agent_3d.target_position = destination
+	await wait_physics_frames(1)
+	return destination
+
+
+## Walls the navmesh does not know, boxing character in with CAGE_GAP of room.
+func _cage(character: Character) -> void:
+	var radius: float = float(character.collision_shape_3d.shape.get("radius"))
+	var reach: float = radius + CAGE_GAP + 0.5
+	for side: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK]:
+		var wall: StaticBody3D = StaticBody3D.new()
+		var shape: CollisionShape3D = CollisionShape3D.new()
+		var box: BoxShape3D = BoxShape3D.new()
+		box.size = Vector3(1.0, 3.0, 1.0) + Vector3(absf(side.z), 0.0, absf(side.x)) * 2.0 * reach
+		shape.shape = box
+		wall.add_child(shape)
+		wall.position = character.get_feet_position() + Vector3.UP * 1.5 + side * reach
+		_arena.add_child(wall)
+
+
+## Physics frames covering the given game time, plus a small margin.
+func _frames_for(seconds: float) -> int:
+	return ceili(seconds * Engine.physics_ticks_per_second) + 5
 
 
 ## A player whose live input is off, so only the test and physics move it.

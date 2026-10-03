@@ -15,14 +15,11 @@ Section numbers (§) point into the closed 2026-09-23 code review,
    `WeaponSlot:enabled` keys 0.790–0.820 s), about 2 physics ticks. It works on
    the physics clock at 60 Hz, but would become hit-or-miss if the physics tick
    rate were lowered. Consider a window of at least 0.05 s. (§3.9)
-3. **Enemies get stuck in each other's paths and never reach their
-   destinations.** Two tasks:
-   - Fix the stuck crowds, and measure whether enemies avoiding each other
-     (`NavigationAgent3D` avoidance) is worth its CPU cost on the target
-     devices.
-   - Give the AI's walk-to states (`AIMeander` and any other state that walks
-     to a point) a timeout, so a blocked walk gives up instead of waiting
-     forever.
+3. **Enemies get stuck in each other's paths.** Fix the stuck crowds, and
+   measure whether enemies avoiding each other (`NavigationAgent3D`
+   avoidance) is worth its CPU cost on the target devices. A blocked
+   `AIMeander` walk already gives up (`BlockedWalkDetector`), so stuck
+   wanderers no longer wait forever; pursuing enemies still jam.
 
 ## Decisions needed
 
