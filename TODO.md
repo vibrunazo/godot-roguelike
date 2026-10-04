@@ -11,10 +11,7 @@ Section numbers (§) point into the closed 2026-09-23 code review,
 1. **Level 10 lighting is stale.** Its 24 pit-lining walls were fixed in Phase A
    (they used a missing wall piece and were invisible), but its VoxelGI data was
    not rebaked; rebaking needs a display server (`tools/levels/bake_level_gi`).
-2. **The melee enemy's hit window is only 0.030 s** (`Melee_2H_Attack_Chop`,
-   `WeaponSlot:enabled` keys 0.790–0.820 s), about 2 physics ticks. It works on
-   the physics clock at 60 Hz, but would become hit-or-miss if the physics tick
-   rate were lowered. Consider a window of at least 0.05 s. (§3.9)
+
 ## Decisions needed
 
 5. **VoxelGI on mobile.** Decided: mobile uses the Mobile renderer. VoxelGI
