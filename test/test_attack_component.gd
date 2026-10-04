@@ -5,12 +5,15 @@
 ##   again once the interval has elapsed,
 ## - freeing a target that was hit must not break rehits for the others
 ##   (regression: a freed entry in the rehit bookkeeping used to raise a
-##   script error every tick and stop every cooldown from expiring).
+##   script error every tick and stop every cooldown from expiring),
+## - radial_knockback pushes each target away from the hitbox's center
+##   (explosions throw characters outward, each in its own direction).
 extends "res://test/lib/test_suite.gd"
 
 ## Test-owned attack values.
 const REHIT_INTERVAL: float = 0.1
 const DAMAGE: float = 1.0
+const RADIAL_KNOCKBACK: float = 10.0
 ## Hurtbox layer the test targets sit on (the player hurtbox layer).
 const TARGET_LAYER: int = 64
 ## Frames allowed for several rehit intervals to pass.
@@ -37,15 +40,34 @@ func test_rehits_keep_working_after_a_hit_target_is_freed() -> void:
 	await wait_until(func() -> bool: return survivor_hits[0] > hits_after_free, "the surviving target should still be rehit after another target was freed", REHIT_FRAMES)
 
 
-## A bare damageable target: Node3D with an AttributeComponent and a Hurtbox.
+func test_radial_knockback_pushes_each_target_away_from_the_hitbox() -> void:
+	var right: Hurtbox = _spawn_target(Vector3(0.5, 0.0, 0.0))
+	var left: Hurtbox = _spawn_target(Vector3(-0.5, 0.0, 0.0))
+	var right_hits: Array[int] = _count_hits(right)
+	var left_hits: Array[int] = _count_hits(left)
+	var attack: AttackComponent = _spawn_hitbox()
+	attack.radial_knockback = RADIAL_KNOCKBACK
+	if not await wait_until(func() -> bool: return right_hits[0] >= 1 and left_hits[0] >= 1, "both targets should be hit", REHIT_FRAMES):
+		return
+	var right_push: Vector3 = right.knockback_component.magnitude
+	var left_push: Vector3 = left.knockback_component.magnitude
+	check(right_push.x > 0.0 and is_zero_approx(right_push.z), "the target on the +x side should be pushed toward +x (got %s)" % [right_push])
+	check(left_push.x < 0.0 and is_zero_approx(left_push.z), "the target on the -x side should be pushed toward -x (got %s)" % [left_push])
+
+
+## A bare damageable target: Node3D with an AttributeComponent, a
+## KnockbackComponent and a Hurtbox.
 func _spawn_target(at: Vector3) -> Hurtbox:
 	var root: Node3D = Node3D.new()
 	root.position = at
 	var attributes: AttributeComponent = AttributeComponent.new()
 	attributes.name = "AttributeComponent"
 	root.add_child(attributes)
+	var knockback: KnockbackComponent = KnockbackComponent.new()
+	root.add_child(knockback)
 	var hurtbox: Hurtbox = Hurtbox.new()
 	hurtbox.attribute_component = attributes
+	hurtbox.knockback_component = knockback
 	hurtbox.collision_layer = TARGET_LAYER
 	hurtbox.collision_mask = 0
 	hurtbox.add_child(_sphere(0.5))

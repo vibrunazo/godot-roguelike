@@ -168,8 +168,13 @@ prints the error and idles forever. `--quit-after` does not help.
   standing and bakes on a `WorkerThreadPool` thread, at most once every
   `min_rebuild_interval` (2 s) of physics time. The explosive barrel is
   `Levels/Decorators/explosive_barrel.tscn` (payload `Hazards/barrel_explosion.tscn`:
-  a `hits_all` ground AOE with the shared fire burn); levels place it like
-  any other litter (`barrel` in `tools/levels`).
+  a `hits_all` ground AOE with the shared fire burn, `radial_knockback` that
+  throws every victim away from the barrel, and its own fire burst, smoke and
+  light flash on top of the shared ground visuals); levels place it like
+  any other litter (`barrel` in `tools/levels`). Any `DamageArea` can set
+  `radial_knockback` (horizontal, away from its center, on top of the
+  vertical `knockback_force`): `AttackComponent.knockback_for()` works it out
+  per target.
 - **Abilities:** an `AbilityResource` (`.tres`) defines an active ability:
   cost, cooldown, cast animation, release time, and what it releases (a
   payload scene with `payload_overrides`, and `caster_effects`). The ASC holds

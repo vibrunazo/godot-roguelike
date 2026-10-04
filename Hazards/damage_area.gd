@@ -23,6 +23,14 @@ extends Node3D
 		knockback_vector = value
 		_sync_attack_component()
 
+## Horizontal knockback pushed away from the area's center, on top of the
+## vertical knockback_force or knockback_vector: an explosion that throws
+## characters outward. 0 for none.
+@export var radial_knockback: float = 0.0:
+	set(value):
+		radial_knockback = value
+		_sync_attack_component()
+
 ## Damage type routed to Hurtbox.receive_hit (a DamageType constant).
 @export var damage_type: StringName = DamageType.PHYSICAL:
 	set(value):
@@ -200,6 +208,7 @@ func _sync_attack_component() -> void:
 		att.knockback = Vector3(0.0, knockback_force, 0.0)
 	else:
 		att.knockback = Vector3.ZERO
+	att.radial_knockback = radial_knockback
 
 
 ## Arms the duration timer if duration > 0.0.

@@ -14,6 +14,11 @@ signal hit_landed(target: Node)
 ## Current knockback vector applied to hit targets upon collision.
 @export var knockback: Vector3 = Vector3.ZERO
 
+## Horizontal knockback pushed away from the attack area's center, added to
+## knockback for every target the area hits (an explosion shoves characters
+## outward). 0 leaves knockback as the only push.
+@export var radial_knockback: float = 0.0
+
 ## Damage type routed to Hurtbox.receive_hit (a DamageType constant).
 ## Resistance stats scale typed damage; hazards and projectiles that burn set fire.
 @export var damage_type: StringName = DamageType.PHYSICAL
@@ -94,12 +99,26 @@ func _physics_process(delta: float) -> void:
 		_refresh_cooldowns(rehit_interval)
 		for area: Area3D in attack_area.get_overlapping_areas():
 			if _is_valid_target(area) and not temporary_exceptions.has(area as CollisionObject3D):
-				deal_damage_to(area as Hurtbox, damage, knockback)
+				deal_damage_to(area as Hurtbox, damage, knockback_for(area as Hurtbox))
 
 
 func _on_area_entered(area: Area3D) -> void:
 	if _is_valid_target(area):
-		deal_damage_to(area as Hurtbox, damage, knockback)
+		deal_damage_to(area as Hurtbox, damage, knockback_for(area as Hurtbox))
+
+
+## The knockback one target takes from the attack area: knockback, plus with
+## radial_knockback > 0 a horizontal push of that strength from the area's
+## center toward the target. A target exactly at the center takes knockback
+## alone.
+func knockback_for(hurtbox: Hurtbox) -> Vector3:
+	if radial_knockback <= 0.0 or attack_area == null:
+		return knockback
+	var away: Vector3 = hurtbox.global_position - attack_area.global_position
+	away.y = 0.0
+	if away.is_zero_approx():
+		return knockback
+	return knockback + away.normalized() * radial_knockback
 
 
 ## Deals dmg and knockback kb (both explicit: zero means zero) to a hurtbox if
@@ -146,7 +165,7 @@ func deal_damage() -> void:
 		return
 	for area: Area3D in attack_area.get_overlapping_areas():
 		if _is_valid_target(area) and not temporary_exceptions.has(area as CollisionObject3D):
-			deal_damage_to(area as Hurtbox, damage, knockback)
+			deal_damage_to(area as Hurtbox, damage, knockback_for(area as Hurtbox))
 
 
 func add_exception(col: CollisionObject3D) -> void:
