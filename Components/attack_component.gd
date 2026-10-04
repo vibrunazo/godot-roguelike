@@ -19,6 +19,11 @@ signal hit_landed(target: Node)
 ## outward). 0 leaves knockback as the only push.
 @export var radial_knockback: float = 0.0
 
+## Whether knockback is in the attack area's own space (+Z forward) rather
+## than world space: an area turned to face its aim then knocks along it
+## (a charge's hitbox throws victims ahead of the charger).
+@export var local_knockback: bool = false
+
 ## Damage type routed to Hurtbox.receive_hit (a DamageType constant).
 ## Resistance stats scale typed damage; hazards and projectiles that burn set fire.
 @export var damage_type: StringName = DamageType.PHYSICAL
@@ -107,23 +112,40 @@ func _on_area_entered(area: Area3D) -> void:
 		deal_damage_to(area as Hurtbox, damage, knockback_for(area as Hurtbox))
 
 
-## The knockback one target takes from the attack area: knockback, plus with
-## radial_knockback > 0 a horizontal push of that strength from the area's
-## center toward the target. A target exactly at the center takes knockback
-## alone.
+## The knockback one target takes from the attack area: knockback (turned
+## into world space when local_knockback), plus with radial_knockback > 0 a
+## horizontal push of that strength from the area's center toward the target.
+## A target exactly at the center takes knockback alone.
 func knockback_for(hurtbox: Hurtbox) -> Vector3:
+	var push: Vector3 = knockback
+	if local_knockback and attack_area != null:
+		push = attack_area.global_basis.orthonormalized() * knockback
 	if radial_knockback <= 0.0 or attack_area == null:
-		return knockback
+		return push
 	var away: Vector3 = hurtbox.global_position - attack_area.global_position
 	away.y = 0.0
 	if away.is_zero_approx():
-		return knockback
-	return knockback + away.normalized() * radial_knockback
+		return push
+	return push + away.normalized() * radial_knockback
+
+
+## Where this attack's hits come from, for shields (Hurtbox.is_blocked_from()):
+## the attack area's center, else the position of the Node3D holding an
+## area-less component (a projectile). Hurtbox.NO_HIT_ORIGIN when neither
+## exists; such hits are never blocked.
+func hit_origin() -> Vector3:
+	if attack_area != null and is_instance_valid(attack_area):
+		return attack_area.global_position
+	var holder: Node3D = get_parent() as Node3D
+	return holder.global_position if holder != null else Hurtbox.NO_HIT_ORIGIN
 
 
 ## Deals dmg and knockback kb (both explicit: zero means zero) to a hurtbox if
-## eligible, respecting this attack's exceptions and rehit_interval.
-## Returns true if damage was successfully applied.
+## eligible, respecting this attack's exceptions and rehit_interval. A hit the
+## target's shield stops (Hurtbox.is_blocked_from(), judged from hit_origin())
+## is spent like a landed one (no retry until the rehit interval) but deals
+## nothing and lands no effect. Returns true if damage was successfully
+## applied.
 func deal_damage_to(hurtbox: Hurtbox, dmg: float, kb: Vector3) -> bool:
 	if not is_instance_valid(hurtbox):
 		return false
@@ -133,15 +155,27 @@ func deal_damage_to(hurtbox: Hurtbox, dmg: float, kb: Vector3) -> bool:
 	if temporary_exceptions.has(hurtbox as CollisionObject3D):
 		return false
 
+	var origin: Vector3 = hit_origin()
+	if hurtbox.is_blocked_from(origin):
+		hurtbox.block_hit(dmg, origin)
+		_remember_hit(hurtbox)
+		return false
+
 	var has_hit: bool = hurtbox.receive_hit(dmg, kb, damage_type)
 	if has_hit:
-		temporary_exceptions.append(hurtbox as CollisionObject3D)
-		if rehit_interval > 0.0:
-			hit_timestamps[hurtbox as CollisionObject3D] = current_time
+		_remember_hit(hurtbox)
 		_apply_hit_effects(hurtbox)
 		hit_landed.emit(hurtbox)
 
 	return has_hit
+
+
+## Marks hurtbox as hit by this attack (no second hit until reset_exceptions(),
+## or until rehit_interval has passed).
+func _remember_hit(hurtbox: Hurtbox) -> void:
+	temporary_exceptions.append(hurtbox as CollisionObject3D)
+	if rehit_interval > 0.0:
+		hit_timestamps[hurtbox as CollisionObject3D] = current_time
 
 
 ## Applies each configured GameplayEffect to the victim's AttributeComponent.

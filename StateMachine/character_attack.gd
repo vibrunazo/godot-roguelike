@@ -1,9 +1,9 @@
 ## Melee attack state for all characters (player combo hits and enemy attacks),
 ## built on CharacterAction (cooldown, tags, animation, aim, cancel window,
-## gravity, lifecycle events). This adds the melee half: the weapon slot's
-## hitbox and its AttackComponent, the combo queue, the forward lunge and the
-## attacker's hitstop. Player chains use combo_next (ordered); enemies use
-## next_states random-pick.
+## gravity, lifecycle events, the lunge). This adds the melee half: the weapon
+## slot's hitbox and its AttackComponent, the combo queue, the lunge timed to
+## the strike and the attacker's hitstop. Player chains use combo_next
+## (ordered); enemies use next_states random-pick.
 class_name CharacterAttack
 extends CharacterAction
 
@@ -22,13 +22,6 @@ extends CharacterAction
 @export var weapon_slot: WeaponSlot = null
 ## Minimum interval (in seconds) before the same target can be hit again during this attack state.
 @export var rehit_interval: float = 0.0
-## Forward lunge speed applied from the attack's active phase. Leave at 0.0 to disable the lunge.
-@export var dash_speed: float = 0.0
-## Duration (in seconds) of the forward lunge. Leave at 0.0 to disable the lunge.
-@export var dash_duration: float = 0.0
-## Steers the forward lunge away from ending over a pit when that looks like a
-## mistake (see LandingAssist). Null lunges exactly along the aim.
-@export var lunge_landing_assist: LandingAssist
 ## GameplayEffects applied to each victim when a hit lands (slow, burn, ...).
 ## Copied to the AttackComponent on enter, which applies them on every
 ## confirmed hit. Re-hitting a victim refreshes matching effects instead of
@@ -43,10 +36,7 @@ extends CharacterAction
 
 var queued_attack: bool = false
 var attack_timer: SceneTreeTimer
-var lunging: bool = false
-var lunge_direction: Vector3 = Vector3.ZERO
-var _lunge_base_velocity: Vector3 = Vector3.ZERO
-var lunge_timer: SceneTreeTimer
+## WeaponSlot whose slash signal starts the lunge (dash_speed/dash_duration).
 var lunge_slot: WeaponSlot
 ## WeaponSlot whose slash signal reports this attack's ACTIVE lifecycle event.
 var _active_phase_slot: WeaponSlot
@@ -63,13 +53,11 @@ func _before_motion(delta: float) -> void:
 	_update_hitstop(delta)
 
 
-## The lunge while it runs, the steered movement otherwise; both slowed
-## during hitstop.
+## The action's motion (the lunge while it runs, the steered movement
+## otherwise), slowed during hitstop.
 func _planar_velocity() -> Vector3:
 	var motion_scale: float = clampf(self_hitstop_scale, 0.0, 1.0) if is_in_hitstop() else 1.0
-	if lunging:
-		return (_lunge_base_velocity + lunge_direction * dash_speed) * motion_scale
-	return character.move_direction * movement_speed * motion_scale
+	return super._planar_velocity() * motion_scale
 
 
 func _can_turn() -> bool:
@@ -97,8 +85,6 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 ## Clears everything a previous run of this attack may have left behind.
 func _reset_attack_state() -> void:
 	queued_attack = false
-	lunging = false
-	lunge_direction = Vector3.ZERO
 	lunge_slot = null
 	hitstop_time_remaining = 0.0
 	hitstop_has_timescale = false
@@ -137,15 +123,15 @@ func get_weapon_slot() -> WeaponSlot:
 	return weapon_slot
 
 
-## Arms the forward lunge when dash exports are set. The lunge starts when the
-## weapon slot signals the attack's active phase via its slash signal (emitted
-## exactly when the slot enables the hitbox), so no polling or hub is needed.
+## Arms the lunge when dash exports are set. It starts when the weapon slot
+## signals the attack's active phase via its slash signal (emitted exactly
+## when the slot enables the hitbox), so no polling or hub is needed.
 func _arm_lunge() -> void:
-	if dash_speed <= 0.0 or dash_duration <= 0.0:
+	if not has_lunge():
 		return
 	lunge_slot = get_weapon_slot()
 	if lunge_slot != null:
-		connect_one_shot(lunge_slot.slash, _begin_lunge)
+		connect_one_shot(lunge_slot.slash, begin_lunge)
 
 
 ## Reports this attack's ACTIVE lifecycle event, fired by the weapon slot's
@@ -155,40 +141,11 @@ func _broadcast_active_phase() -> void:
 	broadcast_ability_event(AbilityEvent.Phase.ACTIVE, {}, aim_direction)
 
 
-## Starts the forward lunge along the locked aim direction.
-## The aim vector is pixel-scaled (never normalized upstream), so it must be
-## normalized here or dash_speed would scale with screen pixels.
-func _begin_lunge() -> void:
-	if character == null or not character.is_inside_tree():
-		return
-	lunge_direction = aim_direction
-	if lunge_direction.is_zero_approx() and character.mesh_mount != null:
-		lunge_direction = character.mesh_mount.global_basis.z.normalized()
-	if lunge_direction.is_zero_approx():
-		lunge_direction = Vector3.FORWARD
-	lunge_direction = lunge_direction.normalized()
-	if lunge_landing_assist != null:
-		lunge_direction = lunge_landing_assist.steer(character, lunge_direction, dash_speed * dash_duration)
-	_lunge_base_velocity = Vector3(character.velocity.x, 0.0, character.velocity.z)
-	lunging = true
-	lunge_timer = get_tree().create_timer(dash_duration, true, true)
-	lunge_timer.timeout.connect(_end_lunge)
-
-
-## Ends the forward lunge window; normal attack motion resumes.
-func _end_lunge() -> void:
-	lunging = false
-
-
-## Clears all lunge state: motion flag, timer wiring, and slot signal wiring.
+## Clears the lunge and the slot signal wiring that starts it.
 func _clear_lunge() -> void:
-	lunging = false
-	_lunge_base_velocity = Vector3.ZERO
-	if lunge_timer != null:
-		disconnect_safe(lunge_timer.timeout, _end_lunge)
-		lunge_timer = null
+	super._clear_lunge()
 	if lunge_slot != null:
-		disconnect_safe(lunge_slot.slash, _begin_lunge)
+		disconnect_safe(lunge_slot.slash, begin_lunge)
 		lunge_slot = null
 
 
@@ -275,7 +232,6 @@ func check_attack() -> bool:
 
 func exit() -> void:
 	queued_attack = false
-	_clear_lunge()
 	_clear_hitstop()
 	if attack_timer != null:
 		disconnect_safe(attack_timer.timeout, attempt_queue_attack)

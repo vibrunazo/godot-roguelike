@@ -12,7 +12,9 @@ func physics_update(delta: float) -> void:
 	if character == null or not character.is_inside_tree() or not character.is_alive():
 		return
 
-	core_movement(delta, character.attribute_component.get_current(AttributeComponent.STAT_SPEED), character.move_direction)
+	# Walking faces the way it goes, unless the mind asked to face something
+	# else (a shield bearer backing away from its target).
+	core_movement(delta, character.attribute_component.get_current(AttributeComponent.STAT_SPEED), character.move_direction, character.face_target)
 
 	if character.animation_tree != null:
 		if character.move_direction.is_zero_approx():
@@ -20,8 +22,7 @@ func physics_update(delta: float) -> void:
 		else:
 			character.animation_tree.blend_target = 1.0
 
-	# When moving, core_movement orients toward move_direction at the rotation
-	# speed limit. When idle, turn toward face_target at the same limit.
+	# When idle, turn toward face_target at the rotation speed limit.
 	if character.move_direction.is_zero_approx() and not character.face_target.is_zero_approx():
 		look_at_target(character.face_target, delta)
 

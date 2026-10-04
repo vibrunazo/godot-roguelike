@@ -1,0 +1,283 @@
+[gd_scene format=3 uid="uid://po455msprgc7"]
+
+[ext_resource type="PackedScene" uid="uid://bk4gxfbdgjgln" path="res://Enemy/enemy_base.tscn" id="1_base"]
+[ext_resource type="Shader" uid="uid://b81ujloplemnj" path="res://Shaders/character_palette.gdshader" id="2_qio5c"]
+[ext_resource type="Script" uid="uid://cmqolk21i2p4i" path="res://StateMachine/character_attack.gd" id="3_attack"]
+[ext_resource type="Texture2D" uid="uid://cg3sv8wggq46e" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/Enemy_Medium_enemy_texture.png" id="3_qm72f"]
+[ext_resource type="Script" uid="uid://co8jdqp58n2qm" path="res://Abilities/ability_cast_state.gd" id="4_cast"]
+[ext_resource type="Script" uid="uid://by5fnbuwcy326" path="res://Components/ability_system_component.gd" id="5_asc"]
+[ext_resource type="Script" uid="uid://clauo4aqtg4dp" path="res://Abilities/ability_resource.gd" id="6_ability_script"]
+[ext_resource type="Resource" path="res://Abilities/AbilityResources/ability_move_and_slide.tres" id="7_charge"]
+[ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="8_attack_comp"]
+[ext_resource type="Script" uid="uid://dmeev7yvye24g" path="res://Components/shield_component.gd" id="9_shield"]
+[ext_resource type="Script" uid="uid://heyht7qo7sv1" path="res://StateMachine/AIStates/ai_keep_distance.gd" id="10_keep"]
+[ext_resource type="Script" uid="uid://c6etedvkg6cwv" path="res://StateMachine/AIStates/ai_wait.gd" id="11_wait"]
+[ext_resource type="Script" uid="uid://ccsy0o7o6ccoh" path="res://StateMachine/AIStates/ai_conditional_attack.gd" id="12_conditional"]
+[ext_resource type="AudioStream" uid="uid://mgv1fbcndh5a" path="res://Assets/Audio/weapon-swing.ogg" id="13_swing"]
+[ext_resource type="AudioStream" uid="uid://b1ihkudmpnw30" path="res://Assets/Audio/metal-hit.ogg" id="14_clang"]
+[ext_resource type="Script" uid="uid://bkhbba70rqfq4" path="res://Player/held_facing_visual.gd" id="15_held"]
+
+[sub_resource type="Gradient" id="Gradient_lm7hf"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ohbo0"]
+gradient = SubResource("Gradient_lm7hf")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_uj05g"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_eubcm"]
+gradient = SubResource("Gradient_uj05g")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_nva6q"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_iap36"]
+gradient = SubResource("Gradient_nva6q")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_m1xvn"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ghfp2"]
+gradient = SubResource("Gradient_m1xvn")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_f1qeg"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_q083p"]
+gradient = SubResource("Gradient_f1qeg")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_bx28p"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ej4ut"]
+gradient = SubResource("Gradient_bx28p")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_mw68a"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_y1ohu"]
+gradient = SubResource("Gradient_mw68a")
+width = 64
+
+[sub_resource type="Gradient" id="Gradient_steel"]
+colors = PackedColorArray(0.62, 0.68, 0.78, 1, 0.1, 0.13, 0.22, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_agy81"]
+gradient = SubResource("Gradient_steel")
+width = 64
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_l0ti0"]
+render_priority = 0
+shader = ExtResource("2_qio5c")
+shader_parameter/albedo_texture = ExtResource("3_qm72f")
+shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_ohbo0"), SubResource("GradientTexture1D_eubcm"), SubResource("GradientTexture1D_iap36"), SubResource("GradientTexture1D_ghfp2"), SubResource("GradientTexture1D_q083p"), SubResource("GradientTexture1D_ej4ut"), SubResource("GradientTexture1D_y1ohu"), SubResource("GradientTexture1D_agy81")])
+shader_parameter/palette_mode = 0
+shader_parameter/enable_palette = true
+shader_parameter/gradient_mask = 128
+shader_parameter/global_tint = Color(1, 1, 1, 1)
+shader_parameter/roughness = 0.3
+shader_parameter/metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_shield"]
+albedo_color = Color(0.2, 0.24, 0.32, 1)
+metallic = 0.7
+roughness = 0.35
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_shield"]
+material = SubResource("StandardMaterial3D_shield")
+top_radius = 0.58
+bottom_radius = 0.58
+height = 0.07
+radial_segments = 24
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rim"]
+albedo_color = Color(0.3, 0.75, 1, 1)
+emission_enabled = true
+emission = Color(0.3, 0.75, 1, 1)
+emission_energy_multiplier = 1.2
+
+[sub_resource type="TorusMesh" id="TorusMesh_rim"]
+material = SubResource("StandardMaterial3D_rim")
+inner_radius = 0.53
+outer_radius = 0.62
+rings = 24
+ring_segments = 8
+
+[sub_resource type="SphereMesh" id="SphereMesh_boss"]
+material = SubResource("StandardMaterial3D_rim")
+radius = 0.12
+height = 0.24
+radial_segments = 12
+rings = 6
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_bash"]
+size = Vector3(1, 1.2, 1)
+
+[node name="EnemyBackfaceKnight" unique_id=1487419973 node_paths=PackedStringArray("ability_system_component") instance=ExtResource("1_base")]
+ability_system_component = NodePath("AbilitySystemComponent")
+
+[node name="Enemy_Medium_ArmLeft" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="0" unique_id=809786486]
+material_override = SubResource("ShaderMaterial_l0ti0")
+
+[node name="Enemy_Medium_ArmRight" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="1" unique_id=1595301150]
+material_override = SubResource("ShaderMaterial_l0ti0")
+
+[node name="Enemy_Medium_Body" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="2" unique_id=1061602631]
+material_override = SubResource("ShaderMaterial_l0ti0")
+
+[node name="Enemy_Medium_Head" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="3" unique_id=1416759350]
+material_override = SubResource("ShaderMaterial_l0ti0")
+
+[node name="Enemy_Medium_LegLeft" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="4" unique_id=1163489825]
+material_override = SubResource("ShaderMaterial_l0ti0")
+
+[node name="Enemy_Medium_LegRight" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="5" unique_id=1818947811]
+material_override = SubResource("ShaderMaterial_l0ti0")
+
+[node name="WeaponSlot" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="6" unique_id=211580224]
+attack_mode = 0
+vfx_threshold = 0.0
+
+[node name="ShieldSlot" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="9" node_paths=PackedStringArray("hitbox")]
+transform = Transform3D(-0.99999887, -3.9761176e-07, -3.6810383e-07, -4.6604322e-07, -5.3096744e-07, 0.99999934, -4.758466e-07, 0.99999934, 6.2344856e-07, 0.88313216, 1.0492611, -6.824021e-07)
+bone_idx = 8
+hitbox = NodePath("HitboxArea")
+
+[node name="Shield" type="Node3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/ShieldSlot" index="0" unique_id=968595724 node_paths=PackedStringArray("facing")]
+script = ExtResource("15_held")
+facing = NodePath("../../../../../..")
+
+[node name="Face" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/ShieldSlot/Shield" index="0" unique_id=1191905367]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, -0.12, 0.15, 0.35)
+gi_mode = 0
+mesh = SubResource("CylinderMesh_shield")
+
+[node name="Rim" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/ShieldSlot/Shield" index="1" unique_id=312696008]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, -0.12, 0.15, 0.35)
+gi_mode = 0
+mesh = SubResource("TorusMesh_rim")
+
+[node name="Boss" type="MeshInstance3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/ShieldSlot/Shield" index="2" unique_id=1011713082]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12, 0.15, 0.41)
+gi_mode = 0
+mesh = SubResource("SphereMesh_boss")
+
+[node name="HitboxArea" type="Area3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/ShieldSlot" index="1" unique_id=1582962125]
+collision_layer = 0
+collision_mask = 64
+monitoring = false
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/ShieldSlot/HitboxArea" index="0" unique_id=444549198]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+shape = SubResource("BoxShape3D_bash")
+
+[node name="AttackComponent" type="Node" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/ShieldSlot/HitboxArea" index="1" unique_id=1647896937]
+script = ExtResource("8_attack_comp")
+
+[node name="BashAudio" type="AudioStreamPlayer3D" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/ShieldSlot" index="2" unique_id=660017318]
+stream = ExtResource("13_swing")
+bus = &"SFX"
+
+[node name="AnimationTree" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium" parent_id_path=PackedInt32Array(1495277970, 1921158861) index="2" unique_id=1365896023]
+parameters/Charge/TimeScale/scale = 1.0
+parameters/MeleeAttack/TimeScale/scale = 1.0
+parameters/Rally/TimeScale/scale = 1.0
+parameters/RangedAttack/TimeScale/scale = 1.0
+parameters/ShieldBash/TimeScale/scale = 1.0
+
+[node name="CastOrigin" type="Marker3D" parent="AnimationAnchor" parent_id_path=PackedInt32Array(930518751) index="1" unique_id=364633407]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.4)
+
+[node name="Hurtbox" parent="." index="3" node_paths=PackedStringArray("shield")]
+shield = NodePath("../ShieldComponent")
+
+[node name="CharacterColorComponent" parent="." index="6" unique_id=1409284102]
+gradients = Array[Gradient]([null, null, null, null, null, null, null, SubResource("Gradient_steel")])
+
+[node name="ShieldBash" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="4" unique_id=1774183079 node_paths=PackedStringArray("weapon_slot", "next_states", "character", "fall_state")]
+script = ExtResource("3_attack")
+knockback = 18.0
+weapon_slot = NodePath("../../AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/ShieldSlot")
+self_hitstop_duration = 0.15
+next_states = [NodePath("../EnemyMove")]
+animation_name = "ShieldBash"
+cooldown = 1.5
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="AbilitySlot1" type="Node" parent="StateMachine" parent_id_path=PackedInt32Array(1352967922) index="5" unique_id=979822803 node_paths=PackedStringArray("cast_origin", "next_states", "character", "fall_state")]
+script = ExtResource("4_cast")
+cast_origin = NodePath("../../AnimationAnchor/CastOrigin")
+next_states = [NodePath("../EnemyMove")]
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="AIStateMachine" parent="." index="8" unique_id=1832049182 node_paths=PackedStringArray("initial_state")]
+initial_state = NodePath("AIKeepDistance")
+
+[node name="AIKeepDistance" type="Node" parent="AIStateMachine" index="0" unique_id=658699472 node_paths=PackedStringArray("lost_target_state", "ai_state_machine")]
+script = ExtResource("10_keep")
+lost_target_state = NodePath("../AIWait")
+ai_state_machine = NodePath("..")
+
+[node name="AIWait" type="Node" parent="AIStateMachine" index="1" unique_id=1911288931 node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("11_wait")
+next_state = NodePath("../AIKeepDistance")
+wait_duration = 1.5
+ai_state_machine = NodePath("..")
+
+[node name="AIShieldBash" type="Node" parent="AIStateMachine" index="2" unique_id=1984868847 node_paths=PackedStringArray("next_state", "body_state", "ai_state_machine")]
+script = ExtResource("12_conditional")
+trigger_range = 2.2
+can_break_stun = false
+next_state = NodePath("../AIKeepDistance")
+body_state = NodePath("../../StateMachine/ShieldBash")
+desired_angle = 120.0
+ai_state_machine = NodePath("..")
+priority = 3
+
+[node name="AICharge" type="Node" parent="AIStateMachine" index="3" unique_id=1795640219 node_paths=PackedStringArray("next_state", "body_state", "ai_state_machine")]
+script = ExtResource("12_conditional")
+trigger_range = 13.0
+min_range = 6.0
+require_clear_shot = true
+can_break_stun = false
+next_state = NodePath("../AIKeepDistance")
+body_state = NodePath("../../StateMachine/AbilitySlot1")
+desired_angle = 20.0
+ai_state_machine = NodePath("..")
+priority = 2
+
+[node name="AttributeComponent" parent="." index="10" unique_id=271828460]
+base_max_health = 90.0
+base_speed = 3.2
+base_rotation_speed = 70.0
+
+[node name="ShieldComponent" type="Node" parent="." index="14" unique_id=1899320795 node_paths=PackedStringArray("facing", "block_audio")]
+script = ExtResource("9_shield")
+facing = NodePath("../AnimationAnchor")
+block_arc = 170.0
+block_audio = NodePath("../BlockAudio")
+
+[node name="BlockAudio" type="AudioStreamPlayer3D" parent="." index="15" unique_id=179036163]
+stream = ExtResource("14_clang")
+bus = &"SFX"
+
+[node name="AbilitySystemComponent" type="Node" parent="." index="16" unique_id=1054572744 node_paths=PackedStringArray("slots")]
+script = ExtResource("5_asc")
+slots = [NodePath("../StateMachine/AbilitySlot1")]
+starting_abilities = Array[ExtResource("6_ability_script")]([ExtResource("7_charge")])
+
+[connection signal="slash" from="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/ShieldSlot" to="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/ShieldSlot/BashAudio" method="play"]
+
+[editable path="AnimationAnchor/AnimatedEnemy"]
+[editable path="AnimationAnchor/AnimatedEnemy/Enemy_Medium"]

@@ -18,9 +18,11 @@ const NO_LANDING_POINT: Vector3 = Vector3(INF, INF, INF)
 ## projectile faces direction fully, so it flies up or down along it; any
 ## other payload only turns on the ground plane. Zero keeps the scene's
 ## rotation. A lobbed projectile (BallisticProjectile) lands on landing_point,
-## or picks its own target when it is NO_LANDING_POINT. Returns the payload,
-## or null when the scene is missing or its root is not a Node3D.
-static func spawn(scene: PackedScene, instigator: Character, position: Vector3, direction: Vector3 = Vector3.ZERO, overrides: Array[PayloadPropertyOverride] = [], damage_multiplier: float = 1.0, scale_with_attack: bool = false, landing_point: Vector3 = NO_LANDING_POINT) -> Node3D:
+## or picks its own target when it is NO_LANDING_POINT. With parent, the
+## payload is added under that node instead of the world (attached to a
+## caster, it moves with it), still placed in world space. Returns the
+## payload, or null when the scene is missing or its root is not a Node3D.
+static func spawn(scene: PackedScene, instigator: Character, position: Vector3, direction: Vector3 = Vector3.ZERO, overrides: Array[PayloadPropertyOverride] = [], damage_multiplier: float = 1.0, scale_with_attack: bool = false, landing_point: Vector3 = NO_LANDING_POINT, parent: Node3D = null) -> Node3D:
 	if scene == null:
 		push_error("PayloadSpawner: no payload scene to spawn.")
 		return null
@@ -47,17 +49,18 @@ static func spawn(scene: PackedScene, instigator: Character, position: Vector3, 
 		area.damage *= scale
 	elif payload is EffectBurst:
 		(payload as EffectBurst).wielder = instigator
-	_place(payload, position, direction)
+	_place(payload, position, direction, parent)
 	if payload is BallisticProjectile:
 		(payload as BallisticProjectile).initialize_trajectory(landing_point)
 	return payload
 
 
-## Puts payload at position facing direction and adds it to the world: placed
-## before entering the tree (so _ready sees it), and again in world space once
-## in it, in case the host is transformed. A straight projectile also pitches
-## along direction; other payloads only turn on the ground plane.
-static func _place(payload: Node3D, position: Vector3, direction: Vector3) -> void:
+## Puts payload at position facing direction and adds it to the world (or
+## under parent): placed before entering the tree (so _ready sees it), and
+## again in world space once in it, in case the host is transformed. A
+## straight projectile also pitches along direction; other payloads only turn
+## on the ground plane.
+static func _place(payload: Node3D, position: Vector3, direction: Vector3, parent: Node3D = null) -> void:
 	var flat: Vector3 = Vector3(direction.x, 0.0, direction.z)
 	var yaw: float = atan2(flat.x, flat.z) if not flat.is_zero_approx() else payload.rotation.y
 	var pitch: float = payload.rotation.x
@@ -66,6 +69,9 @@ static func _place(payload: Node3D, position: Vector3, direction: Vector3) -> vo
 		pitch = -atan2(direction.y, flat.length())
 	payload.position = position
 	payload.rotation = Vector3(pitch, yaw, payload.rotation.z)
-	VfxManager.spawn_world_entity(payload)
+	if parent != null:
+		parent.add_child(payload)
+	else:
+		VfxManager.spawn_world_entity(payload)
 	payload.global_position = position
 	payload.global_rotation = Vector3(pitch, yaw, payload.global_rotation.z)

@@ -18,12 +18,18 @@ extends Area3D
 ## this, so reactions fire once per hit instead of every frame of a burn.
 signal struck(damage: float)
 
+## Hit origin meaning "unknown": such a hit is never blocked by a shield.
+const NO_HIT_ORIGIN: Vector3 = Vector3(INF, INF, INF)
+
 ## Audio player played when damage is taken.
 @export var hit_audio: AudioStreamPlayer3D
 ## AttributeComponent holding the health pool damaged by receive_hit().
 @export var attribute_component: AttributeComponent
 ## KnockbackComponent receiving momentum from receive_hit().
 @export var knockback_component: KnockbackComponent
+## Optional shield: hits coming from inside its arc are blocked (see
+## is_blocked_from(); AttackComponent asks before every hit).
+@export var shield: ShieldComponent
 
 
 func _ready() -> void:
@@ -31,6 +37,20 @@ func _ready() -> void:
 		push_error("%s: attribute_component is not set." % name)
 		return
 	attribute_component.defeat.connect(_on_defeat)
+
+
+## Whether a hit coming from origin lands on the shield instead of this
+## character (ShieldComponent.blocks_hit_from()). Never without a shield, for
+## the dead, or for hits of unknown origin (NO_HIT_ORIGIN).
+func is_blocked_from(origin: Vector3) -> bool:
+	return shield != null and is_alive() and shield.blocks_hit_from(origin, global_position)
+
+
+## Reports a hit the shield stopped: no damage, knockback or struck; the
+## shield shows and sounds the block (ShieldComponent.report_block()).
+func block_hit(damage: float, origin: Vector3) -> void:
+	if shield != null:
+		shield.report_block(damage, origin)
 
 
 ## Returns true if the owning target is alive and eligible to receive hits.

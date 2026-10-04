@@ -74,8 +74,10 @@ Section numbers (§) point into the closed 2026-09-23 code review,
      work in `AbilityResource`; the Fireball is cooldown-only).
    - Item difficulty tiers for level spawns, drops and the shop
      (`GlobalVars.level_items` and the shop deal from every tier today).
-   - Abilities with their own behavior (a leap, a channel): a slot state can
-     only release a payload and caster effects today.
+   - Abilities with their own behavior beyond what the resource offers today
+     (a lunge from release, an attached payload, a fixed cast duration; the
+     Backface Knight's charge uses all three): a true leap (airborne arc) or
+     a channel that ticks while held still needs code.
    - Secondary bindings for `ability_1`..`ability_4` (gamepad, mouse).
 
 ## Architecture backlog

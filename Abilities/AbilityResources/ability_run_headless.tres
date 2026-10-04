@@ -1,7 +1,9 @@
-[gd_resource type="Resource" script_class="AbilityResource" format=3]
+[gd_resource type="Resource" script_class="AbilityResource" format=3 uid="uid://bi6sd0lvntwmk"]
 
-[ext_resource type="Script" path="res://Abilities/ability_resource.gd" id="1_ability"]
+[ext_resource type="Script" uid="uid://clauo4aqtg4dp" path="res://Abilities/ability_resource.gd" id="1_ability"]
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="1_eb0sd"]
 [ext_resource type="PackedScene" path="res://Abilities/Payloads/run_headless_burst.tscn" id="2_burst"]
+[ext_resource type="Script" uid="uid://b5xhfgum5k35x" path="res://Passives/payload_property_override.gd" id="2_jabf5"]
 
 [sub_resource type="Gradient" id="Gradient_icon"]
 offsets = PackedFloat32Array(0, 0.35, 0.7, 0.92, 1)
@@ -26,7 +28,6 @@ cooldown = 15.0
 cost_amount = 40.0
 cast_animation = "Rally"
 cast_speed = 2.0
-release_time = 0.3
 release_point = 1
 payload_scene = ExtResource("2_burst")
 scale_with_attack = false

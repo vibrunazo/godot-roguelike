@@ -66,6 +66,17 @@ enum ReleasePoint {
 @export var uninterruptable: bool = false
 ## Whether the caster keeps its height while casting in the air.
 @export var float_in_air: bool = false
+## Seconds the cast lasts (physics clock); 0.0 ends it when cast_animation
+## finishes. Set it when cast_animation loops (a run cycle during a charge,
+## a channel), which would never finish.
+@export var cast_duration: float = 0.0
+
+@export_group("Motion")
+## Speed in m/s the caster lunges along its aim from release_time (a charge,
+## a leap step; CharacterAction.begin_lunge()). 0.0 = no lunge.
+@export var dash_speed: float = 0.0
+## Seconds the lunge lasts (physics clock); it ends early against a wall.
+@export var dash_duration: float = 0.0
 
 @export_group("Release")
 ## Where the payload spawns: at the slot's cast_origin, or on the floor at
@@ -78,6 +89,10 @@ enum ReleasePoint {
 ## Scene spawned at release through PayloadSpawner: a projectile, a damage
 ## area, a visual... Null releases no payload.
 @export var payload_scene: PackedScene
+## Parent the payload to the caster so it moves with it (a charge's hitbox,
+## an aura) instead of staying where it was released; it is removed when the
+## cast ends.
+@export var attach_payload: bool = false
 ## Property patches applied to the payload before it enters the tree (e.g. a
 ## projectile's damage or speed), so one payload scene serves many abilities.
 @export var payload_overrides: Array[PayloadPropertyOverride] = []

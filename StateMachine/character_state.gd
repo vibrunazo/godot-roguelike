@@ -140,7 +140,7 @@ func look_at_target(target: Vector3, delta: float) -> void:
 
 
 ## Handles unified velocity calculation, knockback application, and orientation smoothing.
-func core_movement(delta: float, speed: float, direction: Vector3 = Vector3.ZERO) -> void:
+func core_movement(delta: float, speed: float, direction: Vector3 = Vector3.ZERO, face_target: Vector3 = Vector3.ZERO) -> void:
 	if character == null:
 		return
 	if not character.is_on_floor() and fall_state != null:
@@ -153,7 +153,10 @@ func core_movement(delta: float, speed: float, direction: Vector3 = Vector3.ZERO
 		var steered: Vector3 = character.steer_around_crowd(direction * speed)
 		character.velocity.x = steered.x
 		character.velocity.z = steered.z
-		character.look_toward_direction(direction, delta)
+		if face_target.is_zero_approx():
+			character.look_toward_direction(direction, delta)
+		else:
+			look_at_target(face_target, delta)
 	else:
 		# Brake per axis at the character's braking rate: the braking time is
 		# the same at any physics tick rate.

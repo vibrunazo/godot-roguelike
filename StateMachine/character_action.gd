@@ -2,8 +2,9 @@
 ## and ability casts (AbilityCastState). It owns what they have in common: the
 ## cooldown and tag gates, the animation and the return to next_states when it
 ## finishes, the aim snapshot (toward the auto-aim target when one is locked),
-## the aimed release of payloads (release_payload(), by aim_mode), the cancel
-## window for dash, jump and ability intents, gravity, and the STARTED/ENDED
+## the aimed release of payloads (release_payload(), by aim_mode), the lunge
+## along the aim (begin_lunge(): a melee step, a charge), the cancel window
+## for dash, jump and ability intents, gravity, and the STARTED/ENDED
 ## lifecycle events. Subclasses add what they do while running.
 class_name CharacterAction
 extends CharacterState
@@ -49,9 +50,25 @@ const MIN_AIM_DISTANCE: float = 0.3
 ##   that height.
 ## GROUND: at the aimed floor point itself; a lobbed payload lands there.
 @export var aim_mode: AimMode = AimMode.AIMED
+## Speed in m/s of the lunge this action can make along its aim
+## (begin_lunge(): a melee attack steps at its strike, a cast charges at its
+## release). 0.0 = no lunge.
+@export var dash_speed: float = 0.0
+## Duration in seconds of the lunge (physics clock). 0.0 = no lunge.
+@export var dash_duration: float = 0.0
+## Steers the lunge away from ending over a pit when that looks like a
+## mistake (see LandingAssist). Null lunges exactly along the aim.
+@export var lunge_landing_assist: LandingAssist
 
 ## Remaining cooldown time in seconds before this action can be executed again.
 var cooldown_timer: float = 0.0
+## True while the lunge runs (begin_lunge() until end_lunge()).
+var lunging: bool = false
+## Horizontal direction of the lunge.
+var lunge_direction: Vector3 = Vector3.ZERO
+## Horizontal velocity the character had when the lunge began, kept under it.
+var _lunge_base_velocity: Vector3 = Vector3.ZERO
+var lunge_timer: SceneTreeTimer
 ## Horizontal direction this action is aimed at, snapshotted on entry.
 var aim_direction: Vector3 = Vector3.ZERO
 ## What this action is aimed at, snapshotted on entry (see _resolve_aim()).
@@ -135,6 +152,8 @@ func physics_update(delta: float) -> void:
 	if _can_turn():
 		character.look_toward_direction(aim_direction, delta)
 	character.move_character()
+	if lunging and _lunge_hit_wall():
+		end_lunge()
 
 
 ## Virtual: per-frame bookkeeping before the motion is computed (hitstop).
@@ -142,9 +161,65 @@ func _before_motion(_delta: float) -> void:
 	pass
 
 
-## Virtual: the horizontal velocity for this frame.
+## Virtual: the horizontal velocity for this frame: the lunge while it runs,
+## the steered movement otherwise.
 func _planar_velocity() -> Vector3:
+	if lunging:
+		return _lunge_base_velocity + lunge_direction * dash_speed
 	return character.move_direction * movement_speed
+
+
+## Whether this action lunges at all (dash_speed and dash_duration set).
+func has_lunge() -> bool:
+	return dash_speed > 0.0 and dash_duration > 0.0
+
+
+## Starts the lunge along the aim direction (the facing when there is none)
+## at dash_speed for dash_duration seconds; it ends early against a wall.
+## Subclasses decide when: a melee attack at its strike, a cast at its
+## release.
+func begin_lunge() -> void:
+	if not has_lunge() or character == null or not character.is_inside_tree():
+		return
+	lunge_direction = aim_direction
+	if lunge_direction.is_zero_approx() and character.mesh_mount != null:
+		lunge_direction = character.mesh_mount.global_basis.z.normalized()
+	if lunge_direction.is_zero_approx():
+		lunge_direction = Vector3.FORWARD
+	lunge_direction = lunge_direction.normalized()
+	if lunge_landing_assist != null:
+		lunge_direction = lunge_landing_assist.steer(character, lunge_direction, dash_speed * dash_duration)
+	_lunge_base_velocity = Vector3(character.velocity.x, 0.0, character.velocity.z)
+	lunging = true
+	lunge_timer = get_tree().create_timer(dash_duration, true, true)
+	lunge_timer.timeout.connect(end_lunge)
+
+
+## Ends the lunge; the action's normal motion resumes.
+func end_lunge() -> void:
+	lunging = false
+
+
+## Whether the lunge just ran head-on into something that is not a character
+## (a wall, a prop): it stops there instead of pressing on. Characters in the
+## way are shoved through (the lunge's hits knock them back).
+func _lunge_hit_wall() -> bool:
+	for index: int in character.get_slide_collision_count():
+		var collision: KinematicCollision3D = character.get_slide_collision(index)
+		if collision.get_collider() is Character:
+			continue
+		if collision.get_normal().dot(lunge_direction) < -0.5:
+			return true
+	return false
+
+
+## Clears the lunge: motion flag, base velocity and timer wiring.
+func _clear_lunge() -> void:
+	lunging = false
+	_lunge_base_velocity = Vector3.ZERO
+	if lunge_timer != null:
+		disconnect_safe(lunge_timer.timeout, end_lunge)
+		lunge_timer = null
 
 
 ## Virtual: whether the character may turn toward the aim this frame.
@@ -231,14 +306,15 @@ func _aim_at_locked_target() -> void:
 ## Spawns scene from origin through PayloadSpawner, aimed by aim_mode at
 ## release_aim() (release_direction(); a GROUND release gives a lob the aimed
 ## floor point to land on). Every payload an action releases goes through
-## here: an ability's cast, a ranged attack's shot. Returns the payload, or
-## null when it could not spawn.
-func release_payload(scene: PackedScene, origin: Vector3, overrides: Array[PayloadPropertyOverride] = [], damage_multiplier: float = 1.0, scale_with_attack: bool = false) -> Node3D:
+## here: an ability's cast, a ranged attack's shot. With parent, the payload
+## is parented there instead of the world (attached to the caster, it moves
+## with it). Returns the payload, or null when it could not spawn.
+func release_payload(scene: PackedScene, origin: Vector3, overrides: Array[PayloadPropertyOverride] = [], damage_multiplier: float = 1.0, scale_with_attack: bool = false, parent: Node3D = null) -> Node3D:
 	var aim: AimTarget = release_aim()
 	var landing: Vector3 = PayloadSpawner.NO_LANDING_POINT
 	if aim_mode == AimMode.GROUND and aim.has_point:
 		landing = aim.floor_point
-	return PayloadSpawner.spawn(scene, character, origin, release_direction(origin), overrides, damage_multiplier, scale_with_attack, landing)
+	return PayloadSpawner.spawn(scene, character, origin, release_direction(origin), overrides, damage_multiplier, scale_with_attack, landing, parent)
 
 
 ## What a release now aims at: the locked target (get_locked_target(); it may
@@ -315,6 +391,7 @@ func _is_completed() -> bool:
 
 
 func exit() -> void:
+	_clear_lunge()
 	if character != null:
 		character.is_attacking = false
 		# Undo only the aim this action set (toward its target); a

@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="AbilityResource" format=3 uid="uid://gqtea73gl7yh"]
+
+[ext_resource type="Script" uid="uid://chnetxi4ct8v3" path="res://Components/gameplay_effect.gd" id="1_2xyxr"]
+[ext_resource type="Script" uid="uid://clauo4aqtg4dp" path="res://Abilities/ability_resource.gd" id="1_ability"]
+[ext_resource type="Script" uid="uid://b5xhfgum5k35x" path="res://Passives/payload_property_override.gd" id="2_fr172"]
+[ext_resource type="PackedScene" path="res://Abilities/Payloads/move_and_slide_wake.tscn" id="2_wake"]
+
+[sub_resource type="Gradient" id="Gradient_icon"]
+offsets = PackedFloat32Array(0, 0.35, 0.7, 0.92, 1)
+colors = PackedColorArray(0.9, 0.95, 1, 1, 0.45, 0.65, 1, 1, 0.15, 0.3, 0.7, 1, 0.06, 0.1, 0.3, 1, 0.06, 0.1, 0.3, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_icon"]
+gradient = SubResource("Gradient_icon")
+width = 128
+height = 128
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[resource]
+script = ExtResource("1_ability")
+id = &"move_and_slide"
+display_name = "Move and Slide"
+description = "Call move_and_slide() with everything you have. Anything in the way is a collision, and collisions are the other guy's problem."
+icon = SubResource("GradientTexture2D_icon")
+ability_tags = Array[StringName]([&"ability.charge"])
+cooldown = 8.0
+starting_cooldown = 2.0
+blocked_tags = Array[StringName]([&"movement.airborne"])
+cast_animation = "Charge"
+cast_speed = 1.4
+release_time = 0.35
+cancelable = false
+uninterruptable = true
+cast_duration = 1.25
+dash_speed = 14.0
+dash_duration = 0.7
+release_point = 1
+aim_mode = 1
+payload_scene = ExtResource("2_wake")
+attach_payload = true

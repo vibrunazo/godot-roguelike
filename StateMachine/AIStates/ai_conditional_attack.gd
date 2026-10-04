@@ -9,6 +9,10 @@ extends AIAttackBase
 @export var trigger_range: float = 3.5
 ## Minimum distance to target to trigger this attack (0.0 = no minimum).
 @export var min_range: float = 0.0
+## Whether the attack also needs a clear straight line to the target (no
+## wall, prop or other character in between; AIState.has_clear_shot()): for
+## charges and shots.
+@export var require_clear_shot: bool = false
 ## Whether this attack can be ordered even while the body is in its stun state
 ## (Character.stun_state).
 @export var can_break_stun: bool = true
@@ -18,7 +22,8 @@ extends AIAttackBase
 
 ## Triggers (switching the mind to this state) when the body state can
 ## activate (off cooldown, tags allow it), the target is between min_range and
-## trigger_range, and the body would accept the order.
+## trigger_range (and in a clear line when require_clear_shot), and the body
+## would accept the order.
 func evaluate_trigger(_delta: float) -> bool:
 	if character == null or not character.is_inside_tree() or not character.is_alive() or ai_state_machine == null:
 		return false
@@ -31,6 +36,8 @@ func evaluate_trigger(_delta: float) -> bool:
 	if dist_sq > trigger_range * trigger_range:
 		return false
 	if min_range > 0.0 and dist_sq < min_range * min_range:
+		return false
+	if require_clear_shot and not has_clear_shot(target):
 		return false
 	if not character.can_accept_order(body_state, can_break_stun):
 		return false

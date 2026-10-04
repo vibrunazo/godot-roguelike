@@ -31,6 +31,13 @@ extends Node3D
 		radial_knockback = value
 		_sync_attack_component()
 
+## Whether knockback_vector is in the area's own space (+Z forward) rather
+## than world space: an area spawned facing its aim then knocks along it.
+@export var local_knockback: bool = false:
+	set(value):
+		local_knockback = value
+		_sync_attack_component()
+
 ## Damage type routed to Hurtbox.receive_hit (a DamageType constant).
 @export var damage_type: StringName = DamageType.PHYSICAL:
 	set(value):
@@ -209,6 +216,7 @@ func _sync_attack_component() -> void:
 	else:
 		att.knockback = Vector3.ZERO
 	att.radial_knockback = radial_knockback
+	att.local_knockback = local_knockback
 
 
 ## Arms the duration timer if duration > 0.0.

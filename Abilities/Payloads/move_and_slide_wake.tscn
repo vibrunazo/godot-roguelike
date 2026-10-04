@@ -1,0 +1,81 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Hazards/damage_area.gd" id="1_area"]
+[ext_resource type="Script" path="res://Components/attack_component.gd" id="2_attack"]
+[ext_resource type="AudioStream" path="res://Assets/Audio/charge.ogg" id="3_audio"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wake"]
+size = Vector3(1.6, 1.8, 1.8)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dust"]
+transparency = 1
+shading_mode = 0
+vertex_color_use_as_albedo = true
+
+[sub_resource type="Gradient" id="Gradient_dust"]
+offsets = PackedFloat32Array(0, 0.4, 1)
+colors = PackedColorArray(0.8, 0.85, 1, 0.7, 0.6, 0.7, 0.9, 0.4, 0.4, 0.45, 0.6, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_dust"]
+gradient = SubResource("Gradient_dust")
+
+[sub_resource type="Curve" id="Curve_dust"]
+_data = [Vector2(0, 0.5), 0.0, 2.0, 0, 0, Vector2(1, 1.4), 0.5, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_dust"]
+curve = SubResource("Curve_dust")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_dust"]
+emission_shape = 3
+emission_box_extents = Vector3(0.4, 0.05, 0.3)
+direction = Vector3(0, 1, -1)
+spread = 30.0
+initial_velocity_min = 1.0
+initial_velocity_max = 2.5
+gravity = Vector3(0, 0.5, 0)
+scale_min = 0.6
+scale_max = 1.0
+scale_curve = SubResource("CurveTexture_dust")
+color_ramp = SubResource("GradientTexture1D_dust")
+
+[sub_resource type="SphereMesh" id="SphereMesh_dust"]
+radius = 0.2
+height = 0.4
+radial_segments = 8
+rings = 4
+
+[node name="MoveAndSlideWake" type="Node3D"]
+script = ExtResource("1_area")
+damage = 18.0
+knockback_vector = Vector3(0, 7, 26)
+local_knockback = true
+hits_all = true
+
+[node name="DamageHitbox" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 192
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DamageHitbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0.8)
+shape = SubResource("BoxShape3D_wake")
+
+[node name="AttackComponent" type="Node" parent="DamageHitbox"]
+script = ExtResource("2_attack")
+shake_on_damage = true
+
+[node name="Dust" type="GPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -0.3)
+gi_mode = 0
+cast_shadow = 0
+material_override = SubResource("StandardMaterial3D_dust")
+amount = 24
+lifetime = 0.5
+local_coords = false
+process_material = SubResource("ParticleProcessMaterial_dust")
+draw_pass_1 = SubResource("SphereMesh_dust")
+
+[node name="ChargeAudio" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("3_audio")
+autoplay = true
+bus = &"SFX"

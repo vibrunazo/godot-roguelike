@@ -119,10 +119,22 @@ prints the error and idles forever. `--quit-after` does not help.
   `Character.can_accept_order()` is the one rule for when the body takes an
   order. Player intents (attack, dash, jump, ability) are checked by the
   current body state (`check_*`): a state that does not check one drops it.
+  Any action can lunge along its aim (`CharacterAction.begin_lunge()`,
+  `dash_speed`/`dash_duration`; it stops early against walls, not
+  characters): melee attacks at their strike, casts at their release. AI
+  minds pick from `AIPursue` (close in and order a body state), `AIKeepDistance`
+  (hold a range, backing off while facing the target; `command_move()` with a
+  face point keeps the facing off the walking direction), `AIConditionalAttack`
+  (interrupt when a body state is ready and the target is in a range band,
+  optionally with a clear straight line: `require_clear_shot`,
+  `AIState.has_clear_shot()`) and `AISupportAllies`.
 - **Components** on each character: `AttributeComponent` (health/mana pools,
   buffable stats, tags, timed effects and DoTs; `defeat` fires once on the
   killing transition), `StatusVisualsComponent` (effect visuals, on bones
-  when asked), `Hurtbox` (receives hits), `KnockbackComponent`,
+  when asked), `Hurtbox` (receives hits; its optional `shield`, a
+  `ShieldComponent`, blocks every hit whose origin lies inside its front arc:
+  no damage, knockback, stun or hit effects, only block feedback),
+  `KnockbackComponent`,
   `AirborneTracker` (airborne tag and landing events), `EquipmentComponent`
   (gear and consumables), `AbilitySystemComponent` (ASC: every ability the
   character has; see Abilities), `CharacterColorComponent` (palette). Enemies add
@@ -142,7 +154,12 @@ prints the error and idles forever. `--quit-after` does not help.
   `damage_pool()`/`restore_pool()` are silent. Lethal hits report `defeat`
   before `struck` reaches handlers, so reaction handlers must ignore the dead.
   `AttackComponent.rehit_interval <= 0` hits a target once per attack;
-  `> 0` lets it hit again after that interval. Projectiles, explosions and
+  `> 0` lets it hit again after that interval. Before every hit the
+  component asks the hurtbox whether its shield blocks a hit from
+  `hit_origin()` (the hitbox's center, or a projectile's position); a blocked
+  hit is spent like a landed one. Knockback can be a world vector, local to
+  the hitbox (`local_knockback`, along a hitbox that faces its aim) or radial
+  from its center (`radial_knockback`). Projectiles, explosions and
   hazards spawned by anything (enemy ranged attacks, passives, abilities) go
   through `PayloadSpawner.spawn()`, which credits the instigator and scales
   damage by its attack stat (enemy ranged attacks included); the damage
@@ -226,9 +243,18 @@ prints the error and idles forever. `--quit-after` does not help.
   an enemy that casts its own book's ability: an `AbilitySystemComponent` whose
   `starting_abilities` hold the same `AbilityResource` its book grants, an
   `AbilityCastState` slot, and an AI state ordering that slot
-  (`AISupportAllies` for support casts). Every ability's `cast_animation`
-  must exist in every caster's AnimationTree (`Rally` is in the player's and
-  the medium enemies' trees; `CastSpell` only in the player's).
+  (`AISupportAllies` for support casts). The Backface Knight
+  (`Enemy/enemy_backface_knight.tscn`) is the model for an ability with
+  motion: its Move and Slide charge is an `AbilityResource` with `dash_speed`
+  and `dash_duration` (the caster lunges from `release_time`),
+  `attach_payload` (its hitbox, a `DamageArea` with `local_knockback`, rides
+  on the caster and expires with the cast) and `cast_duration` (the looping
+  run animation cannot end the cast). The knight also carries a
+  `ShieldComponent` on its hurtbox, a `ShieldSlot` (a second `WeaponSlot`,
+  keyed by the bash animation) and the `AIKeepDistance` mind. Every ability's
+  `cast_animation` must exist in every caster's AnimationTree (`Rally` and
+  `Charge` are in the player's and the medium enemies' trees; `CastSpell`
+  only in the player's).
 - **Registries:** `GlobalVars` (shop items, level items, enemies, dungeons,
   shared scenes), `ProgressionState` (run state: difficulty, dungeon level,
   gold, purchases, which items the run may still offer or drop, the planned

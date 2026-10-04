@@ -125,7 +125,7 @@ Actions can be scheduled using `--action "<target>:<type>:<param>@<frame>"`.
   - `damage`: hits the combatant for that much damage through its `Hurtbox`, like a real attack (`"enemy:damage:25@35"`)
   - `callback`: calls a zero-argument method on the combatant (`"enemy:callback:Taunt@30"`, or `order_callback()` from a scenario script for any node)
   - `screenshot`: saves screenshot at frame (`"screenshot:movies/impact.png@28"`)
-- **Enemies**: `--enemy` accepts a registry name (`brute`, `melee`, `ranged`, `firebomber`, `thunder_mage`) or any enemy scene path (`--enemy Enemy/akira_boss.tscn`).
+- **Enemies**: `--enemy` accepts a registry name (`brute`, `melee`, `ranged`, `firebomber`, `thunder_mage`, `headless_daemon`, `backface_knight`) or any enemy scene path (`--enemy Enemy/akira_boss.tscn`).
 - `--freeze`: holds staged combatants in place with AI and character physics paused; scheduled actions and screenshots still run. Recommended when knockback or drift would spoil a still (frozen actors keep their spawn position, so spawning at rest height is recommended for grounded shots).
 - `--verbose`: streams full engine output live instead of the highlight lines. Recommended when debugging custom scenarios (e.g. frame-by-frame trace prints, which are otherwise left out of the summary).
 
