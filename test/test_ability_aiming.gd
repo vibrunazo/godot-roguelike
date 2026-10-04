@@ -9,9 +9,9 @@
 ##   ground under the cursor,
 ## - a ground-aimed lob lands on the floor point under the cursor, on the
 ##   ground and on a raised floor,
-## - aim assist: a cast locks onto the foe nearest the cursor within the
-##   ability's aim_assist_radius, ahead of the auto-aim target; with no foe
-##   near the cursor it falls back to the auto-aim target.
+## - with auto-aim on, a cast flies at the foe nearest the cursor (within the
+##   TargetingComponent's cursor_assist_radius) ahead of the foe nearest the
+##   player; with no foe near the cursor, at the foe nearest the player.
 ## Abilities, foes and the raised floor are built by the test; their numbers
 ## are test-owned.
 extends "res://test/lib/test_suite.gd"
@@ -166,11 +166,12 @@ func test_a_cast_locks_onto_the_foe_nearest_the_cursor_before_auto_aim() -> void
 	_player.ability_system_component.grant_ability(ability, null, 0)
 	var near_player: Character = _spawn_foe(_ahead(ASSIST_NEAR) + _right() * ASSIST_NEAR, _floor_top)
 	var near_cursor: Character = _spawn_foe(_ahead(ASSIST_FAR), _floor_top)
-	(_player.get_node("TargetingComponent") as TargetingComponent).auto_aim_range = 100.0
+	await _park_cursor()
+	_targeting().auto_aim_range = 100.0
 	if not await wait_until(func() -> bool: return _player.current_target == near_player, "setup: auto-aim should lock onto the foe nearest the player"):
 		return
 	# The cursor beside the far foe, inside the assist radius but not on it.
-	var cursor_point: Vector3 = near_cursor.get_feet_position() + _right() * ability.aim_assist_radius * 0.5
+	var cursor_point: Vector3 = near_cursor.get_feet_position() + _right() * _targeting().cursor_assist_radius * 0.5
 	var shot: Projectile = await _cast_at_screen(_camera().unproject_position(cursor_point))
 	if shot == null:
 		return
@@ -181,12 +182,13 @@ func test_with_no_foe_near_the_cursor_a_cast_falls_back_to_auto_aim() -> void:
 	var ability: AbilityResource = _ability(CharacterAction.AimMode.AIMED, FIREBALL_SCENE)
 	_player.ability_system_component.grant_ability(ability, null, 0)
 	var near_player: Character = _spawn_foe(_ahead(ASSIST_NEAR) + _right() * ASSIST_NEAR, _floor_top)
-	(_player.get_node("TargetingComponent") as TargetingComponent).auto_aim_range = 100.0
 	var far_foe: Character = _spawn_foe(_ahead(ASSIST_FAR), _floor_top)
+	await _park_cursor()
+	_targeting().auto_aim_range = 100.0
 	if not await wait_until(func() -> bool: return _player.current_target == near_player, "setup: auto-aim should lock onto the foe nearest the player"):
 		return
 	# Nearer the far foe than the near one, but just outside the assist radius.
-	var cursor_point: Vector3 = far_foe.get_feet_position() - _right() * ability.aim_assist_radius * 1.5
+	var cursor_point: Vector3 = far_foe.get_feet_position() - _right() * _targeting().cursor_assist_radius * 1.5
 	var shot: Projectile = await _cast_at_screen(_camera().unproject_position(cursor_point))
 	if shot == null:
 		return
@@ -228,6 +230,15 @@ func _ahead(distance: float) -> Vector3:
 	forward = Vector3(forward.x, 0.0, forward.z).normalized()
 	var at: Vector3 = _player.global_position + forward * distance
 	return Vector3(at.x, 0.0, at.z)
+
+
+## Moves the cursor onto empty floor behind the player, away from every foe.
+func _park_cursor() -> void:
+	await _move_mouse(_camera().unproject_position(_ahead(-ASSIST_NEAR) + Vector3.UP * _floor_top))
+
+
+func _targeting() -> TargetingComponent:
+	return _player.get_node("TargetingComponent") as TargetingComponent
 
 
 ## The screen's right on the ground plane (unit length).

@@ -1,8 +1,13 @@
-## Auto-aim for a character (the player): acquires the nearest living opponent
-## within auto_aim_range as the character's current_target, re-evaluates it at
-## most every target_retarget_cooldown seconds so it does not flicker between
-## candidates at similar distances, never switches it mid-attack, and drops it
-## the moment it dies. Characters without this component never auto-aim.
+## Auto-aim for a character (the player): maintains the character's
+## current_target, which the target reticle shows and every action (melee
+## attacks, ability casts) aims at. An opponent within cursor_assist_radius of
+## the floor point the character aims at (the player's cursor) is targeted
+## first, the one closest to that point, at once; with none there it acquires
+## the nearest living opponent within auto_aim_range, re-evaluated at most
+## every target_retarget_cooldown seconds so it does not flicker between
+## candidates at similar distances. It never switches the target mid-attack,
+## and drops it the moment it dies. Characters without this component never
+## auto-aim.
 class_name TargetingComponent
 extends Node
 
@@ -14,6 +19,10 @@ extends Node
 ## Minimum interval in seconds between auto-aim target re-evaluations, so the
 ## target does not flicker every tick when candidates sit at similar distances.
 @export var target_retarget_cooldown: float = 0.3
+## Distance in meters around the aimed floor point (the player's cursor)
+## within which an opponent is targeted ahead of the nearest one, whatever its
+## distance from the character. Values <= 0.0 turn the cursor priority off.
+@export var cursor_assist_radius: float = 3.0
 
 ## Time in seconds until the next allowed re-evaluation.
 var _retarget_timer: float = 0.0
@@ -51,6 +60,11 @@ func _physics_process(delta: float) -> void:
 	var target: Node3D = character.current_target
 	if character.is_attacking:
 		return
+	var under_cursor: Character = get_cursor_target()
+	if under_cursor != null:
+		character.set_current_target(under_cursor)
+		_retarget_timer = target_retarget_cooldown
+		return
 	if not _is_valid(target):
 		character.set_current_target(null)
 	if character.current_target == null:
@@ -62,6 +76,15 @@ func _physics_process(delta: float) -> void:
 		return
 	_retarget_timer = target_retarget_cooldown
 	_acquire_nearest()
+
+
+## The living opponent closest to the floor point the character aims at,
+## within cursor_assist_radius of it, or null (no aimed point, nobody near).
+func get_cursor_target() -> Character:
+	var aim: AimTarget = character.aim_target
+	if cursor_assist_radius <= 0.0 or aim == null or not aim.has_point:
+		return null
+	return character.get_nearest_target_to(aim.floor_point, cursor_assist_radius)
 
 
 ## Targets the nearest living opponent when it is within auto_aim_range.

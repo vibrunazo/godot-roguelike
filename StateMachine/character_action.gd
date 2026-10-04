@@ -1,8 +1,7 @@
 ## Shared base of every timed body action: melee attacks (CharacterAttack)
 ## and ability casts (AbilityCastState). It owns what they have in common: the
 ## cooldown and tag gates, the animation and the return to next_states when it
-## finishes, the aim snapshot (toward the locked target, the auto-aim target
-## unless a subclass picks another; see get_locked_target()),
+## finishes, the aim snapshot (toward the auto-aim target when one is locked),
 ## the aimed release of payloads (release_payload(), by aim_mode), the cancel
 ## window for dash, jump and ability intents, gravity, and the STARTED/ENDED
 ## lifecycle events. Subclasses add what they do while running.
@@ -204,8 +203,8 @@ func _resolve_aim(data: Dictionary) -> AimTarget:
 
 
 ## The node this action locks its aim on, or null to aim where the
-## controller aims: the character's auto-aim target (current_target).
-## AbilityCastState overrides it to prefer an enemy near the player's cursor.
+## controller aims: the character's auto-aim target (current_target; for the
+## player, an enemy near the cursor first, see TargetingComponent).
 func get_locked_target() -> Node3D:
 	var target: Node3D = character.current_target
 	return target if is_instance_valid(target) else null

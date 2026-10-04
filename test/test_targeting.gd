@@ -14,7 +14,11 @@
 ##   living enemy without waiting out the cooldown; the corpse is never
 ##   targeted again,
 ## - a target freed from the tree (not killed) is dropped without errors and
-##   the nearest living enemy is targeted instead.
+##   the nearest living enemy is targeted instead,
+## - an enemy near the aimed floor point (the cursor) is targeted, and shown by
+##   the reticle, ahead of the nearest one and at once, whatever the cooldown
+##   or its distance from the player; with the cursor away from every enemy,
+##   targeting falls back to the nearest.
 ## Distances are fractions of the player's own auto_aim_range.
 extends "res://test/lib/test_suite.gd"
 
@@ -155,6 +159,21 @@ func test_a_freed_target_is_dropped_and_replaced() -> void:
 		return
 	nearest.free()
 	await wait_until(func() -> bool: return is_same(_player.current_target, next), "a freed target should be replaced by the nearest living enemy", REACT_FRAMES)
+
+
+func test_an_enemy_near_the_cursor_is_targeted_before_the_nearest() -> void:
+	_aim().target_retarget_cooldown = LONG_COOLDOWN
+	var nearest: Character = await _spawn_enemy(_at(0.2, Vector3.RIGHT))
+	var far: Character = await _spawn_enemy(_at(1.5, Vector3.LEFT))
+	if not await wait_until(func() -> bool: return _player.current_target == nearest, "setup: the player should target the nearest enemy"):
+		return
+	_player.aim_target = AimTarget.at(far.get_feet_position() + Vector3.BACK * _aim().cursor_assist_radius * 0.5)
+	if not await wait_until(func() -> bool: return _player.current_target == far, "an enemy near the cursor should be targeted at once, even out of auto-aim range", REACT_FRAMES):
+		return
+	await wait_until(func() -> bool: return _reticle() != null and _reticle().target == far, "the reticle should show the enemy near the cursor")
+	_player.aim_target = AimTarget.at(_at(0.5, Vector3.FORWARD))
+	_aim().force_retarget()
+	await wait_until(func() -> bool: return _player.current_target == nearest, "with the cursor away from every enemy, the nearest should be targeted again", REACT_FRAMES)
 
 
 ## Fails if the player's target is ever anything but expected during
