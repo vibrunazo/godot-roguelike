@@ -250,6 +250,15 @@ node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_rally"]
 animation = &"PlayerAnimations/Cheering"
 
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_rally"]
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_rally"]
+nodes/Animation/node = SubResource("AnimationNodeAnimation_rally")
+nodes/Animation/position = Vector2(-40, 133.33333)
+nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_rally")
+nodes/TimeScale/position = Vector2(466.66666, 133.33333)
+node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
+
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_cast_spell"]
 animation = &"PlayerAnimations/Ranged_Magic_Shoot"
 
@@ -358,7 +367,7 @@ states/Defeat/node = SubResource("AnimationNodeAnimation_defeat")
 states/Defeat/position = Vector2(900, 184.44444)
 states/CastSpell/node = SubResource("AnimationNodeBlendTree_cast_spell")
 states/CastSpell/position = Vector2(760, -260)
-states/Rally/node = SubResource("AnimationNodeAnimation_rally")
+states/Rally/node = SubResource("AnimationNodeBlendTree_rally")
 states/Rally/position = Vector2(960, -260)
 states/DodgeForward/node = SubResource("AnimationNodeAnimation_vtle1")
 states/DodgeForward/position = Vector2(274.6667, -145.33333)

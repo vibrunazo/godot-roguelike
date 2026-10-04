@@ -152,8 +152,9 @@ prints the error and idles forever. `--quit-after` does not help.
   radius, with no hit (no stun or flash).
 - **Destructibles:** a `Destructible` (`Components/destructible.gd`) is the
   root of any breakable prop: a `Hurtbox` plus an `AttributeComponent`, and on
-  `defeat` a physics-clock fuse (`fuse_time`), then it releases its
-  `break_payload` through `PayloadSpawner` and frees itself. A new kind
+  `defeat` a physics-clock fuse (`fuse_time`, with an optional `fuse_visual`
+  shown while it burns: the barrel's sparks, glow and blast-radius ring), then
+  it releases its `break_payload` through `PayloadSpawner` and frees itself. A new kind
   (crate, vase, non-explosive prop) is a scene with different data, not new
   code. Its hurtbox sits on both team layers (192) so every attack that can
   hit either team hits it, which is also why an explosion chains into

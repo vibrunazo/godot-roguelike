@@ -4,7 +4,8 @@
 ## - the health pool (its AttributeComponent's base_max_health),
 ## - the break_payload, a scene released where the prop stood (an explosion,
 ##   a pickup drop, debris; none means it just disappears),
-## - the fuse_time between being destroyed and breaking.
+## - the fuse_time between being destroyed and breaking, and the fuse_visual
+##   shown on the prop while it burns down (a lit fuse warning the player).
 ## Anything that damages a Hurtbox breaks it (weapons, projectiles, abilities,
 ## hazards, explosions, burns), so a blast chains into its neighbours with no
 ## special casing. Scenes put the prop's Hurtbox on both team hurtbox layers
@@ -31,6 +32,10 @@ signal broke
 ## A short fuse lets the prop read as hit, and staggers chain reactions so a
 ## row of explosive props goes off one after the other.
 @export var fuse_time: float = 0.0
+## Scene instanced on the prop for the length of the fuse (sparks, a pulsing
+## glow, a ring showing the blast radius), so a long fuse reads as "run".
+## It goes with the prop when it breaks. Null shows nothing.
+@export var fuse_visual: PackedScene
 
 
 func _ready() -> void:
@@ -44,6 +49,8 @@ func _ready() -> void:
 ## defeat, so nothing can hit the prop again while it burns down.
 func _on_defeat() -> void:
 	destroyed.emit()
+	if fuse_visual != null:
+		add_child(fuse_visual.instantiate())
 	get_tree().create_timer(fuse_time, true, true).timeout.connect(_break)
 
 

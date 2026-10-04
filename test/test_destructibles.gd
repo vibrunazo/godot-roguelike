@@ -92,9 +92,10 @@ func test_the_explosion_hurts_and_burns_everyone_in_range_and_spares_the_rest() 
 	var victims: Array[Character] = [_spawn_enemy(near), _spawn_player(near + Vector3(0.0, 0.0, 1.0))]
 	var bystander: Character = _spawn_enemy(far)
 	var before: Array[float] = [_health(victims[0]), _health(victims[1]), _health(bystander)]
+	var fuse_frames: int = _frames_for(barrel.fuse_time) + DETECT_FRAMES
 	(barrel.get_node("Hurtbox") as Hurtbox).receive_hit(_barrel_health(barrel), Vector3.ZERO)
 	for victim: Character in victims:
-		await wait_until(func() -> bool: return victim.attribute_component.has_effect_instance(StringName(BURN_EFFECT.effect_name)), "a character in range should be set on fire", _frames_for(TEST_FUSE) + DETECT_FRAMES)
+		await wait_until(func() -> bool: return victim.attribute_component.has_effect_instance(StringName(BURN_EFFECT.effect_name)), "a character in range should be set on fire", fuse_frames)
 	check(_health(victims[0]) < before[0], "the enemy in range should take blast damage")
 	check(_health(victims[1]) < before[1], "the player in range should take blast damage")
 	check_approx(_health(bystander), before[2], "a character out of range should be unharmed")

@@ -96,10 +96,24 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	super.enter(_previous_state_path, _data)
 	if character == null:
 		return
+	_apply_cast_speed()
 	if ability.cost_amount > 0.0 and character.attribute_component != null:
 		character.attribute_component.damage_pool(ability.cost_pool, ability.cost_amount)
 	_release_timer = get_tree().create_timer(maxf(ability.release_time, 0.0), true, true)
 	_release_timer.timeout.connect(_release)
+
+
+## Plays the cast animation at the ability's cast_speed (its state's TimeScale
+## node; the AbilitySystemComponent reports a state without one when granted).
+func _apply_cast_speed() -> void:
+	var param: String = get_cast_speed_param()
+	if character.animation_tree != null and character.animation_tree.get(param) is float:
+		character.animation_tree.set(param, ability.cast_speed)
+
+
+## AnimationTree parameter path of the cast animation's TimeScale node.
+func get_cast_speed_param() -> String:
+	return "parameters/" + animation_name + "/TimeScale/scale"
 
 
 ## Spawns the payload toward the target (or the snapshotted aim), applies the

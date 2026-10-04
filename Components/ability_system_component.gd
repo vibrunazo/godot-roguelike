@@ -311,6 +311,8 @@ func _check_cast_animation(ability: AbilityResource) -> void:
 	var machine: AnimationNodeStateMachine = character.animation_tree.tree_root as AnimationNodeStateMachine
 	if machine != null and not machine.has_node(ability.cast_animation):
 		push_error("AbilitySystemComponent: '%s' has no AnimationTree state '%s' for ability '%s'." % [character.name, ability.cast_animation, ability.id])
+	elif not is_equal_approx(ability.cast_speed, 1.0) and not (character.animation_tree.get("parameters/%s/TimeScale/scale" % ability.cast_animation) is float):
+		push_error("AbilitySystemComponent: '%s' state '%s' has no TimeScale node, so ability '%s' cannot play at cast_speed %s." % [character.name, ability.cast_animation, ability.id, ability.cast_speed])
 
 
 func _resolve_character() -> Character:

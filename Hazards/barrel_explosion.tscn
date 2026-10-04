@@ -7,7 +7,7 @@
 [node name="BarrelExplosion" instance=ExtResource("1_base")]
 radius = 3.5
 height = 2.0
-damage = 40.0
+damage = 20.0
 knockback_force = 16.0
 effects_to_apply = Array[ExtResource("2_effect_script")]([ExtResource("3_burn")])
 hits_all = true

@@ -142,6 +142,15 @@ animation = &"EnemyAnimations/Melee_1H_Attack_Slice_Horizontal"
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_rally"]
 animation = &"EnemyAnimations/Cheering"
 
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_rally"]
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_rally"]
+nodes/Animation/node = SubResource("AnimationNodeAnimation_rally")
+nodes/Animation/position = Vector2(-40, 133.33333)
+nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_rally")
+nodes/TimeScale/position = Vector2(466.66666, 133.33333)
+node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
+
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_m75i3"]
 states/Defeat/node = SubResource("AnimationNodeAnimation_pje6n")
 states/Defeat/position = Vector2(800.44446, 32.666664)
@@ -155,7 +164,7 @@ states/MeleeAttack/node = SubResource("AnimationNodeBlendTree_7e68y")
 states/MeleeAttack/position = Vector2(399.33334, -25)
 states/RangedAttack/node = SubResource("AnimationNodeBlendTree_phjxc")
 states/RangedAttack/position = Vector2(583.6667, -31.666668)
-states/Rally/node = SubResource("AnimationNodeAnimation_rally")
+states/Rally/node = SubResource("AnimationNodeBlendTree_rally")
 states/Rally/position = Vector2(760, -100)
 states/SideSlash/node = SubResource("AnimationNodeAnimation_side_slash")
 states/SideSlash/position = Vector2(399.33334, 250)

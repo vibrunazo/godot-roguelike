@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Barrel_A.gltf" id="4_model"]
 [ext_resource type="PackedScene" path="res://Hazards/barrel_explosion.tscn" id="5_blast"]
 [ext_resource type="PackedScene" path="res://Components/health_bar.tscn" id="6_healthbar"]
+[ext_resource type="PackedScene" path="res://Levels/Decorators/barrel_fuse.tscn" id="7_fuse"]
 
 [sub_resource type="CylinderShape3D" id="Shape"]
 height = 1.0
@@ -15,7 +16,8 @@ radius = 0.5
 script = ExtResource("1_destructible")
 attribute_component = NodePath("AttributeComponent")
 break_payload = ExtResource("5_blast")
-fuse_time = 0.15
+fuse_time = 1.5
+fuse_visual = ExtResource("7_fuse")
 
 [node name="Model" parent="." instance=ExtResource("4_model")]
 

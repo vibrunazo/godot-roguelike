@@ -4,6 +4,8 @@
 ##   duplicate, a taken slot and full slots; revoking empties the slot,
 ## - pressing a slot's action casts it: the payload leaves at release time
 ##   from the cast origin, flies at the aim and hits a foe, never the caster,
+## - a cast lasts as long as its animation, so a higher cast_speed ends it
+##   sooner, in proportion,
 ## - a slot on cooldown, an empty slot, or a cost the pool cannot pay casts
 ##   nothing; a paid cast takes its cost from the pool,
 ## - casting is refused while dashing and allowed in mid-air while jumping; a
@@ -28,6 +30,7 @@ const TEST_RELEASE_TIME: float = 0.2
 const TEST_DAMAGE: float = 7.0
 const TEST_COST: float = 4.0
 const TEST_TAG: StringName = &"ability.test_spell"
+const TEST_CAST_SPEED: float = 2.0
 ## Test-owned foe health and distance ahead of the caster.
 const FOE_HEALTH: float = 100000.0
 const FOE_DISTANCE: float = 4.0
@@ -116,6 +119,19 @@ func test_the_ability_key_casts_its_slot_and_the_payload_hits_a_foe_not_the_cast
 	check_approx(foe_health - _health(foe), TEST_DAMAGE * _player.get_damage_modifier(), "the hit should deal the payload's damage scaled by the caster's attack")
 	check_approx(_health(_player), caster_health, "the payload should never hit its caster")
 	await _wait_running("the cast should end in running")
+
+
+func test_a_faster_cast_speed_ends_the_cast_sooner() -> void:
+	var normal: AbilityResource = _ability()
+	var fast: AbilityResource = _ability()
+	fast.cast_speed = TEST_CAST_SPEED
+	_asc.grant_ability(normal, null, 0)
+	_asc.grant_ability(fast, null, 1)
+	var normal_frames: int = await _cast_frames(&"ability_1", 0)
+	var fast_frames: int = await _cast_frames(&"ability_2", 1)
+	if not check(normal_frames > 0 and fast_frames > 0, "setup: both casts should run"):
+		return
+	check_approx(float(fast_frames), float(normal_frames) / TEST_CAST_SPEED, "a cast at cast_speed %s should last 1/%s as long" % [TEST_CAST_SPEED, TEST_CAST_SPEED], float(normal_frames) * 0.1)
 
 
 func test_a_slot_on_cooldown_or_empty_casts_nothing() -> void:
@@ -310,6 +326,19 @@ func _spawn_foe() -> Character:
 	foe.attribute_component.set_pool_current(AttributeComponent.POOL_HEALTH, FOE_HEALTH)
 	foe.knockback_component.max_knockback = 0.0
 	return foe
+
+
+## Casts slot with action and returns how many physics frames the cast
+## lasted (0 when it never started).
+func _cast_frames(action: StringName, slot: int) -> int:
+	press_action(action)
+	if not await wait_until(func() -> bool: return _state() == _asc.slots[slot].name, "pressing %s should cast slot %d" % [action, slot + 1], 10):
+		return 0
+	var frames: Array[int] = [0]
+	await wait_until(func() -> bool:
+		frames[0] += 1
+		return _state() == _run.name, "the cast should end in running", ACTION_FRAMES)
+	return frames[0]
 
 
 func _wait_running(message: String) -> bool:

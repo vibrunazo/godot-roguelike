@@ -48,6 +48,12 @@ enum ReleasePoint {
 @export_group("Casting")
 ## AnimationTree state played by the cast (the caster's tree must have it).
 @export var cast_animation: String = "CastSpell"
+## Playback speed of cast_animation (2.0 plays it twice as fast, so the cast,
+## which lasts as long as its animation, ends twice as soon). Needs the
+## caster's AnimationTree state to be a BlendTree with a TimeScale node (as
+## CastSpell and Rally are). release_time is not scaled: set it in cast
+## seconds.
+@export var cast_speed: float = 1.0
 ## Seconds into the cast when the payload is released (physics clock).
 @export var release_time: float = 0.3
 ## Speed in m/s the caster can steer at while casting (0.0 = stand still).
