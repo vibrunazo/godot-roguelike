@@ -20,6 +20,8 @@ signal released(ability: AbilityResource)
 
 ## The ability in this slot; null for an empty slot. Set through set_ability().
 var ability: AbilityResource = null
+## The foe near the cursor this cast locked onto on entry (aim assist), or null.
+var assist_target: Character = null
 
 ## True once this cast released its payload.
 var _released: bool = false
@@ -93,6 +95,7 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 		push_error("%s: entered with no ability in the slot." % name)
 		finish_action("")
 		return
+	assist_target = _find_assist_target()
 	super.enter(_previous_state_path, _data)
 	if character == null:
 		return
@@ -101,6 +104,25 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 		character.attribute_component.damage_pool(ability.cost_pool, ability.cost_amount)
 	_release_timer = get_tree().create_timer(maxf(ability.release_time, 0.0), true, true)
 	_release_timer.timeout.connect(_release)
+
+
+## Aim assist first (a living foe near the cursor), else the auto-aim target.
+func get_locked_target() -> Node3D:
+	if is_instance_valid(assist_target) and assist_target.is_alive():
+		return assist_target
+	return super.get_locked_target()
+
+
+## The foe closest to the floor point the character aims at (the player's
+## cursor) within the ability's aim_assist_radius, or null (no radius, no
+## aimed point, nobody near it).
+func _find_assist_target() -> Character:
+	if ability == null or ability.aim_assist_radius <= 0.0 or character == null:
+		return null
+	var aim: AimTarget = character.aim_target
+	if aim == null or not aim.has_point:
+		return null
+	return character.get_nearest_target_to(aim.floor_point, ability.aim_assist_radius)
 
 
 ## Plays the cast animation at the ability's cast_speed (its state's TimeScale
@@ -169,6 +191,7 @@ func _is_completed() -> bool:
 
 
 func exit() -> void:
+	assist_target = null
 	if _release_timer != null:
 		disconnect_safe(_release_timer.timeout, _release)
 		_release_timer = null

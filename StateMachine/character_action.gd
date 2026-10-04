@@ -1,7 +1,8 @@
 ## Shared base of every timed body action: melee attacks (CharacterAttack)
 ## and ability casts (AbilityCastState). It owns what they have in common: the
 ## cooldown and tag gates, the animation and the return to next_states when it
-## finishes, the aim snapshot (toward the auto-aim target when one is locked),
+## finishes, the aim snapshot (toward the locked target, the auto-aim target
+## unless a subclass picks another; see get_locked_target()),
 ## the aimed release of payloads (release_payload(), by aim_mode), the cancel
 ## window for dash, jump and ability intents, gravity, and the STARTED/ENDED
 ## lifecycle events. Subclasses add what they do while running.
@@ -176,7 +177,7 @@ func enter(_previous_state_path: String, _data: Dictionary = {}) -> void:
 	if aim_direction.is_zero_approx() and character.mesh_mount != null:
 		# Aimed right at the character's own spot: keep the facing.
 		aim_direction = Vector3(character.mesh_mount.global_basis.z.x, 0.0, character.mesh_mount.global_basis.z.z).normalized()
-	_aim_at_current_target()
+	_aim_at_locked_target()
 	broadcast_ability_event(AbilityEvent.Phase.STARTED, {}, aim_direction)
 
 
@@ -202,13 +203,21 @@ func _resolve_aim(data: Dictionary) -> AimTarget:
 	return AimTarget.toward(feet, Vector3.BACK)
 
 
-## Overrides the snapshotted aim with the character's current_target when one
-## is valid, so actions aim at the auto-aim target instead of the mouse aim.
-## Writes the direction back to character.aim_direction so snapshot and
-## intent stay consistent for the rest of the action.
-func _aim_at_current_target() -> void:
+## The node this action locks its aim on, or null to aim where the
+## controller aims: the character's auto-aim target (current_target).
+## AbilityCastState overrides it to prefer an enemy near the player's cursor.
+func get_locked_target() -> Node3D:
 	var target: Node3D = character.current_target
-	if target == null or not is_instance_valid(target):
+	return target if is_instance_valid(target) else null
+
+
+## Overrides the snapshotted aim with the locked target (get_locked_target())
+## when there is one, so actions aim at it instead of the mouse aim. Writes
+## the direction back to character.aim_direction so snapshot and intent stay
+## consistent for the rest of the action.
+func _aim_at_locked_target() -> void:
+	var target: Node3D = get_locked_target()
+	if target == null:
 		return
 	var to_target: Vector3 = target.global_position - character.global_position
 	to_target.y = 0.0
@@ -233,12 +242,11 @@ func release_payload(scene: PackedScene, origin: Vector3, overrides: Array[Paylo
 	return PayloadSpawner.spawn(scene, character, origin, release_direction(origin), overrides, damage_multiplier, scale_with_attack, landing)
 
 
-## What a release now aims at: the current auto-aim target when one is valid
-## (it may have moved since the action started), else the aim snapshotted on
-## entry.
+## What a release now aims at: the locked target (get_locked_target(); it may
+## have moved since the action started), else the aim snapshotted on entry.
 func release_aim() -> AimTarget:
-	var target: Node3D = character.current_target
-	if target != null and is_instance_valid(target):
+	var target: Node3D = get_locked_target()
+	if target != null:
 		return AimTarget.at_node(target)
 	return aim_target
 

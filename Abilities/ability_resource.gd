@@ -75,6 +75,12 @@ enum ReleasePoint {
 ## AIMED at what the caster sees at its cast height above the aimed floor,
 ## FLAT level at cast height, GROUND at the floor point, where a lob lands).
 @export var aim_mode: CharacterAction.AimMode = CharacterAction.AimMode.AIMED
+## Aim assist around the cursor, in meters: when the caster aims at a floor
+## point (the player's cursor), the cast locks onto the foe closest to that
+## point within this radius, ahead of the auto-aim target (nearest to the
+## caster); with none, it falls back to auto-aim, then to the point itself.
+## 0.0 turns it off.
+@export var aim_assist_radius: float = 3.0
 ## Scene spawned at release through PayloadSpawner: a projectile, a damage
 ## area, a visual... Null releases no payload.
 @export var payload_scene: PackedScene

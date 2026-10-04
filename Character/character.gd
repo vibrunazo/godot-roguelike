@@ -649,6 +649,22 @@ func get_nearest_target(group_name: String = "") -> Character:
 	return closest_char
 
 
+## The living opponent whose feet are closest to point within radius meters,
+## or null.
+func get_nearest_target_to(point: Vector3, radius: float) -> Character:
+	var closest: Character = null
+	var best_sq: float = radius * radius
+	for node: Node in get_tree().get_nodes_in_group(get_opposing_group()):
+		var other: Character = node as Character
+		if other == null or other == self or not other.is_alive():
+			continue
+		var dist_sq: float = other.get_feet_position().distance_squared_to(point)
+		if dist_sq <= best_sq:
+			best_sq = dist_sq
+			closest = other
+	return closest
+
+
 ## Returns true if this character is executing an uninterruptable attack or ability (hyper-armor).
 func is_uninterruptable() -> bool:
 	return state_machine != null and state_machine.state is CharacterState and (state_machine.state as CharacterState).is_uninterruptable()

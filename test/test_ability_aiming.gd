@@ -8,7 +8,10 @@
 ## - a fireball cast at the top of a jump angles down and hits a foe on the
 ##   ground under the cursor,
 ## - a ground-aimed lob lands on the floor point under the cursor, on the
-##   ground and on a raised floor.
+##   ground and on a raised floor,
+## - aim assist: a cast locks onto the foe nearest the cursor within the
+##   ability's aim_assist_radius, ahead of the auto-aim target; with no foe
+##   near the cursor it falls back to the auto-aim target.
 ## Abilities, foes and the raised floor are built by the test; their numbers
 ## are test-owned.
 extends "res://test/lib/test_suite.gd"
@@ -31,6 +34,10 @@ const PLATFORM_NEAR_EDGE: float = 4.5
 const FOE_DISTANCE: float = 6.0
 ## Test-owned foe health, so no hit defeats it.
 const FOE_HEALTH: float = 100000.0
+## Test-owned distances for the aim assist tests: a foe near the player
+## (ahead and to the side) and one far up the screen.
+const ASSIST_NEAR: float = 3.0
+const ASSIST_FAR: float = 9.0
 ## How close a lob's landing point must be to the aimed point, in meters.
 const LANDING_TOLERANCE: float = 0.1
 ## Frame budget for a cast or a flight.
@@ -154,6 +161,38 @@ func test_a_ground_aimed_lob_lands_on_the_floor_under_the_cursor() -> void:
 		await _wait_ready()
 
 
+func test_a_cast_locks_onto_the_foe_nearest_the_cursor_before_auto_aim() -> void:
+	var ability: AbilityResource = _ability(CharacterAction.AimMode.AIMED, FIREBALL_SCENE)
+	_player.ability_system_component.grant_ability(ability, null, 0)
+	var near_player: Character = _spawn_foe(_ahead(ASSIST_NEAR) + _right() * ASSIST_NEAR, _floor_top)
+	var near_cursor: Character = _spawn_foe(_ahead(ASSIST_FAR), _floor_top)
+	(_player.get_node("TargetingComponent") as TargetingComponent).auto_aim_range = 100.0
+	if not await wait_until(func() -> bool: return _player.current_target == near_player, "setup: auto-aim should lock onto the foe nearest the player"):
+		return
+	# The cursor beside the far foe, inside the assist radius but not on it.
+	var cursor_point: Vector3 = near_cursor.get_feet_position() + _right() * ability.aim_assist_radius * 0.5
+	var shot: Projectile = await _cast_at_screen(_camera().unproject_position(cursor_point))
+	if shot == null:
+		return
+	check(_flat(shot.global_basis.z).normalized().dot(_flat(near_cursor.global_position - shot.global_position).normalized()) > 0.99, "the cast should fly at the foe nearest the cursor, not the auto-aim target")
+
+
+func test_with_no_foe_near_the_cursor_a_cast_falls_back_to_auto_aim() -> void:
+	var ability: AbilityResource = _ability(CharacterAction.AimMode.AIMED, FIREBALL_SCENE)
+	_player.ability_system_component.grant_ability(ability, null, 0)
+	var near_player: Character = _spawn_foe(_ahead(ASSIST_NEAR) + _right() * ASSIST_NEAR, _floor_top)
+	(_player.get_node("TargetingComponent") as TargetingComponent).auto_aim_range = 100.0
+	var far_foe: Character = _spawn_foe(_ahead(ASSIST_FAR), _floor_top)
+	if not await wait_until(func() -> bool: return _player.current_target == near_player, "setup: auto-aim should lock onto the foe nearest the player"):
+		return
+	# Nearer the far foe than the near one, but just outside the assist radius.
+	var cursor_point: Vector3 = far_foe.get_feet_position() - _right() * ability.aim_assist_radius * 1.5
+	var shot: Projectile = await _cast_at_screen(_camera().unproject_position(cursor_point))
+	if shot == null:
+		return
+	check(_flat(shot.global_basis.z).normalized().dot(_flat(near_player.global_position - shot.global_position).normalized()) > 0.99, "with no foe near the cursor the cast should fly at the auto-aim target")
+
+
 ## Moves the cursor to screen_position, casts slot 1 and returns the payload
 ## it releases (null after a recorded failure).
 func _cast_at_screen(screen_position: Vector2) -> Projectile:
@@ -189,6 +228,16 @@ func _ahead(distance: float) -> Vector3:
 	forward = Vector3(forward.x, 0.0, forward.z).normalized()
 	var at: Vector3 = _player.global_position + forward * distance
 	return Vector3(at.x, 0.0, at.z)
+
+
+## The screen's right on the ground plane (unit length).
+func _right() -> Vector3:
+	var right: Vector3 = _camera().global_basis.x
+	return Vector3(right.x, 0.0, right.z).normalized()
+
+
+func _flat(vector: Vector3) -> Vector3:
+	return Vector3(vector.x, 0.0, vector.z)
 
 
 ## A solid raised floor up the screen from the player (on the World layer).

@@ -181,7 +181,10 @@ prints the error and idles forever. `--quit-after` does not help.
   **Aiming:** a controller aims at an `AimTarget`, a floor point seen along a
   line of sight: the player's is the camera ray through the mouse cursor and
   where it hits the level (any floor height; characters are seen through),
-  AI orders and auto-aim aim at a character's feet seen from above. Every
+  AI orders and auto-aim aim at a character's feet seen from above. A cast
+  aimed at a cursor point first locks onto the foe nearest that point within
+  its ability's `aim_assist_radius`, then the auto-aim target, then the point
+  (`CharacterAction.get_locked_target()`, overridden by `AbilityCastState`). Every
   action (cast, melee or ranged attack) snapshots it
   (`CharacterAction.aim_target`) and turns along its horizontal
   `aim_direction`. Every payload an action releases goes through
