@@ -14,7 +14,7 @@ extends Node
 # -----------------------------------------------------------------------------
 
 ## Starting dungeon level when a new run begins.
-@export var base_dungeon_level: int = 1
+@export var base_dungeon_level: int = 16
 
 ## Starting difficulty rating at base_dungeon_level.
 @export var base_difficulty: float = 3.0
@@ -337,11 +337,11 @@ func generate_wave_plan(enemy_resources: Array[EnemyResource] = []) -> Array[Ene
 
 ## Selects an eligible DungeonResource based on difficulty rating and enemy count.
 ## Avoids recently visited dungeons where possible and provides graceful fallback.
-## Boss arenas are never selected here (see boss_arena_for()).
+## Boss arenas are never selected here (see select_boss_arena()).
 func select_dungeon_for_encounter(enemy_count: int, available_dungeons: Array[DungeonResource] = []) -> DungeonResource:
 	var dungeons_pool: Array[DungeonResource] = []
 	for dungeon: DungeonResource in (available_dungeons if not available_dungeons.is_empty() else GlobalVars.dungeons):
-		if dungeon != null and not dungeon.is_boss_arena():
+		if dungeon != null and not dungeon.boss_arena:
 			dungeons_pool.append(dungeon)
 	if dungeons_pool.is_empty():
 		push_error("ProgressionState: no regular dungeons are registered in GlobalVars.dungeons.")
@@ -375,24 +375,43 @@ func select_dungeon_for_encounter(enemy_count: int, available_dungeons: Array[Du
 	return chosen
 
 
-## The boss arena registered for target_dungeon_level (its boss_at_level),
-## or null when that level is a regular one.
-func boss_arena_for(target_dungeon_level: int) -> DungeonResource:
-	for dungeon: DungeonResource in GlobalVars.dungeons:
-		if dungeon != null and dungeon.boss_at_level == target_dungeon_level:
-			return dungeon
-	return null
+## The boss pool of target_dungeon_level: every enemy resource (GlobalVars.enemies
+## when resources is empty) whose boss_at_level is that level. Empty for a
+## regular level. Moving a boss to another level, or into a pool with other
+## bosses, is only a change of its boss_at_level.
+func boss_pool(target_dungeon_level: int, resources: Array[EnemyResource] = []) -> Array[EnemyResource]:
+	var pool: Array[EnemyResource] = []
+	for resource: EnemyResource in (resources if not resources.is_empty() else GlobalVars.enemies):
+		if resource != null and resource.scene != null and resource.boss_at_level == target_dungeon_level:
+			pool.append(resource)
+	return pool
 
 
-## Prepares the next encounter for the current dungeon level: its boss arena
-## when one is registered (the arena brings its own bosses, so no enemies are
-## planned), otherwise planned enemies from the difficulty budget and a
-## matching regular dungeon.
+## A boss arena (a dungeon with boss_arena set) from available_dungeons
+## (GlobalVars.dungeons when empty), picked at random; null, with an error,
+## when none is registered.
+func select_boss_arena(available_dungeons: Array[DungeonResource] = []) -> DungeonResource:
+	var arenas: Array[DungeonResource] = []
+	for dungeon: DungeonResource in (available_dungeons if not available_dungeons.is_empty() else GlobalVars.dungeons):
+		if dungeon != null and dungeon.boss_arena:
+			arenas.append(dungeon)
+	if arenas.is_empty():
+		push_error("ProgressionState: no boss arena is registered in GlobalVars.dungeons.")
+		return null
+	return arenas.pick_random()
+
+
+## Prepares the next encounter for the current dungeon level. On a boss level
+## (one with a boss pool, see boss_pool()) the wave is one boss of the pool,
+## picked at random, in a boss arena; otherwise planned enemies from the
+## difficulty budget in a matching regular dungeon.
 func prepare_next_encounter() -> DungeonResource:
-	var boss_arena: DungeonResource = boss_arena_for(dungeon_level)
-	if boss_arena != null:
-		current_planned_enemies.clear()
-		current_dungeon = boss_arena
+	var bosses: Array[EnemyResource] = boss_pool(dungeon_level)
+	if not bosses.is_empty():
+		var boss: EnemyResource = bosses.pick_random()
+		var boss_wave: Array[EnemyResource] = [boss]
+		current_planned_enemies = boss_wave
+		current_dungeon = select_boss_arena()
 		return current_dungeon
 	current_planned_enemies = generate_wave_plan()
 	current_dungeon = select_dungeon_for_encounter(current_planned_enemies.size())

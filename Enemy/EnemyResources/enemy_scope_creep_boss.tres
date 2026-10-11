@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EnemyResource" format=3 uid="uid://lbp68gjan2qs"]
+
+[ext_resource type="Script" uid="uid://cslkv80eol3lh" path="res://Enemy/enemy_resource.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://Enemy/scope_creep_boss.tscn" id="2_scene"]
+[ext_resource type="Script" uid="uid://bjstq6woy7m46" path="res://Items/loot_drop.gd" id="3_drop_script"]
+[ext_resource type="Resource" path="res://Items/ItemResources/item_book_spark.tres" id="4_book"]
+
+[sub_resource type="Resource" id="Resource_book_drop"]
+script = ExtResource("3_drop_script")
+item = ExtResource("4_book")
+chance = 1.0
+
+[resource]
+script = ExtResource("1_script")
+scene = ExtResource("2_scene")
+difficulty_level = 14
+minimum_spawn_difficulty = 30
+boss_at_level = 20
+item_drops = Array[ExtResource("3_drop_script")]([SubResource("Resource_book_drop")])

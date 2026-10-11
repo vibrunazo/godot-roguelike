@@ -51,9 +51,10 @@ refuses to ship on engine errors.
   `GlobalVars.dungeons` in `Singletons/global_vars.tscn`. The run picks the
   dungeon that fits each encounter.
 - Boss arenas: also a `DungeonResource` in `GlobalVars.dungeons`, with
-  `boss_at_level` set to the dungeon level that detours to it. Regular
-  selection never picks an arena. The arena's `WaveObjective.boss_resources`
-  names its bosses.
+  `boss_arena` set. Regular selection never picks an arena. An arena names
+  no boss: on a boss level (some boss's `EnemyResource.boss_at_level`) the
+  run detours to a random arena and plans that level's boss as the wave, so
+  every arena hosts every boss.
 - `GlobalVars.dungeons` is the only level registry; nothing else lists
   levels.
 

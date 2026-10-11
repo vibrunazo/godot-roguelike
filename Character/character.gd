@@ -42,6 +42,9 @@ const TARGET_DISTANCE_MIN: float = 1.5
 ## so landing checks stay airborne.
 const HEAD_SLIDE_LIFT: float = 0.01
 const HEAD_SLIDE_FALL_SPEED: float = 0.5
+## Physics layers a clear shot must not cross on its way to the target:
+## World, Enemy, Props and Player bodies (see has_clear_shot()).
+const CLEAR_SHOT_MASK: int = 1 | 2 | 4 | 16
 
 ## The visual mount node rotated to face movement or aim directions.
 @export var mesh_mount: Node3D
@@ -663,6 +666,19 @@ func get_nearest_target_to(point: Vector3, radius: float) -> Character:
 			best_sq = dist_sq
 			closest = other
 	return closest
+
+
+## True when nothing solid stands between from and target: a ray from from
+## (this character's center, or a point on it such as a rider's hand) to the
+## target's center (CLEAR_SHOT_MASK: walls, props and other characters; this
+## character's own body never blocks it) hits the target first or nothing.
+## The gate for attacks that travel or charge in a straight line.
+func has_clear_shot(from: Vector3, target: Character) -> bool:
+	if target == null or not is_inside_tree():
+		return false
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, target.global_position, CLEAR_SHOT_MASK, [get_rid()])
+	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
+	return hit.is_empty() or hit.get("collider") == target
 
 
 ## Returns true if this character is executing an uninterruptable attack or ability (hyper-armor).

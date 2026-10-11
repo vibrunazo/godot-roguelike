@@ -4,13 +4,6 @@ extends Node3D
 ## Enemy resources available to spawn when ProgressionState planned no
 ## encounter. Leave empty to use GlobalVars.enemies.
 @export var enemy_resources: Array[EnemyResource] = []
-
-## Boss resources for a boss arena. When non-empty, the wave is exactly these
-## bosses (each spawned once, bypassing the difficulty budget and the
-## minimum-spawn gate); the regular budget fill is skipped. Leave empty for a
-## normal level. Reusable: later bosses only need their own arena scene with
-## this set.
-@export var boss_resources: Array[EnemyResource] = []
 ## Seconds after the level starts before the first spawn step.
 @export var first_spawn_delay: float = 2.5
 ## Seconds between consecutive enemy spawns (also before the first one).
@@ -65,15 +58,13 @@ func _free_unspawned_enemies() -> void:
 	all_enemies = spawned
 
 
-## Instances the enemies for this wave: the bosses when boss_resources is set
-## (boss arena), else the encounter ProgressionState planned, else a fresh
-## plan for the current difficulty budget (ProgressionState.generate_wave_plan)
+## Instances the enemies for this wave: the encounter ProgressionState planned
+## (each planned enemy spawned once, whatever the difficulty budget or the
+## minimum-spawn gate say: a boss level's boss among them), else a fresh plan
+## for the current difficulty budget (ProgressionState.generate_wave_plan)
 ## from enemy_resources.
 func generate_wave_enemies() -> Array[Character]:
 	_enemy_difficulties.clear()
-	if not boss_resources.is_empty():
-		return _instantiate_all(boss_resources)
-	# If ProgressionState pre-planned enemies for this encounter, consume them
 	if not ProgressionState.current_planned_enemies.is_empty():
 		return _instantiate_all(ProgressionState.current_planned_enemies)
 	return _instantiate_all(ProgressionState.generate_wave_plan(enemy_resources))

@@ -127,7 +127,7 @@ prints the error and idles forever. `--quit-after` does not help.
   face point keeps the facing off the walking direction), `AIConditionalAttack`
   (interrupt when a body state is ready and the target is in a range band,
   optionally with a clear straight line: `require_clear_shot`,
-  `AIState.has_clear_shot()`) and `AISupportAllies`.
+  `Character.has_clear_shot()`) and `AISupportAllies`.
 - **Components** on each character: `AttributeComponent` (health/mana pools,
   buffable stats, tags, timed effects and DoTs; `defeat` fires once on the
   killing transition), `StatusVisualsComponent` (effect visuals, on bones
@@ -255,6 +255,27 @@ prints the error and idles forever. `--quit-after` does not help.
   `cast_animation` must exist in every caster's AnimationTree (`Rally` and
   `Charge` are in the player's and the medium enemies' trees; `CastSpell`
   only in the player's).
+- **Backpack bosses** (Akira, Scope Creep): one big brute-rig character with
+  two enemies riding in backpacks on its back. Each inherits
+  `Enemy/backpack_boss_base.tscn` (body, components, the throw and summon
+  attacks and their AI, empty backpacks), puts a rider scene in each
+  backpack and lists the riders on its `BackpackRiders` component, then adds
+  its own attacks. A rider (`BackpackRider`, `Enemy/Riders/rider_*.tscn`) is
+  a torso-up visual of an enemy, not a Character: `BackpackRiders` drives it
+  while aboard (each turns to and attacks the carrier's nearest foe in its
+  own range band: a melee rider's animation keys its weapon slot's hit
+  window, a ranged rider releases `payload_scene` on the slot's
+  `ranged_attack`), credits its hits and payloads to the carrier, and shows
+  it aboard or gone by the carrier's `has_riders` tag (granted by
+  `effect_has_riders.tres`). `ThrowRidersAttack` throws the riders at the
+  target and `SummonRidersAttack` drops helpers beside the boss and boards
+  new riders; both fly each rider as its own lob (`BackpackRider.lob_scene`, a
+  `LobbedSpawnProjectile` carrying its look and the enemy it becomes, sent
+  through `PayloadSpawner`). A new rider kind is a scene, not code; a rider
+  with its own `CharacterColorComponent` keeps its palette (the carrier's
+  component skips nested rigs that color themselves). The large rig's
+  `SwordSlot` and its `SwordSwing`, `SwordSlash` and `SwordStab` states serve
+  any large-rig sword wielder.
 - **Registries:** `GlobalVars` (shop items, level items, enemies, dungeons,
   shared scenes), `ProgressionState` (run state: difficulty, dungeon level,
   gold, purchases, which items the run may still offer or drop, the planned
@@ -269,8 +290,14 @@ prints the error and idles forever. `--quit-after` does not help.
   kill plane, exit, an `ItemSpawner` that drops available
   `GlobalVars.level_items` as `ItemPickup`s near the player's spawn, and the
   `NavmeshRebuilder`). `GlobalVars.dungeons` (`DungeonResource`s) is the only
-  level registry: `ProgressionState` picks a regular dungeon per encounter,
-  or the boss arena whose `boss_at_level` matches the dungeon level.
+  level registry: `ProgressionState` picks a regular dungeon per encounter.
+  **Boss levels:** a boss's `EnemyResource.boss_at_level` names the dungeon
+  level it is fought at; every registered boss naming the same level forms
+  that level's pool (`ProgressionState.boss_pool()`). On a boss level the run
+  detours to a random boss arena (`DungeonResource.boss_arena`; arenas name
+  no boss) and plans one boss of the pool, picked at random, as the wave.
+  Moving a boss to another level, or into a shared pool, is only a change of
+  its `boss_at_level`.
 
 ## 6. Skills
 

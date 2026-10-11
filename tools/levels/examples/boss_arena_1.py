@@ -4,15 +4,15 @@
 A medium 9x9 arena with no pits and no hazards: four symmetric
 freestanding pillar obstacles, open center for a big boss body, player
 spawn west and exit east. Edges follow regular rules: open south cliff,
-north walled on the east half only, tall east/west walls. The
-WaveObjective carries the Akira boss via the `boss_resources` spec key,
-so the wave is exactly the boss. Reusable: later boss arenas copy this
-recipe with their own boss resources.
+north walled on the east half only, tall east/west walls. The arena names
+no boss: on a boss level the run plans that level's boss as the wave
+(EnemyResource.boss_at_level), so any boss can fight here. Reusable: later
+boss arenas copy this recipe.
 
 Pipeline (mirrors the README):
     python tools/levels/examples/boss_arena_1.py --out-dir .scratch/levels/boss1proof
-    pack -> assemble (spec.json, incl. boss_resources) -> bake navmesh
-    -> splice -> bake GI -> register a DungeonResource with boss_at_level
+    pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI
+    -> register a DungeonResource with boss_arena = true
     (NOT in the levels rotation) -> run_tests.py -> capture.py
 """
 from __future__ import annotations
@@ -127,7 +127,6 @@ def main() -> int:
         "extra_hazards": [],
         "litter_placed": [{"name": n, "scene": s, "pos": list(p), "rot_y": r}
                           for n, s, p, r in LITTER],
-        "boss_resources": ["res://Enemy/EnemyResources/enemy_akira_boss.tres"],
         "player": PLAYER,
         "voxelgi": {"pos": VOXELGI_POS, "size": VOXELGI_SIZE},
         "gi_data": None,

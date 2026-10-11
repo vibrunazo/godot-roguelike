@@ -2,10 +2,6 @@
 class_name AIState
 extends State
 
-## Physics layers a clear shot must not cross on its way to the target:
-## World, Enemy, Props and Player bodies (see has_clear_shot()).
-const CLEAR_SHOT_MASK: int = 1 | 2 | 4 | 16
-
 ## Reference to the owning AIStateMachine.
 @export var ai_state_machine: AIStateMachine
 ## Evaluation priority for state triggers (higher values are evaluated first).
@@ -57,18 +53,6 @@ func is_facing_within_cone(target: Character, cone_degrees: float) -> bool:
 	# The 0.05-degree hair covers float dust from the final exact step, so a
 	# 0.0 cone still opens on true alignment instead of stalling forever.
 	return angle <= maxf(cone_degrees, 0.0) * 0.5 + 0.05
-
-
-## True when nothing solid stands between the character and target: a ray
-## from the character's center to the target's center (CLEAR_SHOT_MASK: walls,
-## props and other characters) hits the target first or nothing. The gate for
-## attacks that travel or charge in a straight line.
-func has_clear_shot(target: Character) -> bool:
-	if character == null or target == null or not character.is_inside_tree():
-		return false
-	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(character.global_position, target.global_position, CLEAR_SHOT_MASK, [character.get_rid()])
-	var hit: Dictionary = character.get_world_3d().direct_space_state.intersect_ray(query)
-	return hit.is_empty() or hit.get("collider") == target
 
 
 ## Steps the body along its navigation path toward the agent's current target

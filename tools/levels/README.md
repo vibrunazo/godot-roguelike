@@ -38,7 +38,7 @@ python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 | `examples/three_islands.py` | Worked example: the Level 8 design (three islands joined by tall-railed causeways, lined central pit lake). First shipped use of `corridor()`; shows `room(holes=)` + `pit_lining()` for lakes. |
 | `examples/crossing.py` | Worked example: the Level 9 design (two rooms joined by a long open bridge over an unjumpable void). First shipped use of `bridge(rails="open")`; shows auto long-side rails on multi-row spans and an open room cliff (`edge={"e": None}`). |
 | `examples/crucible.py` | Worked example: the Level 10 design (symmetric 11x11 finale arena, all rims low cliffs, four lined 1x2 pit lakes, lone center pillar). Shows all-low `edge` dicts, `room(holes=)` with multiple lakes, and `check_cover_clearances` (lone cover keeps 3 m+ off pit edges so no thin navmesh sliver wedges enemies). |
-| `examples/boss_arena_1.py` | Worked example: the Boss Arena 1 design (medium 9x9 arena, no pits, no hazards, four symmetric pillars, open center, open south cliff, north rim on the east half only via two composed rooms). Shows the `boss_resources` spec key pinning the akira boss on the arena WaveObjective. |
+| `examples/boss_arena_1.py` | Worked example: the Boss Arena 1 design (medium 9x9 arena, no pits, no hazards, four symmetric pillars, open center, open south cliff, north rim on the east half only via two composed rooms). A boss arena names no boss: the run plans each boss level's boss as its wave. |
 | `examples/level11_design.py` | Worked example: the Level 11 design (nine-room 3x3 grid with 8 bridges, central lake). |
 | `examples/level12_design.py` | Worked example: the Level 12 design ("The Broken Procession", six staggered rooms on a Z-route over a broad gulf, 5 mixed bridges, 2x2 shrine pit lake, a 3-tile dash-jump window between Gallery and Shrine, ordered stone-course bridge floors, `--finish` step for room spawn areas). |
 | `layout.py` | Composable floor-plan primitives: `room()` (solid block, optional holes and per-side tiers), `bridge()` (railed strip: `low`/`open`/`tall`, optional explicit `sides`), `corridor()` (tall-railed bridge), `touches()`/`compose()` junction checks, `paint()` floor-art variants. Edge letters are the generator's (`n`=min-z, `s`=max-z, `w`=min-x, `e`=max-x). Overrides apply only where derivation would already emit a wall, so part junctions (bridge mouths) stay wall-free automatically. |
@@ -135,11 +135,11 @@ python capture.py map Levels/level_5.tscn --preset all
 - `hide_nodes` pins `visible = false` on inherited root nodes the layout
   must not show. Never use it on `Pit`: hiding the abyss breaks the level
   (the rotation test fails a hidden or undersized `Pit`).
-- `boss_resources` (boss arenas only) lists EnemyResource `.tres` paths to
-  pin on `WaveObjective.boss_resources`, so the arena spawns its boss(es)
-  instead of a budgeted wave. Omit it for normal levels. Boss arenas are
-  registered like any dungeon, with `DungeonResource.boss_at_level` set to
-  the dungeon level that detours to them; regular selection never picks one.
+- Boss arenas are built like any level (their spec names no boss) and
+  registered like any dungeon, with `DungeonResource.boss_arena` set; regular
+  selection never picks one. On a boss level the run detours to a random
+  boss arena and plans that level's boss as the wave (a boss's
+  `EnemyResource.boss_at_level` names its level).
 - `uid: null` generates a fresh scene uid; pin one to reproduce a file exactly.
 - `player: null` keeps the template spawn; otherwise `[x, y, z]`.
 - `gi_data: null` assembles the pre-bake state (no data reference — required,

@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Enemy/lobbed_spawn_projectile.tscn" id="1_lob"]
+[ext_resource type="PackedScene" path="res://Enemy/enemy_thunder_mage.tscn" id="2_mage"]
+[ext_resource type="Script" path="res://Components/character_color_component.gd" id="3_color"]
+
+[sub_resource type="Gradient" id="Gradient_purple"]
+colors = PackedColorArray(0.71, 0.37, 0.9, 1, 0.24, 0.04, 0.42, 1)
+
+[node name="ThunderMageLob" instance=ExtResource("1_lob")]
+enemy_scene = ExtResource("2_mage")
+
+[node name="CharacterColorComponent" type="Node" parent="Visual"]
+script = ExtResource("3_color")
+gradients = Array[Gradient]([null, null, null, null, null, null, null, SubResource("Gradient_purple")])

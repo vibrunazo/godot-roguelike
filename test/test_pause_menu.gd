@@ -151,10 +151,14 @@ func test_stats_panel_shows_no_comparison_arrows_without_a_selected_item() -> vo
 func test_restarting_from_a_boss_fight_starts_a_new_run_in_a_regular_dungeon() -> void:
 	var boss_arena: DungeonResource = null
 	for dungeon: DungeonResource in GlobalVars.dungeons:
-		if dungeon != null and dungeon.is_boss_arena():
+		if dungeon != null and dungeon.boss_arena:
 			boss_arena = dungeon
-	if boss_arena != null:
-		ProgressionState.dungeon_level = boss_arena.boss_at_level
+	var boss_level: int = 0
+	for enemy: EnemyResource in GlobalVars.enemies:
+		if enemy != null and enemy.boss_at_level > 0:
+			boss_level = enemy.boss_at_level
+	if boss_arena != null and boss_level > 0:
+		ProgressionState.dungeon_level = boss_level
 		ProgressionState.current_dungeon = boss_arena
 	else:
 		ProgressionState.dungeon_level = TEST_DUNGEON_LEVEL
@@ -167,7 +171,7 @@ func test_restarting_from_a_boss_fight_starts_a_new_run_in_a_regular_dungeon() -
 	check_eq(ProgressionState.dungeon_level, ProgressionState.base_dungeon_level, "restarting should start the new run at its first dungeon level")
 	var next: DungeonResource = ProgressionState.current_dungeon
 	if check(next != null, "restarting should pick the new run's first dungeon"):
-		check(not next.is_boss_arena(), "the new run's first dungeon should be a regular one, not the boss arena the run ended in")
+		check(not next.boss_arena, "the new run's first dungeon should be a regular one, not the boss arena the run ended in")
 
 
 ## The pause/game-over menu UI currently shows, or null.

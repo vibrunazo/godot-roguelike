@@ -9,7 +9,10 @@ description: Use when adding or re-wiring an attack or combat animation for the 
 
 - Animation GLBs: `Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Medium/`
   (`Rig_Medium_CombatMelee.glb`, `Rig_Medium_General.glb`, `Rig_Medium_Movement.glb`, ...).
-  The brute and the Akira boss use the large rig (`Rig_Large`).
+  The brute and the backpack bosses (Akira, Scope Creep) use the large rig
+  (`Rig_Large`); its sword attacks key the `SwordSlot`. The plain-named
+  `LargeRigAnimations/Melee_1H_*.res` belong to the course's sample
+  mannequin (they carry its `WeaponBone` track): key copies, never those.
 - Character model GLBs: `Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/`.
 - Extracted animations: `.../Rig_Medium/Animations/<AnimationName>.res`.
 

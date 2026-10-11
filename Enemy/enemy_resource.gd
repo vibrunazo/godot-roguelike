@@ -10,9 +10,15 @@ extends Resource
 
 ## Minimum run difficulty at which this enemy may appear in regular waves.
 ## 0 means always eligible. Bosses carry a high gate (e.g. 20) so they only
-## join the regular rotation late, and spawn earlier solely via
-## WaveObjective.boss_resources in their boss arena.
+## join the regular rotation late, and spawn earlier solely as the boss of
+## their boss level (boss_at_level).
 @export var minimum_spawn_difficulty: int = 0
+
+## Dungeon level at which this enemy is fought as a boss, alone in a boss
+## arena. Every registered enemy with the same boss_at_level forms that
+## level's boss pool, and each run fights one of them, picked at random
+## (ProgressionState.boss_pool()). 0 = not a boss.
+@export var boss_at_level: int = 0
 
 ## Gold currency awarded to the player when an enemy of this archetype is defeated.
 @export var gold_drop: int = 5

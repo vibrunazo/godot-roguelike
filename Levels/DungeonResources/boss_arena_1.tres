@@ -7,4 +7,4 @@
 script = ExtResource("1_script")
 name = "Boss Arena 1"
 scene = ExtResource("2_scene")
-boss_at_level = 10
+boss_arena = true

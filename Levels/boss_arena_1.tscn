@@ -1,12 +1,10 @@
 [gd_scene format=3 uid="uid://dqerke75xa74m"]
 
 [ext_resource type="PackedScene" uid="uid://dyj3auoai18wd" path="res://Levels/level_template.tscn" id="1_cb8d3"]
-[ext_resource type="Script" uid="uid://cslkv80eol3lh" path="res://Enemy/enemy_resource.gd" id="2_c30j6"]
 [ext_resource type="PackedScene" path="res://Levels/Decorators/explosive_barrel.tscn" id="2_padch"]
 [ext_resource type="PackedScene" uid="uid://t4a6aocg2p7h" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Couch.gltf" id="3_uwxw1"]
 [ext_resource type="PackedScene" uid="uid://6txdxj7vtbjk" path="res://Assets/KayKit_Assets/KayKit_GameDevTV_Free_Sample_Pack_1.0/Assets/gltf/Flag.gltf" id="4_ay5qi"]
 [ext_resource type="VoxelGIData" path="res://Levels/GlobalIlluminationData/boss_arena_1_voxel_gi_data.res" id="4_bossarena1"]
-[ext_resource type="Resource" path="res://Enemy/EnemyResources/enemy_akira_boss.tres" id="8_boss0"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_bossarena1"]
 vertices = PackedVector3Array(26.25, 0.6, 0, 20.5, 0.6, 0, 20, 0.6, 0.5, 21.5, 0.35, 7.25, 26.25, 0.35, 7, 26.5, 0.35, 9, 29, 0.35, 9.5, 29.25, 0.35, 9, 26.75, 0.35, 7.25, 36, 0.6, 0.5, 35.5, 0.6, 0, 30.75, 0.35, 9, 36, 0.6, 10, 31, 0.35, 10, 1.25, 0.35, 8.25, 5.5, 0.35, 8.25, 5.75, 0.35, 7, 1.25, 0.35, 0.5, 10.25, 0.35, 7, 10.25, 0.35, 0.5, 10.75, 0.35, 7.25, 21.5, 0.35, 8.25, 10.75, 0.35, 8, 10.75, 0.35, 24.25, 12.5, 0.35, 24.5, 12.75, 0.35, 24, 10.5, 0.35, 23, 21.75, 0.35, 23, 23.5, 0.35, 23, 23.5, 0.35, 9.25, 21.75, 0.35, 9.25, 15, 0.35, 24, 15.25, 0.35, 24.75, 21.5, 0.35, 24.5, 10.25, 0.35, 9.25, 8.5, 0.35, 9.25, 8.75, 0.35, 23, 5.75, 0.35, 9.25, 1.25, 0.35, 25.75, 5, 0.35, 26, 5.75, 0.35, 23, 29.25, 0.35, 11, 26.5, 0.35, 23, 30.75, 0.35, 11, 26.75, 0.35, 24, 36, 0.6, 24, 22.5, 0.35, 25.25, 22.25, 0.35, 29, 23, 0.35, 29.25, 26.25, 0.35, 25.25, 23, 0.35, 30.75, 22, 0.35, 31, 22, 0.35, 35.5, 36, 0.6, 35.5, 10.25, 0.35, 25.25, 12.5, 0.35, 27.75, 13.75, 0.35, 28, 6.75, 0.35, 27, 5.25, 0.35, 27, 1.25, 0.35, 35.5, 13.75, 0.35, 35.5, 7, 0.35, 25.25, 21.75, 0.35, 25.25, 21.25, 0.35, 29, 15.25, 0.35, 27.75, 14.75, 0.35, 28, 21, 0.35, 30, 21, 0.35, 30.75)
@@ -15,9 +13,6 @@ geometry_parsed_geometry_type = 1
 region_min_size = 6.0
 
 [node name="BossArena1" unique_id=1079320019 instance=ExtResource("1_cb8d3")]
-
-[node name="WaveObjective" parent="." index="2" unique_id=361626003]
-boss_resources = Array[ExtResource("2_c30j6")]([ExtResource("8_boss0")])
 
 [node name="NavigationRegion3D" parent="." index="3" unique_id=35119806]
 navigation_mesh = SubResource("NavigationMesh_bossarena1")

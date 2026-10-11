@@ -406,8 +406,9 @@ func test_melee_pursue_turns_to_face_the_target_before_attacking() -> void:
 func test_wave_places_enemies_at_distinct_points_on_the_navmesh() -> void:
 	var resource: EnemyResource = EnemyResource.new()
 	resource.scene = MELEE_SCENE
+	var wave_plan: Array[EnemyResource] = [resource, resource, resource]
+	ProgressionState.current_planned_enemies = wave_plan
 	var wave: WaveObjective = WaveObjective.new()
-	wave.boss_resources = [resource, resource, resource]
 	wave.first_spawn_delay = 1000.0
 	autofree(wave)
 	_arena.add_child(wave)

@@ -10,7 +10,7 @@ extends AIAttackBase
 ## Minimum distance to target to trigger this attack (0.0 = no minimum).
 @export var min_range: float = 0.0
 ## Whether the attack also needs a clear straight line to the target (no
-## wall, prop or other character in between; AIState.has_clear_shot()): for
+## wall, prop or other character in between; Character.has_clear_shot()): for
 ## charges and shots.
 @export var require_clear_shot: bool = false
 ## Whether this attack can be ordered even while the body is in its stun state
@@ -37,7 +37,7 @@ func evaluate_trigger(_delta: float) -> bool:
 		return false
 	if min_range > 0.0 and dist_sq < min_range * min_range:
 		return false
-	if require_clear_shot and not has_clear_shot(target):
+	if require_clear_shot and not character.has_clear_shot(character.global_position, target):
 		return false
 	if not character.can_accept_order(body_state, can_break_stun):
 		return false

@@ -14,6 +14,9 @@
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Large/LargeRigAnimations/Melee_Unarmed_Punch.res" id="12_punch"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Large/LargeRigAnimations/Melee_Dualwield_Slash.res" id="13_slash"]
 [ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Large/LargeRigAnimations/Flexing.res" id="14_flex"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Large/LargeRigAnimations/Melee_2H_Attack.res" id="15_sword_swing"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Large/LargeRigAnimations/Melee_1H_Slash_Sword.res" id="16_sword_slash"]
+[ext_resource type="Animation" path="res://Assets/KayKit_Assets/KayKit_Character_Animations_1.0/Animations/gltf/Rig_Large/LargeRigAnimations/Melee_1H_Stab_Sword.res" id="17_sword_stab"]
 
 [sub_resource type="Animation" id="Animation_reset"]
 length = 0.001
@@ -41,6 +44,18 @@ tracks/1/keys = {
 "update": 1,
 "values": [false]
 }
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Rig_Large/Skeleton3D/SwordSlot:enabled")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [false]
+}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_default"]
 _data = {
@@ -53,6 +68,9 @@ _data = {
 &"Flexing": ExtResource("14_flex"),
 &"Hit_A": ExtResource("7_hit"),
 &"Idle_A": ExtResource("8_idle"),
+&"Melee_1H_Slash": ExtResource("16_sword_slash"),
+&"Melee_1H_Stab": ExtResource("17_sword_stab"),
+&"Melee_2H_Attack": ExtResource("15_sword_swing"),
 &"Melee_2H_Slam": ExtResource("9_slam"),
 &"Melee_Dualwield_Slash": ExtResource("13_slash"),
 &"Melee_Unarmed_Punch": ExtResource("12_punch"),
@@ -65,6 +83,9 @@ radius = 0.2
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_punch"]
 radius = 0.8
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_sword"]
+size = Vector3(0.4, 1.6, 0.4)
 
 [sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_death"]
 animation = &"EnemyAnimations/Death_A"
@@ -114,6 +135,42 @@ animation = &"EnemyAnimations/Flexing"
 nodes/Animation/node = SubResource("AnimationNodeAnimation_flex")
 nodes/Animation/position = Vector2(-40, 133)
 nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_flex")
+nodes/TimeScale/position = Vector2(466, 133)
+node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_sword_swing"]
+animation = &"EnemyAnimations/Melee_2H_Attack"
+
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_sword_swing"]
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_sword_swing"]
+nodes/Animation/node = SubResource("AnimationNodeAnimation_sword_swing")
+nodes/Animation/position = Vector2(-40, 133)
+nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_sword_swing")
+nodes/TimeScale/position = Vector2(466, 133)
+node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_sword_slash"]
+animation = &"EnemyAnimations/Melee_1H_Slash"
+
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_sword_slash"]
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_sword_slash"]
+nodes/Animation/node = SubResource("AnimationNodeAnimation_sword_slash")
+nodes/Animation/position = Vector2(-40, 133)
+nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_sword_slash")
+nodes/TimeScale/position = Vector2(466, 133)
+node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_sword_stab"]
+animation = &"EnemyAnimations/Melee_1H_Stab"
+
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_sword_stab"]
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_sword_stab"]
+nodes/Animation/node = SubResource("AnimationNodeAnimation_sword_stab")
+nodes/Animation/position = Vector2(-40, 133)
+nodes/TimeScale/node = SubResource("AnimationNodeTimeScale_sword_stab")
 nodes/TimeScale/position = Vector2(466, 133)
 node_connections = [&"output", 0, &"TimeScale", &"TimeScale", 0, &"Animation"]
 
@@ -171,6 +228,27 @@ xfade_time = 0.2
 switch_mode = 2
 advance_mode = 2
 
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_w2sword_swing"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_sword_swing2w"]
+xfade_time = 0.2
+switch_mode = 2
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_w2sword_slash"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_sword_slash2w"]
+xfade_time = 0.2
+switch_mode = 2
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_w2sword_stab"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_sword_stab2w"]
+xfade_time = 0.2
+switch_mode = 2
+advance_mode = 2
+
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_root"]
 states/Defeat/node = SubResource("AnimationNodeAnimation_death")
 states/Defeat/position = Vector2(800, 32)
@@ -184,9 +262,15 @@ states/PunchAttack/node = SubResource("AnimationNodeBlendTree_punch")
 states/PunchAttack/position = Vector2(400, 220)
 states/Stun/node = SubResource("AnimationNodeAnimation_hit")
 states/Stun/position = Vector2(800, 184)
+states/SwordSlash/node = SubResource("AnimationNodeBlendTree_sword_slash")
+states/SwordSlash/position = Vector2(200, 320)
+states/SwordStab/node = SubResource("AnimationNodeBlendTree_sword_stab")
+states/SwordStab/position = Vector2(200, 420)
+states/SwordSwing/node = SubResource("AnimationNodeBlendTree_sword_swing")
+states/SwordSwing/position = Vector2(200, 220)
 states/WalkSpace/node = SubResource("AnimationNodeBlendSpace1D_walk")
 states/WalkSpace/position = Vector2(595, 100)
-transitions = ["WalkSpace", "MeleeAttack", SubResource("AnimationNodeStateMachineTransition_w2m"), "MeleeAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_m2w"), "WalkSpace", "PunchAttack", SubResource("AnimationNodeStateMachineTransition_w2p"), "PunchAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_p2w"), "WalkSpace", "Stun", SubResource("AnimationNodeStateMachineTransition_w2s"), "Stun", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_s2w"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_w2d"), "WalkSpace", "DualWieldSlash", SubResource("AnimationNodeStateMachineTransition_w2slash"), "DualWieldSlash", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_slash2w"), "WalkSpace", "Flexing", SubResource("AnimationNodeStateMachineTransition_w2flex"), "Flexing", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_flex2w")]
+transitions = ["WalkSpace", "MeleeAttack", SubResource("AnimationNodeStateMachineTransition_w2m"), "MeleeAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_m2w"), "WalkSpace", "PunchAttack", SubResource("AnimationNodeStateMachineTransition_w2p"), "PunchAttack", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_p2w"), "WalkSpace", "Stun", SubResource("AnimationNodeStateMachineTransition_w2s"), "Stun", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_s2w"), "WalkSpace", "Defeat", SubResource("AnimationNodeStateMachineTransition_w2d"), "WalkSpace", "DualWieldSlash", SubResource("AnimationNodeStateMachineTransition_w2slash"), "DualWieldSlash", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_slash2w"), "WalkSpace", "Flexing", SubResource("AnimationNodeStateMachineTransition_w2flex"), "Flexing", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_flex2w"), "WalkSpace", "SwordSwing", SubResource("AnimationNodeStateMachineTransition_w2sword_swing"), "SwordSwing", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_sword_swing2w"), "WalkSpace", "SwordSlash", SubResource("AnimationNodeStateMachineTransition_w2sword_slash"), "SwordSlash", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_sword_slash2w"), "WalkSpace", "SwordStab", SubResource("AnimationNodeStateMachineTransition_w2sword_stab"), "SwordStab", "WalkSpace", SubResource("AnimationNodeStateMachineTransition_sword_stab2w")]
 
 [node name="AnimatedBrute" type="Node3D"]
 
@@ -240,6 +324,25 @@ damage = 10.0
 knockback = Vector3(0, 2, 12)
 shake_on_damage = false
 
+[node name="SwordSlot" type="BoneAttachment3D" parent="Enemy_Large/Rig_Large/Skeleton3D" node_paths=PackedStringArray("hitbox")]
+bone_name = "handslot.r"
+bone_idx = 8
+script = ExtResource("2_weapon_slot")
+hitbox = NodePath("HitboxArea")
+
+[node name="HitboxArea" type="Area3D" parent="Enemy_Large/Rig_Large/Skeleton3D/SwordSlot"]
+collision_layer = 0
+collision_mask = 64
+monitoring = false
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/HitboxArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("BoxShape3D_sword")
+
+[node name="AttackComponent" type="Node" parent="Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/HitboxArea"]
+script = ExtResource("4_attack_comp")
+
 [node name="RightFootBone" type="BoneAttachment3D" parent="Enemy_Large/Rig_Large/Skeleton3D"]
 bone_name = "foot.r"
 bone_idx = 17
@@ -262,6 +365,9 @@ parameters/MeleeAttack/TimeScale/scale = 1.0
 parameters/PunchAttack/TimeScale/scale = 1.0
 parameters/DualWieldSlash/TimeScale/scale = 1.0
 parameters/Flexing/TimeScale/scale = 1.0
+parameters/SwordSwing/TimeScale/scale = 1.0
+parameters/SwordSlash/TimeScale/scale = 1.0
+parameters/SwordStab/TimeScale/scale = 1.0
 parameters/WalkSpace/blend_position = 0.0
 script = ExtResource("5_anim_tree")
 

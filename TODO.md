@@ -19,6 +19,13 @@ Section numbers (§) point into the closed 2026-09-23 code review,
    ambient lighting); not decided yet, and not urgent until touch input exists.
    Until then, avoid deepening the per-level VoxelGI dependency. (§3.9)
 
+16. **Scope Creep's boss level.** He is the level 20 boss
+    (`enemy_scope_creep_boss.tres`, `boss_at_level = 20`). The alternative
+    is a shared level 10 pool with Akira: set `boss_at_level = 10` and the
+    run fights one of the two at random. Playtest both. His numbers (health,
+    damage, `minimum_spawn_difficulty`) are tuned for level 20, so the level
+    10 pool would also need him toned down.
+
 ## Test suite bugs
 
 7. **`test_brute_pit_corner_nav` no longer reproduces its bug.** Tall enemies

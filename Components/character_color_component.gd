@@ -91,22 +91,41 @@ func _ready() -> void:
 
 
 ## Discovers all body MeshInstance3D nodes under the character's Skeleton3D.
-## Excludes weapon hitboxes, projectiles, and particle meshes.
+## Excludes weapon hitboxes, projectiles, and particle meshes, and any rig
+## nested in the character that has a CharacterColorComponent of its own (a
+## backpack rider in its own colors), which colors itself.
 func get_body_meshes() -> Array[MeshInstance3D]:
 	var meshes: Array[MeshInstance3D] = []
 	var search_root: Node = self
-	
+
 	if get_parent():
 		search_root = get_parent()
 		var character: Character = search_root as Character
 		if character and character.mesh_mount:
 			search_root = character.mesh_mount
-	
-	for child: Node in search_root.find_children("*", "MeshInstance3D", true, false):
-		var mi: MeshInstance3D = child as MeshInstance3D
-		if mi and mi.mesh and mi.get_parent() is Skeleton3D:
-			meshes.append(mi)
+
+	_collect_body_meshes(search_root, meshes)
 	return meshes
+
+
+## Appends the body meshes under node (meshes parented to a Skeleton3D),
+## skipping subtrees whose root has another CharacterColorComponent child.
+func _collect_body_meshes(node: Node, meshes: Array[MeshInstance3D]) -> void:
+	for child: Node in node.get_children():
+		if _has_own_palette(child):
+			continue
+		var mi: MeshInstance3D = child as MeshInstance3D
+		if mi and mi.mesh and node is Skeleton3D:
+			meshes.append(mi)
+		_collect_body_meshes(child, meshes)
+
+
+## Whether node carries a CharacterColorComponent other than this one.
+func _has_own_palette(node: Node) -> bool:
+	for child: Node in node.get_children():
+		if child is CharacterColorComponent and child != self:
+			return true
+	return false
 
 
 ## Applies the configured ShaderMaterial to all character body meshes.

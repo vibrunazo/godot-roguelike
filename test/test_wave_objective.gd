@@ -7,9 +7,10 @@
 ## - a wave enemy carries the EnemyResource it was planned from, so its defeat
 ##   awards that resource's gold.
 ##
-## Waves are built from a test-owned EnemyResource list (boss_resources, which
-## spawns exactly the listed enemies) with test-owned spawn delays, so the
-## suite depends on neither the difficulty budget nor any tuning.
+## Waves are built from a test-owned EnemyResource list (the encounter
+## ProgressionState plans, which spawns exactly the listed enemies) with
+## test-owned spawn delays, so the suite depends on neither the difficulty
+## budget nor any tuning.
 extends "res://test/lib/test_suite.gd"
 
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
@@ -103,9 +104,11 @@ func _spawn_wave(resource: EnemyResource = null) -> WaveObjective:
 	if resource == null:
 		resource = EnemyResource.new()
 		resource.scene = MELEE_SCENE
-	var wave: WaveObjective = WaveObjective.new()
+	var planned: Array[EnemyResource] = []
 	for i: int in range(WAVE_SIZE):
-		wave.boss_resources.append(resource)
+		planned.append(resource)
+	ProgressionState.current_planned_enemies = planned
+	var wave: WaveObjective = WaveObjective.new()
 	wave.first_spawn_delay = FIRST_SPAWN_DELAY
 	wave.spawn_interval = SPAWN_INTERVAL
 	autofree(wave)

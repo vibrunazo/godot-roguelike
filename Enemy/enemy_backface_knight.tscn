@@ -7,7 +7,7 @@
 [ext_resource type="Script" uid="uid://co8jdqp58n2qm" path="res://Abilities/ability_cast_state.gd" id="4_cast"]
 [ext_resource type="Script" uid="uid://by5fnbuwcy326" path="res://Components/ability_system_component.gd" id="5_asc"]
 [ext_resource type="Script" uid="uid://clauo4aqtg4dp" path="res://Abilities/ability_resource.gd" id="6_ability_script"]
-[ext_resource type="Resource" path="res://Abilities/AbilityResources/ability_move_and_slide.tres" id="7_charge"]
+[ext_resource type="Resource" uid="uid://gqtea73gl7yh" path="res://Abilities/AbilityResources/ability_move_and_slide.tres" id="7_charge"]
 [ext_resource type="Script" uid="uid://b5yuh1oyt1djj" path="res://Components/attack_component.gd" id="8_attack_comp"]
 [ext_resource type="Script" uid="uid://dmeev7yvye24g" path="res://Components/shield_component.gd" id="9_shield"]
 [ext_resource type="Script" uid="uid://heyht7qo7sv1" path="res://StateMachine/AIStates/ai_keep_distance.gd" id="10_keep"]
@@ -16,6 +16,13 @@
 [ext_resource type="AudioStream" uid="uid://mgv1fbcndh5a" path="res://Assets/Audio/weapon-swing.ogg" id="13_swing"]
 [ext_resource type="AudioStream" uid="uid://b1ihkudmpnw30" path="res://Assets/Audio/metal-hit.ogg" id="14_clang"]
 [ext_resource type="Script" uid="uid://bkhbba70rqfq4" path="res://Player/held_facing_visual.gd" id="15_held"]
+
+[sub_resource type="Gradient" id="Gradient_qio5c"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_qm72f"]
+gradient = SubResource("Gradient_qio5c")
+width = 64
 
 [sub_resource type="Gradient" id="Gradient_lm7hf"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -59,25 +66,18 @@ colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
 gradient = SubResource("Gradient_bx28p")
 width = 64
 
-[sub_resource type="Gradient" id="Gradient_mw68a"]
-colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
-
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_y1ohu"]
-gradient = SubResource("Gradient_mw68a")
-width = 64
-
 [sub_resource type="Gradient" id="Gradient_steel"]
 colors = PackedColorArray(0.62, 0.68, 0.78, 1, 0.1, 0.13, 0.22, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_agy81"]
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_mw68a"]
 gradient = SubResource("Gradient_steel")
 width = 64
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_l0ti0"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_y1ohu"]
 render_priority = 0
 shader = ExtResource("2_qio5c")
 shader_parameter/albedo_texture = ExtResource("3_qm72f")
-shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_ohbo0"), SubResource("GradientTexture1D_eubcm"), SubResource("GradientTexture1D_iap36"), SubResource("GradientTexture1D_ghfp2"), SubResource("GradientTexture1D_q083p"), SubResource("GradientTexture1D_ej4ut"), SubResource("GradientTexture1D_y1ohu"), SubResource("GradientTexture1D_agy81")])
+shader_parameter/gradient_palettes = Array[Texture2D]([SubResource("GradientTexture1D_qm72f"), SubResource("GradientTexture1D_ohbo0"), SubResource("GradientTexture1D_eubcm"), SubResource("GradientTexture1D_iap36"), SubResource("GradientTexture1D_ghfp2"), SubResource("GradientTexture1D_q083p"), SubResource("GradientTexture1D_ej4ut"), SubResource("GradientTexture1D_mw68a")])
 shader_parameter/palette_mode = 0
 shader_parameter/enable_palette = true
 shader_parameter/gradient_mask = 128
@@ -125,22 +125,22 @@ size = Vector3(1, 1.2, 1)
 ability_system_component = NodePath("AbilitySystemComponent")
 
 [node name="Enemy_Medium_ArmLeft" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="0" unique_id=809786486]
-material_override = SubResource("ShaderMaterial_l0ti0")
+material_override = SubResource("ShaderMaterial_y1ohu")
 
 [node name="Enemy_Medium_ArmRight" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="1" unique_id=1595301150]
-material_override = SubResource("ShaderMaterial_l0ti0")
+material_override = SubResource("ShaderMaterial_y1ohu")
 
 [node name="Enemy_Medium_Body" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="2" unique_id=1061602631]
-material_override = SubResource("ShaderMaterial_l0ti0")
+material_override = SubResource("ShaderMaterial_y1ohu")
 
 [node name="Enemy_Medium_Head" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="3" unique_id=1416759350]
-material_override = SubResource("ShaderMaterial_l0ti0")
+material_override = SubResource("ShaderMaterial_y1ohu")
 
 [node name="Enemy_Medium_LegLeft" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="4" unique_id=1163489825]
-material_override = SubResource("ShaderMaterial_l0ti0")
+material_override = SubResource("ShaderMaterial_y1ohu")
 
 [node name="Enemy_Medium_LegRight" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="5" unique_id=1818947811]
-material_override = SubResource("ShaderMaterial_l0ti0")
+material_override = SubResource("ShaderMaterial_y1ohu")
 
 [node name="WeaponSlot" parent="AnimationAnchor/AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" parent_id_path=PackedInt32Array(1495277970, 1921158861, 1434379050) index="6" unique_id=211580224]
 attack_mode = 0

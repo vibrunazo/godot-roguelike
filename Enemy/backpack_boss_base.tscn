@@ -1,0 +1,217 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Character/character.gd" id="1_char"]
+[ext_resource type="PackedScene" path="res://Enemy/animated_enemy_brute.tscn" id="2_anim_brute"]
+[ext_resource type="PackedScene" path="res://Enemy/Riders/backpack.tscn" id="3_backpack"]
+[ext_resource type="Script" path="res://Components/knockback_component.gd" id="4_knockback"]
+[ext_resource type="Script" path="res://Components/hurtbox.gd" id="5_hurtbox"]
+[ext_resource type="PackedScene" path="res://Components/health_bar.tscn" id="6_healthbar"]
+[ext_resource type="AudioStream" path="res://Assets/Audio/hit.ogg" id="7_hit_audio"]
+[ext_resource type="Script" path="res://StateMachine/state_machine.gd" id="8_sm"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_move.gd" id="9_move"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_stun.gd" id="10_stun"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_defeat.gd" id="11_defeat"]
+[ext_resource type="Script" path="res://StateMachine/EnemyStates/enemy_fall.gd" id="12_fall"]
+[ext_resource type="Script" path="res://StateMachine/CharacterStates/throw_riders_attack.gd" id="13_throw"]
+[ext_resource type="Script" path="res://StateMachine/CharacterStates/summon_riders_attack.gd" id="14_summon"]
+[ext_resource type="Script" path="res://StateMachine/ai_state_machine.gd" id="15_aism"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_conditional_attack.gd" id="16_conditional"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_wait.gd" id="17_wait"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_pursue.gd" id="18_pursue"]
+[ext_resource type="Script" path="res://Components/character_color_component.gd" id="19_color"]
+[ext_resource type="Script" path="res://Components/attribute_component.gd" id="20_attr"]
+[ext_resource type="Resource" path="res://Components/effect_has_riders.tres" id="21_riders_effect"]
+[ext_resource type="Script" path="res://Components/backpack_riders.gd" id="22_backpack_riders"]
+[ext_resource type="Script" path="res://Components/airborne_tracker.gd" id="23_airborne"]
+[ext_resource type="Script" path="res://Components/loot_component.gd" id="24_loot"]
+[ext_resource type="Script" path="res://Components/status_visuals_component.gd" id="25_status"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.4875
+height = 3.96
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_hurtbox"]
+radius = 1.0
+height = 4.0
+
+[node name="BackpackBossBase" type="CharacterBody3D" node_paths=PackedStringArray("mesh_mount", "attribute_component", "knockback_component", "animation_tree", "state_machine", "ai_state_machine", "navigation_agent_3d", "collision_shape_3d", "hurtbox", "color_component", "stun_state", "defeat_state") groups=["enemy"] editor_description="ABSTRACT BASE TEMPLATE for backpack bosses: one big brute-rig character carrying two riders in backpacks on its back. It holds what they share: body, components, the rider controller (BackpackRiders, empty here) and the throw and summon attacks with their AI. A concrete boss inherits it, puts a rider scene (Enemy/Riders/rider_*.tscn) in each backpack and lists them on BackpackRiders, then sets its palette, stats, its own attacks and AIPursue's body_state. Never spawn it directly."]
+collision_layer = 3
+collision_mask = 5
+script = ExtResource("1_char")
+mesh_mount = NodePath("AnimationAnchor")
+attribute_component = NodePath("AttributeComponent")
+knockback_component = NodePath("KnockbackComponent")
+animation_tree = NodePath("AnimationAnchor/AnimatedBrute/Enemy_Large/AnimationTree")
+state_machine = NodePath("StateMachine")
+ai_state_machine = NodePath("AIStateMachine")
+navigation_agent_3d = NodePath("NavigationAgent3D")
+collision_shape_3d = NodePath("CollisionShape3D")
+hurtbox = NodePath("Hurtbox")
+color_component = NodePath("CharacterColorComponent")
+stun_state = NodePath("StateMachine/EnemyStun")
+defeat_state = NodePath("StateMachine/EnemyDefeat")
+
+[node name="AnimationAnchor" type="Node3D" parent="."]
+transform = Transform3D(1.32, 0, 0, 0, 1.32, 0, 0, 0, 1.32, 0, 0, 0)
+
+[node name="AnimatedBrute" parent="AnimationAnchor" instance=ExtResource("2_anim_brute")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.5, 0)
+
+[node name="BackpackMount" type="BoneAttachment3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D"]
+transform = Transform3D(1, 0, 2.3841851e-07, 0, 1, 0, -2.3841851e-07, 0, 1, 0, 1.4252819, 0)
+bone_name = "spine"
+bone_idx = 2
+
+[node name="BackpackLeft" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/BackpackMount" instance=ExtResource("3_backpack")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0.05, -0.45)
+
+[node name="BackpackRight" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/BackpackMount" instance=ExtResource("3_backpack")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.75, 0.05, -0.45)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="KnockbackComponent" type="Node" parent="."]
+script = ExtResource("4_knockback")
+max_knockback = 0.0
+
+[node name="Hurtbox" type="Area3D" parent="." node_paths=PackedStringArray("hit_audio", "attribute_component", "knockback_component")]
+collision_layer = 128
+collision_mask = 0
+script = ExtResource("5_hurtbox")
+hit_audio = NodePath("../HitAudio")
+attribute_component = NodePath("../AttributeComponent")
+knockback_component = NodePath("../KnockbackComponent")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+shape = SubResource("CapsuleShape3D_hurtbox")
+
+[node name="HealthBar" parent="." node_paths=PackedStringArray("attribute_component") instance=ExtResource("6_healthbar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+attribute_component = NodePath("../AttributeComponent")
+
+[node name="HitAudio" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("7_hit_audio")
+bus = &"SFX"
+
+[node name="CharacterColorComponent" type="Node" parent="."]
+script = ExtResource("19_color")
+
+[node name="StateMachine" type="Node" parent="." node_paths=PackedStringArray("initial_state")]
+script = ExtResource("8_sm")
+initial_state = NodePath("EnemyMove")
+
+[node name="EnemyMove" type="Node" parent="StateMachine" node_paths=PackedStringArray("character", "fall_state")]
+script = ExtResource("9_move")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyStun" type="Node" parent="StateMachine" node_paths=PackedStringArray("next_state", "character", "fall_state")]
+script = ExtResource("10_stun")
+next_state = NodePath("../EnemyMove")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyDefeat" type="Node" parent="StateMachine" node_paths=PackedStringArray("character", "fall_state")]
+script = ExtResource("11_defeat")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyFall" type="Node" parent="StateMachine" node_paths=PackedStringArray("land_state", "character", "fall_state")]
+script = ExtResource("12_fall")
+land_state = NodePath("../EnemyStun")
+character = NodePath("../..")
+fall_state = NodePath(".")
+
+[node name="EnemyThrowRiders" type="Node" parent="StateMachine" node_paths=PackedStringArray("backpack", "next_states", "character", "fall_state")]
+script = ExtResource("13_throw")
+backpack = NodePath("../../BackpackRiders")
+next_states = [NodePath("../EnemyMove")]
+animation_name = "DualWieldSlash"
+uninterruptable = true
+cooldown = 30.0
+starting_cooldown = 30.0
+required_tags = Array[StringName]([&"has_riders"])
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemySummonRiders" type="Node" parent="StateMachine" node_paths=PackedStringArray("backpack", "next_states", "character", "fall_state")]
+script = ExtResource("14_summon")
+backpack = NodePath("../../BackpackRiders")
+next_states = [NodePath("../EnemyMove")]
+animation_name = "Flexing"
+uninterruptable = true
+cooldown = 20.0
+blocked_tags = Array[StringName]([&"has_riders"])
+start_cooldown_on_enabled = true
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="AIStateMachine" type="Node" parent="." node_paths=PackedStringArray("character", "initial_state")]
+script = ExtResource("15_aism")
+character = NodePath("..")
+initial_state = NodePath("AIPursue")
+
+[node name="AIThrowRiders" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("body_state", "next_state", "ai_state_machine")]
+script = ExtResource("16_conditional")
+trigger_range = 25.0
+priority = 10
+can_break_stun = true
+next_state = NodePath("../AIPursue")
+ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemyThrowRiders")
+
+[node name="AISummonRiders" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("body_state", "next_state", "ai_state_machine")]
+script = ExtResource("16_conditional")
+trigger_range = 30.0
+priority = 10
+can_break_stun = true
+next_state = NodePath("../AIPursue")
+ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemySummonRiders")
+
+[node name="AIWait" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("next_state", "ai_state_machine")]
+script = ExtResource("17_wait")
+next_state = NodePath("../AIPursue")
+ai_state_machine = NodePath("..")
+
+[node name="AIPursue" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("lost_target_state", "ai_state_machine")]
+script = ExtResource("18_pursue")
+lost_target_state = NodePath("../AIWait")
+attack_cooldown = 2.0
+can_break_stun = true
+ai_state_machine = NodePath("..")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+avoidance_enabled = true
+neighbor_distance = 4.0
+max_neighbors = 8
+time_horizon_agents = 0.5
+path_desired_distance = 0.9
+target_desired_distance = 1.5
+path_height_offset = -1.5
+
+[node name="AttributeComponent" type="Node" parent="."]
+script = ExtResource("20_attr")
+initial_effects = Array[GameplayEffect]([ExtResource("21_riders_effect")])
+
+[node name="BackpackRiders" type="Node" parent="." node_paths=PackedStringArray("character")]
+script = ExtResource("22_backpack_riders")
+character = NodePath("..")
+rider_effect = ExtResource("21_riders_effect")
+
+[node name="AirborneTracker" type="Node" parent="." node_paths=PackedStringArray("character")]
+script = ExtResource("23_airborne")
+character = NodePath("..")
+
+[node name="LootComponent" type="Node" parent="." node_paths=PackedStringArray("character")]
+script = ExtResource("24_loot")
+character = NodePath("..")
+
+[node name="StatusVisualsComponent" type="Node" parent="." node_paths=PackedStringArray("attribute_component", "visual_parent")]
+script = ExtResource("25_status")
+attribute_component = NodePath("../AttributeComponent")
+visual_parent = NodePath("..")
+
+[editable path="AnimationAnchor/AnimatedBrute"]
+[editable path="AnimationAnchor/AnimatedBrute/Enemy_Large"]

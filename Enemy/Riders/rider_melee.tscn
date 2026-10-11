@@ -1,0 +1,111 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Enemy/Riders/backpack_rider.gd" id="1_rider"]
+[ext_resource type="PackedScene" path="res://Enemy/animated_enemy.tscn" id="2_rig"]
+[ext_resource type="Script" path="res://Components/attack_component.gd" id="3_attack_comp"]
+[ext_resource type="Shader" path="res://Assets/Shaders/dash.tres" id="4_slash_shader"]
+[ext_resource type="Script" path="res://Player/slash_vfx.gd" id="5_slash_vfx"]
+[ext_resource type="AudioStream" path="res://Assets/Audio/fire-slash.ogg" id="6_fire_slash"]
+[ext_resource type="PackedScene" path="res://Enemy/lobbed_spawn_projectile.tscn" id="7_lob"]
+
+[sub_resource type="BoxShape3D" id="BoxShape_rider_hitbox"]
+size = Vector3(3.2, 2.6, 3.2)
+
+[sub_resource type="StandardMaterial3D" id="Mat_rider_sword"]
+shading_mode = 0
+albedo_color = Color(1, 0.5058824, 0, 1)
+
+[sub_resource type="CylinderMesh" id="Mesh_rider_sword"]
+top_radius = 0.1
+bottom_radius = 0.1
+
+[sub_resource type="Gradient" id="Gradient_rider_slash"]
+offsets = PackedFloat32Array(0, 0.8019802, 1)
+colors = PackedColorArray(1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_rider_slash"]
+gradient = SubResource("Gradient_rider_slash")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_rider_slash"]
+noise_type = 2
+frequency = 0.005
+fractal_type = 0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_rider_slash"]
+noise = SubResource("FastNoiseLite_rider_slash")
+seamless = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_rider_slash"]
+render_priority = 0
+shader = ExtResource("4_slash_shader")
+shader_parameter/Speed = 3.0
+shader_parameter/NoiseTexture = SubResource("NoiseTexture2D_rider_slash")
+shader_parameter/GradientParameter = SubResource("GradientTexture1D_rider_slash")
+shader_parameter/Threshold = 1.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_rider_slash"]
+size = Vector2(4, 2)
+
+[node name="MeleeRider" type="Node3D" node_paths=PackedStringArray("animation_tree", "body", "weapon_slot") editor_description="A melee backpack rider: side-slashes everything around it with a fire-trail sword when a foe comes close; thrown or summoned, it lands as a melee enemy. It has no palette of its own, so it wears its carrier's colors."]
+transform = Transform3D(-0.8, 0, 0, 0, 0.8, 0, 0, 0, -0.8, 0, -0.25, -0.05)
+script = ExtResource("1_rider")
+animation_tree = NodePath("AnimatedEnemy/Enemy_Medium/AnimationTree")
+body = NodePath("AnimatedEnemy")
+attack_state = &"SideSlash"
+weapon_slot = NodePath("AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot")
+max_range = 2.8
+cooldown = 1.6
+lob_scene = ExtResource("7_lob")
+
+[node name="AnimatedEnemy" parent="." instance=ExtResource("2_rig")]
+
+[node name="Enemy_Medium_LegLeft" parent="AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" index="4"]
+visible = false
+
+[node name="Enemy_Medium_LegRight" parent="AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" index="5"]
+visible = false
+
+[node name="WeaponSlot" parent="AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D" index="6" node_paths=PackedStringArray("hitbox")]
+hitbox = NodePath("HitboxArea")
+
+[node name="HitboxArea" type="Area3D" parent="AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="0"]
+collision_layer = 0
+collision_mask = 64
+monitoring = false
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("BoxShape_rider_hitbox")
+
+[node name="AttackComponent" type="Node" parent="AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea"]
+script = ExtResource("3_attack_comp")
+damage = 8.0
+knockback = Vector3(0, 2, 12)
+
+[node name="Sword" type="MeshInstance3D" parent="AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/HitboxArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+gi_mode = 0
+material_override = SubResource("Mat_rider_sword")
+mesh = SubResource("Mesh_rider_sword")
+
+[node name="SlashVFX" type="MeshInstance3D" parent="AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="1" node_paths=PackedStringArray("weapon_slot")]
+transform = Transform3D(0, 1, 0, 1, 0, 0, 0, 0, -1, -1.25, 2, 0)
+material_override = SubResource("ShaderMaterial_rider_slash")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_rider_slash")
+script = ExtResource("5_slash_vfx")
+weapon_slot = NodePath("..")
+attack_type = 1
+
+[node name="AttackAudio" type="AudioStreamPlayer3D" parent="AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" index="2"]
+stream = ExtResource("6_fire_slash")
+volume_db = 10.0
+max_db = 5.0
+bus = &"SFX"
+
+[connection signal="slash" from="AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot" to="AnimatedEnemy/Enemy_Medium/Rig_Medium/Skeleton3D/WeaponSlot/AttackAudio" method="play"]
+
+[editable path="AnimatedEnemy"]
+[editable path="AnimatedEnemy/Enemy_Medium"]

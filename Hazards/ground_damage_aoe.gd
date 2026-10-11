@@ -129,17 +129,25 @@ func _arm_lifetime_timers() -> void:
 	_visual_timer.timeout.connect(expire)
 
 func _duplicate_visual_materials() -> void:
-	var sw: MeshInstance3D = _get_shockwave_mesh()
-	if sw != null and sw.material_override != null:
-		sw.material_override = sw.material_override.duplicate()
-
-	var gi: MeshInstance3D = _get_ground_indicator()
-	if gi != null and gi.material_override != null:
-		gi.material_override = gi.material_override.duplicate()
+	_own_material(_get_shockwave_mesh())
+	_own_material(_get_ground_indicator())
 
 	var p: GPUParticles3D = _get_particles()
 	if p != null and p.process_material != null:
 		p.process_material = p.process_material.duplicate()
+
+
+## Gives mesh_instance its own copy of its material as material_override
+## (taken from the mesh itself when the scene sets it there), so tinting it
+## with aoe_color and fading it out never touch other instances.
+func _own_material(mesh_instance: MeshInstance3D) -> void:
+	if mesh_instance == null:
+		return
+	var material: Material = mesh_instance.material_override
+	if material == null and mesh_instance.mesh != null and mesh_instance.mesh.get_surface_count() > 0:
+		material = mesh_instance.mesh.surface_get_material(0)
+	if material != null:
+		mesh_instance.material_override = material.duplicate()
 
 
 ## Applies the radius and height to the CylinderShape3D and visual meshes.

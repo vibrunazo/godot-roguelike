@@ -1,20 +1,17 @@
 ## Akira boss:
-## - Registered as an enemy; minimum_spawn_difficulty keeps it out of regular
-##   waves below that difficulty (boss arenas spawn it directly).
 ## - Its capsule rests on the floor.
 ## - Throws firebombs that leave fire traps built from that bomb's settings.
-## - Its backpack riders side-slash a player in their zone with the fire slash
-##   VFX, then can swing again once their own cooldown has passed.
+## - Its melee backpack riders side-slash a player in their zone with the fire
+##   slash VFX, then can swing again once their own cooldown has passed.
 ## - After a swing the riders go back to idling (not a T-pose).
 ## - With full fire resistance it ignores fire (no damage, reaction, stun or
 ##   burn) but not physical hits; burns apply once resistance is lowered; a
 ##   live fire trap harms a normal enemy next to it but not the boss.
 ## - Hits during an ability interrupt it only when the ability is
 ##   interruptable; stun cancels follow each mind state's can_break_stun.
-## - The has_riders tag gates throwing riders versus summoning helpers;
-##   throwing detaches the riders and spawns a minion per rider, summoning
-##   spawns ground minions and restores the riders; a thrown rider hurts a
-##   player where it lands.
+## What every backpack boss shares (riders boarding and leaving, throwing and
+## summoning them) is test_backpack_bosses; boss levels and the regular-wave
+## gate are test_boss_arena_1.
 ## Tunable values (difficulties, sizes, resistances, cooldowns, damage) are
 ## never asserted, not even relative to other enemies: tests either read them
 ## from the live nodes or set their own. Art (meshes, colors, VFX assets,
@@ -26,19 +23,14 @@ const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const FIRE_TRAP_SCENE: PackedScene = preload("res://Hazards/fire_trap.tscn")
 const BURN_EFFECT: GameplayEffect = preload("res://Components/effect_fire_burn.tres")
-const RIDERS_TAG: StringName = &"has_riders"
-## The boss carries one rider on each side.
-const RIDER_COUNT: int = 2
 ## Test-owned values.
 const TEST_DAMAGE: float = 10.0
 const THROW_DISTANCE: float = 6.0
-const TEST_ABILITY_DELAY: float = 0.05
 const TEST_TRAP_SIZE: Vector2 = Vector2(4.0, 2.0)
 const TEST_TRAP_INTERVAL: float = 0.1
-## Test-owned fire resistances (1.0 = immune, 0.0 = none) and spawn gate.
+## Test-owned fire resistances (1.0 = immune, 0.0 = none).
 const IMMUNE: float = 1.0
 const VULNERABLE: float = 0.0
-const TEST_GATE_OFFSET: int = 5
 ## Generous budget for ability flights, landings and AI decisions.
 const LONG_FRAMES: int = 900
 ## Test-owned health for the test player, so boss attacks never end the run
@@ -58,24 +50,7 @@ func after_each() -> void:
 	UI.resume_game()
 
 
-# --- Registration and body -----------------------------------------------------
-
-func test_boss_is_registered_and_gated_by_its_minimum_spawn_difficulty() -> void:
-	var registered: EnemyResource = GlobalVars.get_enemy_resource(BOSS_SCENE)
-	if not check(registered != null, "GlobalVars.enemies should register the boss"):
-		return
-	var boss: Character = autofree(registered.scene.instantiate()) as Character
-	check(boss.is_enemy(), "the registered boss scene should be an enemy")
-	# Gate a copy of the boss's resource with a test-owned minimum difficulty,
-	# so the check covers the gating, not how the boss happens to be tuned.
-	var gated: EnemyResource = registered.duplicate() as EnemyResource
-	gated.minimum_spawn_difficulty = gated.difficulty_level + TEST_GATE_OFFSET
-	var resources: Array[EnemyResource] = [gated]
-	var tier: int = gated.difficulty_level
-	check((ProgressionState.build_difficulty_pool(resources).get(tier, []) as Array).has(gated), "ungated, the pool should offer the boss at its difficulty")
-	check(not (ProgressionState.build_difficulty_pool(resources, gated.minimum_spawn_difficulty - 1).get(tier, []) as Array).has(gated), "below its minimum difficulty the boss must not appear in regular waves")
-	check((ProgressionState.build_difficulty_pool(resources, gated.minimum_spawn_difficulty).get(tier, []) as Array).has(gated), "at its minimum difficulty the boss should join regular waves")
-
+# --- Body -----------------------------------------------------------------------
 
 func test_boss_rests_on_the_floor() -> void:
 	var boss: Character = _spawn_still(BOSS_SCENE, Vector3(0.0, _floor_top + 3.0, 0.0))
@@ -117,8 +92,8 @@ func test_boss_firebombs_leave_fire_traps_built_from_the_bomb() -> void:
 
 func test_riders_slash_a_player_in_their_zone_and_swing_again_after_cooldown() -> void:
 	var boss: Character = await _settled_boss()
-	var riders: AkiraBossRiders = boss.get_node("RiderController") as AkiraBossRiders
-	var slot: WeaponSlot = riders.left_rider_root.find_child("WeaponSlot", true, false) as WeaponSlot
+	var rider: BackpackRider = _rider(boss)
+	var slot: WeaponSlot = rider.weapon_slot
 	var zone: CollisionShape3D = slot.hitbox.find_child("CollisionShape3D", true, false) as CollisionShape3D
 	var player: Character = await _grounded_player(Vector3(zone.global_position.x, _floor_top + 1.0, zone.global_position.z))
 	player.knockback_component.max_knockback = 0.0
@@ -132,15 +107,15 @@ func test_riders_slash_a_player_in_their_zone_and_swing_again_after_cooldown() -
 			if material != null:
 				min_threshold[0] = minf(min_threshold[0], float(material.get_shader_parameter("Threshold")))
 	get_tree().physics_frame.connect(watch_vfx)
-	riders.force_rider_attack(true)
-	check(not riders.is_rider_ready(true), "a swing should start the rider's cooldown")
+	rider.attack(player)
+	check(not rider.is_ready(), "a swing should start the rider's cooldown")
 	var first_hit: bool = await wait_signal(player.hurtbox.struck, "the rider's side-slash should hit a player in its zone", LONG_FRAMES)
 	# The rider controller swings on its own at a player in range once its
 	# cooldown has passed, so a second hit must follow within one swing plus
 	# one cooldown (stale hit exceptions would block it).
 	var second_hit: bool = false
 	if first_hit:
-		second_hit = await wait_signal(player.hurtbox.struck, "the rider should hit again after its cooldown (no stale hit exceptions)", _frames_for(_slash_length(riders) + riders.attack_cooldown))
+		second_hit = await wait_signal(player.hurtbox.struck, "the rider should hit again after its cooldown (no stale hit exceptions)", _frames_for(_attack_length(rider) + rider.cooldown))
 	get_tree().physics_frame.disconnect(watch_vfx)
 	if vfx != null:
 		check(vfx_seen[0], "the fire slash VFX should show during the swing")
@@ -149,20 +124,24 @@ func test_riders_slash_a_player_in_their_zone_and_swing_again_after_cooldown() -
 
 func test_riders_return_to_idle_after_a_swing() -> void:
 	var boss: Character = await _settled_boss()
-	var riders: AkiraBossRiders = boss.get_node("RiderController") as AkiraBossRiders
-	var tree: MannequinAnimationTree = riders.left_rider_tree
-	riders.force_rider_attack(true)
-	if not await wait_until(func() -> bool: return riders.is_rider_swinging(true), "a forced swing should put the rider in its slash state", 10):
+	var rider: BackpackRider = _rider(boss)
+	rider.attack(null)
+	if not await wait_until(func() -> bool: return rider.is_attacking(), "a forced swing should put the rider in its attack state", 10):
 		return
-	if not await wait_until(func() -> bool: return not riders.is_rider_swinging(true), "the rider's swing should end", _frames_for(_slash_length(riders)) + 30):
+	if not await wait_until(func() -> bool: return not rider.is_attacking(), "the rider's swing should end", _frames_for(_attack_length(rider)) + 30):
 		return
-	check_eq(tree.playback.get_current_node(), &"WalkSpace", "the rider should idle after a swing, not T-pose")
+	check_eq(rider.animation_tree.playback.get_current_node(), rider.idle_state, "the rider should idle after a swing, not T-pose")
 
 
-## Seconds the riders' side-slash animation lasts.
-func _slash_length(riders: AkiraBossRiders) -> float:
-	var tree: MannequinAnimationTree = riders.left_rider_tree
-	var state: AnimationNodeAnimation = (tree.tree_root as AnimationNodeStateMachine).get_node(riders.slash_state) as AnimationNodeAnimation
+## The boss's first backpack rider.
+func _rider(boss: Character) -> BackpackRider:
+	return (boss.get_node("BackpackRiders") as BackpackRiders).riders[0]
+
+
+## Seconds the rider's attack animation lasts.
+func _attack_length(rider: BackpackRider) -> float:
+	var tree: MannequinAnimationTree = rider.animation_tree
+	var state: AnimationNodeAnimation = (tree.tree_root as AnimationNodeStateMachine).get_node(rider.attack_state) as AnimationNodeAnimation
 	return (tree.get_node(tree.anim_player) as AnimationPlayer).get_animation(state.animation).length
 
 
@@ -294,89 +273,6 @@ func test_a_stunned_boss_breaks_out_into_an_ability_on_its_own() -> void:
 		return false, "a stunned boss with a player in range should break out into an ability", LONG_FRAMES)
 
 
-# --- Riders tag, throw and summon ----------------------------------------------
-
-func test_riders_tag_gates_throwing_versus_summoning() -> void:
-	var boss: Character = await _settled_boss()
-	var attributes: AttributeComponent = boss.attribute_component
-	check(boss.has_tag(RIDERS_TAG), "the boss should start with its riders")
-	var required: Array[StringName] = [RIDERS_TAG]
-	var any: Array[StringName] = [RIDERS_TAG, &"test_missing_tag"]
-	check(boss.has_all_tags(required) and boss.has_any_tag(any), "tag queries should see the riders tag")
-	var events: Array[StringName] = [&"", &""]
-	attributes.tag_added.connect(func(tag: StringName) -> void: events[0] = tag)
-	attributes.tag_removed.connect(func(tag: StringName) -> void: events[1] = tag)
-	attributes.add_tag(&"test_tag")
-	check_eq(events[0], &"test_tag", "adding a tag should emit tag_added")
-	attributes.remove_tag(&"test_tag")
-	check_eq(events[1], &"test_tag", "removing a tag should emit tag_removed")
-	var throw: CharacterAttack = boss.state_machine.get_node("EnemyThrowRiders") as CharacterAttack
-	var summon: CharacterAttack = boss.state_machine.get_node("EnemySummonHelpers") as CharacterAttack
-	throw.cooldown_timer = 0.0
-	summon.cooldown_timer = 0.0
-	check(throw.can_activate() and not summon.can_activate(), "with riders the boss may throw them but not summon helpers")
-	attributes.remove_tag(RIDERS_TAG)
-	await wait_physics_frames(1)
-	check(not throw.can_activate(), "without riders the boss must not throw them")
-	if summon.start_cooldown_on_enabled:
-		check(summon.cooldown_timer > 0.0, "summoning should start its cooldown when it becomes available")
-	summon.cooldown_timer = 0.0
-	check(summon.can_activate(), "without riders and off cooldown the boss may summon helpers")
-	attributes.add_tag(RIDERS_TAG)
-	check(throw.can_activate() and not summon.can_activate(), "regaining riders should re-enable throwing and block summoning")
-
-
-func test_throwing_riders_detaches_them_and_spawns_a_minion_per_rider() -> void:
-	var boss: Character = await _settled_boss()
-	var riders: AkiraBossRiders = boss.get_node("RiderController") as AkiraBossRiders
-	var player: Character = await _grounded_player(boss.global_position + Vector3(0.0, 0.0, THROW_DISTANCE))
-	boss.current_target = player
-	var throw: AkiraBossThrowRidersAttack = boss.state_machine.get_node("EnemyThrowRiders") as AkiraBossThrowRidersAttack
-	throw.cooldown_timer = 0.0
-	throw.throw_delay = TEST_ABILITY_DELAY
-	boss.state_machine.request_state("EnemyThrowRiders")
-	if not await wait_until(func() -> bool: return not riders.has_riders(), "throwing should detach the riders", LONG_FRAMES):
-		return
-	check(not boss.has_tag(RIDERS_TAG), "throwing should remove the riders tag")
-	check(not riders.left_rider_root.visible and not riders.right_rider_root.visible, "thrown riders should no longer show on the boss")
-	await wait_until(func() -> bool: return _minions(boss).size() >= RIDER_COUNT, "each thrown rider should land as a minion", LONG_FRAMES)
-
-
-func test_a_thrown_rider_hurts_the_player_where_it_lands() -> void:
-	var boss: Character = await _settled_boss()
-	var player: Character = await _grounded_player(boss.global_position + Vector3(0.0, 0.0, THROW_DISTANCE))
-	var throw: AkiraBossThrowRidersAttack = boss.state_machine.get_node("EnemyThrowRiders") as AkiraBossThrowRidersAttack
-	# One rider on its own, landing on the player with test-owned damage and
-	# no minion, so only the landing blast can hurt the player.
-	var rider: LobbedSpawnProjectile = spawn(throw.projectile_scene, _arena, boss.global_position + Vector3.UP * 2.0) as LobbedSpawnProjectile
-	rider.shooter = boss
-	rider.area_damage = TEST_DAMAGE
-	rider.spawn_enemy_on_land = false
-	rider.set_target_position(Vector3(player.global_position.x, _floor_top, player.global_position.z))
-	rider.initialize_trajectory()
-	var before: float = _health(player)
-	await wait_until(func() -> bool: return _health(player) < before, "the rider's landing should hurt the player it lands on", LONG_FRAMES)
-
-
-func test_summoning_helpers_spawns_minions_and_restores_the_riders() -> void:
-	var boss: Character = await _settled_boss()
-	var riders: AkiraBossRiders = boss.get_node("RiderController") as AkiraBossRiders
-	riders.detach_riders()
-	boss.attribute_component.remove_effect(RIDERS_TAG)
-	boss.attribute_component.remove_tag(RIDERS_TAG)
-	await wait_physics_frames(1)
-	if not check(not riders.has_riders() and not boss.has_tag(RIDERS_TAG), "setup: the boss should have no riders"):
-		return
-	var summon: AkiraBossSummonHelpersAttack = boss.state_machine.get_node("EnemySummonHelpers") as AkiraBossSummonHelpersAttack
-	summon.cooldown_timer = 0.0
-	summon.summon_delay = TEST_ABILITY_DELAY
-	boss.state_machine.request_state("EnemySummonHelpers")
-	if not await wait_until(func() -> bool: return riders.has_riders() and _minions(boss).size() >= RIDER_COUNT, "summoning should spawn ground minions and restore the riders", LONG_FRAMES):
-		return
-	check(boss.has_tag(RIDERS_TAG), "restored riders should bring back the riders tag")
-	check(riders.left_rider_root.visible and riders.right_rider_root.visible, "restored riders should show on the boss again")
-
-
 # --- helpers -------------------------------------------------------------------
 
 func _spawn(scene: PackedScene, at: Vector3) -> Character:
@@ -405,15 +301,6 @@ func _grounded_player(at: Vector3) -> Character:
 	player.attribute_component.set_base(AttributeComponent.STAT_MAX_HEALTH, PLAYER_HEALTH)
 	await wait_until(func() -> bool: return player.is_on_floor(), "the player should land")
 	return player
-
-
-## Living enemies other than the boss (thrown riders and summoned helpers).
-func _minions(boss: Character) -> Array[Character]:
-	var found: Array[Character] = []
-	for node: Node in get_tree().get_nodes_in_group("enemy"):
-		if node != boss and node is Character and (node as Character).is_alive():
-			found.append(node as Character)
-	return found
 
 
 ## Nodes of a class spawned into the world (game code parents them to the suite).

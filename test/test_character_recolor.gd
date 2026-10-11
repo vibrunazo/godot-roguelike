@@ -2,6 +2,8 @@
 ## - every character (player and each enemy type) recolors all of its body
 ##   meshes with its own palette material and never its weapons or VFX, and
 ##   the shader uses the component's palette mode,
+## - a rig nested in a character (a backpack rider) that has its own
+##   component keeps its own palette; one without wears its carrier's,
 ## - only slots with an assigned gradient are recolored; setting and clearing
 ##   a slot switches exactly that slot,
 ## - the global tint reaches the shader,
@@ -19,6 +21,7 @@ const CHARACTER_SCENES: Array[String] = [
 	"res://Enemy/enemy_thunder_mage.tscn",
 ]
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
+const RIG_SCENE: PackedScene = preload("res://Enemy/animated_enemy.tscn")
 ## Palette columns the shader reads.
 const SLOT_COUNT: int = 8
 ## Test-owned colors.
@@ -45,6 +48,22 @@ func test_every_character_recolors_its_body_but_never_its_gear() -> void:
 		character.queue_free()
 
 
+func test_a_nested_rig_keeps_its_own_palette_and_one_without_wears_its_carriers() -> void:
+	var carrier: Character = autofree(MELEE_SCENE.instantiate()) as Character
+	var own_rig: Node3D = _nested_rig(carrier, true)
+	var plain_rig: Node3D = _nested_rig(carrier, false)
+	add_child(carrier)
+	await get_tree().process_frame
+	var own_colors: CharacterColorComponent = own_rig.get_node("CharacterColorComponent") as CharacterColorComponent
+	var own_meshes: Array[MeshInstance3D] = _skinned_meshes(own_rig)
+	check(not own_meshes.is_empty(), "setup: the nested rig should have body meshes")
+	for mesh: MeshInstance3D in own_meshes:
+		check(mesh.material_override == own_colors.material, "a nested rig with its own palette should keep it (%s)" % mesh.name)
+		check(not carrier.color_component.get_body_meshes().has(mesh), "the carrier must not count a nested rig with its own palette as its body (%s)" % mesh.name)
+	for mesh: MeshInstance3D in _skinned_meshes(plain_rig):
+		check(mesh.material_override == carrier.color_component.material, "a nested rig without a palette should wear its carrier's (%s)" % mesh.name)
+
+
 func test_only_slots_with_a_gradient_are_recolored() -> void:
 	var colors: CharacterColorComponent = (spawn(MELEE_SCENE) as Character).color_component
 	await get_tree().process_frame
@@ -68,6 +87,28 @@ func test_a_component_exposes_one_slot_per_palette_column() -> void:
 	add_child(colors)
 	check_eq(colors.gradients.size(), SLOT_COUNT, "a component should expose one gradient slot per palette column")
 	check(colors.material != null and colors.material.shader != null, "a component should build its palette material")
+
+
+## A rig seated in the carrier's mesh mount (like a backpack rider), with its
+## own CharacterColorComponent when own_palette.
+func _nested_rig(carrier: Character, own_palette: bool) -> Node3D:
+	var seat: Node3D = Node3D.new()
+	seat.add_child(RIG_SCENE.instantiate())
+	if own_palette:
+		var colors: CharacterColorComponent = CharacterColorComponent.new()
+		colors.name = "CharacterColorComponent"
+		seat.add_child(colors)
+	carrier.get_node("AnimationAnchor").add_child(seat)
+	return seat
+
+
+## The meshes under root parented to a Skeleton3D (a rig's body meshes).
+func _skinned_meshes(root: Node) -> Array[MeshInstance3D]:
+	var meshes: Array[MeshInstance3D] = []
+	for node: Node in root.find_children("*", "MeshInstance3D", true, false):
+		if node.get_parent() is Skeleton3D:
+			meshes.append(node as MeshInstance3D)
+	return meshes
 
 
 func _mask(colors: CharacterColorComponent) -> int:

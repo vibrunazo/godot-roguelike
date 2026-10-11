@@ -1,0 +1,276 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Enemy/backpack_boss_base.tscn" id="1_base"]
+[ext_resource type="PackedScene" path="res://Enemy/Riders/rider_thunder_mage.tscn" id="2_rider"]
+[ext_resource type="Script" path="res://StateMachine/character_attack.gd" id="3_attack"]
+[ext_resource type="Script" path="res://StateMachine/CharacterStates/ground_slam_attack.gd" id="4_slam_attack"]
+[ext_resource type="Script" path="res://StateMachine/AIStates/ai_conditional_attack.gd" id="5_conditional"]
+[ext_resource type="PackedScene" path="res://Hazards/ground_damage_aoe.tscn" id="6_ground_aoe"]
+[ext_resource type="Resource" path="res://Player/dash_landing_assist.tres" id="7_landing_assist"]
+[ext_resource type="Shader" path="res://Assets/Shaders/dash.tres" id="8_slash_shader"]
+[ext_resource type="Script" path="res://Player/slash_vfx.gd" id="9_slash_vfx"]
+[ext_resource type="AudioStream" path="res://Assets/Audio/weapon-swing.ogg" id="10_swing_audio"]
+
+[sub_resource type="Gradient" id="Gradient_scope_creep"]
+colors = PackedColorArray(0.34, 0.47, 0.78, 1, 0.07, 0.09, 0.27, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_greatsword"]
+size = Vector3(0.9, 2.85, 2.3)
+
+[sub_resource type="StandardMaterial3D" id="Mat_blade"]
+albedo_color = Color(0.72, 0.76, 0.84, 1)
+metallic = 0.75
+roughness = 0.28
+
+[sub_resource type="StandardMaterial3D" id="Mat_grip"]
+albedo_color = Color(0.18, 0.12, 0.1, 1)
+roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="Mat_gold"]
+albedo_color = Color(0.95, 0.75, 0.25, 1)
+metallic = 0.9
+roughness = 0.3
+
+[sub_resource type="StandardMaterial3D" id="Mat_fuller"]
+albedo_color = Color(0.55, 0.85, 1, 1)
+emission_enabled = true
+emission = Color(0.4, 0.75, 1, 1)
+emission_energy_multiplier = 2.5
+
+[sub_resource type="CylinderMesh" id="Mesh_grip"]
+material = SubResource("Mat_grip")
+top_radius = 0.065
+bottom_radius = 0.065
+height = 0.6
+radial_segments = 12
+rings = 1
+
+[sub_resource type="SphereMesh" id="Mesh_pommel"]
+material = SubResource("Mat_gold")
+radius = 0.1
+height = 0.2
+radial_segments = 12
+rings = 6
+
+[sub_resource type="BoxMesh" id="Mesh_crossguard"]
+material = SubResource("Mat_gold")
+size = Vector3(0.95, 0.14, 0.26)
+
+[sub_resource type="BoxMesh" id="Mesh_blade"]
+material = SubResource("Mat_blade")
+size = Vector3(0.46, 2.2, 0.12)
+
+[sub_resource type="PrismMesh" id="Mesh_blade_tip"]
+material = SubResource("Mat_blade")
+size = Vector3(0.46, 0.5, 0.12)
+
+[sub_resource type="BoxMesh" id="Mesh_fuller"]
+material = SubResource("Mat_fuller")
+size = Vector3(0.1, 2, 0.14)
+
+[sub_resource type="Gradient" id="Gradient_storm_slash"]
+offsets = PackedFloat32Array(0, 0.8019802, 1)
+colors = PackedColorArray(0.25, 0.1, 1, 1, 0.4, 0.85, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_storm_slash"]
+gradient = SubResource("Gradient_storm_slash")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_storm_slash"]
+noise_type = 2
+frequency = 0.005
+fractal_type = 0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_storm_slash"]
+noise = SubResource("FastNoiseLite_storm_slash")
+seamless = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_storm_slash"]
+render_priority = 0
+shader = ExtResource("8_slash_shader")
+shader_parameter/Speed = 3.0
+shader_parameter/NoiseTexture = SubResource("NoiseTexture2D_storm_slash")
+shader_parameter/GradientParameter = SubResource("GradientTexture1D_storm_slash")
+shader_parameter/Threshold = 1.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_storm_slash"]
+size = Vector2(3, 2.4)
+
+[node name="ScopeCreepBoss" instance=ExtResource("1_base")]
+editor_description="Scope Creep, a backpack boss: a storm-blue brute whose greatsword grew a little every sprint, with two thunder mages riding in his backpacks. Up close he swings the greatsword (sometimes twice), from mid range he lunges in with a stab, and he slams the blade down for an electric shockwave. His mages turn in their seats and cast lightning bolts at range; he throws them at the player (they land as thunder mages) and flexes to call new ones."
+
+[node name="Rider" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/BackpackMount/BackpackLeft" instance=ExtResource("2_rider")]
+
+[node name="Rider" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/BackpackMount/BackpackRight" instance=ExtResource("2_rider")]
+
+[node name="CollisionShape3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/HitboxArea"]
+transform = Transform3D(1, 0, 0, 0, 0.9659258, 0.258819, 0, -0.258819, 0.9659258, 0, 1.4238, -1.158)
+shape = SubResource("BoxShape3D_greatsword")
+
+[node name="AttackComponent" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/HitboxArea"]
+shake_on_damage = true
+
+[node name="Greatsword" type="Node3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot"]
+transform = Transform3D(1, 0, 0, 0, 0.9659258, 0.258819, 0, -0.258819, 0.9659258, 0, 0, 0)
+
+[node name="Grip" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword"]
+gi_mode = 0
+mesh = SubResource("Mesh_grip")
+
+[node name="Pommel" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.36, 0)
+gi_mode = 0
+mesh = SubResource("Mesh_pommel")
+
+[node name="Crossguard" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.33, 0)
+gi_mode = 0
+mesh = SubResource("Mesh_crossguard")
+
+[node name="Blade" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+gi_mode = 0
+mesh = SubResource("Mesh_blade")
+
+[node name="BladeTip" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.85, 0)
+gi_mode = 0
+mesh = SubResource("Mesh_blade_tip")
+
+[node name="Fuller" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.45, 0)
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("Mesh_fuller")
+
+[node name="StormLight" type="OmniLight3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+light_color = Color(0.45, 0.7, 1, 1)
+light_energy = 1.4
+omni_range = 3.0
+
+[node name="SlashVFX" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword" node_paths=PackedStringArray("weapon_slot")]
+transform = Transform3D(0, 1, 0, 1, 0, 0, 0, 0, -1, -1.2, 1.4, 0)
+material_override = SubResource("ShaderMaterial_storm_slash")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_storm_slash")
+script = ExtResource("9_slash_vfx")
+weapon_slot = NodePath("../..")
+attack_type = 1
+
+[node name="SwingAudio" type="AudioStreamPlayer3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot"]
+stream = ExtResource("10_swing_audio")
+volume_db = 6.0
+bus = &"SFX"
+
+[node name="HealthBar" parent="."]
+fill_color = Color(0.35, 0.6, 1, 1)
+
+[node name="CharacterColorComponent" parent="."]
+gradients = Array[Gradient]([null, null, null, null, null, null, null, SubResource("Gradient_scope_creep")])
+
+[node name="EnemyThrowRiders" parent="StateMachine"]
+cooldown = 24.0
+starting_cooldown = 24.0
+
+[node name="EnemySummonRiders" parent="StateMachine"]
+cooldown = 18.0
+
+[node name="EnemySwordSwing" type="Node" parent="StateMachine" node_paths=PackedStringArray("next_states", "weapon_slot", "character", "fall_state")]
+script = ExtResource("3_attack")
+damage = 24.0
+knockback = 18.0
+next_states = [NodePath("../EnemyMove"), NodePath("../EnemySwordSlash")]
+animation_name = "SwordSwing"
+weapon_slot = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot")
+self_hitstop_duration = 0.12
+uninterruptable = true
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemySwordSlash" type="Node" parent="StateMachine" node_paths=PackedStringArray("next_states", "weapon_slot", "character", "fall_state")]
+script = ExtResource("3_attack")
+damage = 20.0
+knockback = 22.0
+next_states = [NodePath("../EnemyMove")]
+animation_name = "SwordSlash"
+weapon_slot = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot")
+self_hitstop_duration = 0.12
+uninterruptable = true
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyLungeStab" type="Node" parent="StateMachine" node_paths=PackedStringArray("next_states", "weapon_slot", "lunge_landing_assist", "character", "fall_state")]
+script = ExtResource("3_attack")
+damage = 28.0
+knockback = 24.0
+next_states = [NodePath("../EnemyMove")]
+animation_name = "SwordStab"
+weapon_slot = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot")
+self_hitstop_duration = 0.12
+uninterruptable = true
+cooldown = 7.0
+starting_cooldown = 4.0
+dash_speed = 12.0
+dash_duration = 0.3
+lunge_landing_assist = ExtResource("7_landing_assist")
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="EnemyThunderSlam" type="Node" parent="StateMachine" node_paths=PackedStringArray("next_states", "weapon_slot", "character", "fall_state")]
+script = ExtResource("4_slam_attack")
+aoe_scene = ExtResource("6_ground_aoe")
+damage = 34.0
+knockback = 30.0
+next_states = [NodePath("../EnemyMove")]
+animation_name = "MeleeAttack"
+weapon_slot = NodePath("../../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/WeaponSlot")
+self_hitstop_duration = 0.25
+uninterruptable = true
+cooldown = 12.0
+starting_cooldown = 8.0
+aoe_radius = 4.5
+aoe_height = 0.4
+aoe_forward_offset = 3.2
+aoe_color = Color(0.45, 0.7, 1, 1)
+friendly_fire = true
+character = NodePath("../..")
+fall_state = NodePath("../EnemyFall")
+
+[node name="AIPursue" parent="AIStateMachine" node_paths=PackedStringArray("body_state")]
+attack_range = 4.5
+attack_cooldown = 1.8
+body_state = NodePath("../../StateMachine/EnemySwordSwing")
+
+[node name="AISlam" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("body_state", "next_state", "ai_state_machine")]
+script = ExtResource("5_conditional")
+trigger_range = 5.5
+priority = 5
+next_state = NodePath("../AIPursue")
+ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemyThunderSlam")
+
+[node name="AILunge" type="Node" parent="AIStateMachine" node_paths=PackedStringArray("body_state", "next_state", "ai_state_machine")]
+script = ExtResource("5_conditional")
+trigger_range = 10.0
+min_range = 5.5
+require_clear_shot = true
+priority = 3
+desired_angle = 30.0
+next_state = NodePath("../AIPursue")
+ai_state_machine = NodePath("..")
+body_state = NodePath("../../StateMachine/EnemyLungeStab")
+
+[node name="AttributeComponent" parent="."]
+base_max_health = 850.0
+base_attack = 120.0
+base_speed = 2.4
+base_rotation_speed = 100.0
+
+[node name="BackpackRiders" parent="." node_paths=PackedStringArray("riders")]
+riders = [NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/BackpackMount/BackpackLeft/Rider"), NodePath("../AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/BackpackMount/BackpackRight/Rider")]
+
+[connection signal="slash" from="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot" to="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/SwingAudio" method="play"]
+
+[editable path="AnimationAnchor/AnimatedBrute"]
+[editable path="AnimationAnchor/AnimatedBrute/Enemy_Large"]

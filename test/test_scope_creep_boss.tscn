@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://test/test_scope_creep_boss.gd" id="1_script"]
+
+[node name="TestScopeCreepBoss" type="Node3D"]
+script = ExtResource("1_script")
