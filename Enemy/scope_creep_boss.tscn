@@ -7,8 +7,8 @@
 [ext_resource type="Script" path="res://StateMachine/AIStates/ai_conditional_attack.gd" id="5_conditional"]
 [ext_resource type="PackedScene" path="res://Hazards/ground_damage_aoe.tscn" id="6_ground_aoe"]
 [ext_resource type="Resource" path="res://Player/dash_landing_assist.tres" id="7_landing_assist"]
-[ext_resource type="Shader" path="res://Assets/Shaders/dash.tres" id="8_slash_shader"]
-[ext_resource type="Script" path="res://Player/slash_vfx.gd" id="9_slash_vfx"]
+[ext_resource type="Shader" path="res://Shaders/weapon_trail.gdshader" id="8_trail_shader"]
+[ext_resource type="Script" path="res://Player/weapon_trail.gd" id="9_weapon_trail"]
 [ext_resource type="AudioStream" path="res://Assets/Audio/weapon-swing.ogg" id="10_swing_audio"]
 
 [sub_resource type="Gradient" id="Gradient_scope_creep"]
@@ -68,32 +68,65 @@ size = Vector3(0.46, 0.5, 0.12)
 material = SubResource("Mat_fuller")
 size = Vector3(0.1, 2, 0.14)
 
-[sub_resource type="Gradient" id="Gradient_storm_slash"]
-offsets = PackedFloat32Array(0, 0.8019802, 1)
-colors = PackedColorArray(0.25, 0.1, 1, 1, 0.4, 0.85, 1, 1, 1, 1, 1, 1)
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_storm_trail"]
+frequency = 0.02
+fractal_octaves = 3
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_storm_slash"]
-gradient = SubResource("Gradient_storm_slash")
-
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_storm_slash"]
-noise_type = 2
-frequency = 0.005
-fractal_type = 0
-
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_storm_slash"]
-noise = SubResource("FastNoiseLite_storm_slash")
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_storm_trail"]
+width = 256
+height = 256
 seamless = true
+noise = SubResource("FastNoiseLite_storm_trail")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_storm_slash"]
-render_priority = 0
-shader = ExtResource("8_slash_shader")
-shader_parameter/Speed = 3.0
-shader_parameter/NoiseTexture = SubResource("NoiseTexture2D_storm_slash")
-shader_parameter/GradientParameter = SubResource("GradientTexture1D_storm_slash")
-shader_parameter/Threshold = 1.0
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_storm_trail"]
+render_priority = 1
+shader = ExtResource("8_trail_shader")
+shader_parameter/noise_texture = SubResource("NoiseTexture2D_storm_trail")
+shader_parameter/core_color = Color(0.14, 0.02, 0.28, 0.82)
+shader_parameter/edge_color = Color(0.4, 0.8, 1, 1)
+shader_parameter/streak_color = Color(0.9, 0.95, 1, 1)
+shader_parameter/glow_energy = 3.5
+shader_parameter/edge_width = 0.3
+shader_parameter/crawl_speed = 5.0
+shader_parameter/noise_scale = 2.5
+shader_parameter/streak_width = 0.05
 
-[sub_resource type="QuadMesh" id="QuadMesh_storm_slash"]
-size = Vector2(3, 2.4)
+[sub_resource type="StandardMaterial3D" id="Mat_sparks"]
+shading_mode = 0
+vertex_color_use_as_albedo = true
+
+[sub_resource type="Gradient" id="Gradient_sparks"]
+offsets = PackedFloat32Array(0, 0.4, 0.8, 1)
+colors = PackedColorArray(1, 1, 1, 1, 0.6, 0.85, 1, 1, 0.78, 0.35, 1, 1, 0.35, 0.05, 0.75, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_sparks"]
+gradient = SubResource("Gradient_sparks")
+
+[sub_resource type="Curve" id="Curve_sparks"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), -1.5, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_sparks"]
+curve = SubResource("Curve_sparks")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_sparks"]
+emission_shape = 3
+emission_box_extents = Vector3(0.08, 1.25, 0.08)
+spread = 180.0
+initial_velocity_min = 1.0
+initial_velocity_max = 3.5
+gravity = Vector3(0, -4, 0)
+scale_min = 0.6
+scale_max = 1.5
+scale_curve = SubResource("CurveTexture_sparks")
+color_ramp = SubResource("GradientTexture1D_sparks")
+
+[sub_resource type="SphereMesh" id="SphereMesh_sparks"]
+material = SubResource("Mat_sparks")
+radius = 0.08
+height = 0.16
+radial_segments = 8
+rings = 4
 
 [node name="ScopeCreepBoss" instance=ExtResource("1_base")]
 editor_description="Scope Creep, a backpack boss: a storm-blue brute whose greatsword grew a little every sprint, with two thunder mages riding in his backpacks. Up close he swings the greatsword (sometimes twice), from mid range he lunges in with a stab, and he slams the blade down for an electric shockwave. His mages turn in their seats and cast lightning bolts at range; he throws them at the player (they land as thunder mages) and flexes to call new ones."
@@ -148,15 +181,33 @@ light_color = Color(0.45, 0.7, 1, 1)
 light_energy = 1.4
 omni_range = 3.0
 
-[node name="SlashVFX" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword" node_paths=PackedStringArray("weapon_slot")]
-transform = Transform3D(0, 1, 0, 1, 0, 0, 0, 0, -1, -1.2, 1.4, 0)
-material_override = SubResource("ShaderMaterial_storm_slash")
+[node name="TrailBase" type="Marker3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+
+[node name="TrailTip" type="Marker3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.1, 0)
+
+[node name="SlashSparks" type="GPUParticles3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0)
 cast_shadow = 0
 gi_mode = 0
-mesh = SubResource("QuadMesh_storm_slash")
-script = ExtResource("9_slash_vfx")
+emitting = false
+amount = 72
+lifetime = 0.45
+local_coords = false
+process_material = SubResource("ParticleProcessMaterial_sparks")
+draw_pass_1 = SubResource("SphereMesh_sparks")
+
+[node name="SlashTrail" type="MeshInstance3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot/Greatsword" node_paths=PackedStringArray("weapon_slot", "blade_base", "blade_tip", "sparks", "flare_light")]
+material_override = SubResource("ShaderMaterial_storm_trail")
+cast_shadow = 0
+gi_mode = 0
+script = ExtResource("9_weapon_trail")
 weapon_slot = NodePath("../..")
-attack_type = 1
+blade_base = NodePath("../TrailBase")
+blade_tip = NodePath("../TrailTip")
+sparks = NodePath("../SlashSparks")
+flare_light = NodePath("../StormLight")
 
 [node name="SwingAudio" type="AudioStreamPlayer3D" parent="AnimationAnchor/AnimatedBrute/Enemy_Large/Rig_Large/Skeleton3D/SwordSlot"]
 stream = ExtResource("10_swing_audio")

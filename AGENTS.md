@@ -148,7 +148,11 @@ prints the error and idles forever. `--quit-after` does not help.
   avoidance obstacles (they made doorways jam); the navmesh and collisions
   keep walkers off them. Damage types are `DamageType` constants.
 - **Damage pipeline:** a `WeaponSlot` (bone attachment) switches its
-  `Area3D` hitbox with its `enabled` property, which animations key. The
+  `Area3D` hitbox with its `enabled` property, which animations key. Slash
+  visuals follow the slot: a `SlashVFX` quad swept by its keyed
+  `vfx_threshold`, or a `WeaponTrail` ribbon drawn behind the real blade path
+  while the hit window is open (any swing shape; Scope Creep's storm slash,
+  `Shaders/weapon_trail.gdshader`). The
   hitbox's `AttackComponent` hits `Hurtbox.receive_hit()`, which damages the
   `AttributeComponent` and emits `struck` (stun, flash, shake).
   `damage_pool()`/`restore_pool()` are silent. Lethal hits report `defeat`
