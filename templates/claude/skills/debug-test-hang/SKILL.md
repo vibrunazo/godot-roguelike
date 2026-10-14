@@ -1,0 +1,63 @@
+---
+name: debug-test-hang
+description: Use when kit.py test reports a timeout, a suite stalls near its end, a kit.py scratch or capture run is killed by its watchdog, or a Godot process seems stuck or left behind. Diagnosing hangs and watchdog kills, not preventing them (prevention is AGENTS.md section 1).
+---
+
+# Diagnosing a timed-out or hung Godot run
+
+## First: suspect the budget, not the game
+
+A run killed by the watchdog can print misleading tree-membership errors
+(`get_tree()` is null, `in_tree=false`, a null parent). The engine's own
+shutdown produces them; they look exactly like game code evicting the scene,
+but no scene change happened. If the log shows no error before the timeout,
+assume a budget overrun first:
+
+1. Time the suite alone: `python {{KIT}}/kit.py test {{TEST_DIR}}/test_<name>.tscn --verbose`.
+2. Look for fixed frame-count waits that add up, and for waits on conditions
+   that can never become true (they run to their frame budget). Shrink the
+   budgets, or wait on a condition that is guaranteed to happen.
+3. Remember each run has a wall-clock budget (`test.timeout` in
+   `godot_kit.toml`, 10 s by default), even though game time is cheap under
+   `--fixed-fps`.
+4. A scratch script killed at its 15 s default is fast-forwarded too, so it
+   rarely needs more: thousands of simulated physics ticks take well under a
+   second. Count the frames it awaits and look for a wait that never ends
+   before raising `--timeout`. Never reach for `Engine.time_scale` to speed it
+   up (AGENTS.md section 1).
+
+## Real hangs
+
+- **A script failed to compile or a preload is missing:** Godot prints the
+  error and idles forever. Look for `SCRIPT ERROR`, `Parse Error` or
+  `Compile Error` in `--verbose` output.
+- **A `-s` script** must `extends SceneTree` and call `quit(code)` on every
+  path. `kit.py scratch` checks the first; add `quit()` before every early
+  return.
+- **"Identifier not found" for an autoload in a scratch script:** the script
+  declares a game class type, which compiles before autoloads exist. Use
+  `Node` and `get()`/`call()`.
+- **A suite stalls about a second before its end:** a scene-changing call
+  (`change_scene_to_file()`, `change_scene_to_packed()`, a level loader) freed
+  the suite mid-run. Move that test last in its suite.
+- **A pause or game-over menu paused the tree:** waits then never advance game
+  logic. Keep test actors alive and unpause in `after_each`.
+
+## Finding where the engine really stopped
+
+Godot's stdout can lag the engine badly on some setups (e.g. a Windows engine
+driven from WSL), so reading the log by wall clock can point at the wrong
+place. Write flushed marker lines instead: open a file in `user://` with
+`FileAccess`, write `Time.get_ticks_msec()` plus a label at each step, and
+close it. The last marker is where the engine stopped.
+
+## Leftover engine processes
+
+The kit's watchdog kills the whole process tree, and `kit.py test` also reaps
+a timed-out suite's engine as a backstop, so a leftover headless Godot usually
+means a launcher that bypassed the kit. Leftovers slow every later run. Check
+the process list (`tasklist | findstr -i godot` on Windows, `pgrep -a godot`
+elsewhere). Launchers must start the real engine binary: killing a `.cmd` shim
+or a `_console.exe` wrapper orphans the engine, which keeps the output pipes
+open and hangs the runner itself. `python {{KIT}}/kit.py check-runners` proves
+the runners still time out, clean up and catch script errors.

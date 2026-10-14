@@ -1,0 +1,15 @@
+[engine]
+version = ""
+
+[test]
+user_args = ["--save-path=user://selftest_save.dat"]
+
+[lint]
+production_dirs = ["game/"]
+physics_clock_dirs = ["game/"]
+enable = ["print-in-production"]
+
+[[lint.forbidden_references]]
+dirs = ["game/"]
+names = ["TestSuite"]
+reason = "game code never depends on test code"

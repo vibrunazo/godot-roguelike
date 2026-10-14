@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/mover.gd" id="1_mover"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+
+[sub_resource type="StandardMaterial3D" id="Material_body"]
+albedo_color = Color(0.95, 0.55, 0.1, 1)
+
+[node name="Mover" type="Node3D"]
+script = ExtResource("1_mover")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_body")
+surface_material_override/0 = SubResource("Material_body")
