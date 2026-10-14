@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://cases/capture_grid.gd" id="1_case"]
+
+[node name="CaptureGrid" type="Node3D"]
+script = ExtResource("1_case")

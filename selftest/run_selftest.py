@@ -231,6 +231,8 @@ def check_capture(results: Results, project: Path) -> None:
                        "--output", "movies/staged_sheet.png", "--", "--tint=blue")
     sheet = project / "movies" / "staged_sheet.png"
     results.expect(code == 0 and sheet.is_file(), "the capturer's own options still apply when arguments are forwarded" + ("" if code == 0 else "\n" + output[-2000:]))
+    code, output = kit(project, "capture", "scene", "cases/capture_grid.tscn", "--verbose")
+    results.expect(code == 0 and "size (30.0," in output, "the automatic framing covers GridMap cells" + ("" if code == 0 else "\n" + output[-2000:]))
     code, output = kit(project, "capture", "test", "test/test_mover.tscn", "--duration", "1")
     video = project / "movies" / "test_mover.mp4"
     results.expect(code == 0 and video.is_file() and video.stat().st_size > 1000, "a test recording as MP4" + ("" if code == 0 else "\n" + output[-2000:]))

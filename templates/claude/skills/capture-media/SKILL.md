@@ -37,9 +37,9 @@ Framing and clutter:
 - `--target-node <Name>` frames one node; `--cam-pos X,Y,Z --cam-target X,Y,Z`
   places the camera yourself; `--freeze` stops the scene's processing.
 - HUDs and fades are hidden through `capture.hide_paths` in `godot_kit.toml`
-  or the `capture_hidden` group (`--show-ui` keeps them). Huge props such as
-  a ground plane leave the automatic framing through the
-  `capture_bounds_ignore` group.
+  or the `capture_hidden` group (`--show-ui` keeps them). The automatic
+  framing covers visible meshes and GridMap cells; huge props such as a ground
+  plane leave it through the `capture_bounds_ignore` group.
 
 Rules:
 - Visual changes are verified this way, never with suite tests.

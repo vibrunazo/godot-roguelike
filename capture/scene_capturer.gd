@@ -8,8 +8,9 @@
 ## --at and sheet times are exact game seconds.
 ##
 ## Projects hide HUDs and fades with capture.hide_paths (node paths such as
-## /root/UI) or by adding nodes to the "capture_hidden" group, and keep huge
-## props (a ground plane) out of the framing with the "capture_bounds_ignore" group.
+## /root/UI) or by adding nodes to the "capture_hidden" group. Presets frame the
+## scene's visible geometry and GridMap cells; huge props (a ground plane) stay
+## out of the framing in the "capture_bounds_ignore" group.
 ##
 ## User arguments after SCENE_ARGS belong to the captured scene (`kit.py capture
 ## scene <scene> -- <args>`), which reads them itself; the capturer ignores them.
@@ -162,20 +163,36 @@ func _calculate_bounds() -> void:
 			print("[SceneCapturer] Framing node %s at %s" % [target_name, _center])
 			return
 		printerr("[SceneCapturer] Node %s not found; framing the whole scene." % target_name)
-	var box: AABB = AABB()
-	var has_box: bool = false
-	# Geometry only: a light's range would inflate the framing.
+	# Geometry and GridMap cells only: a light's range would inflate the framing.
+	var boxes: Array[AABB] = []
 	for node: Node in _scene.find_children("*", "GeometryInstance3D", true, false):
 		var visual: GeometryInstance3D = node as GeometryInstance3D
-		if visual.is_in_group(&"capture_bounds_ignore") or not visual.is_visible_in_tree():
-			continue
-		var visual_box: AABB = visual.global_transform * visual.get_aabb()
-		box = visual_box if not has_box else box.merge(visual_box)
-		has_box = true
-	if has_box and box.size.length() > 1.0:
+		if not visual.is_in_group(&"capture_bounds_ignore") and visual.is_visible_in_tree():
+			boxes.append(visual.global_transform * visual.get_aabb())
+	for node: Node in _scene.find_children("*", "GridMap", true, false):
+		var grid: GridMap = node as GridMap
+		if not grid.is_in_group(&"capture_bounds_ignore") and grid.is_visible_in_tree() and not grid.get_used_cells().is_empty():
+			boxes.append(_grid_box(grid))
+	var box: AABB = AABB()
+	for index: int in boxes.size():
+		box = boxes[index] if index == 0 else box.merge(boxes[index])
+	if not boxes.is_empty() and box.size.length() > 1.0:
 		_center = box.get_center()
 		_size = box.size
 	print("[SceneCapturer] Scene bounds: center %s, size %s" % [_center, _size])
+
+
+## The world-space box around a GridMap's used cells.
+func _grid_box(grid: GridMap) -> AABB:
+	var cells: Array[Vector3i] = grid.get_used_cells()
+	var low: Vector3i = cells[0]
+	var high: Vector3i = cells[0]
+	for cell: Vector3i in cells:
+		low = low.min(cell)
+		high = high.max(cell)
+	var half: Vector3 = grid.cell_size * 0.5
+	var local: AABB = AABB(grid.map_to_local(low) - half, Vector3.ZERO).expand(grid.map_to_local(high) + half)
+	return grid.global_transform * local
 
 
 func _setup_camera() -> void:
