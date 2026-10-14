@@ -1,0 +1,382 @@
+## Base class for every automated test suite (<test dir>/test_*.tscn).
+##
+## Games extend it once, in <test dir>/lib/project_suite.gd (scaffolded by
+## `kit.py init`), to add their own fixtures and helpers (an arena loader,
+## disable_ai(), test-owned stats), and every suite extends that by path:
+##     extends "res://test/lib/project_suite.gd"
+## (the test folder is .gdignore'd, so class_name would not register).
+##
+## Every method named test_* runs in declaration order, each in isolation:
+## before_each() -> test -> after_each() -> automatic teardown. A failed check
+## records the failure and the test keeps going, and a failing test never stops
+## later tests. When all tests are done the suite prints a summary and quits
+## with exit code 0 (all passed) or 1 (any failure) exactly once.
+##
+## A test also fails when:
+## - a script error happens while it runs (Godot aborts the function but keeps
+##   going, so without this the test would silently report PASS), or
+## - it leaks orphan nodes. Teardown frees every node registered with
+##   autofree()/spawn() (queue_free when in the tree, free when orphaned) plus
+##   every node that game code added directly under the suite during the test
+##   (spawners often parent projectiles and effects to the current scene, which
+##   is the suite), flushes frames, then compares the orphan-node count with the
+##   count before the test. Nothing a test spawns can leak into the next test.
+##   An orphan is a node that was created but is neither in the tree nor freed;
+##   it leaks with all of its server resources.
+##
+## A suite that must behave the same at any frame rate declares
+##     ## fps_matrix: 12, 20, 30, 60
+## in its script; `kit.py test` then runs it once per listed render rate.
+##
+## See <test dir>/lib/suite_template.gd for a copyable starting point.
+extends Node
+
+## Default frame budget for wait_until()/wait_signal() when a test passes none.
+const DEFAULT_WAIT_FRAMES: int = 300
+## Frames flushed after teardown so queue_free and deferred calls settle.
+const TEARDOWN_FLUSH_FRAMES: int = 2
+
+
+## Collects errors reported while a test runs. Script errors fail the test;
+## other errors (engine errors, push_error) are printed as notes.
+class _ErrorCapture extends Logger:
+	var _mutex: Mutex = Mutex.new()
+	var _script_errors: Array[String] = []
+	var _other_errors: Array[String] = []
+
+	func _log_error(_function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		var text: String = code if rationale.is_empty() else "%s (%s)" % [code, rationale]
+		var entry: String = "%s @ %s:%d" % [text, file.get_file(), line]
+		_mutex.lock()
+		if error_type == ERROR_TYPE_SCRIPT:
+			_script_errors.append(entry)
+		elif error_type == ERROR_TYPE_ERROR:
+			_other_errors.append(entry)
+		_mutex.unlock()
+
+	func _log_message(_message: String, _error: bool) -> void:
+		pass
+
+	## Engine errors (not script errors) reported since the last take(),
+	## without clearing them.
+	func peek_other() -> Array[String]:
+		_mutex.lock()
+		var result: Array[String] = _other_errors.duplicate()
+		_mutex.unlock()
+		return result
+
+	## Returns and clears [script_errors, other_errors].
+	func take() -> Array[Array]:
+		_mutex.lock()
+		var result: Array[Array] = [_script_errors.duplicate(), _other_errors.duplicate()]
+		_script_errors.clear()
+		_other_errors.clear()
+		_mutex.unlock()
+		return result
+
+
+var _current_failures: Array[String] = []
+var _autofree_nodes: Array[Node] = []
+var _error_capture: _ErrorCapture = null
+
+
+## Override to prepare state shared by every test (runs once, may await).
+func before_all() -> void:
+	pass
+
+
+## Override to prepare per-test state (runs before each test, may await).
+func before_each() -> void:
+	pass
+
+
+## Override to clean up per-test state (runs after each test, may await).
+## Nodes registered with autofree() are freed automatically afterwards.
+func after_each() -> void:
+	pass
+
+
+func _ready() -> void:
+	_run_suite()
+
+
+func _run_suite() -> void:
+	var suite_name: String = name if scene_file_path.is_empty() else scene_file_path.get_file().get_basename()
+	var tests: Array[String] = _discover_tests()
+	print("=== %s: %d test(s) ===" % [suite_name, tests.size()])
+	if tests.is_empty():
+		print("FAIL %s: no test_* methods found." % suite_name)
+		get_tree().quit(1)
+		return
+	_error_capture = _ErrorCapture.new()
+	OS.add_logger(_error_capture)
+	await before_all()
+	_error_capture.take()
+	var failed_tests: Array[String] = []
+	for test_name: String in tests:
+		var passed: bool = await _run_test(test_name)
+		if not passed:
+			failed_tests.append(test_name)
+	OS.remove_logger(_error_capture)
+	if failed_tests.is_empty():
+		print("=== %s: ALL %d PASSED ===" % [suite_name, tests.size()])
+		get_tree().quit(0)
+	else:
+		print("=== %s: %d/%d FAILED: %s ===" % [suite_name, failed_tests.size(), tests.size(), ", ".join(failed_tests)])
+		get_tree().quit(1)
+
+
+## Runs one test with hooks, teardown, the script-error check and the orphan
+## check. Returns pass/fail.
+func _run_test(test_name: String) -> bool:
+	_current_failures.clear()
+	_error_capture.take()
+	var orphans_before: int = _orphan_count()
+	var children_before: Array[Node] = get_children()
+	var started_ms: int = Time.get_ticks_msec()
+	await before_each()
+	await call(test_name)
+	await after_each()
+	await _teardown(children_before)
+	var errors: Array[Array] = _error_capture.take()
+	for script_error: String in errors[0]:
+		_record_failure("script error: " + script_error)
+	var leaked: int = _orphan_count() - orphans_before
+	if leaked > 0:
+		print_orphan_nodes()
+		_record_failure("%d orphan node(s) leaked (listed above): something was created and never added to the tree or freed." % leaked)
+	var elapsed_ms: int = Time.get_ticks_msec() - started_ms
+	if _current_failures.is_empty():
+		print("PASS %s (%d ms)" % [test_name, elapsed_ms])
+	else:
+		print("FAIL %s (%d ms)" % [test_name, elapsed_ms])
+		for failure: String in _current_failures:
+			print("  - " + failure)
+	for other_error: String in errors[1]:
+		print("  note: error reported during %s: %s" % [test_name, other_error])
+	return _current_failures.is_empty()
+
+
+func _discover_tests() -> Array[String]:
+	var names: Array[String] = []
+	for method: Dictionary in (get_script() as Script).get_script_method_list():
+		var method_name: String = method["name"]
+		if method_name.begins_with("test_") and not names.has(method_name):
+			names.append(method_name)
+	return names
+
+
+func _teardown(children_before: Array[Node]) -> void:
+	for child: Node in get_children():
+		if not children_before.has(child):
+			autofree(child)
+	for node: Node in _autofree_nodes:
+		if not is_instance_valid(node):
+			continue
+		if node.is_inside_tree():
+			node.queue_free()
+		else:
+			node.free()
+	_autofree_nodes.clear()
+	for i: int in range(TEARDOWN_FLUSH_FRAMES):
+		await get_tree().process_frame
+
+
+func _orphan_count() -> int:
+	return int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT))
+
+
+# --- Assertions --------------------------------------------------------------
+
+## Soft assertion: records a failure (with the calling line) when condition is
+## false and lets the test continue. Returns condition so callers can bail out
+## early when later steps depend on it: `if not check(x != null, "..."): return`.
+func check(condition: bool, message: String) -> bool:
+	if not condition:
+		_record_failure(message, _caller_location())
+	return condition
+
+
+## Equality check that prints both values on failure. Compare against values
+## the test set itself or read from live nodes, never against literals copied
+## from scenes or resources (designers retune those; see the write-test skill).
+func check_eq(actual: Variant, expected: Variant, message: String) -> bool:
+	if actual == expected:
+		return true
+	_record_failure("%s (expected %s, got %s)" % [message, str(expected), str(actual)], _caller_location())
+	return false
+
+
+## Float comparison. tolerance < 0.0 uses is_equal_approx; otherwise passes
+## when |actual - expected| <= tolerance.
+func check_approx(actual: float, expected: float, message: String, tolerance: float = -1.0) -> bool:
+	var ok: bool = is_equal_approx(actual, expected) if tolerance < 0.0 else absf(actual - expected) <= tolerance
+	if ok:
+		return true
+	var tolerance_text: String = "" if tolerance < 0.0 else ", tolerance %s" % str(tolerance)
+	_record_failure("%s (expected %s, got %s%s)" % [message, str(expected), str(actual), tolerance_text], _caller_location())
+	return false
+
+
+## Fails when the engine has reported an error (push_error, engine ERROR
+## lines) since the current test started. Engine errors are otherwise only
+## printed as notes; use this where an error is the regression under test.
+func check_no_engine_errors(message: String) -> bool:
+	var errors: Array[String] = _error_capture.peek_other()
+	if errors.is_empty():
+		return check(true, message)
+	var distinct: Array[String] = []
+	for error: String in errors:
+		if not distinct.has(error):
+			distinct.append(error)
+	return check(false, "%s (%d error(s), first: %s)" % [message, errors.size(), distinct[0]])
+
+
+## Records an unconditional failure. Returns false for `return fail("...")`.
+func fail(message: String) -> bool:
+	_record_failure(message, _caller_location())
+	return false
+
+
+func _record_failure(message: String, location: String = "") -> void:
+	_current_failures.append(message if location.is_empty() else "%s @ %s" % [message, location])
+
+
+## The line in the suite that called a check, as "test_x.gd:42": the first
+## stack frame from a test_*.gd file, else the first one outside this harness.
+## Only meaningful before the caller's first await (a resumed coroutine has no
+## caller frames), so waits capture it up front.
+func _caller_location() -> String:
+	var fallback: String = ""
+	for frame: Dictionary in get_stack():
+		var source: String = frame.get("source", "")
+		if source.ends_with("harness/test_suite.gd"):
+			continue  # this file is named test_suite.gd too
+		var location: String = "%s:%d" % [source.get_file(), int(frame.get("line", 0))]
+		if source.get_file().begins_with("test_"):
+			return location
+		if fallback.is_empty():
+			fallback = location
+	return fallback
+
+
+# --- Waiting -----------------------------------------------------------------
+
+## Waits physics frames until predicate returns true. Returns true on success;
+## on timeout records a failure with message and returns false. Always wait on
+## a condition instead of a fixed number of frames or seconds.
+func wait_until(predicate: Callable, message: String, max_physics_frames: int = DEFAULT_WAIT_FRAMES) -> bool:
+	var location: String = _caller_location()
+	for i: int in range(max_physics_frames):
+		if predicate.call():
+			return true
+		await get_tree().physics_frame
+	if predicate.call():
+		return true
+	_record_failure("%s (timed out after %d physics frames)" % [message, max_physics_frames], location)
+	return false
+
+
+## Like wait_until(), for work that runs on other threads (a navmesh bake on
+## the WorkerThreadPool, the navigation map's async sync). Fast-forwarded
+## physics frames take microseconds, far less than such work needs, so this
+## waits up to max_msec of wall-clock time instead of a frame budget, sleeping
+## a millisecond on every frame the predicate is still false.
+func wait_until_threaded(predicate: Callable, message: String, max_msec: int = 3000) -> bool:
+	var location: String = _caller_location()
+	var deadline: int = Time.get_ticks_msec() + max_msec
+	while Time.get_ticks_msec() < deadline:
+		if predicate.call():
+			return true
+		OS.delay_msec(1)
+		await get_tree().physics_frame
+	if predicate.call():
+		return true
+	_record_failure("%s (timed out after %d ms)" % [message, max_msec], location)
+	return false
+
+
+## Waits until sig emits. Returns true on emission; on timeout records a
+## failure with message and returns false.
+func wait_signal(sig: Signal, message: String, max_physics_frames: int = DEFAULT_WAIT_FRAMES) -> bool:
+	var location: String = _caller_location()
+	var fired: Array[bool] = [false]
+	var on_emit: Callable = func() -> void: fired[0] = true
+	var arg_count: int = _signal_arg_count(sig)
+	if arg_count > 0:
+		on_emit = on_emit.unbind(arg_count)
+	sig.connect(on_emit, CONNECT_ONE_SHOT)
+	for i: int in range(max_physics_frames):
+		if fired[0]:
+			return true
+		await get_tree().physics_frame
+	if sig.is_connected(on_emit):
+		sig.disconnect(on_emit)
+	if fired[0]:
+		return true
+	_record_failure("%s (signal %s not emitted within %d physics frames)" % [message, sig.get_name(), max_physics_frames], location)
+	return false
+
+
+func _signal_arg_count(sig: Signal) -> int:
+	for info: Dictionary in sig.get_object().get_signal_list():
+		if info["name"] == sig.get_name():
+			return (info["args"] as Array).size()
+	return 0
+
+
+## Advances n physics frames. Prefer wait_until(); use this only when the
+## number of frames is itself the thing under test, or to let freshly spawned
+## nodes run their first tick.
+func wait_physics_frames(n: int) -> void:
+	for i: int in range(n):
+		await get_tree().physics_frame
+
+
+# --- Scene setup -------------------------------------------------------------
+
+## Registers a node for automatic teardown after the current test. Returns it.
+func autofree(node: Node) -> Node:
+	if node != null and not _autofree_nodes.has(node):
+		_autofree_nodes.append(node)
+	return node
+
+
+## Instantiates scene, adds it under parent (the suite itself when null),
+## places it at the given global position (Node3D only) and registers it for
+## teardown. Returns the instance. The position is set after the node enters
+## the tree: anything that records its position in _ready() sees the origin, so
+## for those instantiate, set position, then add_child() yourself (and autofree()).
+func spawn(scene: PackedScene, parent: Node = null, at: Vector3 = Vector3.ZERO) -> Node:
+	var instance: Node = scene.instantiate()
+	autofree(instance)
+	(parent if parent != null else self).add_child(instance)
+	if instance is Node3D:
+		(instance as Node3D).global_position = at
+	return instance
+
+
+# --- Input -------------------------------------------------------------------
+
+## Sends a press and a release of an InputMap action through the input
+## pipeline (reaches _input/_unhandled_input like a real key press). Always
+## refer to actions by name, never by physical key.
+func press_action(action: StringName) -> void:
+	hold_action(action)
+	release_action(action)
+
+
+## Sends a press of an InputMap action and leaves it held.
+func hold_action(action: StringName) -> void:
+	var event: InputEventAction = InputEventAction.new()
+	event.action = action
+	event.pressed = true
+	Input.parse_input_event(event)
+
+
+## Sends a release of an InputMap action.
+func release_action(action: StringName) -> void:
+	var event: InputEventAction = InputEventAction.new()
+	event.action = action
+	event.pressed = false
+	Input.parse_input_event(event)

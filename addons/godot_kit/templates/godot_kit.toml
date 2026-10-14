@@ -1,0 +1,35 @@
+# godot-agent-kit configuration (addons/godot_kit/README.md lists every key).
+# Unknown keys are an error, so a typo fails loudly.
+
+[engine]
+# Engine version this project runs on. The kit refuses another one; when
+# `godot` on PATH is a different version it looks for Godot_v<version>-stable
+# next to it, else set GODOT_BIN.
+version = "{{ENGINE_VERSION}}"
+
+[test]
+dir = "{{TEST_DIR}}"
+timeout = 10
+fps = 60
+
+[lint]
+# Folders holding game code: production-code rules (hardcoded loads, export
+# docstrings, function length, autoload null checks...) only look here.
+production_dirs = [{{PRODUCTION_DIRS}}]
+# Folders whose timers must run on the physics clock (gameplay code).
+physics_clock_dirs = []
+# Opt-in rules, e.g. ["print-in-production"].
+enable = []
+
+# Dependency rules from AGENTS.md that the lint should enforce, e.g.:
+# [[lint.forbidden_references]]
+# dirs = ["systems/abilities/"]
+# names = ["Spaceship"]
+# reason = "the ability system never references the ship; it emits signals"
+
+[capture]
+output_dir = "{{OUTPUT_DIR}}"
+# Node paths hidden while capturing (HUDs, fades), e.g. ["/root/UI"].
+hide_paths = []
+# Class name `capture test` keeps in frame, e.g. "Character".
+track_type = ""
