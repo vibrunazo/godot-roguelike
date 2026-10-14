@@ -111,8 +111,6 @@ def _capture_scene(args: argparse.Namespace, project: Project, output_dir: Path)
                "--cam-fov": args.cam_fov, "--cam-dist": args.cam_dist, "--cam-height": args.cam_height, "--cam-size": args.cam_size}
     user_args += [f"{key}={value}" for key, value in options.items() if value is not None]
     user_args += [flag for flag, on in (("--scene-camera", args.scene_camera), ("--cam-ortho", args.ortho), ("--freeze", args.freeze)) if on]
-    if args.forwarded:
-        user_args += [SCENE_ARGS, *args.forwarded]
     name = Path(args.scene).stem
     if args.video:
         view = "scene" if args.scene_camera else args.preset
@@ -123,11 +121,11 @@ def _capture_scene(args: argparse.Namespace, project: Project, output_dir: Path)
             user_args.append(f"--output={args.output}")
         # Frames advance a fixed 1/60 s of game time each, so --at and sheet times are exact.
         timeout = project.config["capture"]["screenshot_timeout"] + int(args.duration or 3.0)
-        return _report(_launch(project, ["--fixed-fps", "60"], user_args, SCENE_CAPTURER, timeout, args.verbose), "Contact sheet")
+        return _report(_launch(project, ["--fixed-fps", "60"], user_args, SCENE_CAPTURER, timeout, args), "Contact sheet")
     if args.output:
         user_args.append(f"--output={args.output}")
     timeout = project.config["capture"]["screenshot_timeout"] + int(args.at)
-    return _report(_launch(project, ["--fixed-fps", "60"], user_args, SCENE_CAPTURER, timeout, args.verbose), "Screenshot")
+    return _report(_launch(project, ["--fixed-fps", "60"], user_args, SCENE_CAPTURER, timeout, args), "Screenshot")
 
 
 def _capture_test(args: argparse.Namespace, project: Project, output_dir: Path) -> int:
@@ -147,7 +145,7 @@ def _record(args: argparse.Namespace, project: Project, capturer: str, user_args
     avi = mp4.with_name(f"temp_{mp4.stem}_{int(time.time())}.avi")
     user_args = [*user_args, "--video", f"--duration={duration}"]
     timeout = project.config["capture"]["video_timeout"] + int(duration * 4)
-    code = _launch(project, ["--write-movie", avi.as_posix()], user_args, capturer, timeout, args.verbose)
+    code = _launch(project, ["--write-movie", avi.as_posix()], user_args, capturer, timeout, args)
     if code != 0:
         return code
     final = convert_avi_to_mp4(avi, mp4, args.keep_avi, args.gif)
@@ -155,8 +153,11 @@ def _record(args: argparse.Namespace, project: Project, capturer: str, user_args
     return 0 if final else 1
 
 
-def _launch(project: Project, godot_flags: list[str], user_args: list[str], capturer: str, timeout: int, verbose: bool) -> int:
-    engine_args = ["--path", ".", *godot_flags, capturer, "--", *user_args]
+def _launch(project: Project, godot_flags: list[str], user_args: list[str], capturer: str, timeout: int, args: argparse.Namespace) -> int:
+    # The scene's own arguments go last: the capturer stops reading at SCENE_ARGS.
+    scene_args = [SCENE_ARGS, *args.forwarded] if getattr(args, "forwarded", None) else []
+    engine_args = ["--path", ".", *godot_flags, capturer, "--", *user_args, *scene_args]
+    verbose: bool = args.verbose
     print(f"[capture] godot {' '.join(engine_args)}", flush=True)
     result = run_godot(project, engine_args, timeout,
                        on_stdout=_echo(None if verbose else LIVE_TAGS), on_stderr=_echo(None) if verbose else None)

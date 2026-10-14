@@ -223,10 +223,14 @@ def check_capture(results: Results, project: Path) -> None:
     sheet = project / "movies" / "main_sheet.png"
     results.expect(code == 0 and sheet.is_file() and _not_blank(sheet), "a contact sheet of 4 frames" + ("" if code == 0 else "\n" + output[-2000:]))
     # --at=5 after -- belongs to the scene: the capturer still shoots at its own --at.
-    code, output = kit(project, "capture", "scene", "cases/capture_stage.tscn", "--scene-camera", "--verbose", "--", "--tint=red", "--at=5")
-    staged = project / "movies" / "capture_stage_scene.png"
+    code, output = kit(project, "capture", "scene", "cases/capture_stage.tscn", "--scene-camera", "--verbose", "--output", "movies/staged.png", "--", "--tint=red", "--at=5")
+    staged = project / "movies" / "staged.png"
     results.expect(code == 0 and "[StageArgs] --tint=red --at=5" in output and "captured at 0." in output and staged.is_file(),
                    "arguments after -- reach the captured scene, not the capturer" + ("" if code == 0 else "\n" + output[-2000:]))
+    code, output = kit(project, "capture", "scene", "cases/capture_stage.tscn", "--scene-camera", "--sheet", "2", "--duration", "1",
+                       "--output", "movies/staged_sheet.png", "--", "--tint=blue")
+    sheet = project / "movies" / "staged_sheet.png"
+    results.expect(code == 0 and sheet.is_file(), "the capturer's own options still apply when arguments are forwarded" + ("" if code == 0 else "\n" + output[-2000:]))
     code, output = kit(project, "capture", "test", "test/test_mover.tscn", "--duration", "1")
     video = project / "movies" / "test_mover.mp4"
     results.expect(code == 0 and video.is_file() and video.stat().st_size > 1000, "a test recording as MP4" + ("" if code == 0 else "\n" + output[-2000:]))
