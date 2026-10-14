@@ -7,7 +7,7 @@
 ## height offset) it still passes, so Level 2's corner no longer invites
 ## corner-cutting. It stays as a pursuit smoke test on a real level; see
 ## TODO.md for a reproducing scenario.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const LEVEL_SCENE: PackedScene = preload("res://Levels/level_2.tscn")
 const BRUTE_SCENE: PackedScene = preload("res://Enemy/enemy_brute.tscn")

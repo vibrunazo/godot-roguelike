@@ -17,7 +17,7 @@
 ##   HUD owns it), and without a selected item the stats panel shows no
 ##   comparison arrows.
 ## Key bindings, colors and layout are design choices and are not asserted.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 ## Test-owned progression values to prove defeat leaves them untouched.

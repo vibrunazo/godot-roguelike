@@ -1,5 +1,5 @@
 ## Registers the prototype pack stairs as Floormap brush 2 without changing
-## existing floor items. Run with run_scratch.py. The visual is half-height:
+## existing floor items. Run with `kit.py scratch`. The visual is half-height:
 ## 4m footprint, 2m rise toward local -X. Smooth ramp collision avoids risers
 ## blocking CharacterBody3D; its surface sits up to .25m below stair treads.
 extends SceneTree

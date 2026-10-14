@@ -6,7 +6,7 @@
 ## Each test sets the hitstop scale and duration on the attack it exercises,
 ## so designers can retune the real values (or turn hitstop off for an
 ## attack) without breaking the suite.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

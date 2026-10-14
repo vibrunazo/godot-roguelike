@@ -7,7 +7,7 @@
 ## - the rig follows the player horizontally and upward, but never drops
 ##   below the height it started at.
 ## Magnitudes and durations are read from the live camera.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 ## Test-owned trauma for the direct-assignment check.

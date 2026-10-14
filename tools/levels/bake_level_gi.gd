@@ -5,7 +5,7 @@
 ##   --level=   level scene to bake (default res://Levels/level_4.tscn)
 ##   --gi-out=  destination VoxelGIData path (default res://Levels/GlobalIlluminationData/level_4_voxel_gi_data.res)
 ##
-## Must run WITH the display server (like capture.py), because VoxelGI baking
+## Must run WITH the display server (like `kit.py capture`), because VoxelGI baking
 ## needs the renderer. Run it through a watchdogged launcher, e.g.:
 ##   python -c "import shutil, subprocess; ..."
 ## (see tools/levels/README.md). Bake scenes always quit() explicitly.

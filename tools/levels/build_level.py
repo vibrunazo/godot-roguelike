@@ -13,8 +13,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
-from godot_env import find_script_errors, resolve_godot, run_watched  # noqa: E402
+sys.path.insert(0, str(ROOT / 'addons' / 'godot_kit'))
+from cli.godot_env import find_script_errors, resolve_godot, run_watched  # noqa: E402
+from cli.project import load_project  # noqa: E402
 
 
 def run(args: list[str], log: Path, timeout: int = 30) -> None:
@@ -35,7 +36,7 @@ def main() -> None:
     spec_path = args.spec.resolve()
     spec = json.loads(spec_path.read_text())
     out = spec_path.parent
-    engine = resolve_godot()
+    engine = resolve_godot(load_project(str(ROOT), None))
     prefix = [engine,'--path',str(ROOT)]
     # Files are engine resource paths; project-local paths use forward slashes.
     rel = lambda p: Path(p).resolve().relative_to(ROOT).as_posix()

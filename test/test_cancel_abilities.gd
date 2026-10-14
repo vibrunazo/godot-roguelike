@@ -4,7 +4,7 @@
 ## - leaves every other node alone, whatever it is named.
 ## (Regression: it used to free any descendant whose name started with
 ## "Status" or contained "burning", e.g. a UI node called StatusBar.)
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const BURN_EFFECT: GameplayEffect = preload("res://Components/effect_fire_burn.tres")

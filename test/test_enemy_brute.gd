@@ -14,7 +14,7 @@
 ## - on defeat it enters the defeat state and its body and hurtbox switch off.
 ## Ranges, damage and timings are read from the brute; the slam's impact zone
 ## is measured from one slam before the targets are placed.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const BRUTE_SCENE: PackedScene = preload("res://Enemy/enemy_brute.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")

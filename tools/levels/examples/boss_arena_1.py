@@ -13,7 +13,7 @@ Pipeline (mirrors the README):
     python tools/levels/examples/boss_arena_1.py --out-dir .scratch/levels/boss1proof
     pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI
     -> register a DungeonResource with boss_arena = true
-    (NOT in the levels rotation) -> run_tests.py -> capture.py
+    (NOT in the levels rotation) -> kit.py test -> kit.py capture
 """
 from __future__ import annotations
 

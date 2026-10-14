@@ -10,7 +10,7 @@
 ## - a component always exposes one gradient slot per palette column.
 ## Colors, gradients and mesh counts are the artists' choice and are not
 ## asserted.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const CHARACTER_SCENES: Array[String] = [
 	"res://Player/player.tscn",

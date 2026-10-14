@@ -88,4 +88,5 @@ max_distance = 15.0
 bus = &"SFX"
 
 [node name="LifeTimer" type="Timer" parent="." unique_id=1803911062]
+process_callback = 0
 one_shot = true

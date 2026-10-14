@@ -2,7 +2,7 @@
 ## GameplayEffect application, Hurtbox damage routing, and per-scene attribute
 ## parity. All expectations are relative (deltas, recompute rules,
 ## transitions), never hardcoded balance numbers.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 var _change_count: int = 0
 var _last_change_name: StringName = &""

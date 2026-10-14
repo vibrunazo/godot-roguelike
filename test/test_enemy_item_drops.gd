@@ -10,7 +10,7 @@
 ## - a HitEffectPassive applies its effects to what the owner's melee attacks
 ##   hit.
 ## Every ability, item, effect and archetype here is built by the test.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

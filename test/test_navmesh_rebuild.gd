@@ -6,7 +6,7 @@
 ## - rebuilds never start closer together than min_rebuild_interval, and props
 ##   that break in between are folded into the next rebuild.
 ## The interval is test-owned; the arena stands in for a level.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const BARREL_SCENE: PackedScene = preload("res://Levels/Decorators/explosive_barrel.tscn")
 ## Test-owned minimum time between rebuild starts, in seconds.

@@ -1,7 +1,6 @@
 ## Copy this file to test/test_<feature>.gd and create test/test_<feature>.tscn
-## (a single Node whose script is the copied file). The runner collects every
-## test/test_*.tscn automatically. This template itself has no .tscn, so it
-## never runs.
+## (a single Node whose script is the copied file). `kit.py test` collects
+## every test/test_*.tscn; this template has no .tscn, so it never runs.
 ##
 ## One sentence per behavior this suite protects goes here, e.g.
 ## "Dashing moves the character dash_speed * dash_duration meters and starts
@@ -14,6 +13,9 @@
 ##   Comparing two tuned values ("boss hits harder than the brute") is tuning
 ##   too: a designer can legitimately swap them. Set the values the mechanism
 ##   needs in the test instead (e.g. give the target full fire resistance).
+##   Never assert what a .tres contains.
+## - Go through the path the game itself uses (AGENTS.md names it), never a
+##   helper that only tests call.
 ## - Wait on conditions (wait_until / wait_signal), never on fixed frame
 ##   counts or wall-clock timers. Visual feedback (tweens, animations) runs on
 ##   the render clock: wait for it, don't assume it shows after one tick.
@@ -27,7 +29,9 @@
 ## - Use public methods only; if a test needs a hook, add a documented public one.
 ## - Everything the test creates goes through spawn()/autofree()/load_arena()
 ##   so teardown frees it; leaked orphan nodes fail the test.
-extends "res://test/lib/test_suite.gd"
+## - A mechanic that must hold at any frame rate declares
+##   "## fps_matrix: 12, 20, 30, 60" on a line of its own.
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 

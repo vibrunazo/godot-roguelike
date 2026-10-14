@@ -11,7 +11,7 @@
 ## - an enemy body runs the shared attack: an AI-raised attack intent chains
 ##   combo_next through the queue window and an AI-raised dash intent
 ##   dash-cancels it.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

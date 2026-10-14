@@ -5,7 +5,7 @@
 ##   mouse aim at the player's rotation speed.
 ## (Attacks turning toward an auto-aim target instead of the mouse are covered
 ## by test_targeting.)
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 ## Test-owned screen offset of the mouse from the player, in pixels.

@@ -7,8 +7,8 @@
 ## - its ranged riders turn in their seats toward the foe.
 ## Throwing and summoning riders are test_backpack_bosses. Distances, ranges
 ## and pacing are set by the test or read from the live nodes; the sword's
-## look and the riders' palette are verified with capture.py.
-extends "res://test/lib/test_suite.gd"
+## look and the riders' palette are verified with `kit.py capture`.
+extends "res://test/lib/project_suite.gd"
 
 const BOSS_SCENE: PackedScene = preload("res://Enemy/scope_creep_boss.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")

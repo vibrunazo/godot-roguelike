@@ -3,7 +3,7 @@
 ## real combat hits) by UI.DEBUG_KILL_DAMAGE, and never touches the player.
 ## Expected damage is read from UI.DEBUG_KILL_DAMAGE, and the action is driven
 ## by name, so rebinding its key or retuning the damage never breaks the suite.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")

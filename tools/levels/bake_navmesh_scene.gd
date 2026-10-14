@@ -5,7 +5,7 @@
 ## of a -s SceneTree script: level scripts reference autoload singletons
 ## (SceneTransition, GlobalVars, ProgressionState, UI, ...) that do not
 ## resolve in -s runs, so the -s bake cannot load template-inheriting levels.
-## Scene runs (like run_tests.py uses) resolve them normally.
+## Scene runs (like `kit.py test` uses) resolve them normally.
 ##
 ## Usage:
 ##   godot --headless --path . tools/levels/bake_navmesh_scene.tscn --

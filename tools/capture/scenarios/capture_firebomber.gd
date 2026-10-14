@@ -1,4 +1,11 @@
+## An orange firebomber frozen in its idle pose; saves movies/orange_firebomber.png.
+##
+## Run it with:
+##   python addons/godot_kit/kit.py capture scene tools/capture/scenarios/capture_firebomber.tscn --scene-camera --at 0.4
+## (add --video --duration 0.4 for a video); the named screenshots land in movies/.
 extends Node3D
+
+const CaptureImage: GDScript = preload("res://addons/godot_kit/capture/capture_image.gd")
 
 var frame_count: int = 0
 var fb: Character
@@ -43,10 +50,6 @@ func _process(_delta: float) -> void:
 	
 	if frame_count == 15:
 		_save_screenshot("movies/orange_firebomber.png")
-	
-	if frame_count >= 20:
-		print("Finished capturing orange firebomber.")
-		get_tree().quit(0)
 
 
 func _save_screenshot(file_path: String) -> void:

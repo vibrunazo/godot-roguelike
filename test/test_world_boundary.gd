@@ -4,7 +4,7 @@
 ##   dies and is hidden,
 ## - the player falling off the level dies and the game-over screen follows.
 ## Bodies are dropped far outside any floor, so the level layout never matters.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const LEVEL_TEMPLATE_SCENE: PackedScene = preload("res://Levels/level_template.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

@@ -1,6 +1,6 @@
 ---
 name: debug-test-hang
-description: Use when run_tests.py reports [TIMEOUT], a suite stalls near its end, a run_scratch.py or capture.py run is killed by its watchdog, or a Godot process seems stuck or left behind. Diagnosing hangs and watchdog kills, not preventing them (prevention is AGENTS.md §1).
+description: Use when kit.py test reports a timeout, a suite stalls near its end, a kit.py scratch or capture run is killed by its watchdog, or a Godot process seems stuck or left behind. Diagnosing hangs and watchdog kills, not preventing them (prevention is AGENTS.md section 1).
 ---
 
 # Diagnosing a timed-out or hung Godot run
@@ -10,21 +10,21 @@ description: Use when run_tests.py reports [TIMEOUT], a suite stalls near its en
 A run killed by the watchdog can print misleading tree-membership errors
 (`get_tree()` is null, `in_tree=false`, a null parent). The engine's own
 shutdown produces them; they look exactly like game code evicting the scene,
-but no scene change happened. If the log shows no error before the
-`[TIMEOUT]` line, assume a budget overrun first:
+but no scene change happened. If the log shows no error before the timeout,
+assume a budget overrun first:
 
-1. Time the suite alone: `python run_tests.py test/test_<name>.tscn --verbose`.
+1. Time the suite alone: `python addons/godot_kit/kit.py test test/test_<name>.tscn --verbose`.
 2. Look for fixed frame-count waits that add up, and for waits on conditions
    that can never become true (they run to their frame budget). Shrink the
    budgets, or wait on a condition that is guaranteed to happen.
-3. Remember each suite has a 10 s wall-clock budget, even though game time is
-   cheap under `--fixed-fps`.
-4. A `run_scratch.py` script killed at its 15 s default is fast-forwarded too
-   (`--fixed-fps 60` unless run with `--fps 0`), so it rarely needs more:
-   thousands of simulated physics ticks take well under a second. Count the
-   frames it awaits and look for a wait that never ends before raising
-   `--timeout`. Never reach for `Engine.time_scale` to speed it up (see
-   AGENTS.md §1).
+3. Remember each run has a wall-clock budget (`test.timeout` in
+   `godot_kit.toml`, 10 s by default), even though game time is cheap under
+   `--fixed-fps`.
+4. A scratch script killed at its 15 s default is fast-forwarded too, so it
+   rarely needs more: thousands of simulated physics ticks take well under a
+   second. Count the frames it awaits and look for a wait that never ends
+   before raising `--timeout`. Never reach for `Engine.time_scale` to speed it
+   up (AGENTS.md section 1).
 
 ## Real hangs
 
@@ -32,8 +32,11 @@ but no scene change happened. If the log shows no error before the
   error and idles forever. Look for `SCRIPT ERROR`, `Parse Error` or
   `Compile Error` in `--verbose` output.
 - **A `-s` script** must `extends SceneTree` and call `quit(code)` on every
-  path. `run_scratch.py` checks the first; add `quit()` before every early
+  path. `kit.py scratch` checks the first; add `quit()` before every early
   return.
+- **"Identifier not found" for an autoload in a scratch script:** the script
+  declares a game class type, which compiles before autoloads exist. Use
+  `Node` and `get()`/`call()`.
 - **A suite stalls about a second before its end:** a scene-changing call
   (`exit_shop()`, `SceneTransition.load_scene_path()`/`load_next_level()`,
   `change_scene_to_file()`) freed the suite mid-run. Move that test last in
@@ -52,12 +55,11 @@ close it. The last marker is where the engine stopped.
 
 ## Leftover engine processes
 
-The shared watchdog (`godot_env.run_watched()`) kills the whole process tree,
-and `run_tests.py` also reaps a timed-out suite's engine as a backstop, so a
-leftover headless Godot usually means a launcher that bypassed `godot_env.py`.
-Leftovers slow every later run. Check the process list
-(`tasklist | findstr -i godot` on Windows, `pgrep -a godot` elsewhere). Runners
-must launch the real engine binary (`godot_env.resolve_godot()`): killing a
-`.cmd` shim orphans the engine, which keeps the output pipes open and hangs
-the runner itself. If you suspect a runner, `python tools/check_runners.py`
-proves they still time out, clean up and catch script errors.
+The kit's watchdog kills the whole process tree, and `kit.py test` also reaps
+a timed-out suite's engine as a backstop, so a leftover headless Godot usually
+means a launcher that bypassed the kit. Leftovers slow every later run. Check
+the process list (`tasklist | findstr -i godot` on Windows, `pgrep -a godot`
+elsewhere). Launchers must start the real engine binary: killing a `.cmd` shim
+or a `_console.exe` wrapper orphans the engine, which keeps the output pipes
+open and hangs the runner itself. `python addons/godot_kit/kit.py check-runners` proves
+the runners still time out, clean up and catch script errors.

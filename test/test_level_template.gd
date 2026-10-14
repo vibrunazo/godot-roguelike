@@ -6,7 +6,7 @@
 ##   shows it,
 ## - the scene transition's fade overlay never blocks the mouse.
 ## Difficulties are read from the run and the enemy registry.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const LEVEL_TEMPLATE_SCENE: PackedScene = preload("res://Levels/level_template.tscn")
 

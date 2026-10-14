@@ -8,7 +8,7 @@
 ##   GI is baked cannot leave a permanent shadow.
 ## (Every level in the rotation is checked for baked GI and floor coverage by
 ## test_level_rotation_nav.)
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const LEVEL_TEMPLATE_SCENE: PackedScene = preload("res://Levels/level_template.tscn")
 

@@ -7,7 +7,7 @@
 ## blast (once per airborne episode, silent on drops under its minimum fall).
 ## No balance values are asserted; damage checks compare against the
 ## payload's own configuration.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

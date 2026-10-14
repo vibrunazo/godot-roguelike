@@ -112,17 +112,17 @@ defect.
     Include enemy crowd avoidance (RVO, on every enemy's `NavigationAgent3D`)
     in the phone profile: on a desktop it costs nothing measurable (12 to 48
     walking enemies, frame time within noise of avoidance off).
-12. **Tooling:** run the suites in parallel (`run_tests.py -j N`: about 0.7 s
+12. **Tooling (godot-agent-kit: change the kit repository, then pull):** run the suites in parallel (`kit.py test -j N`: about 0.7 s
     of each suite is engine startup); resolve UIDs inside binary `.res` files
     in the lint (a headless GDScript step); a pre-commit hook that runs the
     lint. (§4.3, §4.4, §5.2)
 13. **Hang prevention that does not rely on the agent:** block direct
     `godot` calls in the agent harness (a Claude Code `PreToolUse` hook or
-    permission rule pointing at the runners), and prototype an engine-side
+    permission rule pointing at `kit.py`), and prototype an engine-side
     self-kill autoload for headless runs. (§5.2)
 14. **A `CharacterController` base** for `PlayerInputComponent` and
     `AIStateMachine`, whose `command_*`/`order_*` methods are duplicated
     pairs today. (§5.3)
 15. **Scratch harness:** let checks in `.scratch/` extend the test harness,
-    and let `run_scratch.py` run a `.tscn`, so verifying a change in a scene
+    and let `kit.py scratch` run a `.tscn` (a kit change), so verifying a change in a scene
     never pushes agents toward `test/`. (§5.4)

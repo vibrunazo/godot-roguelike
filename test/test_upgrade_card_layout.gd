@@ -14,7 +14,7 @@
 ##   shop between levels) the item waits for the next level's player,
 ## - buying a card exits the shop. That changes the scene, so it runs last.
 ## Every item here is test-owned.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const CARD_SCENE: PackedScene = preload("res://UserInterface/upgrade_icon.tscn")
 const SHOP_SCENE: PackedScene = preload("res://UserInterface/upgrade_shop.tscn")

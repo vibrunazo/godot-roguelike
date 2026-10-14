@@ -5,7 +5,7 @@
 ## - An attack interrupted by a dash cancel removes its animation_finished
 ##   wiring on exit, so the interrupted animation can never pull the machine
 ##   out of a later state.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 ## Frame budget for one attack animation.

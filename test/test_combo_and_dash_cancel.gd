@@ -11,7 +11,7 @@
 ## - the slash trail shows only while its weapon slot is in its attack mode
 ##   and follows the slot's vfx_threshold.
 ## Damage, combo links and lunge settings are read from the live states.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

@@ -15,7 +15,7 @@
 ##   weapon slot (never the sword), and landing cancels it into running, or
 ##   into the ground attack when an attack was pressed during the kick.
 ## Balance values are read from the live nodes or set by the test.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

@@ -13,7 +13,7 @@
 ## The assist's settings and the player's braking are test-owned (instant
 ## stop and no reaction time unless a test sets them); the dash distance and
 ## slide are read live.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 ## Test-owned assist settings.

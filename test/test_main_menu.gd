@@ -9,7 +9,7 @@
 ##   cached and carried into a run),
 ## - pressing Start leaves menu mode, clears the carried player and starts
 ##   loading the first level. That changes the scene, so it runs last.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const MENU_LEVEL_SCENE: PackedScene = preload("res://Levels/menu_level.tscn")
 

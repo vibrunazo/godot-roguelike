@@ -87,7 +87,7 @@ metadata/_editor_floor_ = Vector3(0, -1, 0)
 [node name="Player" parent="." unique_id=602303743 instance=ExtResource("2_ersrp")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1, 0)
 
-[node name="Pit" type="MeshInstance3D" parent="." unique_id=915475260]
+[node name="Pit" type="MeshInstance3D" parent="." unique_id=915475260 groups=["capture_bounds_ignore"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, 0)
 material_override = SubResource("StandardMaterial3D_ersrp")
 cast_shadow = 0

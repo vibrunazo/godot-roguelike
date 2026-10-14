@@ -13,7 +13,7 @@ All directions below use the Godot axis convention (north = -Z).
 Pipeline (mirrors the README):
     python tools/levels/examples/four_rooms.py --out-dir .scratch/levels/l7proof
     pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI
-    -> register a DungeonResource -> run_tests.py -> capture.py
+    -> register a DungeonResource -> kit.py test -> kit.py capture
 """
 from __future__ import annotations
 

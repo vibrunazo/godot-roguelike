@@ -360,7 +360,7 @@ player.
 - **Placement:** the book floats about 0.4 m up, tilted toward the camera and
   matched to its yaw (levels can rotate). It does not spin. An emissive floor
   ring marks it, with no dynamic light.
-- **Legibility:** a quick `capture.py` check that the title roughly reads.
+- **Legibility:** a quick `kit.py capture` check that the title roughly reads.
   It doesn't have to be perfect.
 
 ## 12. Input, HUD, persistence, animation, AI
@@ -414,7 +414,7 @@ player.
   - `scale_with_attack = true`
 - **`Items/ItemResources/item_book_fireball.tres`:** see §9.
 
-## 14. Phases (each ends with `python run_tests.py` green, lint included)
+## 14. Phases (each ends with `python addons/godot_kit/kit.py test` green, lint included)
 
 1. **Refactors:**
    - split `CharacterAttack` into `CharacterAction` + `CharacterAttack`, with

@@ -8,7 +8,7 @@
 ##   script error every tick and stop every cooldown from expiring),
 ## - radial_knockback pushes each target away from the hitbox's center
 ##   (explosions throw characters outward, each in its own direction).
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 ## Test-owned attack values.
 const REHIT_INTERVAL: float = 0.1

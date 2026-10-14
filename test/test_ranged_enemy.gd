@@ -11,7 +11,7 @@
 ## - a projectile flies through corpses and the exit trigger, and still hits
 ##   a living target beyond them.
 ## Ranges and damage are read from the enemy and the projectile.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const RANGED_SCENE: PackedScene = preload("res://Enemy/ranged_enemy.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

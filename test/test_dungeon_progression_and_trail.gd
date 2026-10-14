@@ -13,7 +13,7 @@
 ##   engine error when the target sits straight above the player (the path
 ##   degenerates to a point).
 ## Every bound and difficulty here is test-owned.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

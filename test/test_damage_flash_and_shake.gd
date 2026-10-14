@@ -14,7 +14,7 @@
 ## - AttackComponent.reset_exceptions() tolerates exceptions that were freed.
 ## Magnitudes and durations are read from the live components, so retuning
 ## any of them never breaks the suite.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

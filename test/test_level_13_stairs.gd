@@ -2,7 +2,7 @@
 ## stairways to the upper floor and comes back down. No teleport, jump,
 ## velocity override or stand-in collision. The authored spawn must also be
 ## clear of geometry.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const LEVEL_SCENE: PackedScene = preload("res://Levels/level_13.tscn")
 ## Route from the spawn: up the north flight, back down, then up and down the

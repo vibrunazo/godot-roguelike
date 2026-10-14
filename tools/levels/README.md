@@ -9,7 +9,7 @@ All `.gd` tools run headless through the project runner, which forwards extra
 args to the script (`OS.get_cmdline_user_args()`):
 
 ```bash
-python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
+python addons/godot_kit/kit.py scratch tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn
 ```
 
 > Godot-side file arguments must be `res://` (or project-relative) paths.
@@ -60,7 +60,7 @@ an all-integer x/z lattice is treated as an unbaked scaffold and fails).
 
 ```bash
 # 1. Dump the level you are riffing on
-python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn --out=.scratch/levels/l2.txt
+python addons/godot_kit/kit.py scratch tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn --out=.scratch/levels/l2.txt
 
 # 2. Design: write your own step-2 script (see examples/double_level.py),
 #    producing floor.txt / wall.txt cell files
@@ -71,12 +71,12 @@ python tools/levels/validate_layout.py --floor .scratch/levels/l4proof/floor.txt
     --wall .scratch/levels/l4proof/wall.txt --start 0,0 --goal -3,-17
 
 # 4. Pack cells through the engine, then assemble the scene from your spec JSON
-python run_scratch.py tools/levels/pack_cells.gd -- --floor=.scratch/levels/l4proof/floor.txt \
+python addons/godot_kit/kit.py scratch tools/levels/pack_cells.gd -- --floor=.scratch/levels/l4proof/floor.txt \
     --wall=.scratch/levels/l4proof/wall.txt --out=.scratch/levels/l4proof/packed_cells.tscn
 python tools/levels/assemble_level.py --spec .scratch/levels/l4proof/spec.json --out Levels/level_5.tscn
 
 # 5. Bake the navmesh headlessly, splice it into the level (tip 1)
-python run_scratch.py tools/levels/bake_navmesh.gd -- --level=Levels/level_5.tscn \
+python addons/godot_kit/kit.py scratch tools/levels/bake_navmesh.gd -- --level=Levels/level_5.tscn \
     --out=.scratch/levels/l5proof/navmesh_baked.txt
 # then replace the scaffold NavigationMesh block in Levels/level_5.tscn with the
 # baked snippet (Level 5's proof run did this with a small splice script).
@@ -98,8 +98,8 @@ subprocess.run(cmd, shell=False, timeout=280)
 # 7. Reference the baked .res from the level (assembler does this when
 #    "gi_data" is set in the spec), register the level (a DungeonResource
 #    in GlobalVars.dungeons), then verify:
-python run_tests.py test/test_level_rotation_nav.tscn
-python capture.py map Levels/level_5.tscn --preset all
+python addons/godot_kit/kit.py test test/test_level_rotation_nav.tscn
+python addons/godot_kit/kit.py capture scene Levels/level_5.tscn --preset all
 ```
 
 ## Spec format (`assemble_level.py`)
@@ -190,7 +190,7 @@ python capture.py map Levels/level_5.tscn --preset all
 9. **After adding, moving or renaming `class_name` scripts, the class cache
    is stale.** A stale `.godot/global_script_class_cache.cfg` produces
    `hides a global script class` or `Could not find type` parse errors (then
-   hangs). The runners (`run_scratch.py`, `run_tests.py`, `capture.py`)
+   hangs). The kit's runners (`kit.py scratch`, `kit.py test`, `kit.py capture`)
    detect this and rebuild it with a headless editor import before launching;
    never hand-edit the cache (it tends to corrupt it), and never `.gdignore`
    a folder that owns global classes (it hides them from the scan).

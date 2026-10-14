@@ -1,6 +1,12 @@
 ## Helper recording scene to capture video and screenshots of Enemy Brute dual attacks
 ## (Punch, Slam, Stunlockability, Stun-break, and Hyper-Armor) with visible debug shapes.
+##
+## Run it with:
+##   python addons/godot_kit/kit.py capture scene tools/capture/scenarios/record_brute_attacks.tscn --scene-camera --at 3.7
+## (add --video --duration 3.7 for a video); the named screenshots land in movies/.
 extends Node3D
+
+const CaptureImage: GDScript = preload("res://addons/godot_kit/capture/capture_image.gd")
 
 var frame_count: int = 0
 var brute: Character
@@ -129,12 +135,6 @@ func _physics_process(_delta: float) -> void:
 		# Slam recovery screenshot
 		_save_screenshot("movies/brute_slam_recovery.png")
 
-	if frame_count >= 220:
-		print("Dual attack recording sequence completed successfully.")
-		get_tree().quit(0)
-
 
 func _save_screenshot(file_path: String) -> void:
-	if DisplayServer.get_name() == "headless":
-		return
 	CaptureImage.save(CaptureImage.grab(get_viewport()), file_path, "RecordBruteAttacks")

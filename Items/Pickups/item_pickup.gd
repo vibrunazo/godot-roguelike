@@ -109,7 +109,7 @@ func _play_detached_sound() -> void:
 	get_parent().add_child(sound)
 	sound.global_position = at
 	sound.play()
-	get_tree().create_timer(sound.stream.get_length()).timeout.connect(sound.queue_free)
+	get_tree().create_timer(sound.stream.get_length(), true, true).timeout.connect(sound.queue_free)
 
 
 func _show_item() -> void:

@@ -12,7 +12,7 @@
 ##   hits an enemy in the path.
 ## Positions and health are test-owned; ranges and the facing are read from
 ## the live nodes.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const KNIGHT_SCENE: PackedScene = preload("res://Enemy/enemy_backface_knight.tscn")

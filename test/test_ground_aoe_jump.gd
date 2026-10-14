@@ -11,7 +11,7 @@
 ## Every expected value is read from the live nodes (radius, height, damage,
 ## aoe_forward_offset) or set by the test, and every wait is on a condition, so
 ## the suite holds at any frame rate and survives retuning.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

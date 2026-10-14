@@ -87,7 +87,7 @@ func _affected_groups() -> Array[String]:
 
 
 func _show_ring() -> void:
-	get_tree().create_timer(visual_duration).timeout.connect(queue_free)
+	get_tree().create_timer(visual_duration, true, true).timeout.connect(queue_free)
 	if ring == null:
 		return
 	ring.scale = Vector3.ONE * 0.1

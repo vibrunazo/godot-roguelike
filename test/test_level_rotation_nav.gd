@@ -16,7 +16,7 @@
 ## On a new run's first level, the level's ItemSpawner must place the level
 ## items (GlobalVars.level_items, a test-owned pool here) resting on the
 ## floor, reachable on foot from the player spawn.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const BOOK_VISUAL: PackedScene = preload("res://Items/Books/book_dummies.tscn")
 

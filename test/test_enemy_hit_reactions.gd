@@ -9,7 +9,7 @@
 ##   defeat animation; the corpse stops blocking and stops taking hits,
 ## - a dead target rejects hits, from its hurtbox and from attacks.
 ## Damage and knockback are test-owned; speeds are read from the enemy.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const ENEMY_SCENE: PackedScene = preload("res://Enemy/enemy_base.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

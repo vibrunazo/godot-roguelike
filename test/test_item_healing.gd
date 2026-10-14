@@ -3,7 +3,7 @@
 ## the item card's summary projects the same heal the item applies.
 ## (Regression: values up to 1.0 used to be read as fractions, so 1.0 healed
 ## 100% while 1.5 healed 1.5%.)
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 ## Test-owned heal percentages on both sides of the old 1.0 threshold.

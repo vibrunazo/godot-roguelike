@@ -1,6 +1,0 @@
-[gd_scene format=3 uid="uid://bqjw65g35gux1"]
-
-[ext_resource type="Script" path="res://tools/capture/map_capturer.gd" id="1_mapcap"]
-
-[node name="MapCapturer" type="Node3D"]
-script = ExtResource("1_mapcap")

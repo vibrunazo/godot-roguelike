@@ -7,7 +7,7 @@
 ## (FLOOR/WALL section headers are accepted and ignored).
 ##
 ## Usage:
-##   python run_scratch.py tools/levels/pack_cells.gd -- --floor=/tmp/floor.txt --wall=/tmp/wall.txt --out=/tmp/cells.tscn
+##   python addons/godot_kit/kit.py scratch tools/levels/pack_cells.gd -- --floor=/tmp/floor.txt --wall=/tmp/wall.txt --out=/tmp/cells.tscn
 extends SceneTree
 
 

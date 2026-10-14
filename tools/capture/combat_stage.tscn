@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://b8ud6m6hxja1u"]
+
+[ext_resource type="Script" path="res://tools/capture/combat_stage.gd" id="1_combatscn"]
+
+[node name="CombatStage" type="Node3D"]
+script = ExtResource("1_combatscn")

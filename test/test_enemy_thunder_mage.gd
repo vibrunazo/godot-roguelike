@@ -8,8 +8,8 @@
 ##   effect at the impact.
 ## Values (difficulty, speed, damage) are read from the live resources, so
 ## retuning the mage never breaks the suite. Its colors, meshes and sounds
-## are art and are verified visually (capture.py), not here.
-extends "res://test/lib/test_suite.gd"
+## are art and are verified visually (`kit.py capture`), not here.
+extends "res://test/lib/project_suite.gd"
 
 const MAGE_SCENE: PackedScene = preload("res://Enemy/enemy_thunder_mage.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")

@@ -1,11 +1,11 @@
 ## Generates test/fixtures/arena.tscn: the shared minimal scene for mechanics
 ## tests (see TestSuite.load_arena()). Regenerate instead of hand-editing:
-##     python run_scratch.py test/fixtures/build_arena.gd
+##     python addons/godot_kit/kit.py scratch test/fixtures/build_arena.gd
 ##
 ## Contents: a flat 40 x 40 m static floor (top at y = 0) on the World physics
 ## layer, a NavigationRegion3D whose navmesh is baked here by the engine with
 ## the same parse settings as the levels (static colliders), a directional
-## light and environment so capture.py recordings are readable, and
+## light and environment so `kit.py capture` recordings are readable, and
 ## PlayerSpawn / EnemySpawn markers. Deliberately absent: WaveObjective,
 ## enemies, exit, VoxelGI, pits, player (tests spawn exactly what they need).
 extends SceneTree

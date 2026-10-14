@@ -8,6 +8,8 @@ changes an interface, update its callers; never leave aliases, forwarders or
 
 Procedures (adding animations, building levels, capturing media, writing
 tests, debugging a timed-out suite) live in skills: see "Skills" at the end.
+The tooling is godot-agent-kit, vendored in `addons/godot_kit/`: never edit it
+here (its README says how it is updated: change the kit repository, then pull).
 
 ---
 
@@ -16,40 +18,44 @@ tests, debugging a timed-out suite) live in skills: see "Skills" at the end.
 Godot does not exit on script errors, bad preloads or missing autoloads: it
 prints the error and idles forever. `--quit-after` does not help.
 
-- **NEVER run a bare `godot` command.** Always go through a runner with a
-  watchdog:
-  - `python run_tests.py [test/test_x.tscn ...]` runs the project lint, then
-    the suites (`--fps N` emulates a slow device, `--verbose` prints every
-    suite's output). Lint alone: `python tools/lint_project.py` (no Godot).
-    Every lint violation fails the run; there are no suppressions. Fix the
-    code, or the rule if it is wrong. **A red lint is never acceptable**:
-    never finish a change that leaves a violation behind.
-  - `python run_scratch.py <script.gd> [--timeout N] [--fps N] [-- args]`
+- **NEVER run a bare `godot` command.** Always go through the kit, which runs
+  Godot under a watchdog:
+  - `python addons/godot_kit/kit.py test [test/test_x.tscn ...]` runs the
+    project lint, then the suites (`--fps N` emulates a slow device,
+    `--verbose` prints every suite's output). Lint alone:
+    `python addons/godot_kit/kit.py lint` (no Godot). Every lint violation
+    fails the run; there are no suppressions. Fix the code, or the rule if it
+    is wrong (`godot_kit.toml`). **A red lint is never acceptable**: never
+    finish a change that leaves a violation behind.
+  - `python addons/godot_kit/kit.py scratch <script.gd> [--timeout N] [--fps N] [-- args]`
     runs a throwaway `-s` script. It must `extends SceneTree`, do its work in
-    `_initialize()` (in `_init()` autoloads do not exist yet, so game scripts
-    it loads fail to compile) and call `quit(code)`. Its own declarations
-    must not use game class types (`var c: Character`): those compile with
-    the script, before autoloads exist. Use `Node` and `get()` instead.
-  - `python capture.py <map|anim|combat|test> ...` captures screenshots and
-    video into `movies/`.
-- `run_tests.py` and `run_scratch.py` fast-forward: frames run back to back
-  (`--fixed-fps`, 60 by default), so game time is cheap and the simulation is the same as in real
-  time. `--fps N` emulates an N fps device; `run_scratch.py --fps 0` paces to
+    `_initialize()` (in `_init()` autoloads do not exist yet) and call
+    `quit(code)`. Its own declarations must not use game class types
+    (`var c: Character`): those compile with the script, before autoloads
+    exist, and fail with "Identifier not found" for every autoload. Use
+    `Node` and `get()`/`call()` instead.
+  - `python addons/godot_kit/kit.py capture <scene|test> ...` captures
+    screenshots, contact sheets and video into `movies/`; this game's
+    animation and combat staging scenes run through `capture scene` (the
+    `capture-media` skill).
+- The kit fast-forwards: frames run back to back (`--fixed-fps`, 60 by
+  default), so game time is cheap and the simulation is the same as in real
+  time. `--fps N` emulates an N fps device; `scratch --fps 0` paces to
   wall-clock time, only for scripts that measure real time. **Never use
   `Engine.time_scale` to speed a run up:** it lengthens every physics step
   (16x = a 3.75 Hz simulation), which changes results. A scratch script that
   needs more than the default 15 s timeout usually has a bug (a wait that
   never ends, far more frames than intended): find it before raising
   `--timeout`.
-- Any new Python launcher must go through `godot_env.run_godot()` (or
-  `run_watched()` for other commands): it resolves the engine (`GODOT_BIN`,
-  Windows shims unwrapped), streams output, and kills the whole process tree
-  at the timeout. Never write another `subprocess` launch of Godot.
-- The runners rebuild Godot's class cache themselves when a `class_name` was
-  added, moved or re-based (headless editor import); never hand-edit
+- The engine is `GODOT_BIN`, else `godot` on PATH. `godot_kit.toml` pins its
+  version (`[engine] version`), and the kit refuses to run or import the
+  project with another one. Never launch Godot from your own `subprocess`
+  code: tooling goes through the kit. A Python tool that must launch Godot
+  itself (`tools/levels/build_level.py`) imports the kit's `cli.godot_env`
+  and uses its `run_watched()`.
+- The kit rebuilds Godot's class cache itself when a `class_name` was added,
+  moved or re-based (headless editor import); never hand-edit
   `.godot/global_script_class_cache.cfg`.
-- After changing `godot_env.py` or a runner, run `python tools/check_runners.py`
-  (it proves the runners still time out, clean up and catch script errors).
 - A suite that times out: use the `debug-test-hang` skill.
 
 ## 2. Code rules
@@ -67,14 +73,20 @@ prints the error and idles forever. `--quit-after` does not help.
 4. **Reference nodes by typed exports**, not name strings or `get_node` paths,
    wherever the scene can wire them.
 5. **Gameplay timing runs on the physics clock** (the game targets slow
-   devices): gameplay `AnimationTree`/`AnimationPlayer` use
+   devices, which render fewer frames than physics ticks): code that drives
+   gameplay state each tick (movement, steering, cooldowns, AI decisions) runs
+   in `_physics_process`; gameplay `AnimationTree`/`AnimationPlayer` use
    `callback_mode_process = PHYSICS`; gameplay `Timer`s use
    `process_callback = PHYSICS`; code timers use
    `get_tree().create_timer(t, true, true)`; gameplay tweens use
-   `Tween.TWEEN_PROCESS_PHYSICS`. Purely visual/audio timing may stay on the
-   render clock.
+   `Tween.TWEEN_PROCESS_PHYSICS`. In the gameplay folders
+   (`physics_clock_dirs` in `godot_kit.toml`) the lint holds every timer to
+   this, visual ones included; elsewhere purely visual or audio timing may
+   stay on the render clock. A mechanic that must hold at any frame rate gets
+   an `fps_matrix` suite (see the `write-test` skill).
 6. **Never hand-write resource UIDs** in `.tscn`/`.tres`/`.uid` files. Let
-   Godot generate them (open/save via a runner script) or omit the `uid=`.
+   Godot generate them (open and save the file from a scratch script) or omit
+   the `uid=`.
 7. **Parent runtime visuals to the nearest `Node3D`**, never to a plain `Node`
    (it would not inherit the transform).
 8. **Balance lives in data** (`.tres` resources, exported properties), never
@@ -83,17 +95,25 @@ prints the error and idles forever. `--quit-after` does not help.
 10. **Hand-edited `.tscn` files:** the 6-float `AABB(...)` literal does not
     parse there. Leave optional AABB properties (e.g. `visibility_aabb`) out
     instead of writing them.
+11. **No `print()` in game code** (it also runs in release builds): use
+    `print_verbose()` for dev logs, `push_warning()`/`push_error()` for
+    problems.
 
 ## 3. Tests and verification
 
 - **Before creating or changing anything in `test/`, read the `write-test`
   skill.** It says when a permanent test is worth adding and how to write one.
+  Tests assert mechanics, never balance or the contents of data files.
+- Every suite extends `test/lib/project_suite.gd`: the kit harness plus this
+  game's helpers (`load_arena()`, `disable_ai()`...).
 - To check your own change, a throwaway script in `.scratch/` (run with
-  `run_scratch.py`) is often enough; verify visual changes with `capture.py`.
+  `kit.py scratch`) is often enough; verify visual changes with
+  `kit.py capture`.
 - Where files go: everything not meant to be committed goes in `.scratch/`
   (git-ignored): throwaway scripts and probes, and the level pipeline's
-  intermediates in `.scratch/levels/`. Reusable capture scenarios go in `tools/capture/`, and only
-  suites, `test/lib/` and `test/fixtures/` in `test/`.
+  intermediates in `.scratch/levels/`. Captures land in `movies/`
+  (git-ignored). Reusable capture scenarios go in `tools/capture/scenarios/`,
+  and only suites, `test/lib/` and `test/fixtures/` in `test/`.
 
 ## 4. Git and workspace
 
@@ -113,7 +133,8 @@ prints the error and idles forever. `--quit-after` does not help.
   **mind** is either `PlayerInputComponent` (player) or `AIStateMachine` with
   `AIState`s (enemies). Minds only raise intents (`command_*`) or request body
   states (`order_*`, `StateMachine.request_state()`); body states read only
-  the `Character`. Transitions go through `request_state()` or the state's
+  the `Character` (the lint holds the body-state folders to this:
+  `[[lint.forbidden_references]]` in `godot_kit.toml`). Transitions go through `request_state()` or the state's
   `finished` signal. States refer to each other by typed exports, never by
   name strings: an AI state's `body_state` is the body state it orders, and
   `Character.can_accept_order()` is the one rule for when the body takes an
@@ -312,10 +333,11 @@ automatically; other agents follow these paths):
 |---|---|
 | Adding or wiring a combat animation (`.res`, `AnimationTree`, `WeaponSlot` tracks) | `.claude/skills/add-combat-animation/SKILL.md` |
 | Building or editing a level (`GridMap`, navmesh, `VoxelGI`, level rotation) | `.claude/skills/build-level/SKILL.md` |
-| Capturing screenshots or video (`capture.py`, `movies/`) | `.claude/skills/capture-media/SKILL.md` |
+| Capturing screenshots, contact sheets or video (`kit.py capture`, the anim and combat stages, `movies/`) | `.claude/skills/capture-media/SKILL.md` |
 | Writing, migrating or fixing a test suite (`test/`, harness, arena) | `.claude/skills/write-test/SKILL.md` |
 | A suite timed out or a Godot run hung | `.claude/skills/debug-test-hang/SKILL.md` |
 
-Open work is in `TODO.md`. Narrative lore, theme and the visual style guide for
-assets are in `LORE.md`. Past code reviews, closed and kept as the record of
-why the code looks the way it does, are in `docs/reviews/`.
+Open work is in `TODO.md`. Plans are in `docs/plans/`. Narrative lore, theme
+and the visual style guide for assets are in `LORE.md`. Past code reviews,
+closed and kept as the record of why the code looks the way it does, are in
+`docs/reviews/`.

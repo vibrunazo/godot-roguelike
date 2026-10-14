@@ -2,7 +2,7 @@
 ## or as input to the tools/levels pipeline (validate, edit, re-pack).
 ##
 ## Usage:
-##   python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn --out=/tmp/level_2_cells.txt
+##   python addons/godot_kit/kit.py scratch tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn --out=/tmp/level_2_cells.txt
 ##
 ## Output format (compatible with pack_cells.gd and validate_layout.py):
 ##   FLOOR

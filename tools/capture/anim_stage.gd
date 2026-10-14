@@ -1,52 +1,36 @@
-## Animation & Character capturer utility for staging, inspecting, and recording animations.
+## Staging scene for animation captures: a lit studio floor, a camera, and a
+## target playing one animation or StateMachine state, optionally facing a
+## frozen dummy. It only stages: `kit.py capture scene` takes the screenshot,
+## contact sheet or video and ends the run.
 ##
-## Supports:
-## 1. Character scenes (.tscn) - Enemy Brute, Melee Enemy, Firebomber, Player, etc.
-## 2. Standalone animation resource files (.res) mounted onto base rigs.
-## 3. Source animation GLB archives (e.g. Rig_Medium_CombatMelee.glb).
-## Supports target dummy placement, collision shape visualization, slow-motion,
-## and exact timestamp screenshot, contact sheet (--sheet=N: N frames spread
-## over the animation, tiled into one image) or video recording into the
-## movies/ folder.
-class_name AnimCapturer
+##   python addons/godot_kit/kit.py capture scene tools/capture/anim_stage.tscn --scene-camera --at 0.5 -- --target=Enemy/enemy_brute.tscn --state=EnemyPunch --dummy
+##
+## Targets: a character scene (.tscn), an animation resource (.res) mounted on
+## a base rig, or a source GLB (.glb). Arguments after `--` (read after the
+## kit's --scene-args marker): --target=, --anim=, --state=, --rig=,
+## --cam-angle=three_quarters|front|side|top_down, --cam-dist=, --cam-height=,
+## --cam-fov=, --speed= (playback speed scale) and --dummy.
 extends Node3D
 
 var target_path: String = "res://Enemy/enemy_brute.tscn"
 var anim_name: String = ""
 var state_name: String = ""
 var rig_path: String = ""
-var output_path: String = ""
 var cam_angle: String = "three_quarters"
 var speed_scale: float = 1.0
-var screenshot_time: float = -1.0 # -1 means auto (apex or mid-point)
-var is_video: bool = false
 var has_dummy: bool = false
-var debug_collisions: bool = false
-var hide_ui: bool = true
-var duration_sec: float = 0.0
 var cam_dist: float = 1.0
 var cam_height: float = 0.0
 var cam_fov: float = 42.0
 
-var frame_count: int = 0
 var anim_player: AnimationPlayer
 var anim_tree: AnimationTree
 var character_instance: Node3D
 var dummy_instance: Node3D
 var camera: Camera3D
-var total_anim_length: float = 1.0
-var target_screenshot_frame: int = 20
-## Frames on a contact sheet (--sheet=N); 0 takes a single screenshot.
-var sheet_count: int = 0
-## Contact sheet frames per row.
-const SHEET_COLUMNS: int = 3
-## Physics frames the sheet grabs its frames on, and the frames grabbed so far.
-var _sheet_frames: Array[int] = []
-var _sheet_images: Array[Image] = []
 
 
 func _ready() -> void:
-	print("[Capture Tip] If output appears black or from an unintended perspective, check if an actor scene contains an active internal Camera3D.")
 	_parse_arguments()
 	_setup_studio()
 	_setup_camera()
@@ -54,93 +38,45 @@ func _ready() -> void:
 	if has_dummy:
 		_spawn_dummy()
 	_start_playback()
-	if sheet_count > 1:
-		_plan_sheet()
 
 
 func _physics_process(_delta: float) -> void:
-	frame_count += 1
-	_disable_all_ui()
-
+	# Actor scenes (the player) bring cameras of their own.
 	if camera != null and not camera.is_current():
 		camera.make_current()
-		print("[AnimCapturer] Note: Re-asserted StudioCamera as active viewport camera.")
-
-	if is_video:
-		var target_frames: int = int(total_anim_length * 60.0) + 10
-		if duration_sec > 0.0:
-			target_frames = int(duration_sec * 60.0)
-		if frame_count >= target_frames:
-			print("[AnimCapturer] Finished video recording (frames: %d)" % frame_count)
-			get_tree().quit(0)
-		return
-
-	if sheet_count > 1:
-		_update_sheet()
-		return
-
-	# Screenshot mode
-	if frame_count == target_screenshot_frame:
-		var file_to_save: String = output_path
-		if file_to_save.is_empty():
-			file_to_save = _generate_default_screenshot_path()
-		_save_screenshot(file_to_save)
-
-	if frame_count >= target_screenshot_frame + 3:
-		print("[AnimCapturer] Animation screenshot capture completed.")
-		get_tree().quit(0)
 
 
 func _parse_arguments() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
-	for arg: String in args:
-		if arg.begins_with("--target="):
-			target_path = arg.trim_prefix("--target=").strip_edges()
-		elif arg.begins_with("--anim="):
-			anim_name = arg.trim_prefix("--anim=").strip_edges()
-		elif arg.begins_with("--state="):
-			state_name = arg.trim_prefix("--state=").strip_edges()
-		elif arg.begins_with("--rig="):
-			rig_path = arg.trim_prefix("--rig=").strip_edges()
-		elif arg.begins_with("--output="):
-			output_path = arg.trim_prefix("--output=").strip_edges()
-		elif arg.begins_with("--cam-angle="):
-			cam_angle = arg.trim_prefix("--cam-angle=").strip_edges().to_lower()
-		elif arg.begins_with("--cam-dist="):
-			cam_dist = arg.trim_prefix("--cam-dist=").to_float()
-		elif arg.begins_with("--cam-height="):
-			cam_height = arg.trim_prefix("--cam-height=").to_float()
-		elif arg.begins_with("--cam-fov="):
-			cam_fov = arg.trim_prefix("--cam-fov=").to_float()
-		elif arg.begins_with("--speed="):
-			speed_scale = arg.trim_prefix("--speed=").to_float()
-		elif arg.begins_with("--time="):
-			screenshot_time = arg.trim_prefix("--time=").to_float()
-		elif arg.begins_with("--duration="):
-			duration_sec = arg.trim_prefix("--duration=").to_float()
-		elif arg.begins_with("--sheet="):
-			sheet_count = arg.trim_prefix("--sheet=").to_int()
-		elif arg == "--video":
-			is_video = true
-		elif arg == "--dummy":
-			has_dummy = true
-		elif arg == "--debug-collisions":
-			debug_collisions = true
-		elif arg == "--show-ui":
-			hide_ui = false
-		elif arg == "--hide-ui":
-			hide_ui = true
-
+	for arg: String in args.slice(args.find("--scene-args") + 1):
+		var key: String = arg.get_slice("=", 0)
+		var value: String = arg.get_slice("=", 1).strip_edges() if arg.contains("=") else ""
+		match key:
+			"--target":
+				target_path = value
+			"--anim":
+				anim_name = value
+			"--state":
+				state_name = value
+			"--rig":
+				rig_path = value
+			"--cam-angle":
+				cam_angle = value.to_lower()
+			"--cam-dist":
+				cam_dist = value.to_float()
+			"--cam-height":
+				cam_height = value.to_float()
+			"--cam-fov":
+				cam_fov = value.to_float()
+			"--speed":
+				speed_scale = value.to_float()
+			"--dummy":
+				has_dummy = true
 	if not target_path.begins_with("res://") and not target_path.begins_with("user://"):
 		target_path = "res://" + target_path.trim_prefix("./").trim_prefix("/")
 
 
 func _setup_studio() -> void:
-	if debug_collisions:
-		get_tree().debug_collisions_hint = true
-
-	_disable_all_ui()
-
 	# Key light with soft shadow
 	var key_light: DirectionalLight3D = DirectionalLight3D.new()
 	key_light.rotation_degrees = Vector3(-35.0, 40.0, 0.0)
@@ -213,7 +149,7 @@ func _setup_camera() -> void:
 
 func _load_target() -> void:
 	if not ResourceLoader.exists(target_path):
-		printerr("[AnimCapturer] ERROR: Target path not found: ", target_path)
+		printerr("[AnimStage] ERROR: Target path not found: ", target_path)
 		get_tree().quit(1)
 		return
 
@@ -224,14 +160,14 @@ func _load_target() -> void:
 	elif target_path.ends_with(".tscn"):
 		_load_tscn_target(target_path)
 	else:
-		printerr("[AnimCapturer] ERROR: Unsupported file type: ", target_path)
+		printerr("[AnimStage] ERROR: Unsupported file type: ", target_path)
 		get_tree().quit(1)
 
 
 func _load_tscn_target(path: String) -> void:
 	var scn: PackedScene = load(path) as PackedScene
 	if scn == null:
-		printerr("[AnimCapturer] ERROR: Could not load PackedScene: ", path)
+		printerr("[AnimStage] ERROR: Could not load PackedScene: ", path)
 		get_tree().quit(1)
 		return
 
@@ -270,7 +206,7 @@ func _load_glb_target(path: String) -> void:
 func _load_animation_resource(path: String) -> void:
 	var anim: Animation = load(path) as Animation
 	if anim == null:
-		printerr("[AnimCapturer] ERROR: Could not load Animation resource: ", path)
+		printerr("[AnimStage] ERROR: Could not load Animation resource: ", path)
 		get_tree().quit(1)
 		return
 
@@ -283,7 +219,7 @@ func _load_animation_resource(path: String) -> void:
 			actual_rig = "res://Assets/KayKit_Assets/KayKit_GameDevTV_Enemies_Character_Pack_1.0/Characters/gltf/Enemy_Medium.glb"
 
 	if not ResourceLoader.exists(actual_rig):
-		printerr("[AnimCapturer] ERROR: Rig model not found: ", actual_rig)
+		printerr("[AnimStage] ERROR: Rig model not found: ", actual_rig)
 		get_tree().quit(1)
 		return
 
@@ -303,7 +239,6 @@ func _load_animation_resource(path: String) -> void:
 	lib.add_animation(anim_id, anim)
 	anim_player.add_animation_library("preview", lib)
 	anim_name = "preview/" + anim_id
-	total_anim_length = anim.length
 
 
 func _spawn_dummy() -> void:
@@ -338,7 +273,7 @@ func _start_playback() -> void:
 		return
 
 	if anim_player == null:
-		printerr("[AnimCapturer] WARNING: No AnimationPlayer found on target.")
+		printerr("[AnimStage] WARNING: No AnimationPlayer found on target.")
 		return
 
 	# Disable AnimationTree if we are playing directly on AnimationPlayer
@@ -357,26 +292,16 @@ func _start_playback() -> void:
 					break
 			if resolved_anim.is_empty():
 				resolved_anim = all_anims[0]
-			print("[AnimCapturer] Auto-selected animation: ", resolved_anim)
+			print("[AnimStage] Auto-selected animation: ", resolved_anim)
 		else:
-			printerr("[AnimCapturer] ERROR: No animations found in AnimationPlayer.")
+			printerr("[AnimStage] ERROR: No animations found in AnimationPlayer.")
 			return
 
 	var anim_res: Animation = anim_player.get_animation(resolved_anim)
-	if anim_res != null:
-		total_anim_length = anim_res.length / maxf(speed_scale, 0.01)
-
+	var length: float = anim_res.length / maxf(speed_scale, 0.01) if anim_res != null else 0.0
 	anim_player.speed_scale = speed_scale
 	anim_player.play(resolved_anim)
-	print("[AnimCapturer] Playing animation: ", resolved_anim, " (length: %.2fs, speed: %.2f)" % [total_anim_length, speed_scale])
-
-	# Calculate screenshot target frame
-	if screenshot_time >= 0.0:
-		target_screenshot_frame = maxi(int(screenshot_time * 60.0), 5)
-	else:
-		# Default to apex (midpoint of animation or 0.3s)
-		var snap_time: float = minf(total_anim_length * 0.45, 0.5)
-		target_screenshot_frame = maxi(int(snap_time * 60.0), 15)
+	print("[AnimStage] Playing animation: ", resolved_anim, " (length: %.2fs, speed: %.2f)" % [length, speed_scale])
 
 
 func _trigger_state(p_state: String) -> void:
@@ -384,12 +309,7 @@ func _trigger_state(p_state: String) -> void:
 		var c: Character = character_instance as Character
 		if c.state_machine != null:
 			c.state_machine.request_state(p_state)
-			print("[AnimCapturer] Requested StateMachine state: ", p_state)
-			total_anim_length = 1.5
-			if screenshot_time >= 0.0:
-				target_screenshot_frame = maxi(int(screenshot_time * 60.0), 5)
-			else:
-				target_screenshot_frame = 25
+			print("[AnimStage] Requested StateMachine state: ", p_state)
 
 
 func _resolve_animation_name(query: String) -> String:
@@ -422,62 +342,6 @@ func _resolve_animation_name(query: String) -> String:
 	return ""
 
 
-func _generate_default_screenshot_path() -> String:
-	var base: String = target_path.get_file().get_basename()
-	var tag: String = anim_name.get_file().get_basename()
-	if tag.is_empty():
-		tag = state_name
-	if tag.is_empty():
-		tag = "anim"
-	return "movies/%s_%s_%s.png" % [base, tag, cam_angle]
-
-
-func _disable_all_ui() -> void:
-	if hide_ui:
-		var ui_node: Node = get_node_or_null("/root/UI")
-		if ui_node != null and ui_node.has_method("set_overlays_visible"):
-			ui_node.set_overlays_visible(false)
-		var overlays: Array[Node] = get_tree().root.find_children("*", "LevelTitleOverlay", true, false)
-		for ov: Node in overlays:
-			ov.queue_free()
-
-	var st: CanvasLayer = get_node_or_null("/root/SceneTransition") as CanvasLayer
-	if st != null:
-		st.visible = false
-		var cr: ColorRect = st.get_node_or_null("ColorRect") as ColorRect
-		if cr != null:
-			cr.visible = false
-
-
-## Spreads the sheet's frames evenly from the start to the end of the
-## animation (or of --duration when given).
-func _plan_sheet() -> void:
-	var span: float = duration_sec if duration_sec > 0.0 else total_anim_length
-	# Like the automatic screenshot, never before frame 15: the studio's
-	# first frames are not rendered yet (they come out black).
-	var first: int = 15
-	var last: int = maxi(first + sheet_count, int(span * 60.0))
-	for i: int in range(sheet_count):
-		_sheet_frames.append(first + roundi(float(last - first) * i / (sheet_count - 1)))
-	print("[AnimCapturer] Contact sheet of %d frames over %.2fs" % [sheet_count, span])
-
-
-## Grabs the planned sheet frames; once all are in, saves the sheet and quits.
-func _update_sheet() -> void:
-	if _sheet_frames.has(frame_count):
-		_sheet_images.append(CaptureImage.grab(get_viewport()))
-	if _sheet_images.size() < sheet_count:
-		return
-	var file_to_save: String = output_path if not output_path.is_empty() else _generate_default_screenshot_path()
-	# The sheet is already sized to one screenshot's width.
-	CaptureImage.save(CaptureImage.contact_sheet(_sheet_images, SHEET_COLUMNS), file_to_save, "AnimCapturer", true)
-	get_tree().quit(0)
-
-
-func _save_screenshot(file_path: String) -> void:
-	CaptureImage.save(CaptureImage.grab(get_viewport()), file_path, "AnimCapturer")
-
-
 ## Recursively suppresses any active Camera3D nodes inside spawned targets/dummies to avoid viewport conflicts.
 func _suppress_actor_cameras(actor: Node) -> void:
 	if actor == null:
@@ -487,11 +351,10 @@ func _suppress_actor_cameras(actor: Node) -> void:
 		var c: Camera3D = cam_node as Camera3D
 		if c != null:
 			if c.current:
-				print("[AnimCapturer] Note: Suppressed active actor camera '%s' on %s to preserve studio camera." % [c.name, actor.name])
+				print("[AnimStage] Note: Suppressed active actor camera '%s' on %s to preserve studio camera." % [c.name, actor.name])
 			c.current = false
 	var cam_root: Node = actor.find_child("CameraRoot", true, false)
 	if cam_root != null:
 		cam_root.queue_free()
 	if camera != null and not camera.is_current():
 		camera.make_current()
-

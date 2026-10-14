@@ -12,11 +12,12 @@ License: CC0
 ## Requirements
 
 - **Godot 4.7.2** (standard build, Forward+ renderer).
-- **Python 3** for the test, scratch and capture runners.
-- **FFmpeg** on `PATH`, only for recording videos with `capture.py`.
+- **Python 3.11+** for the tooling, [godot-agent-kit](addons/godot_kit/README.md)
+  (vendored in `addons/godot_kit/`).
+- **FFmpeg** on `PATH`, only for recording videos with `kit.py capture`.
 
-The runners find Godot through the `GODOT_BIN` environment variable, or the
-`godot` command on `PATH`:
+The kit finds Godot through the `GODOT_BIN` environment variable, or the
+`godot` command on `PATH` (`godot_kit.toml` pins the version):
 
 ```bash
 export GODOT_BIN=/path/to/Godot_v4.7.2-stable
@@ -29,19 +30,22 @@ or run `godot --path .` from the project root.
 
 ## Tests and tools
 
-Always launch Godot for tests and scripts through these runners: they add the
+Always launch Godot for tests and scripts through godot-agent-kit: it adds the
 watchdog timeouts that keep a stuck engine from hanging your terminal.
 
 ```bash
-python run_tests.py                               # every test suite
-python run_tests.py test/test_jump_action.tscn    # one suite
-python run_tests.py --fps 20                      # emulate a slow device
-python tools/lint_project.py                      # the project lint alone (runs first in run_tests.py)
-python run_scratch.py .scratch/my_check.gd        # a throwaway -s script (fast-forwarded at 60 fps)
-python run_scratch.py .scratch/my_check.gd --fps 0  # the same, paced to real time
-python capture.py map Levels/level_1.tscn         # screenshots and video into movies/
-python tools/check_runners.py                     # self-test the runners (after changing them)
+python addons/godot_kit/kit.py test                                  # the lint, then every test suite
+python addons/godot_kit/kit.py test test/test_jump_action.tscn       # one suite
+python addons/godot_kit/kit.py test --fps 20                         # emulate a slow device
+python addons/godot_kit/kit.py lint                                  # the project lint alone
+python addons/godot_kit/kit.py scratch .scratch/my_check.gd          # a throwaway -s script (fast-forwarded at 60 fps)
+python addons/godot_kit/kit.py scratch .scratch/my_check.gd --fps 0  # the same, paced to real time
+python addons/godot_kit/kit.py capture scene Levels/level_1.tscn     # screenshots and video into movies/
+python addons/godot_kit/kit.py check-runners                         # self-test the runners
 ```
+
+The kit is a git subtree of the godot-agent-kit repository: change it there
+and pull (`addons/godot_kit/README.md`, "Updating"), never edit it here.
 
 ## Documentation
 
@@ -49,7 +53,7 @@ python tools/check_runners.py                     # self-test the runners (after
 |---|---|
 | `AGENTS.md` | Rules for coding agents (and a good summary of the conventions for people) |
 | `.claude/skills/*/SKILL.md` | Step-by-step procedures: combat animations, levels, captures, tests, hang debugging |
-| `CAPTURE.md` | The capture tool in detail |
+| `godot_kit.toml` | The kit's configuration: engine pin, lint folders and rules, capture settings |
 | `LORE.md` | Game lore, background, humor guidelines and visual style guide |
 | `tools/levels/README.md` | The level-building pipeline |
 | `TODO.md` | Open work |

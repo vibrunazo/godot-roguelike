@@ -9,7 +9,7 @@
 ##   float_in_air holds the character's height.
 ## Replaces test_attack_dummy, test_attack_cycle and test_queued_attack.
 ## Damage, combo links and queue windows are read from the live attack states.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

@@ -12,7 +12,7 @@
 ## - leaving the shop needs no purchase. That changes the scene, so it runs
 ##   last.
 ## Magnitudes, gold amounts and limits are test-owned or read from the items.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

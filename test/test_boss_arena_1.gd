@@ -11,7 +11,7 @@
 ##   never picks a boss arena.
 ## Levels and difficulties used by the mechanics are test-owned or read from
 ## the registered data; the arena's layout is the designers' choice.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const ARENA_PATH: String = "res://Levels/boss_arena_1.tscn"
 const ARENA_SCENE: PackedScene = preload("res://Levels/boss_arena_1.tscn")

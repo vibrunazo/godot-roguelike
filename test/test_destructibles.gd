@@ -14,7 +14,7 @@
 ## - a barrel is solid: a character walking into it is stopped.
 ## Health, fuse times and blast sizes come from the scenes or are set by the
 ## test; nothing here asserts tuning.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const BARREL_SCENE: PackedScene = preload("res://Levels/Decorators/explosive_barrel.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")

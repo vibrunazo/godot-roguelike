@@ -1,16 +1,20 @@
-## Base template scene and script for staging and capturing combat scenarios, attacks, and abilities.
+## Staging scene for combat captures: a lit arena floor and camera, a player
+## and an enemy, and actions scheduled on exact physics frames (states,
+## attacks, hits, callbacks, extra named screenshots). It only stages:
+## `kit.py capture scene` takes the main screenshot, sheet or video and ends
+## the run (--at, --duration).
 ##
-## Allows agents to easily spawn any Player or Enemy characters, order them to perform
-## specific actions, abilities, or state transitions at exact frames, and capture the
-## interaction as screenshots or video to the movies/ folder.
+##   python addons/godot_kit/kit.py capture scene tools/capture/combat_stage.tscn --scene-camera --video --duration 3 -- --player --enemy=brute --action=enemy:state:EnemyPunch@15
 ##
-## Usage:
-## 1. Inherit or extend this script, overriding _setup_scenario()
-## 2. Or run directly with CLI arguments:
-##    --player --enemy=brute --action=enemy:state:EnemyPunch --video
-class_name CombatScenarioTemplate
+## Arguments after `--` (read after the kit's --scene-args marker): --player,
+## --enemy=<registry name or scene path>, --action=target:type:param@frame
+## (repeatable), --enable-ai, --freeze (hold the combatants in place),
+## --player-pos=, --enemy-pos=, --cam-pos=, --cam-target= (X,Y,Z) and --cam-fov=.
+## A saved scenario extends this script and overrides _setup_scenario().
+class_name CombatStage
 extends Node3D
 
+const CaptureImage: GDScript = preload("res://addons/godot_kit/capture/capture_image.gd")
 ## Enemy scene registry mapping friendly names to scene paths.
 const ENEMY_REGISTRY: Dictionary = {
 	"brute": "res://Enemy/enemy_brute.tscn",
@@ -41,11 +45,8 @@ var all_combatants: Array[Character] = []
 var scheduled_actions: Array[ScheduledAction] = []
 
 var frame_count: int = 0
-var finish_frame: int = 180
-var is_video: bool = false
+## Health bars are hidden unless the capture keeps the UI (--show-ui).
 var hide_ui: bool = true
-var debug_collisions: bool = false
-var output_path: String = ""
 
 var custom_cam_pos: Vector3 = Vector3.ZERO
 var custom_cam_target: Vector3 = Vector3.ZERO
@@ -67,7 +68,6 @@ var cli_actions: PackedStringArray = []
 
 
 func _ready() -> void:
-	print("[Capture Tip] If output appears black or from an unintended perspective, check if an actor scene contains an active internal Camera3D.")
 	_parse_arguments()
 	_setup_environment()
 	_setup_camera()
@@ -77,11 +77,11 @@ func _ready() -> void:
 
 func _physics_process(_delta: float) -> void:
 	frame_count += 1
-	_disable_all_ui()
+	_hide_health_bars()
 
 	if camera != null and not camera.is_current():
 		camera.make_current()
-		print("[CombatScenario] Note: Re-asserted ArenaCamera as active viewport camera.")
+		print("[CombatStage] Note: Re-asserted ArenaCamera as active viewport camera.")
 
 	# Process scheduled actions for current frame
 	for action: ScheduledAction in scheduled_actions:
@@ -91,10 +91,6 @@ func _physics_process(_delta: float) -> void:
 	# Auto camera tracking if not using custom camera
 	if not has_custom_cam_pos and not has_custom_cam_target:
 		_update_camera_tracking()
-
-	if frame_count >= finish_frame:
-		print("[CombatScenario] Scenario reached finish frame (%d). Quitting." % frame_count)
-		get_tree().quit(0)
 
 
 ## Virtual method for custom scenario subclasses to configure combatants and actions.
@@ -120,7 +116,7 @@ func spawn_player(pos: Vector3 = Vector3(0.0, 1.0, 1.0), facing_dir: Vector3 = V
 
 	player_instance = player
 	all_combatants.append(player)
-	print("[CombatScenario] Spawned Player at: ", pos)
+	print("[CombatStage] Spawned Player at: ", pos)
 	return player
 
 
@@ -133,7 +129,7 @@ func spawn_enemy(enemy_identifier: String = "brute", pos: Vector3 = Vector3(0.0,
 		path = "res://" + path.trim_prefix("./")
 
 	if not ResourceLoader.exists(path):
-		printerr("[CombatScenario] ERROR: Enemy scene does not exist: ", path)
+		printerr("[CombatStage] ERROR: Enemy scene does not exist: ", path)
 		return null
 
 	var scn: PackedScene = load(path) as PackedScene
@@ -151,7 +147,7 @@ func spawn_enemy(enemy_identifier: String = "brute", pos: Vector3 = Vector3(0.0,
 
 	enemy_instance = enemy
 	all_combatants.append(enemy)
-	print("[CombatScenario] Spawned Enemy (%s) at: %s" % [enemy_identifier, pos])
+	print("[CombatStage] Spawned Enemy (%s) at: %s" % [enemy_identifier, pos])
 	return enemy
 
 
@@ -195,11 +191,6 @@ func order_callback(target: Node, method: StringName, at_frame: int) -> void:
 	scheduled_actions.append(ScheduledAction.new(target, "callback", String(method), at_frame))
 
 
-## Schedules the scenario to end and Godot to exit at a given frame.
-func order_finish(at_frame: int) -> void:
-	finish_frame = at_frame
-
-
 ## Instantly faces a character's mount at a position for staging setup only.
 ## Gameplay auto-aim must go through Character.look_at_target (which respects
 ## the rotation speed limit); captures need deterministic initial facing
@@ -228,13 +219,13 @@ func _execute_action(action: ScheduledAction) -> void:
 					_snap_face(c, player_instance.global_position)
 					c.aim_direction = (player_instance.global_position - c.global_position).normalized()
 				c.state_machine.request_state(s_name)
-				print("[CombatScenario @ frame %d] Requested state '%s' on %s" % [frame_count, s_name, c.name])
+				print("[CombatStage @ frame %d] Requested state '%s' on %s" % [frame_count, s_name, c.name])
 		"damage":
 			var c: Character = action.target as Character
 			if c != null and c.hurtbox != null:
 				var dmg: float = float(action.param_value)
 				c.hurtbox.receive_hit(dmg, Vector3.ZERO)
-				print("[CombatScenario @ frame %d] Applied %.1f damage to %s" % [frame_count, dmg, c.name])
+				print("[CombatStage @ frame %d] Applied %.1f damage to %s" % [frame_count, dmg, c.name])
 		"screenshot":
 			var path_str: String = str(action.param_value)
 			_save_screenshot(path_str)
@@ -243,9 +234,9 @@ func _execute_action(action: ScheduledAction) -> void:
 			var method: StringName = StringName(str(action.param_value))
 			if target != null and is_instance_valid(target) and target.has_method(method):
 				target.call(method)
-				print("[CombatScenario @ frame %d] Called %s() on %s" % [frame_count, String(method), target.name])
+				print("[CombatStage @ frame %d] Called %s() on %s" % [frame_count, String(method), target.name])
 			else:
-				printerr("[CombatScenario @ frame %d] Cannot call '%s' (missing node or method)." % [frame_count, String(method)])
+				printerr("[CombatStage @ frame %d] Cannot call '%s' (missing node or method)." % [frame_count, String(method)])
 
 
 func _update_camera_tracking() -> void:
@@ -268,11 +259,6 @@ func _update_camera_tracking() -> void:
 
 
 func _setup_environment() -> void:
-	if debug_collisions:
-		get_tree().debug_collisions_hint = true
-
-	_disable_all_ui()
-
 	# Key light
 	var key_light: DirectionalLight3D = DirectionalLight3D.new()
 	key_light.rotation_degrees = Vector3(-35.0, 45.0, 0.0)
@@ -329,56 +315,40 @@ func _setup_camera() -> void:
 
 func _parse_arguments() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
-	for arg: String in args:
-		if arg == "--player":
-			cli_spawn_player = true
-		elif arg.begins_with("--enemy="):
-			cli_enemy_type = arg.trim_prefix("--enemy=").strip_edges()
-		elif arg.begins_with("--action="):
-			cli_actions.append(arg.trim_prefix("--action=").strip_edges())
-		elif arg.begins_with("--output="):
-			output_path = arg.trim_prefix("--output=").strip_edges()
-		elif arg.begins_with("--frames="):
-			finish_frame = arg.trim_prefix("--frames=").to_int()
-		elif arg.begins_with("--duration="):
-			var dur: float = arg.trim_prefix("--duration=").to_float()
-			finish_frame = int(dur * 60.0)
-		elif arg.begins_with("--player-pos="):
-			var parts: PackedStringArray = arg.trim_prefix("--player-pos=").split(",")
-			if parts.size() == 3:
-				custom_player_pos = Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
-				has_custom_player_pos = true
-		elif arg.begins_with("--enemy-pos="):
-			var parts: PackedStringArray = arg.trim_prefix("--enemy-pos=").split(",")
-			if parts.size() == 3:
-				custom_enemy_pos = Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
-				has_custom_enemy_pos = true
-		elif arg.begins_with("--cam-pos="):
-			var parts: PackedStringArray = arg.trim_prefix("--cam-pos=").split(",")
-			if parts.size() == 3:
-				custom_cam_pos = Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
-				has_custom_cam_pos = true
-		elif arg.begins_with("--cam-target="):
-			var parts: PackedStringArray = arg.trim_prefix("--cam-target=").split(",")
-			if parts.size() == 3:
-				custom_cam_target = Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
-				has_custom_cam_target = true
-		elif arg.begins_with("--cam-fov="):
-			cam_fov = arg.trim_prefix("--cam-fov=").to_float()
-		elif arg == "--video":
-			is_video = true
-		elif arg == "--debug-collisions":
-			debug_collisions = true
-		elif arg == "--no-debug-collisions":
-			debug_collisions = false
-		elif arg == "--enable-ai":
-			cli_enable_ai = true
-		elif arg == "--freeze":
-			cli_freeze_actors = true
-		elif arg == "--show-ui":
-			hide_ui = false
-		elif arg == "--hide-ui":
-			hide_ui = true
+	hide_ui = args.has("--hide-ui")
+	for arg: String in args.slice(args.find("--scene-args") + 1):
+		var key: String = arg.get_slice("=", 0)
+		var value: String = arg.get_slice("=", 1).strip_edges() if arg.contains("=") else ""
+		match key:
+			"--player":
+				cli_spawn_player = true
+			"--enemy":
+				cli_enemy_type = value
+			"--action":
+				cli_actions.append(value)
+			"--enable-ai":
+				cli_enable_ai = true
+			"--freeze":
+				cli_freeze_actors = true
+			"--cam-fov":
+				cam_fov = value.to_float()
+			"--player-pos":
+				has_custom_player_pos = _parse_vector(value, func(v: Vector3) -> void: custom_player_pos = v)
+			"--enemy-pos":
+				has_custom_enemy_pos = _parse_vector(value, func(v: Vector3) -> void: custom_enemy_pos = v)
+			"--cam-pos":
+				has_custom_cam_pos = _parse_vector(value, func(v: Vector3) -> void: custom_cam_pos = v)
+			"--cam-target":
+				has_custom_cam_target = _parse_vector(value, func(v: Vector3) -> void: custom_cam_target = v)
+
+
+## Parses "X,Y,Z" and hands the vector to apply; false when the text is not three numbers.
+func _parse_vector(text: String, apply: Callable) -> bool:
+	var parts: PackedStringArray = text.split(",")
+	if parts.size() != 3:
+		return false
+	apply.call(Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float()))
+	return true
 
 
 func _apply_cli_scenario() -> void:
@@ -411,8 +381,6 @@ func _apply_cli_scenario() -> void:
 			if target_str == "screenshot" or target_str == "snap":
 				var snap_path: String = cmd.substr(parts[0].length() + 1).strip_edges()
 				if snap_path.is_empty():
-					snap_path = output_path
-				if snap_path.is_empty():
 					snap_path = "movies/combat_frame_%d.png" % at_frame
 				order_screenshot(snap_path, at_frame)
 				continue
@@ -439,17 +407,11 @@ func _apply_cli_scenario() -> void:
 			elif act_type == "screenshot":
 				var snap_path: String = param
 				if snap_path.is_empty():
-					snap_path = output_path
-				if snap_path.is_empty():
 					snap_path = "movies/combat_frame_%d.png" % at_frame
 				order_screenshot(snap_path, at_frame)
 
 	if cli_freeze_actors:
 		_freeze_combatants()
-
-	if not output_path.is_empty() and not is_video:
-		# Schedule final screenshot before exit
-		order_screenshot(output_path, maxi(finish_frame - 2, 1))
 
 
 ## Holds staged combatants in place: zeroes velocity and pauses physics, state
@@ -467,36 +429,21 @@ func _freeze_combatants() -> void:
 			c.state_machine.set_physics_process(false)
 		if c.ai_state_machine != null:
 			c.ai_state_machine.process_mode = Node.PROCESS_MODE_DISABLED
-	print("[CombatScenario] Froze %d combatant(s) in place." % all_combatants.size())
+	print("[CombatStage] Froze %d combatant(s) in place." % all_combatants.size())
 
 
-func _disable_all_ui() -> void:
-	if hide_ui:
-		var ui_node: Node = get_node_or_null("/root/UI")
-		if ui_node != null and ui_node.has_method("set_overlays_visible"):
-			ui_node.set_overlays_visible(false)
-		var overlays: Array[Node] = get_tree().root.find_children("*", "LevelTitleOverlay", true, false)
-		for ov: Node in overlays:
-			ov.queue_free()
-		var health_bars: Array[Node] = get_tree().root.find_children("*", "HealthBar", true, false)
-		for hb: Node in health_bars:
-			if hb is CanvasItem:
-				(hb as CanvasItem).visible = false
-			elif hb is Node3D:
-				(hb as Node3D).visible = false
-
-	var st: CanvasLayer = get_node_or_null("/root/SceneTransition") as CanvasLayer
-	if st != null:
-		st.visible = false
-		var cr: ColorRect = st.get_node_or_null("ColorRect") as ColorRect
-		if cr != null:
-			cr.visible = false
+func _hide_health_bars() -> void:
+	if not hide_ui:
+		return
+	for bar: Node in get_tree().root.find_children("*", "HealthBar", true, false):
+		if "visible" in bar:
+			bar.set("visible", false)
 
 
 func _save_screenshot(file_path: String) -> void:
 	if not file_path.to_lower().ends_with(".png"):
 		file_path += ".png"
-	CaptureImage.save(CaptureImage.grab(get_viewport()), file_path, "CombatScenario")
+	CaptureImage.save(CaptureImage.grab(get_viewport()), file_path, "CombatStage")
 
 
 ## Recursively suppresses any active Camera3D nodes inside spawned actors to avoid viewport conflicts.

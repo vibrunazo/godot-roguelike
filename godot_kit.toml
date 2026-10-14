@@ -1,0 +1,30 @@
+# godot-agent-kit configuration (addons/godot_kit/README.md lists every key).
+# Unknown keys are an error, so a typo fails loudly.
+
+[engine]
+# Keep equal to GODOT_VERSION in .claude/hooks/session-start.sh.
+version = "4.7.2"
+
+[test]
+dir = "test"
+timeout = 10
+fps = 60
+
+[lint]
+# Game code: production-code rules (hardcoded loads, export docstrings,
+# function length, autoload null checks, prints...) only look here.
+production_dirs = ["Abilities/", "Character/", "Components/", "Enemy/", "Hazards/", "Items/", "Levels/", "Passives/", "Player/", "Singletons/", "StateMachine/", "UserInterface/"]
+# Gameplay folders: every timer in them runs on the physics clock (AGENTS.md §2.5).
+physics_clock_dirs = ["Abilities/", "Character/", "Components/", "Enemy/", "Hazards/", "Items/", "Levels/", "Passives/", "Player/", "StateMachine/"]
+enable = ["print-in-production"]
+
+[[lint.forbidden_references]]
+dirs = ["StateMachine/CharacterStates/", "StateMachine/EnemyStates/", "StateMachine/PlayerStates/"]
+names = ["PlayerInputComponent", "AIStateMachine", "AIState"]
+reason = "body states read only the Character; minds raise intents and order states, never the reverse"
+
+[capture]
+output_dir = "movies"
+# The HUD and the level title overlay are in the "capture_hidden" group.
+hide_paths = ["/root/SceneTransition"]
+track_type = "Character"

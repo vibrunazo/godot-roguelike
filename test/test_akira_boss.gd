@@ -15,8 +15,8 @@
 ## Tunable values (difficulties, sizes, resistances, cooldowns, damage) are
 ## never asserted, not even relative to other enemies: tests either read them
 ## from the live nodes or set their own. Art (meshes, colors, VFX assets,
-## sounds) is verified visually with capture.py, not here.
-extends "res://test/lib/test_suite.gd"
+## sounds) is verified visually with `kit.py capture`, not here.
+extends "res://test/lib/project_suite.gd"
 
 const BOSS_SCENE: PackedScene = preload("res://Enemy/akira_boss.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

@@ -20,7 +20,7 @@
 ##   or its distance from the player; with the cursor away from every enemy,
 ##   targeting falls back to the nearest.
 ## Distances are fractions of the player's own auto_aim_range.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

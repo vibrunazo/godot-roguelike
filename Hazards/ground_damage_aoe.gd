@@ -121,11 +121,10 @@ func _own_collision_shape() -> void:
 func _arm_lifetime_timers() -> void:
 	if get_tree() == null:
 		return
-	# The damage window runs on the physics clock so its length never
-	# depends on the render frame rate; the visual timer below may not.
+	# Both run on the physics clock, so neither depends on the render frame rate.
 	_active_timer = get_tree().create_timer(active_duration, true, true)
 	_active_timer.timeout.connect(_on_active_window_expired)
-	_visual_timer = get_tree().create_timer(visual_duration)
+	_visual_timer = get_tree().create_timer(visual_duration, true, true)
 	_visual_timer.timeout.connect(expire)
 
 func _duplicate_visual_materials() -> void:

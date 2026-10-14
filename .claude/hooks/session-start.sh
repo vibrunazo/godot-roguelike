@@ -1,7 +1,7 @@
 #!/bin/bash
-# Installs the Godot engine in Claude Code on the web sessions, so the runners
-# (run_tests.py, run_scratch.py, capture.py) find `godot` on PATH. Keep
-# GODOT_VERSION in step with the engine AGENTS.md names.
+# Installs the Godot engine in Claude Code on the web sessions, so the kit
+# (addons/godot_kit/kit.py) finds `godot` on PATH. Keep GODOT_VERSION equal to
+# [engine] version in godot_kit.toml.
 set -euo pipefail
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then

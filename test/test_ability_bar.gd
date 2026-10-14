@@ -6,7 +6,7 @@
 ##   bar keeps showing the run's slots, every one ready, and stops following
 ##   the freed player.
 ## The ability and its cooldown are test-owned.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const BAR_SCENE: PackedScene = preload("res://UserInterface/ability_bar.tscn")

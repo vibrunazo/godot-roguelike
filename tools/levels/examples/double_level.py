@@ -7,7 +7,7 @@ cells), carves a corridor through the seam, closes the new perimeter, and
 writes the cell files, navmesh snippet and assemble_level.py spec.
 
 Usage:
-    python run_scratch.py tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn --out=/tmp/l2.txt
+    python addons/godot_kit/kit.py scratch tools/levels/dump_cells.gd -- --level=Levels/level_2.tscn --out=/tmp/l2.txt
     python tools/levels/examples/double_level.py --cells /tmp/l2.txt --out-dir /tmp/l4
     python tools/levels/validate_layout.py --floor /tmp/l4/floor.txt --wall /tmp/l4/wall.txt \\
         --start 0,0 --goal -3,-17

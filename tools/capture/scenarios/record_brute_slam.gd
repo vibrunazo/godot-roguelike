@@ -1,6 +1,12 @@
 ## Helper recording scene to capture video and screenshots of Enemy Brute animations
 ## with visible debug collision shapes to the movies/ folder.
+##
+## Run it with:
+##   python addons/godot_kit/kit.py capture scene tools/capture/scenarios/record_brute_slam.tscn --scene-camera --at 4.9
+## (add --video --duration 4.9 for a video); the named screenshots land in movies/.
 extends Node3D
+
+const CaptureImage: GDScript = preload("res://addons/godot_kit/capture/capture_image.gd")
 
 var frame_count: int = 0
 var brute: Character
@@ -103,21 +109,6 @@ func _physics_process(_delta: float) -> void:
 	if frame_count == 270:
 		_save_screenshot("movies/brute_defeat.png")
 
-	if frame_count >= 290:
-		print("Recording sequence completed successfully.")
-		get_tree().quit(0)
-
 
 func _save_screenshot(file_path: String) -> void:
-	var viewport: Viewport = get_viewport()
-	if viewport == null:
-		return
-	var tex: ViewportTexture = viewport.get_texture()
-	if tex == null:
-		return
-	var img: Image = tex.get_image()
-	if img != null:
-		var dir_err: Error = DirAccess.make_dir_recursive_absolute("movies")
-		if dir_err == OK or dir_err == ERR_ALREADY_EXISTS:
-			img.save_png(file_path)
-			print("Saved debug screenshot: ", file_path, " (", img.get_width(), "x", img.get_height(), ")")
+	CaptureImage.save(CaptureImage.grab(get_viewport()), file_path, "RecordBruteSlam")

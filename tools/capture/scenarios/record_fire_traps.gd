@@ -1,4 +1,11 @@
+## Three fire traps of different sizes side by side; saves movies/fire_trap_comparison.png.
+##
+## Run it with:
+##   python addons/godot_kit/kit.py capture scene tools/capture/scenarios/record_fire_traps.tscn --scene-camera --at 0.4
+## (add --video --duration 0.4 for a video); the named screenshots land in movies/.
 extends Node3D
+
+const CaptureImage: GDScript = preload("res://addons/godot_kit/capture/capture_image.gd")
 
 var frame_count: int = 0
 var trap_1: FireTrap
@@ -67,24 +74,6 @@ func _physics_process(_delta: float) -> void:
 	if frame_count == 20:
 		_save_screenshot("movies/fire_trap_comparison.png")
 
-	if frame_count == 22:
-		print("Screenshots captured successfully.")
-		get_tree().quit(0)
-
 
 func _save_screenshot(file_path: String) -> void:
-	var viewport: Viewport = get_viewport()
-	if viewport == null:
-		return
-	var tex: ViewportTexture = viewport.get_texture()
-	if tex == null:
-		return
-	var img: Image = tex.get_image()
-	if img != null:
-		var dir_path: String = file_path.get_base_dir()
-		DirAccess.make_dir_recursive_absolute(dir_path)
-		var err: Error = img.save_png(file_path)
-		if err == OK:
-			print("Saved screenshot to: ", file_path, " (", img.get_width(), "x", img.get_height(), ")")
-		else:
-			printerr("Failed to save screenshot: ", err)
+	CaptureImage.save(CaptureImage.grab(get_viewport()), file_path, "RecordFireTraps")

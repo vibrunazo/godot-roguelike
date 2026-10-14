@@ -6,7 +6,7 @@
 ## - after active_duration the spikes retract, the hitbox switches off, and
 ##   after reset_cooldown the trap re-arms and triggers again.
 ## Delays and damage are read from the hazard itself.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

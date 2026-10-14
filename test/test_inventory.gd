@@ -13,7 +13,7 @@
 ##   item on the stats it changes (HP clamped to each side's max) and keeps
 ##   the other rows plain; clearing the selection clears the arrows.
 ## All gear is test-owned.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const CARD_SCENE: PackedScene = preload("res://UserInterface/upgrade_icon.tscn")

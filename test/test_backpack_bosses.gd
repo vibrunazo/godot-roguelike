@@ -16,7 +16,7 @@
 ## Delays, damage and counts are set by the test or read from the live nodes.
 ## Each test runs on every backpack boss in turn, so a new one is covered as
 ## soon as it is registered.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 ## Test-owned values.

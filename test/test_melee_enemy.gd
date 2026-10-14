@@ -5,7 +5,7 @@
 ##   attack),
 ## - its weapon slot switches the hitbox on and off.
 ## Ranges and damage are read from the enemy.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")

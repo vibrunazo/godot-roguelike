@@ -10,7 +10,7 @@
 ## a loud failure instead of a scaffold passed off as baked.
 ##
 ## Usage:
-##   python run_scratch.py tools/levels/bake_navmesh.gd -- --level=Levels/level_5.tscn --out=.scratch/levels/l5/navmesh_baked.txt
+##   python addons/godot_kit/kit.py scratch tools/levels/bake_navmesh.gd -- --level=Levels/level_5.tscn --out=.scratch/levels/l5/navmesh_baked.txt
 extends SceneTree
 
 

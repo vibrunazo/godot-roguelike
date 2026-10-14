@@ -1,6 +1,6 @@
 ## Level 13: every table decoration physically blocks the real player
 ## capsule from both sides (a swept body motion, not a visual overlap check).
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const LEVEL_SCENE: PackedScene = preload("res://Levels/level_13.tscn")
 const TABLES: Array[String] = ["LowerWorkTable", "LowerBanquetTable", "UpperFeastTable", "UpperLongTable"]

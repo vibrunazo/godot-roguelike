@@ -15,7 +15,7 @@
 ## Expected values are fractions of the live max health, and waits derive
 ## from the bar's own durations, so retuning health or animation timing
 ## never breaks the suite.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

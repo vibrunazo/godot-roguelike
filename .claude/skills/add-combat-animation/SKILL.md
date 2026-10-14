@@ -35,7 +35,7 @@ func _initialize() -> void:
 ```
 
 ```bash
-python run_scratch.py .scratch/extract_anim.gd
+python addons/godot_kit/kit.py scratch .scratch/extract_anim.gd
 ```
 
 ## 2. Key the three WeaponSlot tracks
@@ -70,8 +70,8 @@ tracks on the weapon slot the attack uses (`WeaponSlot`, or `PunchSlot`,
 
 ## 4. Verify
 
-- Record it: `python capture.py anim <character scene> --state <AttackState> --video`
+- Record it: `python addons/godot_kit/kit.py capture scene tools/capture/anim_stage.tscn --scene-camera --video --duration 2 -- --target=<character scene> --state=<AttackState>`
   (see the `capture-media` skill).
 - The hit landing at every frame rate is covered by
   `test/test_frame_rate_invariance.gd`; extend it if you added a new timed
-  mechanic, and run `python run_tests.py`.
+  mechanic, and run `python addons/godot_kit/kit.py test`.

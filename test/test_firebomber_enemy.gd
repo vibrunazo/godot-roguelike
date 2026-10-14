@@ -15,7 +15,7 @@
 ##   and never targets a landing point through a wall.
 ## Every expected value comes from the live nodes or is set by the test, and
 ## every wait is on a condition, so the suite holds at any frame rate.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const FIREBOMBER_SCENE: PackedScene = preload("res://Enemy/firebomber_enemy.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")

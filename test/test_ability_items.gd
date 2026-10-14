@@ -12,7 +12,7 @@
 ## - walking over an item pickup takes the item (a book teaches its ability)
 ##   and removes the pickup; a pickup the player cannot take stays.
 ## Every ability and item here is built by the test.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const PICKUP_SCENE: PackedScene = preload("res://Items/Pickups/item_pickup.tscn")

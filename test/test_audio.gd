@@ -6,7 +6,7 @@
 ##   slot's slash signal when the hit window opens,
 ## and every one of them plays on the SFX bus, so the SFX volume controls it.
 ## (The firebomber's leap sound is covered by test_firebomber_enemy.)
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

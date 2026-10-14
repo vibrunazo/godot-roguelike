@@ -11,7 +11,7 @@
 ## ProgressionState plans, which spawns exactly the listed enemies) with
 ## test-owned spawn delays, so the suite depends on neither the difficulty
 ## budget nor any tuning.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
 ## Test-owned wave shape and pacing.

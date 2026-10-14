@@ -18,7 +18,6 @@ func _ready() -> void:
 
 
 func _on_defeat() -> void:
-	# Menu timing is presentation, so it may run on the render clock.
-	await get_tree().create_timer(menu_delay).timeout
+	await get_tree().create_timer(menu_delay, true, true).timeout
 	if is_inside_tree():
 		UI.show_game_over()

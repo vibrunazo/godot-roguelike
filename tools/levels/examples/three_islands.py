@@ -11,7 +11,7 @@ the lake and rails.
 Pipeline (mirrors the README):
     python tools/levels/examples/three_islands.py --out-dir .scratch/levels/l8proof
     pack -> assemble (spec.json) -> bake navmesh -> splice -> bake GI
-    -> register a DungeonResource -> run_tests.py -> capture.py
+    -> register a DungeonResource -> kit.py test -> kit.py capture
 """
 from __future__ import annotations
 

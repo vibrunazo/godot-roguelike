@@ -11,7 +11,7 @@
 ##   every attack, ranged ones included).
 ## Positions, health and the attack stat are test-owned; ranges and the
 ## effect are read from the live nodes and resources.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const DAEMON_SCENE: PackedScene = preload("res://Enemy/enemy_headless_daemon.tscn")

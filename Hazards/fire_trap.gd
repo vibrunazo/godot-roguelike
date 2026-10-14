@@ -153,7 +153,7 @@ func extinguish() -> void:
 			audio.stop()
 
 	if is_inside_tree() and get_tree() != null:
-		var free_timer: SceneTreeTimer = get_tree().create_timer(0.8)
+		var free_timer: SceneTreeTimer = get_tree().create_timer(0.8, true, true)
 		free_timer.timeout.connect(queue_free)
 	else:
 		queue_free()

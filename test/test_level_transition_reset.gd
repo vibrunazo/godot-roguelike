@@ -14,7 +14,7 @@
 ## - the transition-start cancel silences the outgoing player at once (SFX,
 ##   damage tint), also from inside a physics callback (exit portals run it
 ##   from body_entered, where direct Area3D writes are locked).
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const LEVEL_TEMPLATE_SCENE: PackedScene = preload("res://Levels/level_template.tscn")
 const BURN_EFFECT: GameplayEffect = preload("res://Components/effect_fire_burn.tres")

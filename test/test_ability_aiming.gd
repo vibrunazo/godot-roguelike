@@ -14,7 +14,7 @@
 ##   player; with no foe near the cursor, at the foe nearest the player.
 ## Abilities, foes and the raised floor are built by the test; their numbers
 ## are test-owned.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

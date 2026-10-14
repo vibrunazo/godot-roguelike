@@ -7,7 +7,7 @@
 ## Reference migration for the TestSuite harness: every expected value is
 ## either read from the live node or set by the test itself, so designers can
 ## retune any character's rotation speed without breaking this suite.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")

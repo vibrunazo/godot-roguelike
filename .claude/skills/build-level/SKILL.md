@@ -61,8 +61,8 @@ refuses to ship on engine errors.
 ## Verify
 
 ```bash
-python run_tests.py test/test_level_rotation_nav.tscn
-python capture.py map Levels/<level>.tscn --preset all
+python addons/godot_kit/kit.py test test/test_level_rotation_nav.tscn
+python addons/godot_kit/kit.py capture scene Levels/<level>.tscn --preset all
 ```
 
 `test_level_rotation_nav` checks every level the run can load (fallback

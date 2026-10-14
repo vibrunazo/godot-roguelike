@@ -18,7 +18,7 @@
 ## - an enemy with a slot, a starting ability and an AIConditionalAttack on
 ##   that slot casts it at the player (no ability-specific AI state).
 ## Every ability here is built by the test; its numbers are test-owned.
-extends "res://test/lib/test_suite.gd"
+extends "res://test/lib/project_suite.gd"
 
 const PLAYER_SCENE: PackedScene = preload("res://Player/player.tscn")
 const MELEE_SCENE: PackedScene = preload("res://Enemy/melee_enemy.tscn")
